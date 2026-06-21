@@ -231,6 +231,12 @@ async def start_broadcast(
     return job
 
 
+
+def _wake_job(job_id: str) -> None:
+    ev = _job_events.get(job_id)
+    if ev:
+        ev.set()
+
 async def get_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob | None:
     result = await db.execute(
         select(BroadcastJob).where(BroadcastJob.id == job_id, BroadcastJob.user_id == user_id)
