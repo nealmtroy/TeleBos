@@ -420,30 +420,9 @@ async def _resolve_and_join(client, item_type: str, group_identifier: str, telet
             except Exception as join_exc:
                 return None, classify_telegram_error(join_exc), join_exc
 
-        # Check if we're actually a participant; if not, join.
-        # Only treat UserNotParticipantError as "not a member" — any other
-        # exception (ChannelPrivate, ChatAdminRequired, network blip, etc.)
-        # means we can't determine membership safely, so don't blindly join.
-        if entity is not None:
-            from telethon.errors import UserNotParticipantError
-            needs_join = False
-            try:
-                await client.get_permissions(entity, "me")
-            except UserNotParticipantError:
-                needs_join = True
-            except Exception:
-                # Unknown membership state — skip the speculative join,
-                # let send_message surface the real error if there is one.
-                needs_join = False
-
-            if needs_join:
-                try:
-                    await client(telethon_mod.tl.functions.channels.JoinChannelRequest(entity))
-                except Exception as join_exc2:
-                    err_type, err_msg = classify_telegram_error(join_exc2)
-                    if "flood" in err_type:
-                        return None, (err_type, err_msg), join_exc2
-                    # If join fails but we have entity, try sending anyway
+        # Do not preemptively call get_permissions as it burns an extra RPC (channels.getParticipant)
+        # We will attempt to send directly in execute_broadcast, and catch UserNotParticipantError there
+        # if the user hasn't joined.
 
     elif item_type == "link":
         # Check if it's a public link (e.g., https://t.me/my_group)
@@ -835,6 +814,17 @@ async def execute_broadcast(job_id: str):
                                 try:
                                     await client.send_message(entity, chosen_text)
                                     break # Success
+                                except telethon.errors.UserNotParticipantError as unpe:
+                                    if retry_attempt == 0:
+                                        # Not a member, try to join now
+                                        try:
+                                            await client(telethon_mod.tl.functions.channels.JoinChannelRequest(entity))
+                                            await asyncio.sleep(2)
+                                            continue # retry send
+                                        except Exception as join_err:
+                                            # Join failed, re-raise the original error or the join error
+                                            raise join_err
+                                    raise # Re-raise if second attempt fails
                                 except (ConnectionError, TimeoutError, OSError) as net_exc:
                                     if retry_attempt == 0:
                                         logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id, acc_id_str, net_exc)
