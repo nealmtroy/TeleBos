@@ -757,9 +757,16 @@ async def execute_broadcast(job_id: str):
                                 fc.record_flood(acc_id_str, wait)
                                 selected_acc["cooldown_until"] = time.time() + wait
                             elif err_type == "peer_flood":
-                                backoff_time = 300
+                                backoff_time = 7200
                                 fc.record_flood(acc_id_str, backoff_time)
                                 selected_acc["cooldown_until"] = time.time() + backoff_time
+                            elif err_type == "slowmode":
+                                wait = 30
+                                if hasattr(resolve_exc, "seconds"):
+                                    wait = resolve_exc.seconds
+                                # Just track it on the account for this specific chat, or back off entirely
+                                # It's better to just wait the slowmode or treat it like a small flood
+                                selected_acc["cooldown_until"] = time.time() + wait
 
                             await db.commit()
 
@@ -893,9 +900,14 @@ async def execute_broadcast(job_id: str):
                             fc.record_flood(acc_id_str, wait)
                             selected_acc["cooldown_until"] = time.time() + wait
                         elif err_type == "peer_flood":
-                            backoff_time = 300
+                            backoff_time = 7200
                             fc.record_flood(acc_id_str, backoff_time)
                             selected_acc["cooldown_until"] = time.time() + backoff_time
+                        elif err_type == "slowmode":
+                            wait = 30
+                            if hasattr(exc, "seconds"):
+                                wait = exc.seconds
+                            selected_acc["cooldown_until"] = time.time() + wait
 
                         if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
                             await _push_broadcast(job_id, "account_failed", {
