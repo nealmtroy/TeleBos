@@ -876,6 +876,16 @@ async def execute_broadcast(job_id: str):
                                 "account": acc_name,
                                 "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
                             })
+                            # Remove from client_pool
+                            from app.services.telegram_client import client_pool
+                            await client_pool.remove(acc_id_str)
+                            # Deactivate account in DB
+                            from app.database import async_session_factory
+                            async with async_session_factory() as db_session:
+                                acc = await _account_for_log(db_session, acc_id_str)
+                                if acc:
+                                    acc.is_active = False
+                                    await db_session.commit()
                             active_accounts.remove(selected_acc)
                             if current_acc_idx >= len(active_accounts) and active_accounts:
                                 current_acc_idx = 0
