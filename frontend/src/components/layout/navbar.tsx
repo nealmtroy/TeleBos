@@ -3,7 +3,7 @@
 import { useAuthStore } from "@/store/auth-store";
 import { useAppStore } from "@/store/app-store";
 import { useT } from "@/lib/i18n";
-import { Menu, LogOut, ChevronDown, Settings, Wallet } from "lucide-react";
+import { Menu, LogOut, ChevronDown, Settings, Wallet, Crown, Shield, Star, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -71,6 +71,18 @@ export function Navbar() {
     logout();
   }
 
+  // Role details mapping
+  const roleDisplay = {
+    owner: { icon: Shield, text: "Owner", color: "text-rose-600 bg-rose-100 border-rose-200" },
+    premium: { icon: Crown, text: "Premium", color: "text-amber-600 bg-amber-100 border-amber-200" },
+    pro: { icon: Star, text: "Pro", color: "text-blue-600 bg-blue-100 border-blue-200" },
+    basic: { icon: User, text: "Basic", color: "text-slate-600 bg-slate-100 border-slate-200" },
+  };
+  const userRole = user?.role || "basic";
+  const RoleIcon = roleDisplay[userRole as keyof typeof roleDisplay]?.icon || User;
+  const roleColor = roleDisplay[userRole as keyof typeof roleDisplay]?.color || roleDisplay.basic.color;
+  const roleText = roleDisplay[userRole as keyof typeof roleDisplay]?.text || "Basic";
+
   return (
     <>
       <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 relative z-30">
@@ -126,7 +138,7 @@ export function Navbar() {
             >
               {/* Profile header */}
               <div className="px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                     {initials}
                   </div>
@@ -138,6 +150,11 @@ export function Navbar() {
                       {user?.email}
                     </p>
                   </div>
+                </div>
+                {/* Role Badge */}
+                <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide", roleColor)}>
+                  <RoleIcon className="h-3 w-3" />
+                  {roleText}
                 </div>
               </div>
 

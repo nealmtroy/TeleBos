@@ -95,7 +95,8 @@ def _run_migrations(connection):
         )
 
     # ── Broadcast logs migrations ───────────────────────────────────────
-    broadcast_logs_cols = [c["name"] for c in inspector.get_columns("broadcast_logs")]
+    broadcast_logs_cols_info = inspector.get_columns("broadcast_logs")
+    broadcast_logs_cols = [c["name"] for c in broadcast_logs_cols_info]
     if "account_id_used" not in broadcast_logs_cols:
         connection.execute(
             text(
@@ -103,6 +104,22 @@ def _run_migrations(connection):
                 "ADD COLUMN account_id_used UUID REFERENCES telegram_accounts(id) ON DELETE SET NULL"
             )
         )
+
+    # Widen group_identifier (was VARCHAR(500), some pasted blobs overflow it
+    # and rolled back the whole broadcast transaction with
+    # StringDataRightTruncationError).
+    for col in broadcast_logs_cols_info:
+        if col["name"] == "group_identifier":
+            col_type = str(col.get("type", "")).upper()
+            if "VARCHAR" in col_type or "CHARACTER VARYING" in col_type:
+                connection.execute(
+                    text(
+                        "ALTER TABLE broadcast_logs "
+                        "ALTER COLUMN group_identifier TYPE TEXT "
+                        "USING group_identifier::TEXT"
+                    )
+                )
+            break
 
     # ── Telegram account columns (auto-reply, cached stats, spam) ────────
     acct_cols = [c["name"] for c in inspector.get_columns("telegram_accounts")]

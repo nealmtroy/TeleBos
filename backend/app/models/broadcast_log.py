@@ -33,7 +33,9 @@ class BroadcastLog(Base):
 
     cycle_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
-    group_identifier: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Text (unbounded) — some imported group_list items can be very long
+    # (e.g. a paste of many links that wasn't split). Don't fail the insert on length.
+    group_identifier: Mapped[str] = mapped_column(Text, nullable=False)
     group_id: Mapped[int | None] = mapped_column(BigInteger)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False)  # success, error

@@ -298,12 +298,14 @@ export interface Dict {
     noItems: string;
     groups: string;
     bulkImport: string;
+    bulkImportLabel: string;
     bulkImportDesc: string;
     bulkParse: string;
     bulkRefresh: string;
     bulkImportBtn: string;
     importGroups: string;
     add: string;
+    multiValueError: string;
     typeUsername: string;
     typeLink: string;
     typeGroupId: string;

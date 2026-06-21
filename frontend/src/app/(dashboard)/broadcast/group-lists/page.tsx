@@ -12,62 +12,76 @@ import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { Plus, Trash2, X, Users, Upload } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 
 /**
  * Parse bulk text input and extract Telegram links/usernames.
  * Supports:
- *   - https://t.me/username
- *   - https://t.me/+invitehash
- *   - https://t.me/joinchat/hash
+ *   - https://t.me/username  /  http://t.me/username
+ *   - https://t.me/+invitehash  /  https://t.me/joinchat/hash
+ *   - t.me/username (no scheme)
  *   - @username
- *   - t.me/username
- *   - Plain text labels followed by links
+ *   - bare username on its own line (e.g. "wananda33ofc")
+ *   - Decorative labels and emoji prefixes are skipped.
  */
 function parseBulkInput(text: string): GroupListItem[] {
   const items: GroupListItem[] = [];
-  const lines = text.split("\n");
   const seen = new Set<string>();
 
-  for (const line of lines) {
+  // Telegram username rule: 5–32 chars, starts with letter, then letters/digits/underscores.
+  const VALID_USERNAME = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
+
+  const addLink = (raw: string) => {
+    // Strip trailing punctuation, normalize to https://
+    let clean = raw.replace(/[.,;:!?)\]]+$/, "");
+    if (!/^https?:\/\//i.test(clean)) clean = "https://" + clean;
+    // Lower-case scheme + host so dedup catches Http://T.ME variants
+    clean = clean.replace(/^(https?:\/\/)(t\.me)/i, (_m, s, h) => s.toLowerCase() + h.toLowerCase());
+    if (!seen.has(clean)) {
+      seen.add(clean);
+      items.push({ type: "link", value: clean });
+    }
+  };
+
+  const addUsername = (name: string) => {
+    const bare = name.replace(/^@/, "");
+    const key = "@" + bare.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      items.push({ type: "username", value: "@" + bare });
+    }
+  };
+
+  for (const line of text.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    if (/^👉|^—+|^━+|^─+|^═+/u.test(trimmed) && !trimmed.includes("t.me")) continue;
 
-    // Match all t.me links on this line
-    const tmeLinks = trimmed.match(/https?:\/\/t\.me\/([a-zA-Z0-9_+/-]+)/g);
-    if (tmeLinks) {
-      for (const link of tmeLinks) {
-        const clean = link.replace(/[^a-zA-Z0-9_+/-]/g, "");
-        const full = clean.startsWith("http") ? clean : `https://${clean}`;
-        if (!seen.has(full)) {
-          seen.add(full);
-          items.push({ type: "link", value: full });
-        }
+    let matched = false;
+
+    // 1. Any t.me URL on the line (with or without scheme, with joinchat/+ invite paths)
+    const urlRegex = /(?:https?:\/\/)?t\.me\/(?:joinchat\/)?[a-zA-Z0-9_+/-]+/gi;
+    const urlMatches = trimmed.match(urlRegex);
+    if (urlMatches) {
+      for (const link of urlMatches) {
+        addLink(link);
+        matched = true;
       }
-      continue;
     }
+    if (matched) continue;
 
-    // Match @username
-    const atMentions = trimmed.match(/@([a-zA-Z0-9_]+)/g);
+    // 2. @username mentions anywhere on the line
+    const atMentions = trimmed.match(/@[a-zA-Z][a-zA-Z0-9_]{4,31}/g);
     if (atMentions) {
       for (const mention of atMentions) {
-        if (!seen.has(mention)) {
-          seen.add(mention);
-          items.push({ type: "username", value: mention });
-        }
+        addUsername(mention);
+        matched = true;
       }
-      continue;
     }
+    if (matched) continue;
 
-    // Match bare t.me/username (without https://)
-    const bareTme = trimmed.match(/(?:^|\s)t\.me\/([a-zA-Z0-9_]+)(?:\s|$)/);
-    if (bareTme) {
-      const full = `https://${bareTme[0].trim()}`;
-      if (!seen.has(full)) {
-        seen.add(full);
-        items.push({ type: "link", value: full });
-      }
-      continue;
+    // 3. Whole line is a single bare username token (e.g. "wananda33ofc")
+    if (VALID_USERNAME.test(trimmed)) {
+      addUsername(trimmed);
     }
   }
 
@@ -76,6 +90,7 @@ function parseBulkInput(text: string): GroupListItem[] {
 
 export default function GroupListsPage() {
   const _ = useT();
+  const { toast } = useToast();
   const { data: lists, isLoading } = useGroupLists();
   const createMutation = useCreateGroupList();
   const updateMutation = useUpdateGroupList();
@@ -105,11 +120,22 @@ export default function GroupListsPage() {
   }
 
   async function handleAddItem(listId: string, items: GroupListItem[]) {
+    const text = newItemValue.trim();
+    if (!text) return;
+
+    // Reject if it contains multiple lines or spaces (multiple values pasted together)
+    if (text.includes("\n") || text.includes(" ")) {
+      toast({
+        variant: "error",
+        description: _("groupLists.multiValueError")
+      });
+      return;
+    }
+
     const newItem: GroupListItem = {
       type: newItemType,
-      value: newItemValue.trim(),
+      value: text,
     };
-    if (!newItem.value) return;
     const currentItems = Array.isArray(items) ? items : [];
     await updateMutation.mutateAsync({
       id: listId,
@@ -215,17 +241,17 @@ export default function GroupListsPage() {
                 <span className="text-xs text-gray-400">
                   {Array.isArray(list.items) ? list.items.length : 0} {_("groupLists.groups")}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => {
                       setBulkListId(list.id);
                       setBulkText("");
                       setBulkPreview([]);
                     }}
-                    className="p-1.5 text-primary-500 hover:bg-primary-50 rounded-lg transition"
-                    title={_("groupLists.bulkImport")}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-md transition"
                   >
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-3.5 w-3.5" />
+                    {_("groupLists.bulkImportLabel")}
                   </button>
                   <button
                     onClick={() => {
@@ -233,6 +259,7 @@ export default function GroupListsPage() {
                       setConfirmOpen(true);
                     }}
                     className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition"
+                    title={_("groupLists.deleteConfirm")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

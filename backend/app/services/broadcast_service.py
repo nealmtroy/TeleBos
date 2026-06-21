@@ -662,8 +662,14 @@ async def execute_broadcast(job_id: str):
                     acc_id_str = selected_acc["account_id"]
                     acc_name = selected_acc["account_name"]
 
-                    group_identifier = item.get("value", "")
+                    group_identifier = item.get("value", "") or ""
                     item_type = item.get("type", "username")
+
+                    # Defensive cap: even though the column is now TEXT, keep
+                    # extreme blobs out of logs/WS payloads so a stray mega-paste
+                    # in a group_list can't blow up a job.
+                    if len(group_identifier) > 2000:
+                        group_identifier = group_identifier[:2000] + "…"
 
                     start_time = time.time()
                     log = BroadcastLog(

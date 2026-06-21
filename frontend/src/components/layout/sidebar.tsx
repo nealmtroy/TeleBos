@@ -131,9 +131,14 @@ export function Sidebar() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:overflow-hidden lg:border-0"
         )}
       >
-        {/* Close button (mobile) */}
-        <div className="flex items-center justify-end h-16 px-4 border-b border-slate-900 lg:hidden">
-          <button onClick={toggleSidebar} className="p-1.5 hover:bg-slate-900 text-slate-400 hover:text-white rounded-lg transition-colors">
+        {/* Header (Logo + Title) */}
+        <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center font-bold text-white shadow-lg shadow-primary-600/20 mr-3">
+            T
+          </div>
+          <span className="text-xl font-bold text-white tracking-tight">TeleBos</span>
+          {/* Close button (mobile) */}
+          <button onClick={toggleSidebar} className="p-1.5 ml-auto hover:bg-slate-900 text-slate-400 hover:text-white rounded-lg transition-colors lg:hidden">
             <X className="h-5 w-5" />
           </button>
         </div>
