@@ -222,7 +222,8 @@ async def start_broadcast(
         except Exception as exc:
             logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
         finally:
-            _running_tasks.pop(job_id_str, None)\n            _job_events.pop(job_id_str, None)
+            _running_tasks.pop(job_id_str, None)
+            _job_events.pop(job_id_str, None)
 
     task = asyncio.create_task(_safe_execute())
     _running_tasks[job_id_str] = task
@@ -306,7 +307,8 @@ async def retry_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob
         except Exception as exc:
             logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
         finally:
-            _running_tasks.pop(job_id_str, None)\n            _job_events.pop(job_id_str, None)
+            _running_tasks.pop(job_id_str, None)
+            _job_events.pop(job_id_str, None)
 
     task = asyncio.create_task(_safe_execute())
     _running_tasks[job_id_str] = task
