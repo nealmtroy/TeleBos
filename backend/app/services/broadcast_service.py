@@ -716,19 +716,6 @@ async def execute_broadcast(job_id: str):
                             db.add(log)
                             failed += 1
 
-                            # Trigger SpamBot check if USER_BANNED_IN_CHANNEL is detected
-                            if resolve_exc and (
-                                isinstance(resolve_exc, telethon.errors.UserBannedInChannelError)
-                                or "USER_BANNED_IN_CHANNEL" in str(resolve_exc)
-                            ):
-                                acc_uuid = _uuid.UUID(acc_id_str)
-                                acc_db_res = await db.execute(
-                                    select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
-                                )
-                                acc_db = acc_db_res.scalar_one_or_none()
-                                if acc_db:
-                                    await _check_spam_on_ban(db, acc_db, client)
-
                             if err_type == "flood":
                                 wait = 30
                                 if hasattr(resolve_exc, "seconds"):
@@ -872,16 +859,6 @@ async def execute_broadcast(job_id: str):
                         log.sent_at = datetime.now(timezone.utc)
                         db.add(log)
                         failed += 1
-
-                        # Trigger SpamBot check if USER_BANNED_IN_CHANNEL is detected
-                        if isinstance(exc, telethon.errors.UserBannedInChannelError) or "USER_BANNED_IN_CHANNEL" in str(exc):
-                            acc_uuid = _uuid.UUID(acc_id_str)
-                            acc_db_res = await db.execute(
-                                select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
-                            )
-                            acc_db = acc_db_res.scalar_one_or_none()
-                            if acc_db:
-                                await _check_spam_on_ban(db, acc_db, client)
 
                         if err_type == "flood":
                             wait = 30
