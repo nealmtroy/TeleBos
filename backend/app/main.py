@@ -420,26 +420,9 @@ async def lifespan(app: FastAPI):
         from app.models.user import User
         result = await db.execute(select(User).where(User.email == "nealmtroy@gmail.com"))
         owner_user = result.scalar_one_or_none()
-        if owner_user:
-            if owner_user.role != "owner":
-                owner_user.role = "owner"
-                logger.info("Promoted nealmtroy@gmail.com to owner")
-        else:
-            # Create the owner account if it doesn't exist
-            from passlib.context import CryptContext
-            pwd_context_local = CryptContext(schemes=["bcrypt"], deprecated="auto")
-            import uuid
-            owner_user = User(
-                id=uuid.uuid4(),
-                email="nealmtroy@gmail.com",
-                password_hash=pwd_context_local.hash("Neal123!"),
-                full_name="Neal Troy",
-                role="owner",
-                balance=100000,
-                is_active=True,
-            )
-            db.add(owner_user)
-            logger.info("Created owner account: nealmtroy@gmail.com")
+        if owner_user and owner_user.role != "owner":
+            owner_user.role = "owner"
+            logger.info("Promoted nealmtroy@gmail.com to owner")
         await db.commit()
 
     # Start UptimeRobot background refresh (10-minute interval)
