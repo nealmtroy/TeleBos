@@ -376,27 +376,6 @@ async def _account_for_log(db: AsyncSession, account_id: str) -> TelegramAccount
     )
     return res.scalar_one_or_none()
 
-
-async def _check_spam_on_ban(db: AsyncSession, account: TelegramAccount, client):
-    """Trigger a SpamBot check when a ban error is encountered during broadcast."""
-    try:
-        from datetime import datetime, timezone, timedelta
-        five_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=5)
-
-        await db.refresh(account)
-        last_checked = account.spam_last_checked_at
-        if last_checked and last_checked.tzinfo is None:
-            last_checked = last_checked.replace(tzinfo=timezone.utc)
-
-        if last_checked is None or last_checked < five_minutes_ago:
-            logger.info("USER_BANNED_IN_CHANNEL detected for account %s. Triggering automatic SpamBot check...", account.phone)
-            from app.services.account_service import check_spam_status
-            await check_spam_status(db, account)
-            await db.commit()
-    except Exception as check_exc:
-        logger.error("Failed to execute auto SpamBot check on ban: %s", check_exc)
-
-
 async def _resolve_and_join(client, item_type: str, group_identifier: str, telethon_mod):
     """Resolve a group entity, joining it first if needed.
     
@@ -461,7 +440,7 @@ async def _resolve_and_join(client, item_type: str, group_identifier: str, telet
                 # Let's try get_entity again, but wait this shouldn't happen unless we are in the group
                 pass # it's fine
             except Exception as check_exc:
-                # Maybe already joined — try get_entity from the error or just import
+                # Maybe already joined ï¿½ try get_entity from the error or just import
                 try:
                     join_result = await client(telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash))
                     if hasattr(join_result, "chats") and join_result.chats:
@@ -709,6 +688,32 @@ async def execute_broadcast(job_id: str):
 
                         if resolve_err is not None:
                             err_type, err_msg = resolve_err
+
+                            # If it's just waiting for admin approval, it's not a failure
+                            if err_type in ("invite_request_sent", "already_invited"):
+                                log.status = "success"
+                                log.error_type = err_type
+                                log.error_message = err_msg
+                                log.sent_at = datetime.now(timezone.utc)
+                                db.add(log)
+                                sent += 1
+
+                                job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
+                                job.sent_count = sent
+                                job.fail_count = failed
+                                await db.commit()
+
+                                await _push_broadcast(job_id, "log", {
+                                    "group": group_identifier,
+                                    "status": "success",
+                                    "error_type": err_type,
+                                    "text": log.sent_text,
+                                    "cycle": current_cycle,
+                                    "account_id_used": acc_id_str,
+                                    "account_name": acc_name,
+                                })
+                                continue
+
                             log.status = "error"
                             log.error_type = err_type
                             log.error_message = err_msg

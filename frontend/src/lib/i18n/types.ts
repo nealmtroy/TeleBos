@@ -1,0 +1,1050 @@
+// ── Translation dictionary type ─────────────────────────────────────────────
+
+export interface Dict {
+  // Navigation — Sidebar
+  nav: {
+    dashboard: string;
+    accounts: string;
+    chats: string;
+    broadcast: string;
+    autoReply: string;
+    newBroadcast: string;
+    groupLists: string;
+    textLists: string;
+    broadcastHistory: string;
+    broadcastLogs: string;
+    contacts: string;
+    groupsChannels: string;
+    help: string;
+    orders: string;
+  };
+
+  // Navbar
+  navbar: {
+    settings: string;
+    logout: string;
+    logoutTitle: string;
+    logoutConfirm: string;
+    cancel: string;
+    yesLogout: string;
+    user: string;
+  };
+
+  // Account Switcher
+  accountSwitcher: {
+    selectAccount: string;
+  };
+
+  // Auth — Login
+  login: {
+    brandSubtitle: string;
+    toolkitTitle: string;
+    featureMultipleAccounts: string;
+    featureMultipleAccountsDesc: string;
+    featureChatManagement: string;
+    featureChatManagementDesc: string;
+    featureSmartBroadcast: string;
+    featureSmartBroadcastDesc: string;
+    featureRealTimeLogs: string;
+    featureRealTimeLogsDesc: string;
+    footerTagline: string;
+    welcomeBack: string;
+    signInSubtitle: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    signIn: string;
+    signingIn: string;
+    loginFailed: string;
+    noAccount: string;
+    register: string;
+  };
+
+  // Auth — Register
+  register: {
+    createAccount: string;
+    getStarted: string;
+    fullNameLabel: string;
+    fullNamePlaceholder: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    creatingAccount: string;
+    createAccountBtn: string;
+    accountCreated: string;
+    registrationFailed: string;
+    alreadyHaveAccount: string;
+    signIn: string;
+    agreePrefix: string;
+    agreeAnd: string;
+    mustAgree: string;
+  };
+
+  // Dashboard
+  dashboard: {
+    systemOnline: string;
+    welcome: string;
+    welcomeDesc: string;
+    addAccount: string;
+    totalAccounts: string;
+    activeAccounts: string;
+    broadcast: string;
+    auditLog: string;
+    accountsConnected: string;
+    sessionsRunning: string;
+    newBroadcast: string;
+    viewLogs: string;
+    quickNewBroadcast: string;
+    quickNewBroadcastDesc: string;
+    quickGroupLists: string;
+    quickGroupListsDesc: string;
+    quickHistory: string;
+    quickHistoryDesc: string;
+    connectedAccounts: string;
+    connectedAccountsDesc: string;
+    add: string;
+    unnamed: string;
+    online: string;
+    offline: string;
+    noAccounts: string;
+    noAccountsDesc: string;
+    addFirstAccount: string;
+  };
+
+  // Accounts List
+  accountsList: {
+    title: string;
+    subtitle: string;
+    addAccount: string;
+    failedToLoad: string;
+    tryAgain: string;
+    noAccounts: string;
+    addYourFirst: string;
+  };
+
+  // Account Card
+  accountCard: {
+    unnamed: string;
+    viewDetails: string;
+    delete: string;
+    active: string;
+    inactive: string;
+    verified: string;
+    deleteConfirm: string;
+  };
+
+  // Add Account (OTP / Upload)
+  addAccount: {
+    title: string;
+    subtitle: string;
+    tabOtp: string;
+    tabUpload: string;
+    phoneLabel: string;
+    phonePlaceholder: string;
+    phoneHint: string;
+    sendOtp: string;
+    sending: string;
+    otpTitle: string;
+    otpSentTo: string;
+    resendCode: string;
+    resendAvailable: string;
+    verifyLogin: string;
+    verifying: string;
+    changePhone: string;
+    twoFaWarning: string;
+    twoFaLabel: string;
+    twoFaPlaceholder: string;
+    twoFaHint: string;
+    sessionLabel: string;
+    sessionPlaceholder: string;
+    sessionHint: string;
+    sessionFormatDetected: string;
+    sessionFormatTelethon: string;
+    sessionFormatGramjs: string;
+    sessionFormatPyrogram: string;
+    sessionFormatRaw: string;
+    sessionFormatUnknown: string;
+    sessionInvalidFormat: string;
+    uploadConnect: string;
+    failedSendOtp: string;
+    failedVerify: string;
+    failedUpload: string;
+  };
+
+  // Account Detail
+  accountDetail: {
+    profileSettings: string;
+    profileSettingsDesc: string;
+    devices: string;
+    devicesDesc: string;
+    chats: string;
+    chatsDesc: string;
+    security: string;
+    securityDesc: string;
+    phone: string;
+    username: string;
+    bio: string;
+    status: string;
+    twoFa: string;
+    added: string;
+    active: string;
+    inactive: string;
+    on: string;
+    off: string;
+    notFound: string;
+    backToAccounts: string;
+    dangerZone: string;
+    dangerZoneDesc: string;
+    deleteAccount: string;
+    deleting: string;
+    deleteConfirm: string;
+    unnamed: string;
+    spamStatus: string;
+    spamStatusNormal: string;
+    spamStatusLimited: string;
+    spamStatusUnknown: string;
+    spamLastChecked: string;
+    checkSpamBtn: string;
+    checkingSpam: string;
+    spamLimitActive: string;
+
+    // New / redesigned fields
+    telegramId: string;
+    telegramIdCopied: string;
+    contacts: string;
+    groups: string;
+    channels: string;
+    owned: string;
+    viewDetailsChat: string;
+    viewDetailsChatDesc: string;
+    contactsLink: string;
+    contactsLinkDesc: string;
+    groupsChannels: string;
+    groupsChannelsDesc: string;
+  };
+
+  // Broadcast Dashboard
+  broadcastDashboard: {
+    title: string;
+    desc: string;
+    groupLists: string;
+    groupListsDesc: string;
+    textLists: string;
+    textListsDesc: string;
+    newBroadcast: string;
+    newBroadcastDesc: string;
+    broadcastHistory: string;
+    broadcastHistoryDesc: string;
+    broadcastLogs: string;
+    broadcastLogsDesc: string;
+    gettingStarted: string;
+    step1: string;
+    step2: string;
+    step3: string;
+    step4: string;
+  };
+
+  // New Broadcast
+  newBroadcast: {
+    title: string;
+    desc: string;
+    configuration: string;
+    account: string;
+    accountPlaceholder: string;
+    groupList: string;
+    groupListPlaceholder: string;
+    mode: string;
+    multiRandom: string;
+    multiRandomDesc: string;
+    singleText: string;
+    singleTextDesc: string;
+    textList: string;
+    textListPlaceholder: string;
+    messageText: string;
+    messagePlaceholder: string;
+    delayPerGroup: string;
+    delayPerGroupSuffix: string;
+    delayAfterAll: string;
+    delayAfterAllSuffix: string;
+    loopTitle: string;
+    loopDesc: string;
+    startBroadcast: string;
+    starting: string;
+    failedToStart: string;
+    progress: string;
+    cycle: string;
+    total: string;
+    sent: string;
+    failed: string;
+    pause: string;
+    resume: string;
+    stop: string;
+    live: string;
+    stopConfirm: string;
+  };
+
+  // Group Lists
+  groupLists: {
+    title: string;
+    desc: string;
+    newList: string;
+    listName: string;
+    save: string;
+    saving: string;
+    noLists: string;
+    createFirst: string;
+    noItems: string;
+    groups: string;
+    bulkImport: string;
+    bulkImportDesc: string;
+    bulkParse: string;
+    bulkRefresh: string;
+    bulkImportBtn: string;
+    importGroups: string;
+    add: string;
+    typeUsername: string;
+    typeLink: string;
+    typeGroupId: string;
+    deleteConfirm: string;
+    placeholderUsername: string;
+    placeholderLink: string;
+    placeholderGroupId: string;
+  };
+
+  // Text Lists
+  textLists: {
+    title: string;
+    desc: string;
+    newList: string;
+    listName: string;
+    listNamePlaceholder: string;
+    save: string;
+    noLists: string;
+    createFirst: string;
+    noTexts: string;
+    texts: string;
+    addText: string;
+    addTextPlaceholder: string;
+    add: string;
+    deleteConfirm: string;
+  };
+
+  // Broadcast History
+  broadcastHistory: {
+    title: string;
+    desc: string;
+    date: string;
+    status: string;
+    progress: string;
+    sentFailed: string;
+    actions: string;
+    noJobs: string;
+    startBroadcast: string;
+    pause: string;
+    resume: string;
+    stop: string;
+    cancel: string;
+    retry: string;
+    delete: string;
+    viewLogs: string;
+    stopConfirm: string;
+    cancelConfirm: string;
+    deleteConfirm: string;
+    of: string;
+  };
+
+  // Broadcast Logs
+  broadcastLogs: {
+    title: string;
+    desc: string;
+    selectJob: string;
+    allStatuses: string;
+    success: string;
+    error: string;
+    allCycles: string;
+    cycle: string;
+    exportCsv: string;
+    exportJson: string;
+    noEntries: string;
+    selectJobToView: string;
+    colCycle: string;
+    colGroup: string;
+    colStatus: string;
+    colErrorType: string;
+    colMessage: string;
+    colSentText: string;
+    colTime: string;
+  };
+
+  // Chats
+  chats: {
+    title: string;
+    live: string;
+    offline: string;
+    selectChats: string;
+    exitSelection: string;
+    search: string;
+    all: string;
+    archived: string;
+    selectAccount: string;
+    noAccounts: string;
+    failedToLoad: string;
+    retry: string;
+    noArchived: string;
+    noChats: string;
+    prev: string;
+    page: string;
+    next: string;
+    selected: string;
+    archiveAll: string;
+    deleteAll: string;
+    selectChat: string;
+    selectChatDesc: string;
+    noMessages: string;
+    loadOlder: string;
+    sendFailed: string;
+    typeMessage: string;
+    addCaption: string;
+    attachFile: string;
+    reply: string;
+    delete: string;
+    archive: string;
+    unarchive: string;
+    deleteConfirm: string;
+    batchDeleteConfirm: string;
+    unknown: string;
+  };
+
+  // Auto-Reply
+  autoReply: {
+    title: string;
+    desc: string;
+    globalSettings: string;
+    globalSettingsDesc: string;
+    enableAll: string;
+    disableAll: string;
+    globalMessage: string;
+    globalMessagePlaceholder: string;
+    applyToAll: string;
+    applying: string;
+    applied: string;
+    updated: string;
+    perAccount: string;
+    on: string;
+    off: string;
+    save: string;
+    saved: string;
+    active: string;
+    replyMessage: string;
+    replyPlaceholder: string;
+    noAccounts: string;
+    noAccountsDesc: string;
+    addAccount: string;
+    failedToLoad: string;
+    retry: string;
+  };
+
+  // Settings (App)
+  settings: {
+    title: string;
+    desc: string;
+    back: string;
+    changePassword: string;
+    changePasswordDesc: string;
+    currentPassword: string;
+    currentPasswordPlaceholder: string;
+    newPassword: string;
+    newPasswordPlaceholder: string;
+    confirmPassword: string;
+    confirmPasswordPlaceholder: string;
+    passwordChanged: string;
+    passwordWeak: string;
+    passwordFair: string;
+    passwordGood: string;
+    passwordStrong: string;
+    passwordsMatch: string;
+    passwordsNoMatch: string;
+    changePasswordBtn: string;
+    changingPassword: string;
+    sessionExpired: string;
+    failedChangePassword: string;
+  };
+
+  // Account Settings (per-account)
+  accountSettings: {
+    title: string;
+    profilePhoto: string;
+    changePhoto: string;
+    delete: string;
+    photoHint: string;
+    photoUpdated: string;
+    photoDeleted: string;
+    uploadFailed: string;
+    deleteFailed: string;
+    profile: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+    usernamePlaceholder: string;
+    bio: string;
+    saving: string;
+    save: string;
+    profileUpdated: string;
+    updateFailed: string;
+    privacySecurity: string;
+    whoCanSee: string;
+    whoCanContact: string;
+    messagesForwarding: string;
+    lastSeen: string;
+    photoPrivacy: string;
+    bioPrivacy: string;
+    birthday: string;
+    phoneNumber: string;
+    whoCanCall: string;
+    whoCanAddGroups: string;
+    whoCanFindByPhone: string;
+    whoCanForward: string;
+    whoCanSendVoice: string;
+    everybody: string;
+    myContacts: string;
+    closeFriends: string;
+    nobody: string;
+    savePrivacy: string;
+    privacyUpdated: string;
+    unsavedChanges: string;
+    twoFactor: string;
+    enabled: string;
+    disabled: string;
+    enable2fa: string;
+    disable2fa: string;
+    new2faPassword: string;
+    current2faPassword: string;
+    change2faPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+    changePassword: string;
+    forgotPassword: string;
+    requestRecovery: string;
+    recoveryCode: string;
+    recover: string;
+    recoveryInfo: string;
+    recoverySent: string;
+    recoveryEmail: string;
+    recoveryEmailPlaceholder: string;
+    recoveryEmailConfirmInfo: string;
+    setEmail: string;
+    loginEmail: string;
+    loginEmailDesc: string;
+    changeLoginEmail: string;
+    changeLoginEmailDesc: string;
+    newLoginEmail: string;
+    sendVerificationCode: string;
+    verificationCode: string;
+    verifyEmail: string;
+    unconfirmedEmail: string;
+    waitingConfirmation: string;
+    passwordHint: string;
+    passwordsDontMatch: string;
+    done: string;
+    actionFailed: string;
+    autoReply: string;
+    autoReplyDesc: string;
+    autoReplyOn: string;
+    autoReplyOff: string;
+    replyMessage: string;
+    replyMessagePlaceholder: string;
+    autoReplySaved: string;
+    deleteContacts: string;
+    deleteContactsDesc: string;
+    deleteAllContacts: string;
+    deleting: string;
+    contactsDeleted: string;
+    contactsDeleteConfirm: string;
+    removePhotoConfirm: string;
+  };
+
+  // Devices
+  devices: {
+    title: string;
+    activeSessions: string;
+    noDevices: string;
+    failedToLoad: string;
+    terminate: string;
+    terminateAll: string;
+    terminateAllDesc: string;
+    terminateAllBtn: string;
+    terminating: string;
+    terminateAllConfirm: string;
+    unknownApp: string;
+    since: string;
+  };
+
+  // Utils
+  utils: {
+    dateEmpty: string;
+    justNow: string;
+    minutesAgo: string;
+    hoursAgo: string;
+    daysAgo: string;
+  };
+
+  // Common
+  common: {
+    language: string;
+    english: string;
+    indonesian: string;
+    close: string;
+  };
+
+  // Groups & Channels
+  groupsChannels: {
+    title: string;
+    groups: string;
+    channels: string;
+    searchGroups: string;
+    searchChannels: string;
+    noGroups: string;
+    noChannels: string;
+    owner: string;
+    failedToLoad: string;
+    retry: string;
+    page: string;
+    prev: string;
+    next: string;
+    joinNew: string;
+    join: string;
+    joinDescription: string;
+    joinPlaceholder: string;
+    joining: string;
+    joinedSuccess: string;
+    joinFailed: string;
+    alreadyMember: string;
+    identifier: string;
+  };
+
+  // 404 Not Found
+  notFound: {
+    title: string;
+    description: string;
+    backHome: string;
+    viewDashboard: string;
+    pageNotFound: string;
+  };
+
+  // Help Page
+  help: {
+    title: string;
+    desc: string;
+    gettingStarted: string;
+    gettingStartedDesc: string;
+    gettingStartedContent1: string;
+    gettingStartedContent2: string;
+    gettingStartedContent3: string;
+    gettingStartedContent4: string;
+    accounts: string;
+    accountsDesc: string;
+    accountsContent1: string;
+    accountsContent2: string;
+    accountsContent3: string;
+    accountsContent4: string;
+    accountsContent5: string;
+    broadcast: string;
+    broadcastDesc: string;
+    broadcastContent1: string;
+    broadcastContent2: string;
+    broadcastContent3: string;
+    broadcastContent4: string;
+    broadcastContent5: string;
+    broadcastContent6: string;
+    autoReply: string;
+    autoReplyDesc: string;
+    autoReplyContent1: string;
+    autoReplyContent2: string;
+    autoReplyContent3: string;
+    autoReplyContent4: string;
+    memberInvite: string;
+    memberInviteDesc: string;
+    memberInviteContent1: string;
+    memberInviteContent2: string;
+    memberInviteContent3: string;
+    memberInviteContent4: string;
+    memberInviteContent5: string;
+    troubleshooting: string;
+    troubleshootingDesc: string;
+    troubleshootingContent1: string;
+    troubleshootingContent2: string;
+    troubleshootingContent3: string;
+    troubleshootingContent4: string;
+    troubleshootingContent5: string;
+    tips: string;
+    tipsDesc: string;
+    tipsContent1: string;
+    tipsContent2: string;
+    tipsContent3: string;
+    tipsContent4: string;
+    tipsContent5: string;
+    stillStuck: string;
+    stillStuckDesc: string;
+  };
+
+  // Landing Page
+  landing: {
+    navHome: string;
+    navFeatures: string;
+    navPrivacy: string;
+    navTos: string;
+    getStarted: string;
+    signIn: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    heroCta: string;
+    heroSecondary: string;
+    featuresTitle: string;
+    featuresSubtitle: string;
+    featureMultiAccount: string;
+    featureMultiAccountDesc: string;
+    featureBroadcast: string;
+    featureBroadcastDesc: string;
+    featureChat: string;
+    featureChatDesc: string;
+    featureRealtime: string;
+    featureRealtimeDesc: string;
+    featureAutoReply: string;
+    featureAutoReplyDesc: string;
+    featureInvite: string;
+    featureInviteDesc: string;
+    howItWorks: string;
+    howItWorksSubtitle: string;
+    step1Title: string;
+    step1Desc: string;
+    step2Title: string;
+    step2Desc: string;
+    step3Title: string;
+    step3Desc: string;
+    step4Title: string;
+    step4Desc: string;
+    ctaTitle: string;
+    ctaSubtitle: string;
+    ctaButton: string;
+    footerProduct: string;
+    footerHelp: string;
+    footerLegal: string;
+    footerCopyright: string;
+  };
+
+  // Privacy Policy
+  privacy: {
+    title: string;
+    lastUpdated: string;
+    intro: string;
+    section1Title: string;
+    section1Desc: string;
+    section2Title: string;
+    section2Desc: string;
+    section3Title: string;
+    section3Desc: string;
+    section4Title: string;
+    section4Desc: string;
+    section5Title: string;
+    section5Desc: string;
+    section6Title: string;
+    section6Desc: string;
+  };
+
+  // Terms of Service
+  tos: {
+    title: string;
+    lastUpdated: string;
+    intro: string;
+    section1Title: string;
+    section1Desc: string;
+    section2Title: string;
+    section2Desc: string;
+    section3Title: string;
+    section3Desc: string;
+    section4Title: string;
+    section4Desc: string;
+    section5Title: string;
+    section5Desc: string;
+    section6Title: string;
+    section6Desc: string;
+    section7Title: string;
+    section7Desc: string;
+  };
+
+  // Announcement Banner (UptimeRobot / Telegram status)
+  announcement: {
+    loading: string;
+    telegramDown: string;
+    telegramDegraded: string;
+    telegramUp: string;
+    unknown: string;
+  };
+
+  // Contacts
+  contacts: {
+    title: string;
+    selectAccount: string;
+    search: string;
+    totalContacts: string;
+    noAccounts: string;
+    failedToLoad: string;
+    retry: string;
+    noContacts: string;
+    prev: string;
+    page: string;
+    next: string;
+    selectContact: string;
+    selectContactDesc: string;
+    phone: string;
+    username: string;
+    about: string;
+    mutual: string;
+    notMutual: string;
+    commonChats: string;
+    unknown: string;
+    delete: string;
+    deleteConfirm: string;
+    contactsCount: string;
+    chat: string;
+    sendMessage: string;
+  };
+
+  // Member Invite
+  invite: {
+    title: string;
+    desc: string;
+    navLabel: string;
+    newInvite: string;
+    inviteHistory: string;
+    inviteLogs: string;
+    destination: string;
+    destinationPlaceholder: string;
+    destinationType: string;
+    typeUsername: string;
+    typeLink: string;
+    typeGroupId: string;
+    sourceGroups: string;
+    sourceGroupsDesc: string;
+    addSource: string;
+    sourcePlaceholder: string;
+    delayPerInvite: string;
+    delayPerInviteSuffix: string;
+    delayPerBatch: string;
+    delayPerBatchSuffix: string;
+    batchSize: string;
+    batchSizeSuffix: string;
+    account: string;
+    accountPlaceholder: string;
+    startInvite: string;
+    starting: string;
+    failedToStart: string;
+    progress: string;
+    totalMembers: string;
+    invited: string;
+    alreadyMember: string;
+    failed: string;
+    skipped: string;
+    pause: string;
+    resume: string;
+    stop: string;
+    stopConfirm: string;
+    live: string;
+    scraping: string;
+    inviting: string;
+    phaseScraping: string;
+    phaseInviting: string;
+    noJobs: string;
+    startNew: string;
+    date: string;
+    status: string;
+    actions: string;
+    retry: string;
+    delete: string;
+    deleteConfirm: string;
+    viewLogs: string;
+    selectJob: string;
+    allStatuses: string;
+    success: string;
+    error: string;
+    noEntries: string;
+    selectJobToView: string;
+    colUser: string;
+    colUsername: string;
+    colSource: string;
+    colStatus: string;
+    colErrorType: string;
+    colErrorMessage: string;
+    colTime: string;
+    floodWait: string;
+    peerFlood: string;
+    privacyRestricted: string;
+    of: string;
+  };
+
+  // Orders
+  orders: {
+    title: string;
+    desc: string;
+    newOrder: string;
+    massOrder: string;
+    history: string;
+    services: string;
+    selectService: string;
+    dataTarget: string;
+    dataTargetPlaceholder: string;
+    quantity: string;
+    price: string;
+    totalPrice: string;
+    placeOrder: string;
+    placingOrder: string;
+    orderPlaced: string;
+    orderFailed: string;
+    status: string;
+    date: string;
+    refreshStatus: string;
+    refreshAll: string;
+    noOrders: string;
+    startOrdering: string;
+    category: string;
+    telegramOnly: string;
+    allServices: string;
+    serviceName: string;
+    min: string;
+    max: string;
+    note: string;
+    speed: string;
+    searchService: string;
+    addMore: string;
+    remove: string;
+    totalAll: string;
+    insufficientBalance: string;
+    yourBalance: string;
+    topUp: string;
+    massOrderDesc: string;
+    refreshSuccess: string;
+  };
+
+  // Admin SMM
+  adminSmm: {
+    overview: string;
+    services: string;
+    allOrders: string;
+    settings: string;
+  };
+
+  // Admin
+  admin: {
+    title: string;
+    desc: string;
+    overview: string;
+    users: string;
+    userManagement: string;
+    balanceManagement: string;
+    totalUsers: string;
+    totalBroadcastJobs: string;
+    totalInviteJobs: string;
+    totalAccountsConnected: string;
+    searchUsers: string;
+    email: string;
+    fullName: string;
+    role: string;
+    balance: string;
+    orders: string;
+    actions: string;
+    addBalance: string;
+    deductBalance: string;
+    updateRole: string;
+    changeToPremium: string;
+    changeToPro: string;
+    changeToBasic: string;
+    amount: string;
+    amountPlaceholder: string;
+    confirmAddBalance: string;
+    confirmDeductBalance: string;
+    userNotFound: string;
+    balanceUpdated: string;
+    roleUpdated: string;
+    changeToOwner: string;
+    deleteUser: string;
+    deleteConfirm: string;
+    totalRedeemCodes: string;
+    totalRedeemed: string;
+  };
+
+  // Subscription
+  subscription: {
+    title: string;
+    desc: string;
+    currentPlan: string;
+    expiresAt: string;
+    daysRemaining: string;
+    features: string;
+    planBasic: string;
+    planPro: string;
+    planPremium: string;
+    noSubscription: string;
+    active: string;
+    expired: string;
+    featureAccounts: string;
+    featureBroadcast: string;
+    featureInvite: string;
+    featureAutoReply: string;
+    featureChat: string;
+    featureContacts: string;
+    featurePriority: string;
+    upgradePlans: string;
+    redeemBtn: string;
+    perMonth: string;
+  };
+
+  // Redeem
+  redeem: {
+    title: string;
+    desc: string;
+    codeLabel: string;
+    codePlaceholder: string;
+    redeem: string;
+    redeeming: string;
+    success: string;
+    error: string;
+    invalidCode: string;
+    expiredCode: string;
+    maxUsed: string;
+  };
+
+  // Admin Redeem
+  adminRedeem: {
+    title: string;
+    desc: string;
+    createCode: string;
+    codeType: string;
+    plan: string;
+    amount: string;
+    maxUses: string;
+    durationDays: string;
+    expiresAt: string;
+    prefix: string;
+    createdCodes: string;
+    logs: string;
+    code: string;
+    type: string;
+    used: string;
+    status: string;
+    createdBy: string;
+    createdAt: string;
+    active: string;
+    inactive: string;
+    typeBalance: string;
+    typeSubscription: string;
+    noCodes: string;
+    codeCreated: string;
+    deleteConfirm: string;
+    user: string;
+    redeemedAt: string;
+    detail: string;
+    noLogs: string;
+  };
+}

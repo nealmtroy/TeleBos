@@ -1,0 +1,607 @@
+"""Account management business logic — login, logout, profile."""
+
+import logging
+import os
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from sqlalchemy import func
+
+from app.models.telegram_account import TelegramAccount
+from app.models.user import User
+from app.services.telegram_client import client_pool
+from app.utils.encryption import encrypt, decrypt
+from app.utils.session_converter import convert_to_telethon
+
+# ── Role-based account limits ──────────────────────────────────────────────
+
+ROLE_ACCOUNT_LIMITS: dict[str, int] = {
+    "basic": 1,
+    "pro": 10,
+    "premium": 100,
+    "owner": 999999,
+}
+
+
+async def check_account_limit(db: AsyncSession, user: User) -> None:
+    """Raise ValueError if the user has reached their role-based account limit."""
+    limit = ROLE_ACCOUNT_LIMITS.get(user.role, 0)
+    result = await db.execute(
+        select(func.count()).select_from(TelegramAccount).where(TelegramAccount.user_id == user.id)
+    )
+    current_count = result.scalar() or 0
+    if current_count >= limit:
+        raise ValueError(
+            f"Account limit reached for role '{user.role}': maximum {limit} account(s). "
+            f"You currently have {current_count}."
+        )
+
+logger = logging.getLogger(__name__)
+
+
+def detect_2fa_hint_from_error(error_message: str) -> tuple[bool, str | None]:
+    """
+    Detect if error indicates 2FA is required and extract hint.
+
+    Returns:
+        Tuple of (is_2fa_required, hint_message or None)
+    """
+    # Common Telegram 2FA error messages and indicators
+    error_lower = error_message.lower()
+
+    # Check for various 2FA-related errors
+    if any(indicator in error_lower for indicator in [
+        "password", "2fa", "two-step", "multifactor",
+        "session_password", "requires password"
+    ]):
+        return True, "Akun ini memiliki verifikasi 2 langkah (V2L / 2FA). Password diperlukan."
+
+    # Check for flood wait or rate limiting
+    if "flood_wait" in error_lower or "sleep" in error_lower:
+        import re
+        match = re.search(r'second\s*[:=\s]*(\d+)', error_lower)
+        seconds = int(match.group(1)) if match else 60
+        return False, f"Flood wait aktif. Coba lagi dalam {seconds} detik."
+
+    # Check for phone not found
+    if any(indicator in error_lower for indicator in [
+        "user_not_found", "phone number invalid", "not registered"
+    ]):
+        return False, None
+
+    return False, None
+
+
+async def check_account_hint(phone: str) -> dict[str, Any] | None:
+    """
+    Check for account hints like 2FA status before login.
+
+    This sends a test code request to detect account state without completing login.
+
+    Returns:
+        Dict with hint info or None if no hints available.
+    """
+    client = await client_pool.create_unauth_client()
+    try:
+        try:
+            # Request code - this will work for valid phones but may indicate 2FA issues
+            result = await client.send_code_request(phone)
+
+            # Code sent successfully means phone exists
+            v2l_hint = {
+                "has_2fa": False,
+                "phone_exists": True,
+                "flood_wait_sec": None,
+            }
+
+            # Check for rate limiting based on expires field
+            expires = getattr(result, "expires", None)
+            if expires and expires > 300:  # More than 5 minutes
+                v2l_hint["flood_wait_sec"] = expires
+                v2l_hint["has_2fa"] = False
+
+            return v2l_hint
+
+        except Exception as exc:
+            error_str = str(exc)
+            is_2fa, hint_msg = detect_2fa_hint_from_error(error_str)
+
+            if "flood_wait" in error_str.lower() or "you are flooding" in error_str.lower():
+                import re
+                match = re.search(r'\d+', error_str)
+                seconds = int(match.group()) if match else 60
+
+                return {
+                    "has_2fa": False,
+                    "phone_exists": True,
+                    "flood_wait_sec": seconds,
+                    "error": f"Flood wait aktif. Coba lagi dalam {seconds} detik.",
+                }
+
+            if "user_not_found" in error_str.lower() or "invalid phone" in error_str.lower():
+                return {
+                    "has_2fa": False,
+                    "phone_exists": False,
+                    "flood_wait_sec": None,
+                    "error": "Nomor tidak terdaftar di Telegram",
+                }
+
+            if is_2fa:
+                return {
+                    "has_2fa": True,
+                    "phone_exists": True,
+                    "flood_wait_sec": None,
+                    "error": hint_msg,
+                }
+
+            logger.warning(f"Unexpected error checking hint for {phone}: {exc}")
+            return None
+    finally:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+
+
+async def start_login(phone: str) -> tuple[Any, str, int]:
+    """
+    Send the OTP code to the given phone number.
+
+    Returns:
+        Tuple of (client, phone_code_hash, timeout_seconds).
+
+    The caller must keep the client reference to later call verify_code.
+    """
+    client = await client_pool.create_unauth_client()
+    try:
+        result = await client.send_code_request(phone)
+        phone_code_hash = result.phone_code_hash
+        timeout = getattr(result, "timeout", None)
+        if timeout is None:
+            timeout = 120
+        return client, phone_code_hash, timeout
+    except Exception:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        raise
+
+
+async def verify_code(
+    unauth_client: Any,
+    phone: str,
+    code: str,
+    phone_code_hash: str,
+    twofa_password: str | None = None,
+    db: AsyncSession | None = None,
+    user: User | None = None,
+) -> tuple[TelegramAccount | None, bool, str | None]:
+    """
+    Verify the OTP code (and optional 2FA password).
+
+    Returns:
+        Tuple of (account or None, requires_2fa bool, v2l_hint or None).
+
+    Raises:
+        ValueError: If the code is invalid or expired (retryable), or role account limit reached.
+        Exception: For fatal errors where the pending login should be discarded.
+    """
+    # Role-based account limit check
+    if db is not None and user is not None:
+        await check_account_limit(db, user)
+
+    try:
+        await unauth_client.sign_in(
+            phone=phone,
+            code=code,
+            phone_code_hash=phone_code_hash,
+        )
+    except Exception as exc:
+        from telethon.errors import (
+            SessionPasswordNeededError,
+            PhoneCodeInvalidError,
+            PhoneCodeExpiredError,
+        )
+
+        # Wrong or expired code — retryable, don't discard the pending login
+        if isinstance(exc, PhoneCodeInvalidError):
+            raise ValueError("Kode verifikasi salah. Silakan coba lagi.") from exc
+        if isinstance(exc, PhoneCodeExpiredError):
+            raise ValueError(
+                "Kode verifikasi telah kedaluwarsa. Silakan minta kode baru."
+            ) from exc
+
+        if isinstance(exc, SessionPasswordNeededError):
+            if twofa_password:
+                await unauth_client.sign_in(password=twofa_password)
+            else:
+                # Try to get password hint for display
+                try:
+                    # Get password info to extract hint
+                    password_info = await unauth_client.get_password()
+                    hint_msg = password_info.hint if password_info.hint else None
+                    hint_text = f"Verifikasi 2 langkah aktif. Password hint: {' '.join(hint_msg)}" if hint_msg else None
+                except Exception:
+                    hint_text = "Akun ini memiliki verifikasi 2 langkah (V2L / 2FA). Masukkan password Telegram Anda."
+
+                return None, True, hint_text
+        else:
+            msg = str(exc)
+            # Check for invalid/expired code from raw RPC error text (fallback)
+            if "PHONE_CODE_INVALID" in msg:
+                raise ValueError("Kode verifikasi salah. Silakan coba lagi.") from exc
+            if "PHONE_CODE_EXPIRED" in msg:
+                raise ValueError(
+                    "Kode verifikasi telah kedaluwarsa. Silakan minta kode baru."
+                ) from exc
+            if "PASSWORD_HASH_REQUIRED" in msg or "2FA" in msg:
+                if twofa_password:
+                    await unauth_client.sign_in(password=twofa_password)
+                else:
+                    return None, True, None
+            else:
+                raise
+
+    # Save the session string
+    session_string = ""
+    if isinstance(unauth_client.session, type(unauth_client.session)):
+        session_string = unauth_client.session.save()
+
+    me = await unauth_client.get_me()
+
+    # Check live 2FA status from Telegram
+    twofa_enabled = False
+    try:
+        from telethon.tl.functions.account import GetPasswordRequest
+        pwd = await unauth_client(GetPasswordRequest())
+        twofa_enabled = pwd.has_password
+    except Exception:
+        pass
+
+    account = TelegramAccount(
+        phone=phone,
+        session_string=encrypt(session_string),
+        phone_verified=True,
+        first_name=me.first_name,
+        last_name=me.last_name,
+        username=me.username,
+        telegram_id=me.id,
+        twofa_enabled=twofa_enabled,
+    )
+    return account, False, None
+
+
+async def login_with_session(
+    db: AsyncSession,
+    user: User,
+    session_string: str,
+) -> TelegramAccount:
+    """Add an account by uploading an existing session string.
+    Phone number is extracted automatically from Telegram after connecting.
+    """
+    # Role-based account limit check
+    await check_account_limit(db, user)
+
+    # Convert session string to Telethon format (supports GramJS, Pyrogram, raw)
+    try:
+        session_string = convert_to_telethon(session_string)
+    except ValueError as exc:
+        raise ValueError(f"Session format error: {exc}")
+
+    # Test the session — always create a fresh client to avoid cross-account caching
+    from telethon import TelegramClient
+    from telethon.sessions import StringSession
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
+        raise ValueError("Telegram API ID or Hash is not configured in the backend .env file.")
+    from app.utils.device_spoof import random_ios_device
+    ios_params = random_ios_device()
+    test_client = TelegramClient(
+        StringSession(session_string),
+        api_id=settings.TELEGRAM_API_ID,
+        api_hash=settings.TELEGRAM_API_HASH,
+        device_model=ios_params["device_model"],
+        app_version=ios_params["app_version"],
+        system_version=ios_params["system_version"],
+        lang_code=ios_params["lang_code"],
+        system_lang_code=ios_params["system_lang_code"],
+    )
+    await test_client.connect()
+    try:
+        if not await test_client.is_user_authorized():
+            raise ValueError("Session string is invalid or expired")
+        me = await test_client.get_me()
+    finally:
+        try:
+            await test_client.disconnect()
+        except Exception:
+            pass
+
+    # Use phone from Telegram if available, fallback to placeholder
+    phone = me.phone or ""
+
+    # Check for duplicate by phone (skip if phone is empty)
+    if phone:
+        existing = await db.execute(
+            select(TelegramAccount).where(
+                TelegramAccount.user_id == user.id,
+                TelegramAccount.phone == phone,
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise ValueError(f"Account with phone {phone} already exists")
+
+    account = TelegramAccount(
+        user_id=user.id,
+        phone=phone,
+        session_string=encrypt(session_string),
+        phone_verified=True,
+        first_name=me.first_name,
+        last_name=me.last_name,
+        username=me.username,
+        telegram_id=me.id,
+        twofa_enabled=False,
+    )
+    db.add(account)
+    await db.flush()
+    return account
+
+
+async def get_accounts_for_user(
+    db: AsyncSession, user: User
+) -> list[TelegramAccount]:
+    result = await db.execute(
+        select(TelegramAccount)
+        .where(TelegramAccount.user_id == user.id)
+        .order_by(TelegramAccount.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_account(db: AsyncSession, account_id: str, user_id: str) -> TelegramAccount | None:
+    result = await db.execute(
+        select(TelegramAccount).where(
+            TelegramAccount.id == account_id,
+            TelegramAccount.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def update_profile(
+    db: AsyncSession,
+    account: TelegramAccount,
+    first_name: str | None,
+    last_name: str | None,
+    username: str | None,
+    bio: str | None,
+) -> TelegramAccount:
+    """Update Telegram profile and DB cache."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    await client.edit_profile(
+        first_name=first_name or account.first_name or "",
+        last_name=last_name or account.last_name or "",
+        about=bio or account.bio or "",
+    )
+
+    if username is not None:
+        await client.edit_username(username)
+
+    account.first_name = first_name or account.first_name
+    account.last_name = last_name or account.last_name
+    account.username = username or account.username
+    account.bio = bio or account.bio
+    await db.flush()
+    return account
+
+
+async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: bytes) -> None:
+    """Upload profile photo to Telegram and cache locally."""
+    from telethon.tl.functions.photos import UploadProfilePhotoRequest
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        tmp.write(photo_bytes)
+        tmp_path = tmp.name
+
+    try:
+        # Telethon — upload file first, then set as profile photo
+        file = await client.upload_file(tmp_path)
+        await client(UploadProfilePhotoRequest(file=file))
+        # After uploading to Telegram, download and cache locally
+        _ensure_photo_dir()
+        photo_path = _photo_path(str(account.id))
+        me = await client.get_me()
+        if me:
+            import io
+            buf = io.BytesIO()
+            downloaded = await client.download_profile_photo(me, file=buf)
+            if downloaded:
+                buf.seek(0)
+                with open(photo_path, "wb") as f:
+                    f.write(buf.read())
+                account.profile_photo_path = photo_path
+            else:
+                account.profile_photo_path = None
+        else:
+            account.profile_photo_path = None
+        await db.flush()
+    finally:
+        os.unlink(tmp_path)
+
+
+async def delete_photo(db: AsyncSession, account: TelegramAccount) -> None:
+    """Delete profile photo from Telegram and remove local cache."""
+    from telethon.tl.functions.photos import DeletePhotosRequest
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    # Get current profile photos and delete them
+    from telethon.tl.functions.photos import GetUserPhotosRequest
+    result = await client(GetUserPhotosRequest(user_id=await client.get_me(), offset=0, max_id=0, limit=1))
+    if result.photos:
+        await client(DeletePhotosRequest(id=result.photos))
+
+    # Delete local cache
+    photo_path = _photo_path(str(account.id))
+    if os.path.exists(photo_path):
+        os.remove(photo_path)
+
+    account.profile_photo_path = None
+    await db.flush()
+
+
+async def get_cached_photo_path(account_id: str) -> str | None:
+    """Return the local cached photo path if it exists."""
+    path = _photo_path(account_id)
+    if os.path.exists(path):
+        return path
+    return None
+
+
+async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
+    """Download the profile photo from Telegram, cache it, and return bytes."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        return None
+
+    import io
+    buf = io.BytesIO()
+    me = await client.get_me()
+    if not me:
+        return None
+
+    downloaded = await client.download_profile_photo(me, file=buf)
+    if not downloaded:
+        return None
+
+    buf.seek(0)
+    data = buf.read()
+
+    # Cache locally
+    _ensure_photo_dir()
+    photo_path = _photo_path(str(account.id))
+    with open(photo_path, "wb") as f:
+        f.write(data)
+
+    account.profile_photo_path = photo_path
+    return data
+
+
+_PHOTO_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "uploads", "profile_photos"
+)
+
+
+def _ensure_photo_dir() -> None:
+    """Create the profile photos directory if it doesn't exist."""
+    os.makedirs(_PHOTO_DIR, exist_ok=True)
+
+
+def _photo_path(account_id: str) -> str:
+    """Return the local file path for an account's cached profile photo."""
+    return os.path.join(_PHOTO_DIR, f"{account_id}.jpg")
+
+
+async def remove_account(db: AsyncSession, account: TelegramAccount) -> None:
+    """Disconnect client, clean up cached photo, clear flood state, and delete account from DB."""
+    await client_pool.remove(str(account.id))
+
+    # Clean up flood control state for this account
+    from app.utils.flood_control import flood_controller
+    flood_controller.reset(str(account.id))
+
+    # Clean up cached profile photo
+    photo_path = _photo_path(str(account.id))
+    if os.path.exists(photo_path):
+        os.remove(photo_path)
+
+    await db.delete(account)
+
+
+async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> TelegramAccount:
+    """
+    Check the spam limit status of the Telegram account by sending a message to @SpamBot.
+    Updates account.spam_status, account.spam_detail, and account.spam_last_checked_at.
+    """
+    import asyncio
+    from datetime import datetime, timezone
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    try:
+        # 1. Send /start to @SpamBot
+        sent_msg = await client.send_message("SpamBot", "/start")
+
+        # 2. Poll for response messages for up to 5 seconds
+        response_msg = None
+        for _ in range(5):
+            messages = await client.get_messages("SpamBot", limit=5)
+            for msg in messages:
+                # incoming message (not sent by us)
+                if not msg.out:
+                    # Verify it's after the sent message
+                    if sent_msg and msg.date >= sent_msg.date:
+                        response_msg = msg
+                        break
+            if response_msg:
+                break
+            await asyncio.sleep(1.0)
+
+        # Fallback to the latest incoming message if no exact date match found
+        if not response_msg:
+            messages = await client.get_messages("SpamBot", limit=5)
+            for msg in messages:
+                if not msg.out:
+                    response_msg = msg
+                    break
+
+        if response_msg and response_msg.text:
+            text_lower = response_msg.text.lower()
+            # Common keywords indicating no limits
+            clean_keywords = [
+                "good news", "no limits", "free as a bird",
+                "kabar baik", "tidak ada batasan", "bebas terbang"
+            ]
+
+            is_limited = True
+            for kw in clean_keywords:
+                if kw in text_lower:
+                    is_limited = False
+                    break
+
+            account.spam_status = "limited" if is_limited else "normal"
+            account.spam_detail = response_msg.text
+        else:
+            account.spam_status = "unknown"
+            account.spam_detail = "Failed to receive response from @SpamBot"
+
+    except Exception as exc:
+        logger.error("Error checking spam status for account %s: %s", account.id, exc)
+        account.spam_status = "unknown"
+        account.spam_detail = f"Error: {str(exc)}"
+
+    account.spam_last_checked_at = datetime.now(timezone.utc)
+    await db.flush()
+    return account
