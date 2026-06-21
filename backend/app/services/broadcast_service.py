@@ -446,6 +446,18 @@ async def _resolve_and_join(client, item_type: str, group_identifier: str, telet
                     # If join fails but we have entity, try sending anyway
 
     elif item_type == "link":
+        # Check if it's a public link (e.g., https://t.me/my_group)
+        if group_identifier.startswith("https://t.me/") and "+" not in group_identifier and "joinchat" not in group_identifier:
+            username = group_identifier.split("/")[-1]
+            return await _resolve_and_join(client, "username", username, telethon_mod)
+
+        # Try to resolve first to avoid UserAlreadyParticipantError
+        try:
+            entity = await client.get_entity(group_identifier)
+            return entity, None, None
+        except Exception:
+            pass
+
         # Invite link (https://t.me/+xxx or https://t.me/joinchat/xxx)
         invite_hash = group_identifier.split("/")[-1] if "/" in group_identifier else group_identifier
         # Remove the + prefix if present
@@ -464,14 +476,28 @@ async def _resolve_and_join(client, item_type: str, group_identifier: str, telet
                     join_result = await client(telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash))
                     if hasattr(join_result, "chats") and join_result.chats:
                         entity = join_result.chats[0]
+            except telethon_mod.errors.UserAlreadyParticipantError:
+                # Already joined, just return the entity (since CheckChatInviteRequest threw)
+                # It means get_entity above failed (maybe network issue, or dialogs not synced)
+                # Let's try get_entity again, but wait this shouldn't happen unless we are in the group
+                pass # it's fine
             except Exception as check_exc:
-                # Maybe already joined â€” try get_entity from the error or just import
+                # Maybe already joined — try get_entity from the error or just import
                 try:
                     join_result = await client(telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash))
                     if hasattr(join_result, "chats") and join_result.chats:
                         entity = join_result.chats[0]
+                except telethon_mod.errors.UserAlreadyParticipantError:
+                    pass
                 except Exception as join_exc:
                     return None, classify_telegram_error(join_exc), join_exc
+            
+            # If we still don't have entity but we know we joined/already member, try get_entity again
+            if not entity:
+                try:
+                    entity = await client.get_entity(group_identifier)
+                except Exception as e:
+                    return None, classify_telegram_error(e), e
         except Exception as exc:
             return None, classify_telegram_error(exc), exc
 
