@@ -17,6 +17,9 @@ interface CycleAccordionProps {
   onToggle: (cycleNumber: number) => void;
   isRunning: boolean;
   loading?: boolean;
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
   children: (cycleNumber: number) => React.ReactNode;
 }
 
@@ -26,10 +29,14 @@ export default function CycleAccordion({
   onToggle,
   isRunning,
   loading,
+  page,
+  totalPages,
+  onPageChange,
   children,
 }: CycleAccordionProps) {
   const _ = useT();
-  const latestCycle = cycles.length > 0 ? Math.max(...cycles.map((c) => c.cycleNumber)) : null;
+  const latestCycle =
+    cycles.length > 0 ? Math.max(...cycles.map((c) => c.cycleNumber)) : null;
 
   if (loading) {
     return (
@@ -90,13 +97,16 @@ export default function CycleAccordion({
               {/* Stats row */}
               <div className="flex items-center gap-4 text-sm">
                 <span className="text-gray-500">
-                  {_("broadcastLogs.total")}: <strong className="text-gray-700">{cycle.totalCount}</strong>
+                  {_("broadcastLogs.total")}:{" "}
+                  <strong className="text-gray-700">{cycle.totalCount}</strong>
                 </span>
                 <span className="text-green-600">
-                  {_("broadcastLogs.success")}: <strong>{cycle.successCount}</strong>
+                  {_("broadcastLogs.success")}:{" "}
+                  <strong>{cycle.successCount}</strong>
                 </span>
                 <span className="text-red-600">
-                  {_("broadcastLogs.error")}: <strong>{cycle.errorCount}</strong>
+                  {_("broadcastLogs.error")}:{" "}
+                  <strong>{cycle.errorCount}</strong>
                 </span>
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4 text-gray-400" />
@@ -115,6 +125,41 @@ export default function CycleAccordion({
           </div>
         );
       })}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            className={cn(
+              "px-3 py-1.5 text-sm rounded-lg border transition",
+              page <= 1
+                ? "border-gray-100 text-gray-300 cursor-not-allowed"
+                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            ← Previous
+          </button>
+          <span className="text-sm text-gray-500">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className={cn(
+              "px-3 py-1.5 text-sm rounded-lg border transition",
+              page >= totalPages
+                ? "border-gray-100 text-gray-300 cursor-not-allowed"
+                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

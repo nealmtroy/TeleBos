@@ -36,6 +36,8 @@ export default function BroadcastLogsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
+  const [cyclePage, setCyclePage] = useState(1);
+  const CYCLES_PER_PAGE = 10;
 
   // Auto-select running job on load
   useEffect(() => {
@@ -49,9 +51,10 @@ export default function BroadcastLogsPage() {
     }
   }, [jobs, selectedJobId, searchParams]);
 
-  // Reset expanded cycle when job changes
+  // Reset expanded cycle & page when job changes
   useEffect(() => {
     setExpandedCycle(null);
+    setCyclePage(1);
   }, [selectedJobId]);
 
   // Account Map for easy lookup
@@ -124,12 +127,26 @@ export default function BroadcastLogsPage() {
       knownMaxCycleRef.current = latest;
     } else if (latest > knownMaxCycleRef.current) {
       knownMaxCycleRef.current = latest;
+      // Auto-navigate to page 1 so live cycle is visible
+      if (cyclePage > 1) setCyclePage(1);
       // Only auto-expand if user hasn't explicitly clicked an older cycle
       if (expandedCycle !== null && latest > expandedCycle) {
         setExpandedCycle(latest);
       }
     }
-  }, [cycleSummaries, expandedCycle]);
+  }, [cycleSummaries, expandedCycle, cyclePage]);
+
+  // Sort cycles descending (newest first) so live cycle is always on page 1
+  const sortedCycles = useMemo(() => {
+    return [...cycleSummaries].sort((a, b) => b.cycleNumber - a.cycleNumber);
+  }, [cycleSummaries]);
+
+  const totalCyclePages = Math.max(1, Math.ceil(sortedCycles.length / CYCLES_PER_PAGE));
+
+  const displayedCycles = useMemo(() => {
+    const start = (cyclePage - 1) * CYCLES_PER_PAGE;
+    return sortedCycles.slice(start, start + CYCLES_PER_PAGE);
+  }, [sortedCycles, cyclePage]);
 
   const handleToggle = useCallback(
     (cycleNumber: number) => {
@@ -271,10 +288,13 @@ export default function BroadcastLogsPage() {
             </div>
           ) : (
             <CycleAccordion
-              cycles={cycleSummaries}
+              cycles={displayedCycles}
               expandedCycle={expandedCycle}
               onToggle={handleToggle}
               isRunning={selectedJob?.status === "running"}
+              page={cyclePage}
+              totalPages={totalCyclePages}
+              onPageChange={setCyclePage}
             >
               {(cycleNumber) => {
                 const logs = cycleNumber === expandedCycle ? logsForCycle : [];
