@@ -80,9 +80,10 @@ except ImportError:
     UserKickedError = None
 
 try:
-    from telethon.errors import ChatSendInlineForbiddenError
+    from telethon.errors import ChatGuestSendForbiddenError
 except ImportError:
-    ChatSendInlineForbiddenError = None
+    ChatGuestSendForbiddenError = None
+
 
 # ── AddChatUserRequest / InviteToChannelRequest specific errors ────────
 try:
@@ -142,7 +143,12 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
         return ("slowmode", f"Slowmode wait: {wait} seconds")
 
     if isinstance(exc, ChatWriteForbiddenError):
+        # This is the base "CHAT_WRITE_FORBIDDEN" classification.
+        # But Telethon also has ChatGuestSendForbiddenError — check that first.
         return ("admin_only", "Only admins can send messages in this group")
+
+    if ChatGuestSendForbiddenError and isinstance(exc, ChatGuestSendForbiddenError):
+        return ("guest_restricted", "Account not yet joined or guest restricted — may need to join first or wait for new-member probation to end")
 
     if isinstance(exc, ChatAdminRequiredError):
         return ("admin_only", "Admin privileges required to perform this action")

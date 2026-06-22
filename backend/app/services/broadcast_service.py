@@ -803,7 +803,7 @@ async def execute_broadcast(job_id: str):
 
                             # ── Retryable errors (flood/slowmode/send restrictions) → add to pending pool ──
                             # Broadcast continues to other groups without stopping
-                            if err_type in ("flood", "peer_flood", "slowmode", "admin_only", "must_join_discussion"):
+                            if err_type in ("flood", "peer_flood", "slowmode", "admin_only", "must_join_discussion", "guest_restricted", "send_restricted"):
                                 pkey = f"{item_type}:{group_identifier}"
                                 pending_pool[pkey] = {
                                     "group_identifier": group_identifier,
@@ -832,7 +832,7 @@ async def execute_broadcast(job_id: str):
                                         wait = resolve_exc.seconds
                                     selected_acc["cooldown_until"] = time.time() + wait
                                 else:
-                                    # admin_only / must_join_discussion — short cooldown before retry
+                                    # admin_only / guest_restricted / must_join_discussion — short cooldown before retry
                                     wait = job.delay_per_group or 30
                                     selected_acc["cooldown_until"] = time.time() + wait
 
