@@ -17,6 +17,7 @@ const en: Dict = {
     groupsChannels: "Groups & Channels",
     help: "Help",
     orders: "Orders",
+    marketplace: "Marketplace",
   },
 
   // ── Navbar ──────────────────────────────────────────────────────────────

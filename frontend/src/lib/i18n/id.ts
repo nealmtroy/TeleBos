@@ -17,6 +17,7 @@ const id: Dict = {
     groupsChannels: "Grup & Saluran",
     help: "Bantuan",
     orders: "Pesanan",
+    marketplace: "Marketplace",
   },
 
   // ── Bilah Atas ──────────────────────────────────────────────────────────

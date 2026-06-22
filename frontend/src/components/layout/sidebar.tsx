@@ -27,6 +27,7 @@ import {
   Hash,
   Crown,
   Ticket,
+  DollarSign,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth-store";
@@ -37,6 +38,12 @@ const broadcastSubItems = [
   { href: "/broadcast/text-lists", labelKey: "nav.textLists", icon: FileText },
   { href: "/broadcast/history", labelKey: "nav.broadcastHistory", icon: Clock },
   { href: "/broadcast/logs", labelKey: "nav.broadcastLogs", icon: ClipboardList },
+];
+
+const ordersSubItems = [
+  { href: "/orders/buy-accounts", labelKey: "orders.buyAccounts", icon: ShoppingCart },
+  { href: "/orders/sell-accounts", labelKey: "orders.sellAccounts", icon: DollarSign },
+  { href: "/orders", labelKey: "orders.history", icon: ClipboardList },
 ];
 
 const adminSubItems = [
@@ -73,7 +80,7 @@ const navItems: NavItem[] = [
   { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 1 },
   { href: "/invite", labelKey: "invite.navLabel", icon: UserPlus, minRole: 1 },
   { href: "/broadcast", labelKey: "nav.broadcast", icon: Send, hasSubItems: true, minRole: 0 },
-  { href: "/orders", labelKey: "nav.orders", icon: ShoppingCart, minRole: 0 },
+  { href: "/orders", labelKey: "nav.orders", icon: ShoppingCart, hasSubItems: true, minRole: 0 },
   { href: "/subscriptions", labelKey: "subscription.title", icon: Crown, minRole: 0 },
   { href: "/help", labelKey: "nav.help", icon: HelpCircle, minRole: 0 },
 ];
@@ -87,15 +94,21 @@ export function Sidebar() {
   const _ = useT();
 
   const isBroadcastPage = pathname.startsWith("/broadcast");
+  const isOrdersPage = pathname.startsWith("/orders");
   const isAdminPage = pathname.startsWith("/admin");
 
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
+  const [ordersOpen, setOrdersOpen] = useState(isOrdersPage);
   const [adminOpen, setAdminOpen] = useState(isAdminPage);
 
   // Auto-open sections on mount
   useEffect(() => {
     if (isBroadcastPage) setBroadcastOpen(true);
   }, [isBroadcastPage]);
+
+  useEffect(() => {
+    if (isOrdersPage) setOrdersOpen(true);
+  }, [isOrdersPage]);
 
   useEffect(() => {
     if (isAdminPage) setAdminOpen(true);
@@ -152,11 +165,14 @@ export function Sidebar() {
             })
             .map((item) => {
             if (item.hasSubItems) {
-              const isActive = pathname.startsWith("/broadcast");
+              const isActive = pathname.startsWith(item.href);
+              const isOpen = item.href === "/broadcast" ? broadcastOpen : ordersOpen;
+              const setIsOpen = item.href === "/broadcast" ? setBroadcastOpen : setOrdersOpen;
+              const subItems = item.href === "/broadcast" ? broadcastSubItems : ordersSubItems;
               return (
                 <div key={item.href}>
                   <button
-                    onClick={() => setBroadcastOpen(!broadcastOpen)}
+                    onClick={() => setIsOpen(!isOpen)}
                     className={cn(
                       "flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200 group",
                       isActive
@@ -169,24 +185,26 @@ export function Sidebar() {
                     <ChevronDown
                       className={cn(
                         "h-3.5 w-3.5 transition-transform duration-200",
-                        broadcastOpen && "rotate-180"
+                        isOpen && "rotate-180"
                       )}
                     />
                   </button>
 
-                  {/* Broadcast submenu with slide animation */}
+                  {/* Submenu with slide animation */}
                   <div
                     className={cn(
                       "ml-4 mt-1 space-y-0.5 border-l border-slate-800 pl-3 overflow-hidden transition-all duration-300 ease-in-out",
-                      broadcastOpen
+                      isOpen
                         ? "max-h-80 opacity-100"
                         : "max-h-0 opacity-0"
                     )}
                   >
-                    {broadcastSubItems.map((sub) => {
+                    {subItems.map((sub) => {
                         const isSubActive =
                           sub.href === "/broadcast/new"
                             ? pathname === "/broadcast/new"
+                            : sub.href === "/orders"
+                            ? pathname === "/orders"
                             : pathname.startsWith(sub.href);
                         return (
                           <Link

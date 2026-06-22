@@ -17,6 +17,7 @@ export interface Dict {
     groupsChannels: string;
     help: string;
     orders: string;
+    marketplace: string;
   };
 
   // Navbar
