@@ -594,10 +594,77 @@ async def execute_broadcast(job_id: str):
             cycle_count = max_cycle if max_cycle is not None else 0
 
             current_acc_idx = 0
+            joined_pool: dict = {}
+            pending_pool: dict = {}
 
             while True:
                 is_looping = job.loop_enabled
                 current_cycle = cycle_count + 1
+
+                # ── Every cycle, retry pending groups first ──
+                if pending_pool and is_looping:
+                    newly_joined = []
+                    still_pending = {}
+                    for pkey, pitem in list(pending_pool.items()):
+                        await db.refresh(job)
+                        if job.status in ("cancelled", "paused"):
+                            break
+
+                        # Find ready account
+                        selected_acc = None
+                        now_ts = time.time()
+                        ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
+                        if ready_accs:
+                            for offset in range(len(active_accounts)):
+                                i_idx = (current_acc_idx + offset) % len(active_accounts)
+                                candidate = active_accounts[i_idx]
+                                if now_ts >= candidate["cooldown_until"]:
+                                    selected_acc = candidate
+                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                    break
+
+                        if not selected_acc:
+                            still_pending[pkey] = pitem
+                            continue
+
+                        client = selected_acc["client"]
+                        try:
+                            # Try get_entity first — join limit may have expired
+                            entity_retry = await client.get_entity(pitem["group_identifier"])
+                            joined_pool[pkey] = entity_retry
+                            newly_joined.append(pkey)
+                            await _push_broadcast(job_id, "pending_joined", {
+                                "group": pitem["group_identifier"],
+                                "message": f"Retry join successful for {pitem['group_identifier']}",
+                            })
+                        except Exception:
+                            # get_entity failed — try auto-join
+                            entity_retry, resolve_err, resolve_exc = await _resolve_and_join(
+                                client, pitem["item_type"], pitem["group_identifier"], telethon
+                            )
+                            if resolve_err is not None:
+                                err_type, _ = resolve_err
+                                if err_type in ("flood", "peer_flood", "slowmode"):
+                                    still_pending[pkey] = pitem
+                                    wait = 30
+                                    if hasattr(resolve_exc, "seconds"):
+                                        wait = resolve_exc.seconds
+                                    if err_type in ("flood", "peer_flood"):
+                                        fc.record_flood(str(selected_acc["account_id"]), wait)
+                                    selected_acc["cooldown_until"] = time.time() + wait
+                                    await _interruptible_sleep(job_id, wait)
+                                    continue
+                                elif err_type == "already_invited":
+                                    joined_pool[pkey] = entity_retry or True
+                                    newly_joined.append(pkey)
+                                    continue
+                                # Permanent error — leave out of pool entirely
+                                continue
+                            else:
+                                joined_pool[pkey] = entity_retry
+                                newly_joined.append(pkey)
+
+                    pending_pool = still_pending
 
                 for idx, item in enumerate(items):
                     # Find the next ready account
@@ -665,6 +732,14 @@ async def execute_broadcast(job_id: str):
                     group_identifier = item.get("value", "") or ""
                     item_type = item.get("type", "username")
 
+                    # ── Check joined_pool first (skip join if already joined) ──
+                    pkey = f"{item_type}:{group_identifier}"
+                    cached_entity = joined_pool.get(pkey)
+
+                    # ── Skip groups still in pending pool (will retry next cycle) ──
+                    if pkey in pending_pool:
+                        continue
+
                     # Defensive cap: even though the column is now TEXT, keep
                     # extreme blobs out of logs/WS payloads so a stray mega-paste
                     # in a group_list can't blow up a job.
@@ -687,10 +762,16 @@ async def execute_broadcast(job_id: str):
                         chosen_text = ""
 
                     try:
-                        # Resolve entity (auto-join if needed)
-                        entity, resolve_err, resolve_exc = await _resolve_and_join(
-                            client, item_type, group_identifier, telethon
-                        )
+                        # Use cached entity if already joined (skip _resolve_and_join entirely)
+                        if cached_entity is not None:
+                            entity = cached_entity
+                            resolve_err = None
+                            resolve_exc = None
+                        else:
+                            # Resolve entity (auto-join if needed)
+                            entity, resolve_err, resolve_exc = await _resolve_and_join(
+                                client, item_type, group_identifier, telethon
+                            )
 
                         if resolve_err is not None:
                             err_type, err_msg = resolve_err
@@ -720,30 +801,71 @@ async def execute_broadcast(job_id: str):
                                 })
                                 continue
 
+                            # ── Retryable errors (flood/slowmode) → add to pending pool ──
+                            # Broadcast continues to other groups without stopping
+                            if err_type in ("flood", "peer_flood", "slowmode"):
+                                pkey = f"{item_type}:{group_identifier}"
+                                pending_pool[pkey] = {
+                                    "group_identifier": group_identifier,
+                                    "item_type": item_type,
+                                }
+                                log.status = "error"
+                                log.error_type = err_type
+                                log.error_message = err_msg
+                                log.sent_at = datetime.now(timezone.utc)
+                                db.add(log)
+                                failed += 1
+
+                                if err_type == "flood":
+                                    wait = 30
+                                    if hasattr(resolve_exc, "seconds"):
+                                        wait = resolve_exc.seconds
+                                    fc.record_flood(acc_id_str, wait)
+                                    selected_acc["cooldown_until"] = time.time() + wait
+                                elif err_type == "peer_flood":
+                                    backoff_time = 7200
+                                    fc.record_flood(acc_id_str, backoff_time)
+                                    selected_acc["cooldown_until"] = time.time() + backoff_time
+                                elif err_type == "slowmode":
+                                    wait = 30
+                                    if hasattr(resolve_exc, "seconds"):
+                                        wait = resolve_exc.seconds
+                                    selected_acc["cooldown_until"] = time.time() + wait
+
+                                await db.commit()
+
+                                # Update progress even on error
+                                job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
+                                job.sent_count = sent
+                                job.fail_count = failed
+                                await db.commit()
+
+                                await _push_broadcast(job_id, "log", {
+                                    "group": group_identifier,
+                                    "status": "error",
+                                    "error_type": err_type,
+                                    "text": log.sent_text,
+                                    "cycle": current_cycle,
+                                    "account_id_used": acc_id_str,
+                                    "account_name": acc_name,
+                                })
+
+                                if job.delay_randomized:
+                                    base_delay = random.randint(5, 30)
+                                else:
+                                    base_delay = job.delay_per_group
+                                flood_delay = fc.get_delay(acc_id_str)
+                                actual_delay = max(base_delay, flood_delay)
+                                await _interruptible_sleep(job_id, actual_delay)
+                                continue
+
+                            # ── Non-retryable errors → log as error permanently ──
                             log.status = "error"
                             log.error_type = err_type
                             log.error_message = err_msg
                             log.sent_at = datetime.now(timezone.utc)
                             db.add(log)
                             failed += 1
-
-                            if err_type == "flood":
-                                wait = 30
-                                if hasattr(resolve_exc, "seconds"):
-                                    wait = resolve_exc.seconds
-                                fc.record_flood(acc_id_str, wait)
-                                selected_acc["cooldown_until"] = time.time() + wait
-                            elif err_type == "peer_flood":
-                                backoff_time = 7200
-                                fc.record_flood(acc_id_str, backoff_time)
-                                selected_acc["cooldown_until"] = time.time() + backoff_time
-                            elif err_type == "slowmode":
-                                wait = 30
-                                if hasattr(resolve_exc, "seconds"):
-                                    wait = resolve_exc.seconds
-                                # Just track it on the account for this specific chat, or back off entirely
-                                # It's better to just wait the slowmode or treat it like a small flood
-                                selected_acc["cooldown_until"] = time.time() + wait
 
                             await db.commit()
 
@@ -851,6 +973,10 @@ async def execute_broadcast(job_id: str):
                         else:
                             log.group_id = None
 
+                        # Register into joined_pool (so next cycle skips join)
+                        if entity is not None:
+                            joined_pool[pkey] = entity
+
                         log.status = "success"
                         log.sent_at = datetime.now(timezone.utc)
                         log.duration_ms = int((time.time() - start_time) * 1000)
@@ -864,6 +990,11 @@ async def execute_broadcast(job_id: str):
 
                     except Exception as exc:
                         err_type, err_msg = classify_telegram_error(exc)
+
+                        # Even if send fails, the group was resolved/joined � remember for next cycle
+                        if entity is not None:
+                            joined_pool[pkey] = entity
+
                         log.status = "error"
                         log.error_type = err_type
                         log.error_message = err_msg

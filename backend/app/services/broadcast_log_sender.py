@@ -88,6 +88,7 @@ async def send_cycle_summary(
     cycle_logs: list,
     accounts_by_id: dict,
     item_type_by_identifier: dict,
+    text_list_name: str | None = None,
 ) -> None:
     dest = job.log_destination
     if dest == "web_only":
@@ -118,11 +119,11 @@ async def send_cycle_summary(
                 accounts_map[str(acc_id)] = acc.first_name or acc.phone
         
         text = _format_cycle_summary(
-            job_name=job.name,
+            job_name=f"Job {str(job.id)[:8]}",
             cycle_number=cycle_number,
             start_time=start_time,
             end_time=end_time,
-            text_list_name=getattr(job, "text_list_name", None),
+            text_list_name=text_list_name,
             group_list_name=group_list_name,
             total_groups=total_groups,
             active_this_round=active_this_round,
