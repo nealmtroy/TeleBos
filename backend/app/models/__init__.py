@@ -14,6 +14,7 @@ from .smm_setting import SmmSetting
 from .redeem_code import RedeemCode
 from .redeem_log import RedeemLog
 from .account_audit_log import AccountAuditLog
+from .user_account_price import UserAccountPrice
 
 __all__ = [
     "User",
@@ -32,4 +33,5 @@ __all__ = [
     "RedeemCode",
     "RedeemLog",
     "AccountAuditLog",
+    "UserAccountPrice",
 ]

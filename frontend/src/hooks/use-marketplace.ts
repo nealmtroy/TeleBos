@@ -81,9 +81,9 @@ export function useSellEligibleAccounts() {
 export function useSellAccounts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (accounts: { account_id: string; sell_price: number }[]) => {
+    mutationFn: async (accountIds: string[]) => {
       const { data } = await api.post("/marketplace/sell", {
-        accounts,
+        account_ids: accountIds,
       });
       return data;
     },

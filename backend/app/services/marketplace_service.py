@@ -13,6 +13,7 @@ from app.models.account_audit_log import AccountAuditLog
 from app.models.smm_setting import SmmSetting
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
+from app.models.user_account_price import UserAccountPrice
 from app.services.telegram_client import client_pool
 
 logger = logging.getLogger(__name__)
@@ -101,27 +102,42 @@ async def get_marketplace_prices(db: AsyncSession) -> tuple[int, int]:
     return buy_price, sell_price
 
 
+async def get_user_sell_price(db: AsyncSession, user_id: UUID) -> int:
+    """Get the effective sell price for a specific user (from UserAccountPrice or fallback)."""
+    result = await db.execute(
+        select(UserAccountPrice).where(UserAccountPrice.user_id == user_id)
+    )
+    user_price = result.scalar_one_or_none()
+    if user_price:
+        return user_price.sell_price
+
+    # Fallback to global default
+    _, sell_price = await get_marketplace_prices(db)
+    return sell_price
+
+
 async def sell_accounts(
     db: AsyncSession,
     user: User,
-    account_data: list[dict],  # [{"account_id": str, "sell_price": int}, ...]
+    account_ids: list[str],  # just account IDs — price is auto-determined
 ) -> int:
-    """List accounts for sale with per-account pricing.
+    """List accounts for sale with owner-configured pricing.
 
-    Does NOT credit the seller's balance immediately. The seller only gets paid
-    when someone buys the account.
+    The sell price is automatically determined from UserAccountPrice
+    (set by owner) for each seller. Does NOT credit the seller's
+    balance immediately — they get paid when someone buys.
 
     Returns the number of accounts listed.
     """
-    if not account_data:
+    if not account_ids:
         raise ValueError("At least one account is required.")
+
+    # Get the seller's configured price
+    sell_price = await get_user_sell_price(db, user.id)
 
     processed = 0
 
-    for item in account_data:
-        acc_id_str = item["account_id"]
-        sell_price = item.get("sell_price", 0)
-
+    for acc_id_str in account_ids:
         try:
             acc_uuid = UUID(acc_id_str)
         except ValueError:
@@ -133,9 +149,6 @@ async def sell_accounts(
 
         if account.for_sale or account.is_sold:
             raise ValueError(f"Account is already listed for sale or sold: {account.phone}")
-
-        if sell_price <= 0:
-            raise ValueError(f"Sell price must be greater than 0 for account {account.phone}")
 
         # 1. Stop all active/paused/pending automation for this account
 
@@ -163,11 +176,10 @@ async def sell_accounts(
                 if task:
                     task.cancel()
 
-        # 2. Mark account as for_sale with the seller's price
-        #    Account stays owned by the seller until purchased
+        # 2. Mark account as for_sale with owner-configured price
         account.for_sale = True
         account.is_sold = False
-        account.sell_price = sell_price
+        account.sell_price = sell_price  # Use owner-configured price
         account.seller_id = user.id  # Track who will get paid
         account.is_active = False
         account.auto_reply_enabled = False

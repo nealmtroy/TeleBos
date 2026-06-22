@@ -5,16 +5,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-class MarketplaceSellItem(BaseModel):
-    """One account to list for sale, with its own price."""
-    account_id: UUID = Field(..., description="Account ID to sell")
-    sell_price: int = Field(..., ge=1, description="Sell price for this account in IDR")
-
-
 class MarketplaceSellRequest(BaseModel):
-    accounts: list[MarketplaceSellItem] = Field(
-        ..., description="List of accounts with per-account prices"
-    )
+    """Simple sell request — just account IDs. Price is owner-configured."""
+    account_ids: list[UUID] = Field(..., description="List of account IDs to sell")
 
 
 class MarketplaceSellResponse(BaseModel):

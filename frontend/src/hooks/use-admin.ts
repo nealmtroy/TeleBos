@@ -99,3 +99,35 @@ export function useDeleteUser() {
     },
   });
 }
+
+// ── Account Price Management ─────────────────────────────────────────────────
+
+export interface UserAccountPrice {
+  user_id: string;
+  user_email: string | null;
+  user_full_name: string | null;
+  sell_price: number;
+}
+
+export function useAccountPrices() {
+  return useQuery<UserAccountPrice[]>({
+    queryKey: ["admin", "account-prices"],
+    queryFn: async () => {
+      const { data } = await api.get("/admin/account-prices");
+      return data || [];
+    },
+  });
+}
+
+export function useUpdateAccountPrices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (prices: { user_id: string; sell_price: number }[]) => {
+      const { data } = await api.put("/admin/account-prices", { prices });
+      return data as UserAccountPrice[];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "account-prices"] });
+    },
+  });
+}

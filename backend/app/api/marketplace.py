@@ -52,17 +52,14 @@ async def sell_accounts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List one or more Telegram accounts for sale with per-account pricing.
+    """List one or more Telegram accounts for sale.
 
-    Accounts are listed at the price you set. You will be credited the sale
-    amount only when a buyer purchases your account.
+    The sell price is auto-determined from owner-configured pricing per user.
+    You will be credited the sale amount only when a buyer purchases your account.
     """
     try:
-        account_data = [
-            {"account_id": str(item.account_id), "sell_price": item.sell_price}
-            for item in payload.accounts
-        ]
-        total_listed = await marketplace_service.sell_accounts(db, current_user, account_data)
+        account_ids = [str(aid) for aid in payload.account_ids]
+        total_listed = await marketplace_service.sell_accounts(db, current_user, account_ids)
         await db.commit()
         return MarketplaceSellResponse(total_listed=total_listed)
     except ValueError as exc:

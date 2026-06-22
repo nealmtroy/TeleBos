@@ -66,10 +66,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const handleSellConfirm = async () => {
     setSelling(true);
     try {
-      const sellPrice = pricing?.sell_price || 5500;
-      await sellAccountsMutation.mutateAsync([
-        { account_id: account.id, sell_price: sellPrice },
-      ]);
+      await sellAccountsMutation.mutateAsync([account.id]);
       await fetchMe();
       setSellOpen(false);
     } catch (err) {

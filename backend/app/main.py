@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
-from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace
+from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
 
@@ -334,6 +334,26 @@ def _run_migrations(connection):
             )
         )
 
+    # ── User account prices table ────────────────────────────────────
+    if "user_account_prices" not in tables:
+        connection.execute(
+            text(
+                "CREATE TABLE user_account_prices ("
+                "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+                "  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                "  sell_price BIGINT NOT NULL DEFAULT 5500,"
+                "  created_at TIMESTAMPTZ DEFAULT now(),"
+                "  updated_at TIMESTAMPTZ DEFAULT now()"
+                ")"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE UNIQUE INDEX ix_user_account_prices_user_id "
+                "ON user_account_prices (user_id)"
+            )
+        )
+
     # ── Performance Indexes ───────────────────────────────────────────
     connection.execute(
         text("CREATE INDEX IF NOT EXISTS ix_telegram_accounts_user_id ON telegram_accounts (user_id)")
@@ -582,6 +602,7 @@ app.include_router(marketplace.router, prefix="/api/v1")
 app.include_router(redeem.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_smm.router, prefix="/api/v1")
+app.include_router(admin_account_prices.router, prefix="/api/v1")
 app.include_router(ws.router)
 app.include_router(system.router)
 

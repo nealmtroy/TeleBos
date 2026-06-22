@@ -26,6 +26,7 @@ import {
   BarChart3,
   Hash,
   Crown,
+  Tag,
   Ticket,
   DollarSign,
   ChevronLeft,
@@ -61,6 +62,7 @@ const adminSubItems = [
   { href: "/admin/redeem-codes", exact: false, labelKey: "adminRedeem.title", icon: Ticket },
   { href: "/admin/redeem-logs", exact: false, labelKey: "adminRedeem.logs", icon: ClipboardList },
   { href: "/admin/smm", exact: false, labelKey: "adminSmm.services", icon: Package },
+  { href: "/admin/account-prices", exact: false, labelKey: "Account Prices", icon: Tag },
 ];
 
 // role hierarchy: basic < pro < premium < owner
