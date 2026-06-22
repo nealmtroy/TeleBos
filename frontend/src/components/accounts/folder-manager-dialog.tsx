@@ -56,6 +56,17 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
 
   // Membership management panel
   const [managingFolder, setManagingFolder] = useState<AccountFolder | null>(null);
+  // Local member set — instantly tracks toggles so checkboxes never glitch
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
+
+  // Sync local member set when managingFolder changes
+  useEffect(() => {
+    if (managingFolder?.account_ids) {
+      setMemberIds(new Set(managingFolder.account_ids));
+    } else {
+      setMemberIds(new Set());
+    }
+  }, [managingFolder?.id, managingFolder?.account_ids]);
 
   // Search in member panel
   const [memberSearch, setMemberSearch] = useState("");
@@ -63,7 +74,6 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
   // Add/remove members
   const addAccounts = useAddAccountsToFolder();
   const removeAccounts = useRemoveAccountsFromFolder();
-  const [memberLoading, setMemberLoading] = useState<string | null>(null);
 
   // Escape handling
   useEffect(() => {
@@ -128,11 +138,20 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
     }
   };
 
-  const toggleAccountInFolder = async (accountId: string, isInFolder: boolean) => {
+  const toggleAccountInFolder = async (accountId: string) => {
     if (!managingFolder) return;
-    setMemberLoading(accountId);
+    // Optimistic update — toggle instantly in local state
+    const next = new Set(memberIds);
+    const wasIn = next.has(accountId);
+    if (wasIn) {
+      next.delete(accountId);
+    } else {
+      next.add(accountId);
+    }
+    setMemberIds(next);
+
     try {
-      if (isInFolder) {
+      if (wasIn) {
         await removeAccounts.mutateAsync({
           folderId: managingFolder.id,
           accountIds: [accountId],
@@ -144,9 +163,8 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
         });
       }
     } catch {
-      // handled by react query
-    } finally {
-      setMemberLoading(null);
+      // Revert on failure
+      setMemberIds(new Set(memberIds));
     }
   };
 
@@ -234,8 +252,7 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
               ) : (
                 <div className="space-y-1 max-h-64 overflow-y-auto">
                   {filteredAccounts.map((account) => {
-                    const isInFolder = managingFolder.account_ids?.includes(account.id) ?? false;
-                    const loading = memberLoading === account.id;
+                    const isInFolder = memberIds.has(account.id);
                     return (
                       <label
                         key={account.id}
@@ -244,9 +261,8 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                         <input
                           type="checkbox"
                           checked={isInFolder}
-                          disabled={loading}
-                          onChange={() => toggleAccountInFolder(account.id, isInFolder)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                          onChange={() => toggleAccountInFolder(account.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">
@@ -258,8 +274,7 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                             {account.username && <span>@{account.username}</span>}
                           </div>
                         </div>
-                        {loading && <Loader2 className="h-4 w-4 text-primary-500 animate-spin shrink-0" />}
-                        {isInFolder && !loading && (
+                        {isInFolder && (
                           <Check className="h-4 w-4 text-primary-500 shrink-0" />
                         )}
                       </label>
