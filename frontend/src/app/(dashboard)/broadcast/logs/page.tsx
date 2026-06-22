@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -106,7 +106,7 @@ export default function BroadcastLogsPage() {
       .sort((a, b) => a.cycleNumber - b.cycleNumber);
   }, [allLogs]);
 
-  // Auto-expand the latest cycle when data loads or a new cycle appears
+  // Auto-expand the latest cycle on initial load only
   useEffect(() => {
     if (cycleSummaries.length > 0 && expandedCycle === null) {
       const latest = Math.max(...cycleSummaries.map((c) => c.cycleNumber));
@@ -114,15 +114,22 @@ export default function BroadcastLogsPage() {
     }
   }, [cycleSummaries, expandedCycle]);
 
-  // Auto-expand a newly-appeared cycle (the latest one changes while running)
+  // Track known max cycle so we only auto-expand when a genuinely NEW cycle appears
+  // (not every time polling re-creates the cycleSummaries array)
+  const knownMaxCycleRef = useRef<number | null>(null);
   useEffect(() => {
-    if (cycleSummaries.length > 0 && selectedJob?.status === "running") {
-      const latest = Math.max(...cycleSummaries.map((c) => c.cycleNumber));
+    if (cycleSummaries.length === 0) return;
+    const latest = Math.max(...cycleSummaries.map((c) => c.cycleNumber));
+    if (knownMaxCycleRef.current === null) {
+      knownMaxCycleRef.current = latest;
+    } else if (latest > knownMaxCycleRef.current) {
+      knownMaxCycleRef.current = latest;
+      // Only auto-expand if user hasn't explicitly clicked an older cycle
       if (expandedCycle !== null && latest > expandedCycle) {
         setExpandedCycle(latest);
       }
     }
-  }, [cycleSummaries, selectedJob?.status, expandedCycle]);
+  }, [cycleSummaries, expandedCycle]);
 
   const handleToggle = useCallback(
     (cycleNumber: number) => {
