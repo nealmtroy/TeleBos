@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
-import { useT } from "@/lib/i18n";
+import { useT, useI18nStore } from "@/lib/i18n";
 import {
   LayoutDashboard,
   Smartphone,
@@ -28,9 +28,18 @@ import {
   Crown,
   Ticket,
   DollarSign,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  LogOut,
+  Wallet,
+  Star,
+  User,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { motion, AnimatePresence } from "framer-motion";
 
 const broadcastSubItems = [
   { href: "/broadcast/new", labelKey: "nav.newBroadcast", icon: Plus },
@@ -67,31 +76,25 @@ interface NavItem {
   labelKey: string;
   icon: any;
   hasSubItems?: boolean;
-  /** Minimum role level required to see this item. 0 = basic (everyone), 1 = pro+, 2 = premium+, 3 = owner only */
   minRole?: number;
+  subItems?: { href: string; labelKey: string; icon: any }[];
 }
 
-const navItems: NavItem[] = [
-  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, minRole: 0 },
-  { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, minRole: 0 },
-  { href: "/chats", labelKey: "nav.chats", icon: MessageSquare, minRole: 0 },
-  { href: "/contacts", labelKey: "nav.contacts", icon: Users, minRole: 1 },
-  { href: "/groups-channels", labelKey: "nav.groupsChannels", icon: Hash, minRole: 0 },
-  { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 1 },
-  { href: "/invite", labelKey: "invite.navLabel", icon: UserPlus, minRole: 1 },
-  { href: "/broadcast", labelKey: "nav.broadcast", icon: Send, hasSubItems: true, minRole: 0 },
-  { href: "/orders", labelKey: "nav.orders", icon: ShoppingCart, hasSubItems: true, minRole: 0 },
-  { href: "/subscriptions", labelKey: "subscription.title", icon: Crown, minRole: 0 },
-  { href: "/help", labelKey: "nav.help", icon: HelpCircle, minRole: 0 },
-];
+interface NavGroup {
+  id: string;
+  labelKey: string;
+  items: NavItem[];
+}
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const closeSidebar = useAppStore((s) => s.closeSidebar);
   const user = useAuthStore((s) => s.user);
   const _ = useT();
+  const locale = useI18nStore((s) => s.locale);
 
   const isBroadcastPage = pathname.startsWith("/broadcast");
   const isOrdersPage = pathname.startsWith("/orders");
@@ -100,6 +103,11 @@ export function Sidebar() {
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [ordersOpen, setOrdersOpen] = useState(isOrdersPage);
   const [adminOpen, setAdminOpen] = useState(isAdminPage);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+  const profileRef = useRef<HTMLDivElement>(null);
+  const logout = useAuthStore((s) => s.logout);
 
   // Auto-open sections on mount
   useEffect(() => {
@@ -121,9 +129,124 @@ export function Sidebar() {
     }
   }, []);
 
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   function handleNavClick() {
     if (window.innerWidth < 1024) closeSidebar();
   }
+
+  function confirmLogout() {
+    setShowLogoutDialog(false);
+    logout();
+  }
+
+  const initials = user?.full_name
+    ? user.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email?.slice(0, 2).toUpperCase() || "U";
+
+  // Role details mapping
+  const roleDisplay = {
+    owner: { icon: Shield, text: "Owner", color: "text-rose-400 bg-rose-950/40 border-rose-900/50" },
+    premium: { icon: Crown, text: "Premium", color: "text-amber-400 bg-amber-950/40 border-amber-900/50" },
+    pro: { icon: Star, text: "Pro", color: "text-blue-400 bg-blue-950/40 border-blue-900/50" },
+    basic: { icon: User, text: "Basic", color: "text-slate-400 bg-slate-900 border-slate-800" },
+  };
+  const userRole = user?.role || "basic";
+  const RoleIcon = roleDisplay[userRole as keyof typeof roleDisplay]?.icon || User;
+  const roleColor = roleDisplay[userRole as keyof typeof roleDisplay]?.color || roleDisplay.basic.color;
+  const roleText = roleDisplay[userRole as keyof typeof roleDisplay]?.text || "Basic";
+
+  // Navigation grouping
+  const navGroups: NavGroup[] = [
+    {
+      id: "main",
+      labelKey: locale === "id" ? "MENU UTAMA" : "MAIN MENU",
+      items: [
+        { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, minRole: 0 },
+        { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, minRole: 0 },
+        { href: "/chats", labelKey: "nav.chats", icon: MessageSquare, minRole: 0 },
+        { href: "/contacts", labelKey: "nav.contacts", icon: Users, minRole: 1 },
+        { href: "/groups-channels", labelKey: "nav.groupsChannels", icon: Hash, minRole: 0 },
+      ],
+    },
+    {
+      id: "automation",
+      labelKey: locale === "id" ? "AUTOMASI" : "AUTOMATION",
+      items: [
+        { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 1 },
+        { href: "/invite", labelKey: "invite.navLabel", icon: UserPlus, minRole: 1 },
+        {
+          href: "/broadcast",
+          labelKey: "nav.broadcast",
+          icon: Send,
+          hasSubItems: true,
+          subItems: broadcastSubItems,
+          minRole: 0,
+        },
+      ],
+    },
+    {
+      id: "billing",
+      labelKey: locale === "id" ? "PEMBAYARAN & INFO" : "BILLING & INFO",
+      items: [
+        {
+          href: "/orders",
+          labelKey: "nav.orders",
+          icon: ShoppingCart,
+          hasSubItems: true,
+          subItems: ordersSubItems,
+          minRole: 0,
+        },
+        { href: "/subscriptions", labelKey: "subscription.title", icon: Crown, minRole: 0 },
+      ],
+    },
+    {
+      id: "support",
+      labelKey: locale === "id" ? "DUKUNGAN" : "SUPPORT",
+      items: [
+        { href: "/help", labelKey: "nav.help", icon: HelpCircle, minRole: 0 },
+      ],
+    },
+  ];
+
+  // Add admin group if owner
+  if (user?.role === "owner") {
+    navGroups.push({
+      id: "admin",
+      labelKey: locale === "id" ? "ADMINISTRASI" : "ADMINISTRATION",
+      items: [
+        {
+          href: "/admin",
+          labelKey: "admin.title",
+          icon: Shield,
+          hasSubItems: true,
+          subItems: adminSubItems,
+          minRole: 3,
+        },
+      ],
+    });
+  }
+
+  const getSubmenuState = (href: string) => {
+    if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
+    if (href.startsWith("/orders")) return { isOpen: ordersOpen, setIsOpen: setOrdersOpen };
+    if (href.startsWith("/admin")) return { isOpen: adminOpen, setIsOpen: setAdminOpen };
+    return { isOpen: false, setIsOpen: () => {} };
+  };
 
   return (
     <>
@@ -131,225 +254,328 @@ export function Sidebar() {
       <div
         className={cn(
           "fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300 ease-in-out",
-          sidebarOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
-        onClick={toggleSidebar}
+        onClick={closeSidebar}
       />
 
       <aside
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-950 border-r border-slate-900 flex flex-col transition-all duration-300 ease-in-out text-slate-300",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:overflow-hidden lg:border-0"
+          "fixed lg:static inset-y-0 left-0 z-50 bg-slate-950 border-r border-slate-900 flex flex-col transition-all duration-300 ease-in-out text-slate-300 group/sidebar relative shrink-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-[72px]",
+          sidebarOpen ? "w-64" : "w-64 lg:w-[72px]"
         )}
       >
+        {/* Sidebar rail collapse button (visible on hover on desktop) */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute right-[-12px] top-6 z-50 w-6 h-6 rounded-full border border-slate-800 bg-slate-950 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-900 cursor-pointer shadow-md transition-all duration-200 opacity-0 group-hover/sidebar:opacity-100 hidden lg:flex active:scale-95"
+          aria-label="Toggle Sidebar"
+        >
+          {sidebarOpen ? (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+        </button>
+
         {/* Header (Logo + Title) */}
-        <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center font-bold text-white shadow-lg shadow-primary-600/20 mr-3">
+        <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0 relative overflow-hidden">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center font-bold text-white shadow-lg shadow-primary-600/20 shrink-0 select-none">
             T
           </div>
-          <span className="text-xl font-bold text-white tracking-tight">TeleBos</span>
+          {sidebarOpen && (
+            <span className="text-xl font-bold text-white tracking-tight ml-3 animate-in fade-in slide-in-from-left-2 duration-200">
+              TeleBos
+            </span>
+          )}
           {/* Close button (mobile) */}
-          <button onClick={toggleSidebar} className="p-1.5 ml-auto hover:bg-slate-900 text-slate-400 hover:text-white rounded-lg transition-colors lg:hidden">
+          <button
+            onClick={closeSidebar}
+            className="p-1.5 ml-auto hover:bg-slate-900 text-slate-400 hover:text-white rounded-lg transition-colors lg:hidden"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          {navItems
-            .filter((item) => {
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto scrollbar-thin">
+          {navGroups.map((group, groupIdx) => {
+            // Filter items in the group by user role
+            const visibleItems = group.items.filter((item) => {
               const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
               return userLevel >= (item.minRole ?? 0);
-            })
-            .map((item) => {
-            if (item.hasSubItems) {
-              const isActive = pathname.startsWith(item.href);
-              const isOpen = item.href === "/broadcast" ? broadcastOpen : ordersOpen;
-              const setIsOpen = item.href === "/broadcast" ? setBroadcastOpen : setOrdersOpen;
-              const subItems = item.href === "/broadcast" ? broadcastSubItems : ordersSubItems;
-              return (
-                <div key={item.href}>
-                  <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={cn(
-                      "flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200 group",
-                      isActive
-                        ? "bg-primary-600 text-white shadow-lg shadow-primary-600/15"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                    )}
-                  >
-                    <item.icon className={cn("h-4.5 w-4.5 flex-shrink-0 transition-colors", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-100")} />
-                    <span className="flex-1 text-left">{_(item.labelKey)}</span>
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform duration-200",
-                        isOpen && "rotate-180"
-                      )}
-                    />
-                  </button>
+            });
 
-                  {/* Submenu with slide animation */}
-                  <div
-                    className={cn(
-                      "ml-4 mt-1 space-y-0.5 border-l border-slate-800 pl-3 overflow-hidden transition-all duration-300 ease-in-out",
-                      isOpen
-                        ? "max-h-80 opacity-100"
-                        : "max-h-0 opacity-0"
-                    )}
-                  >
-                    {subItems.map((sub) => {
-                        const isSubActive =
-                          sub.href === "/broadcast/new"
-                            ? pathname === "/broadcast/new"
-                            : sub.href === "/orders"
-                            ? pathname === "/orders"
-                            : pathname.startsWith(sub.href);
-                        return (
-                          <Link
-                            key={sub.href}
-                            href={sub.href}
-                            onClick={handleNavClick}
-                            className={cn(
-                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                              isSubActive
-                                ? "bg-primary-600/20 text-white"
-                                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                            )}
-                          >
-                            <sub.icon className="h-3.5 w-3.5 flex-shrink-0" />
-                            {_(sub.labelKey)}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                </div>
-              );
-            }
+            if (visibleItems.length === 0) return null;
 
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={handleNavClick}
-                className={cn(
-                  "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
-                  isActive
-                    ? "bg-primary-600 text-white shadow-lg shadow-primary-600/15"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+              <div key={group.id} className="space-y-1">
+                {/* Group Title or Divider */}
+                {sidebarOpen ? (
+                  <div className="text-[10px] font-bold text-slate-500 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
+                    {group.labelKey}
+                  </div>
+                ) : (
+                  groupIdx > 0 && <div className="border-t border-slate-900/60 my-3 mx-2" />
                 )}
-              >
-                <item.icon className={cn("h-4.5 w-4.5 flex-shrink-0 transition-colors", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-100")} />
-                {_(item.labelKey)}
-              </Link>
+
+                {visibleItems.map((item) => {
+                  const isActive =
+                    item.href === "/dashboard"
+                      ? pathname === "/dashboard"
+                      : pathname.startsWith(item.href);
+
+                  if (item.hasSubItems && item.subItems) {
+                    const { isOpen, setIsOpen } = getSubmenuState(item.href);
+
+                    return (
+                      <div key={item.href} className="relative group/item">
+                        <button
+                          onClick={() => {
+                            if (!sidebarOpen) {
+                              // Expand sidebar and open submenu
+                              toggleSidebar();
+                              setIsOpen(true);
+                            } else {
+                              setIsOpen(!isOpen);
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200 text-left relative",
+                            isActive
+                              ? "bg-primary-500/10 text-primary-400 border-l-2 border-primary-500 pl-[10px] rounded-l-none"
+                              : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100 pl-3"
+                          )}
+                        >
+                          <item.icon
+                            className={cn(
+                              "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+                              isActive ? "text-primary-400" : "text-slate-400 group-hover/item:text-slate-100"
+                            )}
+                          />
+                          {sidebarOpen ? (
+                            <>
+                              <span className="flex-1 text-left truncate">{_(item.labelKey)}</span>
+                              <ChevronDown
+                                className={cn(
+                                  "h-3.5 w-3.5 transition-transform duration-200 shrink-0",
+                                  isOpen && "rotate-180"
+                                )}
+                              />
+                            </>
+                          ) : (
+                            isActive && (
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-500 rounded-r-md" />
+                            )
+                          )}
+                        </button>
+
+                        {/* Collapsed Tooltip */}
+                        {!sidebarOpen && (
+                          <div className="absolute left-[56px] top-1/2 -translate-y-1/2 bg-slate-900 border border-slate-800 text-white text-xs font-semibold py-1.5 px-3 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:pointer-events-auto transition-all duration-150 translate-x-2 group-hover/item:translate-x-0 whitespace-nowrap z-50">
+                            {_(item.labelKey)}
+                          </div>
+                        )}
+
+                        {/* Submenu Accordion */}
+                        {sidebarOpen && (
+                          <AnimatePresence initial={false}>
+                            {isOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden"
+                              >
+                                {item.subItems.map((sub) => {
+                                  const isSubActive =
+                                    sub.href === "/broadcast/new"
+                                      ? pathname === "/broadcast/new"
+                                      : sub.href === "/orders"
+                                      ? pathname === "/orders"
+                                      : pathname.startsWith(sub.href);
+                                  return (
+                                    <Link
+                                      key={sub.href}
+                                      href={sub.href}
+                                      onClick={handleNavClick}
+                                      className={cn(
+                                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                                        isSubActive
+                                          ? "bg-primary-500/10 text-white font-semibold"
+                                          : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                                      )}
+                                    >
+                                      <sub.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                                      <span className="truncate">{_(sub.labelKey)}</span>
+                                    </Link>
+                                  );
+                                })}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={item.href} className="relative group/item">
+                      <Link
+                        href={item.href}
+                        onClick={handleNavClick}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative",
+                          isActive
+                            ? "bg-primary-500/10 text-primary-400 border-l-2 border-primary-500 pl-[10px] rounded-l-none"
+                            : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100 pl-3"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+                            isActive ? "text-primary-400" : "text-slate-400 group-hover/item:text-slate-100"
+                          )}
+                        />
+                        {sidebarOpen ? (
+                          <span className="truncate">{_(item.labelKey)}</span>
+                        ) : (
+                          isActive && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-500 rounded-r-md" />
+                          )
+                        )}
+                      </Link>
+
+                      {/* Collapsed Tooltip */}
+                      {!sidebarOpen && (
+                        <div className="absolute left-[56px] top-1/2 -translate-y-1/2 bg-slate-900 border border-slate-800 text-white text-xs font-semibold py-1.5 px-3 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:pointer-events-auto transition-all duration-150 translate-x-2 group-hover/item:translate-x-0 whitespace-nowrap z-50">
+                          {_(item.labelKey)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             );
           })}
-          {/* Admin section - only visible to owner */}
-          {user?.role === "owner" && (
-            <div className="pt-2 mt-2 border-t border-slate-800">
-              <button
-                onClick={() => setAdminOpen(!adminOpen)}
-                className={cn(
-                  "flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200 group",
-                  isAdminPage
-                    ? "bg-primary-600 text-white shadow-lg shadow-primary-600/15"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                )}
-              >
-                <Shield className="h-4.5 w-4.5 flex-shrink-0" />
-                <span className="flex-1 text-left">{_("admin.title")}</span>
+        </nav>
+
+        {/* Footer (Profile Section) */}
+        <div className="p-3 border-t border-slate-900 shrink-0 relative" ref={profileRef}>
+          {/* Profile Card */}
+          <button
+            onClick={() => setProfileOpen(!profileOpen)}
+            className={cn(
+              "flex items-center gap-3 w-full p-2 hover:bg-slate-900/60 rounded-xl transition-all duration-200 text-left active:scale-98 select-none",
+              !sidebarOpen && "justify-center px-0 hover:bg-slate-900"
+            )}
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-semibold shadow-md shrink-0">
+              {initials}
+            </div>
+            {sidebarOpen && (
+              <>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {user?.full_name || _("navbar.user")}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                </div>
                 <ChevronDown
                   className={cn(
-                    "h-3.5 w-3.5 transition-transform duration-200",
-                    adminOpen && "rotate-180"
+                    "h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0",
+                    profileOpen && "rotate-180"
                   )}
                 />
-              </button>
+              </>
+            )}
+          </button>
 
-              {/* Admin submenu */}
-              <div
+          {/* Floating Dropdown Popover */}
+          <AnimatePresence>
+            {profileOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
                 className={cn(
-                  "ml-4 mt-1 space-y-0.5 border-l border-slate-800 pl-3 overflow-hidden transition-all duration-300 ease-in-out",
-                  adminOpen
-                    ? "max-h-80 opacity-100"
-                    : "max-h-0 opacity-0"
+                  "absolute bottom-16 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-3 z-50 text-slate-300",
+                  sidebarOpen ? "left-3 right-3" : "left-2 w-56"
                 )}
               >
-                <Link
-                  href="/admin"
-                  onClick={handleNavClick}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    pathname === "/admin"
-                      ? "bg-primary-600/20 text-white"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                  )}
-                >
-                  <BarChart3 className="h-3.5 w-3.5 flex-shrink-0" />
-                  {_("admin.overview")}
-                </Link>
-                <Link
-                  href="/admin/users"
-                  onClick={handleNavClick}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    pathname === "/admin/users"
-                      ? "bg-primary-600/20 text-white"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                  )}
-                >
-                  <Users className="h-3.5 w-3.5 flex-shrink-0" />
-                  {_("admin.users")}
-                </Link>
-                <Link
-                  href="/admin/smm"
-                  onClick={handleNavClick}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    pathname.startsWith("/admin/smm")
-                      ? "bg-primary-600/20 text-white"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                  )}
-                >
-                  <Package className="h-3.5 w-3.5 flex-shrink-0" />
-                  {_("adminSmm.services")}
-                </Link>
-                <Link
-                  href="/admin/redeem-codes"
-                  onClick={handleNavClick}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    pathname === "/admin/redeem-codes"
-                      ? "bg-primary-600/20 text-white"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                  )}
-                >
-                  <Ticket className="h-3.5 w-3.5 flex-shrink-0" />
-                  {_("adminRedeem.title")}
-                </Link>
-                <Link
-                  href="/admin/redeem-logs"
-                  onClick={handleNavClick}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    pathname === "/admin/redeem-logs"
-                      ? "bg-primary-600/20 text-white"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-                  )}
-                >
-                  <ClipboardList className="h-3.5 w-3.5 flex-shrink-0" />
-                  {_("adminRedeem.logs")}
-                </Link>
-              </div>
-            </div>
-          )}
-        </nav>
+                {/* Profile Details */}
+                <div className="px-2 py-2 border-b border-slate-850 mb-2">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-semibold shadow-md">
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-white truncate">
+                        {user?.full_name || _("navbar.user")}
+                      </p>
+                      <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                  {/* Role Badge */}
+                  <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[9px] font-extrabold uppercase tracking-wider", roleColor)}>
+                    <RoleIcon className="h-2.5 w-2.5 shrink-0" />
+                    {roleText}
+                  </div>
+                </div>
+
+                {/* Wallet / Balance */}
+                <div className="px-2 py-1.5 border-b border-slate-850 mb-2">
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-emerald-400">
+                    <Wallet className="h-3.5 w-3.5 shrink-0" />
+                    <span className="text-[11px] font-medium truncate">
+                      Balance: <span className="font-bold">{(user?.balance || 0).toLocaleString()}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      router.push("/settings");
+                    }}
+                    className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors group text-left"
+                  >
+                    <Settings className="h-3.5 w-3.5 text-slate-400 group-hover:text-white shrink-0" />
+                    <span>{_("navbar.settings")}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      setShowLogoutDialog(true);
+                    }}
+                    className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 rounded-lg transition-colors group text-left"
+                  >
+                    <LogOut className="h-3.5 w-3.5 text-rose-500 group-hover:text-rose-400 shrink-0" />
+                    <span>{_("navbar.logout")}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </aside>
+
+      <ConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        onConfirm={confirmLogout}
+        title={_("navbar.logoutTitle")}
+        message={_("navbar.logoutConfirm")}
+        confirmText={_("navbar.yesLogout")}
+        cancelText={_("navbar.cancel")}
+        variant="danger"
+      />
     </>
   );
 }
+
