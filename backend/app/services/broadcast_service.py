@@ -376,92 +376,112 @@ async def _account_for_log(db: AsyncSession, account_id: str) -> TelegramAccount
     )
     return res.scalar_one_or_none()
 
-async def _resolve_and_join(client, item_type: str, group_identifier: str, telethon_mod):
-    """Resolve a group entity, joining it first if needed.
-    
-    Returns (entity, error_tuple_or_None, exception_or_None).
-    """
-    entity = None
+def _invite_hash(target: str) -> str | None:
+    text = target.strip()
+    if "joinchat/" in text:
+        return text.split("joinchat/", 1)[1].split("?", 1)[0].strip("/")
+    if "t.me/+" in text:
+        return text.split("t.me/+", 1)[1].split("?", 1)[0].strip("/")
+    if text.startswith("+"):
+        return text[1:].split("?", 1)[0].strip("/")
+    return None
 
-    if item_type == "username" and group_identifier:
-        # Try resolving first
+
+def _chatlist_slug(target: str) -> str | None:
+    text = target.strip()
+    if "t.me/addlist/" in text:
+        return text.split("t.me/addlist/", 1)[1].split("?", 1)[0].strip("/")
+    if "telegram.me/addlist/" in text:
+        return text.split("telegram.me/addlist/", 1)[1].split("?", 1)[0].strip("/")
+    if text.startswith("addlist/"):
+        return text.split("addlist/", 1)[1].split("?", 1)[0].strip("/")
+    return None
+
+
+def _public_target(target: str) -> str:
+    text = target.strip()
+    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+            break
+    return text.lstrip("@").split("?", 1)[0].strip("/")
+
+
+def _chatlist_peers(invite) -> list:
+    if hasattr(invite, "peers"):
+        return list(invite.peers or [])
+    peers = []
+    peers.extend(getattr(invite, "missing_peers", []) or [])
+    peers.extend(getattr(invite, "already_peers", []) or [])
+    return peers
+
+
+async def _join_and_resolve_chatlist(client, target: str) -> list:
+    from telethon.tl.functions.chatlists import CheckChatlistInviteRequest, JoinChatlistInviteRequest
+
+    slug = _chatlist_slug(target)
+    if not slug:
+        return []
+
+    invite = await client(CheckChatlistInviteRequest(slug))
+    peers = _chatlist_peers(invite)
+    input_peers = []
+    for peer in peers:
         try:
-            entity = await client.get_entity(group_identifier)
+            input_peers.append(await client.get_input_entity(peer))
         except Exception:
             pass
 
-        if entity is None:
-            # Not resolved — try joining by username
-            try:
-                identifier = group_identifier.lstrip("@")
-                await client(telethon_mod.tl.functions.channels.JoinChannelRequest(identifier))
-                entity = await client.get_entity(group_identifier)
-            except Exception as join_exc:
-                return None, classify_telegram_error(join_exc), join_exc
-
-    elif item_type == "link":
-        # Check if it's a public link (e.g., https://t.me/my_group)
-        is_tme_link = group_identifier.startswith("https://t.me/") or group_identifier.startswith("http://t.me/") or group_identifier.startswith("t.me/")
-        if is_tme_link and "+" not in group_identifier and "joinchat" not in group_identifier:
-            username = group_identifier.rstrip("/").split("/")[-1]
-            return await _resolve_and_join(client, "username", username, telethon_mod)
-
-        # Try to resolve first to avoid UserAlreadyParticipantError
+    if input_peers:
         try:
-            entity = await client.get_entity(group_identifier)
-            return entity, None, None
+            await client(JoinChatlistInviteRequest(slug, input_peers))
         except Exception:
             pass
 
-        # Invite link (https://t.me/+xxx or https://t.me/joinchat/xxx)
-        clean_url = group_identifier.rstrip("/")
-        invite_hash = clean_url.split("/")[-1] if "/" in clean_url else clean_url
-        invite_hash = invite_hash.lstrip("+")
-
+    entities = []
+    for peer in peers:
         try:
-            # Try checking the invite first
-            try:
-                invite_info = await client(telethon_mod.tl.functions.messages.CheckChatInviteRequest(hash=invite_hash))
-                # If already a member, we get ChatInviteAlready
-                if isinstance(invite_info, telethon_mod.tl.types.ChatInviteAlready):
-                    entity = invite_info.chat
-                else:
-                    # Need to join
-                    join_result = await client(telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash))
-                    if hasattr(join_result, "chats") and join_result.chats:
-                        entity = join_result.chats[0]
-            except telethon_mod.errors.UserAlreadyParticipantError:
-                # Already joined, just return the entity (since CheckChatInviteRequest threw)
-                # It means get_entity above failed (maybe network issue, or dialogs not synced)
-                # Let's try get_entity again, but wait this shouldn't happen unless we are in the group
-                pass # it's fine
-            except Exception as check_exc:
-                # Maybe already joined  try get_entity from the error or just import
-                try:
-                    join_result = await client(telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash))
-                    if hasattr(join_result, "chats") and join_result.chats:
-                        entity = join_result.chats[0]
-                except telethon_mod.errors.UserAlreadyParticipantError:
-                    pass
-                except Exception as join_exc:
-                    return None, classify_telegram_error(join_exc), join_exc
-            
-            # If we still don't have entity but we know we joined/already member, try get_entity again
-            if not entity:
-                try:
-                    entity = await client.get_entity(group_identifier)
-                except Exception as e:
-                    return None, classify_telegram_error(e), e
-        except Exception as exc:
-            return None, classify_telegram_error(exc), exc
+            entities.append(await client.get_entity(peer))
+        except Exception:
+            pass
+    return entities
 
-    elif item_type == "group_id":
+
+async def _join_and_resolve_target(client, target: str):
+    from telethon.tl.functions.channels import JoinChannelRequest
+    from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
+
+    invite = _invite_hash(target)
+    if invite:
         try:
-            entity = await client.get_entity(int(group_identifier))
-        except Exception as exc:
-            return None, classify_telegram_error(exc), exc
+            updates = await client(ImportChatInviteRequest(invite))
+            if getattr(updates, "chats", None):
+                return updates.chats[0]
+        except Exception:
+            invite_info = await client(CheckChatInviteRequest(invite))
+            chat = getattr(invite_info, "chat", None)
+            if chat:
+                return chat
+            raise
 
-    return entity, None, None
+    public = _public_target(target)
+    if public.lstrip("-").isdigit():
+        return await client.get_entity(int(public))
+    try:
+        updates = await client(JoinChannelRequest(public))
+        if getattr(updates, "chats", None):
+            return updates.chats[0]
+    except Exception:
+        pass
+    return await client.get_entity(public)
+
+
+async def _broadcast_entities_for_target(client, target: str) -> list:
+    if _chatlist_slug(target):
+        entities = await _join_and_resolve_chatlist(client, target)
+        if entities:
+            return entities
+    return [await _join_and_resolve_target(client, target)]
 
 
 async def execute_broadcast(job_id: str):
@@ -556,7 +576,8 @@ async def execute_broadcast(job_id: str):
                         "account_id": acc_id_str,
                         "account_name": f"{account.first_name or ''} ({account.phone or ''})",
                         "client": client,
-                        "cooldown_until": 0.0
+                        "cooldown_until": 0.0,
+                        "join_cooldown_until": 0.0
                     })
                 except Exception as connect_exc:
                     logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
@@ -606,18 +627,28 @@ async def execute_broadcast(job_id: str):
                         if job.status in ("cancelled", "paused"):
                             break
 
-                        # Find ready account
+                        # Find ready account for joining (must not be on global cooldown or join cooldown)
                         selected_acc = None
                         now_ts = time.time()
-                        ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
-                        if ready_accs:
-                            for offset in range(len(active_accounts)):
-                                i_idx = (current_acc_idx + offset) % len(active_accounts)
-                                candidate = active_accounts[i_idx]
-                                if now_ts >= candidate["cooldown_until"]:
-                                    selected_acc = candidate
-                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                    break
+                        ready_accs = [
+                            a for a in active_accounts 
+                            if now_ts >= a["cooldown_until"] and now_ts >= a.get("join_cooldown_until", 0.0)
+                        ]
+                        if not ready_accs:
+                            # No accounts can join right now. Keep all remaining in still_pending.
+                            still_pending[pkey] = pitem
+                            for k, v in pending_pool.items():
+                                if k not in newly_joined and k not in joined_pool:
+                                    still_pending[k] = v
+                            break
+
+                        for offset in range(len(active_accounts)):
+                            i_idx = (current_acc_idx + offset) % len(active_accounts)
+                            candidate = active_accounts[i_idx]
+                            if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
+                                selected_acc = candidate
+                                current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                break
 
                         if not selected_acc:
                             still_pending[pkey] = pitem
@@ -625,40 +656,35 @@ async def execute_broadcast(job_id: str):
 
                         client = selected_acc["client"]
                         try:
-                            # Try get_entity first — join limit may have expired
-                            entity_retry = await client.get_entity(pitem["group_identifier"])
-                            joined_pool[pkey] = entity_retry
-                            newly_joined.append(pkey)
-                            await _push_broadcast(job_id, "pending_joined", {
-                                "group": pitem["group_identifier"],
-                                "message": f"Retry join successful for {pitem['group_identifier']}",
-                            })
-                        except Exception:
-                            # get_entity failed — try auto-join
-                            entity_retry, resolve_err, resolve_exc = await _resolve_and_join(
-                                client, pitem["item_type"], pitem["group_identifier"], telethon
-                            )
-                            if resolve_err is not None:
-                                err_type, _ = resolve_err
-                                if err_type in ("flood", "peer_flood", "slowmode"):
-                                    still_pending[pkey] = pitem
-                                    wait = 30
-                                    if hasattr(resolve_exc, "seconds"):
-                                        wait = resolve_exc.seconds
-                                    if err_type in ("flood", "peer_flood"):
-                                        fc.record_flood(str(selected_acc["account_id"]), wait)
-                                    selected_acc["cooldown_until"] = time.time() + wait
-                                    await _interruptible_sleep(job_id, wait)
-                                    continue
-                                elif err_type == "already_invited":
-                                    joined_pool[pkey] = entity_retry or True
-                                    newly_joined.append(pkey)
-                                    continue
-                                # Permanent error — leave out of pool entirely
-                                continue
-                            else:
-                                joined_pool[pkey] = entity_retry
+                            # Try resolving/joining using the new logic
+                            entities_retry = await _broadcast_entities_for_target(client, pitem["group_identifier"])
+                            if entities_retry:
+                                joined_pool[pkey] = entities_retry
                                 newly_joined.append(pkey)
+                                await _push_broadcast(job_id, "pending_joined", {
+                                    "group": pitem["group_identifier"],
+                                    "message": f"Retry join successful for {pitem['group_identifier']}",
+                                })
+                            else:
+                                still_pending[pkey] = pitem
+                        except Exception as resolve_exc:
+                            resolve_err = classify_telegram_error(resolve_exc)
+                            err_type, _ = resolve_err
+                            if err_type in ("flood", "peer_flood", "slowmode"):
+                                still_pending[pkey] = pitem
+                                wait = 30
+                                if hasattr(resolve_exc, "seconds"):
+                                    wait = resolve_exc.seconds
+                                
+                                # Record join flood wait on this account
+                                selected_acc["join_cooldown_until"] = time.time() + wait
+                                continue
+                            elif err_type == "already_invited":
+                                joined_pool[pkey] = True
+                                newly_joined.append(pkey)
+                                continue
+                            # Permanent error — leave out of pool entirely
+                            continue
 
                     pending_pool = still_pending
 
@@ -683,13 +709,31 @@ async def execute_broadcast(job_id: str):
                         now_ts = time.time()
                         ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
                         if ready_accs:
-                            for offset in range(len(active_accounts)):
-                                i_idx = (current_acc_idx + offset) % len(active_accounts)
-                                candidate = active_accounts[i_idx]
-                                if now_ts >= candidate["cooldown_until"]:
-                                    selected_acc = candidate
-                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                    break
+                            target_val = item.get("value", "") or ""
+                            target_type = item.get("type", "username")
+                            target_pkey = f"{target_type}:{target_val}"
+                            is_target_joined = target_pkey in joined_pool
+
+                            # If target is not yet joined, prefer an account not on join cooldown
+                            if not is_target_joined:
+                                for offset in range(len(active_accounts)):
+                                    i_idx = (current_acc_idx + offset) % len(active_accounts)
+                                    candidate = active_accounts[i_idx]
+                                    if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
+                                        selected_acc = candidate
+                                        current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                        break
+
+                            # Select next ready account if none selected yet
+                            if not selected_acc:
+                                for offset in range(len(active_accounts)):
+                                    i_idx = (current_acc_idx + offset) % len(active_accounts)
+                                    candidate = active_accounts[i_idx]
+                                    if now_ts >= candidate["cooldown_until"]:
+                                        selected_acc = candidate
+                                        current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                        break
+
                             if selected_acc:
                                 break
 
@@ -757,109 +801,80 @@ async def execute_broadcast(job_id: str):
                     else:
                         chosen_text = ""
 
+                    # If we need to resolve/join, but the selected account is on join cooldown
+                    if cached_entity is None and time.time() < selected_acc.get("join_cooldown_until", 0.0):
+                        log.status = "error"
+                        log.error_type = "join_cooldown"
+                        log.error_message = "Skipped join: account is on join limit/cooldown"
+                        log.sent_at = datetime.now(timezone.utc)
+                        db.add(log)
+                        failed += 1
+                        
+                        # Put in pending pool to retry next cycle
+                        pending_pool[pkey] = {
+                            "group_identifier": group_identifier,
+                            "item_type": item_type,
+                        }
+                        
+                        # Update progress + push to WS, then continue
+                        job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
+                        job.sent_count = sent
+                        job.fail_count = failed
+                        await db.commit()
+
+                        await _push_broadcast(job_id, "progress", {
+                            "current": idx + 1,
+                            "total": total,
+                            "progress": job.progress,
+                            "sent": sent,
+                            "failed": failed,
+                            "cycle": current_cycle,
+                            "status": job.status,
+                        })
+                        await _push_broadcast(job_id, "log", {
+                            "group": group_identifier,
+                            "status": log.status,
+                            "error_type": log.error_type,
+                            "text": log.sent_text,
+                            "cycle": current_cycle,
+                            "account_id_used": acc_id_str,
+                            "account_name": acc_name,
+                        })
+                        continue
+
+                    entities = None
                     try:
-                        # Use cached entity if already joined (skip _resolve_and_join entirely)
+                        # Use cached entities if already joined (skip resolution entirely)
                         if cached_entity is not None:
-                            entity = cached_entity
-                            resolve_err = None
-                            resolve_exc = None
+                            entities = cached_entity
                         else:
-                            # Resolve entity (auto-join if needed)
-                            entity, resolve_err, resolve_exc = await _resolve_and_join(
-                                client, item_type, group_identifier, telethon
-                            )
+                            # Resolve target to a list of entities (auto-join if needed)
+                            entities = await _broadcast_entities_for_target(client, group_identifier)
+                            if not entities:
+                                raise ValueError(f"Could not resolve any entities for: {group_identifier}")
 
-                        if resolve_err is not None:
-                            err_type, err_msg = resolve_err
+                    except Exception as resolve_exc:
+                        err_type, err_msg = classify_telegram_error(resolve_exc)
 
-                            # If it's just waiting for admin approval, it's not a failure
-                            if err_type in ("invite_request_sent", "already_invited"):
-                                log.status = "success"
-                                log.error_type = err_type
-                                log.error_message = err_msg
-                                log.sent_at = datetime.now(timezone.utc)
-                                db.add(log)
-                                sent += 1
+                        # If we failed during resolution with a retryable error, put it in pending_pool
+                        if err_type in ("flood", "peer_flood", "slowmode", "admin_only", "must_join_discussion", "guest_restricted", "send_restricted"):
+                            pkey = f"{item_type}:{group_identifier}"
+                            pending_pool[pkey] = {
+                                "group_identifier": group_identifier,
+                                "item_type": item_type,
+                            }
 
-                                job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                                job.sent_count = sent
-                                job.fail_count = failed
-                                await db.commit()
-
-                                await _push_broadcast(job_id, "log", {
-                                    "group": group_identifier,
-                                    "status": "success",
-                                    "error_type": err_type,
-                                    "text": log.sent_text,
-                                    "cycle": current_cycle,
-                                    "account_id_used": acc_id_str,
-                                    "account_name": acc_name,
-                                })
-                                continue
-
-                            # ── Retryable errors (flood/slowmode/send restrictions) → add to pending pool ──
-                            # Broadcast continues to other groups without stopping
-                            if err_type in ("flood", "peer_flood", "slowmode", "admin_only", "must_join_discussion", "guest_restricted", "send_restricted"):
-                                pkey = f"{item_type}:{group_identifier}"
-                                pending_pool[pkey] = {
-                                    "group_identifier": group_identifier,
-                                    "item_type": item_type,
-                                }
-                                log.status = "error"
-                                log.error_type = err_type
-                                log.error_message = err_msg
-                                log.sent_at = datetime.now(timezone.utc)
-                                db.add(log)
-                                failed += 1
-
-                                if err_type == "flood":
-                                    wait = 30
-                                    if hasattr(resolve_exc, "seconds"):
-                                        wait = resolve_exc.seconds
-                                    fc.record_flood(acc_id_str, wait)
-                                    selected_acc["cooldown_until"] = time.time() + wait
-                                elif err_type == "peer_flood":
-                                    backoff_time = 7200
-                                    fc.record_flood(acc_id_str, backoff_time)
-                                    selected_acc["cooldown_until"] = time.time() + backoff_time
-                                elif err_type == "slowmode":
-                                    wait = 30
-                                    if hasattr(resolve_exc, "seconds"):
-                                        wait = resolve_exc.seconds
-                                    selected_acc["cooldown_until"] = time.time() + wait
-                                else:
-                                    # admin_only / guest_restricted / must_join_discussion — short cooldown before retry
-                                    wait = job.delay_per_group or 30
-                                    selected_acc["cooldown_until"] = time.time() + wait
-
-                                await db.commit()
-
-                                # Update progress even on error
-                                job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                                job.sent_count = sent
-                                job.fail_count = failed
-                                await db.commit()
-
-                                await _push_broadcast(job_id, "log", {
-                                    "group": group_identifier,
-                                    "status": "error",
-                                    "error_type": err_type,
-                                    "text": log.sent_text,
-                                    "cycle": current_cycle,
-                                    "account_id_used": acc_id_str,
-                                    "account_name": acc_name,
-                                })
-
-                                if job.delay_randomized:
-                                    base_delay = random.randint(5, 30)
-                                else:
-                                    base_delay = job.delay_per_group
-                                flood_delay = fc.get_delay(acc_id_str)
-                                actual_delay = max(base_delay, flood_delay)
-                                await _interruptible_sleep(job_id, actual_delay)
-                                continue
-
-                            # ── Non-retryable errors → log as error permanently ──
+                        # Check for special success-like cases (invite request sent / already invited)
+                        if err_type in ("invite_request_sent", "already_invited"):
+                            log.status = "success"
+                            log.error_type = err_type
+                            log.error_message = err_msg
+                            log.sent_at = datetime.now(timezone.utc)
+                            log.duration_ms = int((time.time() - start_time) * 1000)
+                            db.add(log)
+                            sent += 1
+                        else:
+                            # Standard resolution error
                             log.status = "error"
                             log.error_type = err_type
                             log.error_message = err_msg
@@ -867,175 +882,119 @@ async def execute_broadcast(job_id: str):
                             db.add(log)
                             failed += 1
 
-                            await db.commit()
+                            # If resolution failed due to flood/slowmode, set account join cooldown (NOT global cooldown)
+                            if err_type == "flood":
+                                wait = 30
+                                if hasattr(resolve_exc, "seconds"):
+                                    wait = resolve_exc.seconds
+                                selected_acc["join_cooldown_until"] = time.time() + wait
+                            elif err_type == "peer_flood":
+                                backoff_time = 7200
+                                selected_acc["join_cooldown_until"] = time.time() + backoff_time
+                            elif err_type == "slowmode":
+                                wait = 30
+                                if hasattr(resolve_exc, "seconds"):
+                                    wait = resolve_exc.seconds
+                                selected_acc["join_cooldown_until"] = time.time() + wait
+                    else:
+                        try:
+                            # Send message
+                            if chosen_text:
+                                for entity in entities:
+                                    # Retry loop for transient network/RPC errors
+                                    for retry_attempt in range(2):
+                                        try:
+                                            await client.send_message(entity, chosen_text)
+                                            break # Success
+                                        except telethon.errors.UserNotParticipantError as unpe:
+                                            if retry_attempt == 0:
+                                                # Not a member, try to join now
+                                                try:
+                                                    await client(telethon.errors.channels.JoinChannelRequest(entity))
+                                                    await asyncio.sleep(2)
+                                                    continue # retry send
+                                                except Exception as join_err:
+                                                    raise join_err
+                                            raise
+                                        except (ConnectionError, TimeoutError, OSError) as net_exc:
+                                            if retry_attempt == 0:
+                                                logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id, acc_id_str, net_exc)
+                                                await asyncio.sleep(2)
+                                                continue
+                                            raise
 
-                            # Update progress even on error
-                            job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                            job.sent_count = sent
-                            job.fail_count = failed
-                            await db.commit()
-
-                            await _push_broadcast(job_id, "log", {
-                                "group": group_identifier,
-                                "status": "error",
-                                "error_type": err_type,
-                                "text": log.sent_text,
-                                "cycle": current_cycle,
-                                "account_id_used": acc_id_str,
-                                "account_name": acc_name,
-                            })
-
-                            if job.delay_randomized:
-                                base_delay = random.randint(5, 30)
+                            # Use the first entity's ID for log.group_id
+                            if entities:
+                                try:
+                                    log.group_id = get_peer_id(entities[0])
+                                except Exception:
+                                    log.group_id = getattr(entities[0], "id", None)
                             else:
-                                base_delay = job.delay_per_group
-                            flood_delay = fc.get_delay(acc_id_str)
-                            actual_delay = max(base_delay, flood_delay)
-                            await _interruptible_sleep(job_id, actual_delay)
-                            continue
+                                log.group_id = None
 
-                        if entity is None:
+                            # Register into joined_pool (so next cycle skips join)
+                            if entities:
+                                joined_pool[pkey] = entities
+
+                            log.status = "success"
+                            log.sent_at = datetime.now(timezone.utc)
+                            log.duration_ms = int((time.time() - start_time) * 1000)
+                            log.error_message = None
+                            log.error_type = None
+                            db.add(log)
+                            sent += 1
+
+                            # Reset flood state on success
+                            fc.record_success(acc_id_str)
+
+                        except Exception as exc:
+                            err_type, err_msg = classify_telegram_error(exc)
+
+                            # Even if send fails, the group was resolved/joined — remember for next cycle
+                            if entities:
+                                joined_pool[pkey] = entities
+
                             log.status = "error"
-                            log.error_type = "invalid_target"
-                            log.error_message = f"Could not resolve: {group_identifier}"
+                            log.error_type = err_type
+                            log.error_message = err_msg
                             log.sent_at = datetime.now(timezone.utc)
                             db.add(log)
                             failed += 1
-                            await db.commit()
 
-                            job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                            job.sent_count = sent
-                            job.fail_count = failed
-                            await db.commit()
+                            if err_type == "flood":
+                                wait = 30
+                                if hasattr(exc, "seconds"):
+                                    wait = exc.seconds
+                                fc.record_flood(acc_id_str, wait)
+                                selected_acc["cooldown_until"] = time.time() + wait
+                            elif err_type == "peer_flood":
+                                backoff_time = 7200
+                                fc.record_flood(acc_id_str, backoff_time)
+                                selected_acc["cooldown_until"] = time.time() + backoff_time
+                            elif err_type == "slowmode":
+                                wait = 30
+                                if hasattr(exc, "seconds"):
+                                    wait = exc.seconds
+                                selected_acc["cooldown_until"] = time.time() + wait
 
-                            await _push_broadcast(job_id, "log", {
-                                "group": group_identifier,
-                                "status": "error",
-                                "error_type": "invalid_target",
-                                "text": log.sent_text,
-                                "cycle": current_cycle,
-                                "account_id_used": acc_id_str,
-                                "account_name": acc_name,
-                            })
-
-                            if job.delay_randomized:
-                                base_delay = random.randint(5, 30)
-                            else:
-                                base_delay = job.delay_per_group
-                            flood_delay = fc.get_delay(acc_id_str)
-                            actual_delay = max(base_delay, flood_delay)
-                            await _interruptible_sleep(job_id, actual_delay)
-                            continue
-
-                        # Send message
-                        if chosen_text:
-                            # Retry loop for transient network/RPC errors
-                            for retry_attempt in range(2):
-                                try:
-                                    await client.send_message(entity, chosen_text)
-                                    break # Success
-                                except telethon.errors.UserNotParticipantError as unpe:
-                                    if retry_attempt == 0:
-                                        # Not a member, try to join now
-                                        try:
-                                            await client(telethon_mod.tl.functions.channels.JoinChannelRequest(entity))
-                                            await asyncio.sleep(2)
-                                            continue # retry send
-                                        except Exception as join_err:
-                                            # Join failed, re-raise the original error or the join error
-                                            raise join_err
-                                    raise # Re-raise if second attempt fails
-                                except (ConnectionError, TimeoutError, OSError) as net_exc:
-                                    if retry_attempt == 0:
-                                        logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id, acc_id_str, net_exc)
-                                        await asyncio.sleep(2)
-                                        continue
-                                    raise # Re-raise if second attempt fails
-                                except telethon.errors.RPCError as rpc_exc:
-                                    # Some RPCErrors are transient (like internal server errors),
-                                    # but we shouldn't blindly retry 400s (BadRequest).
-                                    # We'll retry if it's a 500-level error or generic unclassified error.
-                                    err_type, _ = classify_telegram_error(rpc_exc)
-                                    if err_type == "unknown" and getattr(rpc_exc, 'code', 0) >= 500:
-                                        if retry_attempt == 0:
-                                            logger.warning("Server error sending message (job %s, account %s): %s. Retrying once...", job_id, acc_id_str, rpc_exc)
-                                            await asyncio.sleep(2)
-                                            continue
-                                    raise # Re-raise if not retryable or second attempt failed
-
-                        # Convert entity.id to marked peer_id (e.g. -100 prefix for channels/supergroups)
-                        # so that it matches standard Telegram chat IDs, rather than raw integer.
-                        if entity is not None:
-                            try:
-                                log.group_id = get_peer_id(entity)
-                            except Exception:
-                                log.group_id = getattr(entity, "id", None)
-                        else:
-                            log.group_id = None
-
-                        # Register into joined_pool (so next cycle skips join)
-                        if entity is not None:
-                            joined_pool[pkey] = entity
-
-                        log.status = "success"
-                        log.sent_at = datetime.now(timezone.utc)
-                        log.duration_ms = int((time.time() - start_time) * 1000)
-                        log.error_message = None
-                        log.error_type = None
-                        db.add(log)
-                        sent += 1
-
-                        # Reset flood state on success
-                        fc.record_success(acc_id_str)
-
-                    except Exception as exc:
-                        err_type, err_msg = classify_telegram_error(exc)
-
-                        # Even if send fails, the group was resolved/joined � remember for next cycle
-                        if entity is not None:
-                            joined_pool[pkey] = entity
-
-                        log.status = "error"
-                        log.error_type = err_type
-                        log.error_message = err_msg
-                        log.sent_at = datetime.now(timezone.utc)
-                        db.add(log)
-                        failed += 1
-
-                        if err_type == "flood":
-                            wait = 30
-                            if hasattr(exc, "seconds"):
-                                wait = exc.seconds
-                            fc.record_flood(acc_id_str, wait)
-                            selected_acc["cooldown_until"] = time.time() + wait
-                        elif err_type == "peer_flood":
-                            backoff_time = 7200
-                            fc.record_flood(acc_id_str, backoff_time)
-                            selected_acc["cooldown_until"] = time.time() + backoff_time
-                        elif err_type == "slowmode":
-                            wait = 30
-                            if hasattr(exc, "seconds"):
-                                wait = exc.seconds
-                            selected_acc["cooldown_until"] = time.time() + wait
-
-                        if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
-                            await _push_broadcast(job_id, "account_failed", {
-                                "account": acc_name,
-                                "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
-                            })
-                            # Remove from client_pool
-                            from app.services.telegram_client import client_pool
-                            await client_pool.remove(acc_id_str)
-                            # Deactivate account in DB
-                            from app.database import async_session_factory
-                            async with async_session_factory() as db_session:
-                                acc = await _account_for_log(db_session, acc_id_str)
-                                if acc:
-                                    acc.is_active = False
-                                    await db_session.commit()
-                            active_accounts.remove(selected_acc)
-                            if current_acc_idx >= len(active_accounts) and active_accounts:
-                                current_acc_idx = 0
+                            if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
+                                await _push_broadcast(job_id, "account_failed", {
+                                    "account": acc_name,
+                                    "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
+                                })
+                                # Remove from client_pool
+                                from app.services.telegram_client import client_pool
+                                await client_pool.remove(acc_id_str)
+                                # Deactivate account in DB
+                                from app.database import async_session_factory
+                                async with async_session_factory() as db_session:
+                                    acc = await _account_for_log(db_session, acc_id_str)
+                                    if acc:
+                                        acc.is_active = False
+                                        await db_session.commit()
+                                active_accounts.remove(selected_acc)
+                                if current_acc_idx >= len(active_accounts) and active_accounts:
+                                    current_acc_idx = 0
 
                     # Update progress + push to WS
                     job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
