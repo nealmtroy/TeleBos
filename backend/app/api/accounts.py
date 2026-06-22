@@ -360,14 +360,14 @@ async def get_profile_photo(
 
     Public endpoint — Telegram profile photos are public data.
     Protected by per-IP rate limiting (30 req/min) and browser
-    caching (Cache-Control: 1 hour) to prevent abuse.
+    caching (Cache-Control: 1 hour, ETag based on photo_version)
+    to prevent abuse.
     """
-    # Per-IP rate limiting to prevent photo scraping / DDOS
+    # Per-IP rate limiting
     ip = request.client.host if request.client else "unknown"
     if not await rate_limiter.check(f"photo:ip:{ip}"):
         raise HTTPException(status_code=429, detail="Too many requests")
 
-    # Public endpoint — no auth needed (photo is public data)
     from app.models.telegram_account import TelegramAccount
     from sqlalchemy import select
     result = await db.execute(select(TelegramAccount).where(TelegramAccount.id == account_id))
@@ -375,7 +375,15 @@ async def get_profile_photo(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    # Check local cache first
+    # Build ETag from photo_version so URL doesn't need cache-busting
+    etag = f'W/"{account.id}-{account.photo_version}"'
+
+    # If-None-Match — client already has the latest version
+    if_none_match = request.headers.get("If-None-Match")
+    if if_none_match and if_none_match.strip('" ') == etag.strip("W/").strip('" '):
+        return Response(status_code=304)
+
+    # Check local cache
     cached = await account_service.get_cached_photo_path(str(account.id))
     if cached:
         with open(cached, "rb") as f:
@@ -383,7 +391,8 @@ async def get_profile_photo(
                 content=f.read(),
                 media_type="image/jpeg",
                 headers={
-                    "Cache-Control": "public, max-age=3600",       # 1 hour browser cache
+                    "Cache-Control": "public, max-age=3600",
+                    "ETag": etag,
                     "Expires": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + 3600)),
                 },
             )
@@ -391,11 +400,15 @@ async def get_profile_photo(
     # Try to download from Telegram and cache
     data = await account_service.download_and_cache_photo(account)
     if data:
+        # Re-read photo_version after cache (it may have been 0 before)
+        await db.refresh(account)
+        etag = f'W/"{account.id}-{account.photo_version}"'
         return Response(
             content=data,
             media_type="image/jpeg",
             headers={
                 "Cache-Control": "public, max-age=3600",
+                "ETag": etag,
                 "Expires": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + 3600)),
             },
         )

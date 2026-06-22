@@ -314,6 +314,7 @@ export default function AutoReplyPage() {
                     accountId={account.id}
                     firstName={account.first_name}
                     phone={account.phone}
+                    photoVersion={account.photo_version}
                     size="lg"
                   />
                   <div>

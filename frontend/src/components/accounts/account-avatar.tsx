@@ -8,6 +8,7 @@ interface AccountAvatarProps {
   accountId: string;
   firstName?: string | null;
   phone?: string | null;
+  photoVersion?: number;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
@@ -36,11 +37,12 @@ export function AccountAvatar({
   accountId,
   firstName,
   phone,
+  photoVersion,
   size = "md",
   className,
 }: AccountAvatarProps) {
   const [error, setError] = useState(false);
-  const photoUrl = getPhotoUrl(accountId);
+  const photoUrl = getPhotoUrl(accountId, photoVersion);
   const initial = getInitial(firstName, phone);
 
   return (

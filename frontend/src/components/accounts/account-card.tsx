@@ -119,6 +119,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             accountId={account.id}
             firstName={account.first_name}
             phone={account.phone}
+            photoVersion={account.photo_version}
             size="xl"
           />
           <div className="min-w-0 flex-1">

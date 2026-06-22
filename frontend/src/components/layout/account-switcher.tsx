@@ -15,6 +15,7 @@ function Avatar({ account, size = "sm" }: { account: Account; size?: "sm" | "md"
       accountId={account.id}
       firstName={account.first_name}
       phone={account.phone}
+      photoVersion={account.photo_version}
       size={size === "sm" ? "sm" : "lg"}
       className={dim}
     />

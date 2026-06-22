@@ -289,6 +289,7 @@ export default function NewBroadcastPage() {
                       accountId={acc.id}
                       firstName={acc.first_name}
                       phone={acc.phone}
+                      photoVersion={acc.photo_version}
                       size="md"
                     />
                     <div className="flex-1 min-w-0">

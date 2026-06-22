@@ -82,7 +82,7 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
   }
 
   // Try to show photo; fallback to initials on error
-  const photoUrl = getPhotoUrl(accountId);
+  const photoUrl = getPhotoUrl(accountId, account?.photo_version);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">

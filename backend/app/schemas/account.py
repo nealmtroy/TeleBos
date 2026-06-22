@@ -49,6 +49,7 @@ class AccountResponse(BaseModel):
     username: str | None
     bio: str | None
     profile_photo_path: str | None
+    photo_version: int = 0
     phone_verified: bool
     twofa_enabled: bool
     is_active: bool

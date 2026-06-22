@@ -29,6 +29,7 @@ interface Account {
   last_name: string | null;
   username: string | null;
   is_active: boolean;
+  photo_version: number;
 }
 
 export default function DashboardPage() {
@@ -237,6 +238,7 @@ export default function DashboardPage() {
                     accountId={acc.id}
                     firstName={acc.first_name}
                     phone={acc.phone}
+                    photoVersion={acc.photo_version}
                     size="lg"
                     className="border border-primary-100/50"
                   />

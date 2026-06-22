@@ -31,6 +31,7 @@ class TelegramAccount(Base):
     username: Mapped[str | None] = mapped_column(String(255))
     bio: Mapped[str | None] = mapped_column(Text)
     profile_photo_path: Mapped[str | None] = mapped_column(String(500))
+    photo_version: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
 
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     twofa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

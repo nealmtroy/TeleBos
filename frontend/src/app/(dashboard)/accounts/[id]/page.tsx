@@ -12,10 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-function ProfilePhoto({ account }: { account: { id: string; first_name: string | null; phone: string } }) {
+function ProfilePhoto({ account }: { account: { id: string; first_name: string | null; phone: string; photo_version?: number } }) {
   const [error, setError] = useState(false);
   const initials = (account.first_name?.[0] || account.phone?.slice(-2) || "T").toUpperCase();
-  const photoUrl = getPhotoUrl(account.id);
+  const photoUrl = getPhotoUrl(account.id, account.photo_version);
 
   if (error) {
     return (

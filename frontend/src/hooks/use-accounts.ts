@@ -12,6 +12,7 @@ export interface Account {
   username: string | null;
   bio: string | null;
   profile_photo_path: string | null;
+  photo_version: number;
   phone_verified: boolean;
   twofa_enabled: boolean;
   is_active: boolean;
@@ -34,10 +35,17 @@ export interface ApiError {
 
 // ── Photo URL helpers ────────────────────────────────────────────────────────
 // Profile photos are public now — no auth token needed.
+// Use ?v=version so the URL stays stable → browser caching works.
+// When version is 0 (default/unset) we still use a cache-busting t= param
+// for safety, but once a photo_version is known the URL is stable.
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
-export function getPhotoUrl(accountId: string) {
+export function getPhotoUrl(accountId: string, version?: number) {
+  if (version && version > 0) {
+    return `${baseUrl}/accounts/${accountId}/photo?v=${version}`;
+  }
+  // No version yet — fall through to legacy cache-bust
   return `${baseUrl}/accounts/${accountId}/photo?t=${Date.now()}`;
 }
 
