@@ -39,10 +39,12 @@ class TelegramAccount(Base):
     # Marketplace fields
     for_sale: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
     is_sold: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    sell_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
     seller_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     sold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sale_listed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     recovery_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Auto-reply (welcome message) settings

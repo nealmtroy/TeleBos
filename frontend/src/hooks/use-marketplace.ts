@@ -16,6 +16,7 @@ export interface MarketplaceAccountSummary {
   telegram_id: number | null;
   twofa_enabled: boolean;
   recovery_email_available: boolean;
+  sell_price: number | null;
 }
 
 export interface MarketplaceBuyResponse {
@@ -80,9 +81,9 @@ export function useSellEligibleAccounts() {
 export function useSellAccounts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (accountIds: string[]) => {
+    mutationFn: async (accounts: { account_id: string; sell_price: number }[]) => {
       const { data } = await api.post("/marketplace/sell", {
-        account_ids: accountIds,
+        accounts,
       });
       return data;
     },

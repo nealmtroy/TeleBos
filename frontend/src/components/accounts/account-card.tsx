@@ -66,7 +66,10 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const handleSellConfirm = async () => {
     setSelling(true);
     try {
-      await sellAccountsMutation.mutateAsync([account.id]);
+      const sellPrice = pricing?.sell_price || 5500;
+      await sellAccountsMutation.mutateAsync([
+        { account_id: account.id, sell_price: sellPrice },
+      ]);
       await fetchMe();
       setSellOpen(false);
     } catch (err) {
@@ -281,7 +284,8 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         message={
           <div className="space-y-3 text-left">
             <p className="text-sm text-gray-500">
-              {_("orders.confirmSellMsg")}
+              List this account for sale at Rp {pricing?.sell_price?.toLocaleString() || "5,500"}.
+              Your balance will <strong>not</strong> be credited immediately — you'll be paid when a buyer purchases it.
             </p>
             <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
               <div className="flex justify-between">
@@ -291,12 +295,6 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               <div className="flex justify-between">
                 <span>{_("orders.pricePerAccount")}:</span>
                 <span className="font-semibold text-gray-900">
-                  Rp {pricing?.sell_price ? pricing.sell_price.toLocaleString() : "5,500"}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
-                <span className="text-gray-900">{_("orders.balanceToReceive")}:</span>
-                <span className="text-emerald-600 font-bold">
                   Rp {pricing?.sell_price ? pricing.sell_price.toLocaleString() : "5,500"}
                 </span>
               </div>

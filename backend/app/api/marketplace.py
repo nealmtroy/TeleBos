@@ -52,12 +52,19 @@ async def sell_accounts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Sell one or more connected Telegram accounts."""
+    """List one or more Telegram accounts for sale with per-account pricing.
+
+    Accounts are listed at the price you set. You will be credited the sale
+    amount only when a buyer purchases your account.
+    """
     try:
-        account_ids = [str(aid) for aid in payload.account_ids]
-        total_received = await marketplace_service.sell_accounts(db, current_user, account_ids)
+        account_data = [
+            {"account_id": str(item.account_id), "sell_price": item.sell_price}
+            for item in payload.accounts
+        ]
+        total_listed = await marketplace_service.sell_accounts(db, current_user, account_data)
         await db.commit()
-        return MarketplaceSellResponse(total_received=total_received)
+        return MarketplaceSellResponse(total_listed=total_listed)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
@@ -94,7 +101,10 @@ async def buy_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Purchase a specific Telegram account from the marketplace pool."""
+    """Purchase a specific Telegram account from the marketplace pool.
+
+    The seller will be credited the sale amount when the purchase completes.
+    """
     try:
         account = await marketplace_service.buy_account(db, current_user, account_id)
         await db.commit()

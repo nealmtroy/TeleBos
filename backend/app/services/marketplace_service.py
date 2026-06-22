@@ -22,12 +22,12 @@ def get_country_code_and_name(phone: str) -> tuple[str, str]:
     """Helper to extract country code prefix and name from a phone number."""
     if not phone:
         return "+Unknown", "Unknown"
-    
+
     # Clean phone number
     cleaned = "".join(c for c in phone if c.isdigit() or c == "+")
     if not cleaned.startswith("+"):
         cleaned = "+" + cleaned
-        
+
     prefixes = {
         "+62": "Indonesia",
         "+1": "United States/Canada",
@@ -62,21 +62,21 @@ def get_country_code_and_name(phone: str) -> tuple[str, str]:
         "+375": "Belarus",
         "+351": "Portugal",
     }
-    
+
     # Try 4-character prefix (e.g. +380), then 3-character (e.g. +62), then 2-character (e.g. +1)
     for length in [4, 3, 2]:
         if len(cleaned) >= length:
             prefix = cleaned[:length]
             if prefix in prefixes:
                 return prefix, prefixes[prefix]
-            
+
     if len(cleaned) > 2:
         return cleaned[:3], "Other"
     return cleaned, "Other"
 
 
 async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[TelegramAccount]:
-    """Get all connected accounts owned by the user that can be sold."""
+    """Get all connected accounts owned by the user that can be listed for sale."""
     result = await db.execute(
         select(TelegramAccount).where(
             and_(
@@ -91,49 +91,54 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
 
 
 async def get_marketplace_prices(db: AsyncSession) -> tuple[int, int]:
-    """Retrieve current buy and sell prices from settings."""
+    """Retrieve current default buy and sell prices from settings."""
     result = await db.execute(select(SmmSetting))
     rows = result.scalars().all()
     settings = {row.key: row.value for row in rows}
-    
+
     buy_price = int(settings.get("account_buy_price", "7000"))
     sell_price = int(settings.get("account_sell_price", "5500"))
     return buy_price, sell_price
 
 
-async def sell_accounts(db: AsyncSession, user: User, account_ids: list[str]) -> int:
-    """Sell a list of accounts. Transfers ownership to owner custodian, halts jobs, updates balances."""
-    if not account_ids:
-        raise ValueError("At least one account ID is required.")
-        
-    # Get system custodian user (first owner user)
-    owner_result = await db.execute(
-        select(User).where(User.role == "owner").order_by(User.created_at.asc())
-    )
-    system_user = owner_result.scalars().first()
-    if not system_user:
-        raise ValueError("System custodian account (role 'owner') not found. Please contact support.")
+async def sell_accounts(
+    db: AsyncSession,
+    user: User,
+    account_data: list[dict],  # [{"account_id": str, "sell_price": int}, ...]
+) -> int:
+    """List accounts for sale with per-account pricing.
 
-    # Get sell price
-    _, sell_price = await get_marketplace_prices(db)
-    total_price = sell_price * len(account_ids)
+    Does NOT credit the seller's balance immediately. The seller only gets paid
+    when someone buys the account.
 
-    # Process each account
-    for acc_id_str in account_ids:
+    Returns the number of accounts listed.
+    """
+    if not account_data:
+        raise ValueError("At least one account is required.")
+
+    processed = 0
+
+    for item in account_data:
+        acc_id_str = item["account_id"]
+        sell_price = item.get("sell_price", 0)
+
         try:
             acc_uuid = UUID(acc_id_str)
         except ValueError:
             raise ValueError(f"Invalid account ID format: {acc_id_str}")
-            
+
         account = await db.get(TelegramAccount, acc_uuid)
         if not account or account.user_id != user.id:
             raise ValueError(f"Account not found or not owned by you: {acc_id_str}")
-            
+
         if account.for_sale or account.is_sold:
-            raise ValueError(f"Account is already sold or for sale: {account.phone}")
-            
+            raise ValueError(f"Account is already listed for sale or sold: {account.phone}")
+
+        if sell_price <= 0:
+            raise ValueError(f"Sell price must be greater than 0 for account {account.phone}")
+
         # 1. Stop all active/paused/pending automation for this account
-        
+
         # Broadcast Jobs
         active_broadcasts = await db.execute(
             select(BroadcastJob).where(
@@ -143,7 +148,7 @@ async def sell_accounts(db: AsyncSession, user: User, account_ids: list[str]) ->
         for job in active_broadcasts.scalars().all():
             if str(account.id) in job.account_ids:
                 job.status = "cancelled"
-                
+
         # Invite Jobs
         active_invites = await db.execute(
             select(InviteJob).where(
@@ -153,38 +158,40 @@ async def sell_accounts(db: AsyncSession, user: User, account_ids: list[str]) ->
         for job in active_invites.scalars().all():
             if str(account.id) in job.account_ids:
                 job.status = "cancelled"
-                # Cancel background asyncio task if running
                 from app.services.invite_service import _running_invite_tasks
                 task = _running_invite_tasks.get(str(job.id))
                 if task:
                     task.cancel()
 
-        # 2. Update account properties & transfer ownership to custodian
-        account.user_id = system_user.id
+        # 2. Mark account as for_sale with the seller's price
+        #    Account stays owned by the seller until purchased
         account.for_sale = True
         account.is_sold = False
-        account.seller_id = user.id
+        account.sell_price = sell_price
+        account.seller_id = user.id  # Track who will get paid
         account.is_active = False
         account.auto_reply_enabled = False
-        
+        account.sale_listed_at = datetime.now(timezone.utc)
+
         # 3. Remove client session from memory pool
         await client_pool.remove(str(account.id))
-        
+
         # 4. Write audit log
         audit = AccountAuditLog(
             user_id=user.id,
             account_id=account.id,
-            action="sell",
+            action="list_for_sale",
             price=sell_price,
             phone=account.phone,
             telegram_id=account.telegram_id,
         )
         db.add(audit)
 
-    # 5. Credit user's balance
-    user.balance += total_price
+        # NOTE: No balance credit — seller gets paid when account is purchased
+        processed += 1
+
     await db.flush()
-    return total_price
+    return processed
 
 
 async def get_stock_categories(db: AsyncSession) -> list[dict]:
@@ -198,8 +205,8 @@ async def get_stock_categories(db: AsyncSession) -> list[dict]:
         )
     )
     accounts = result.scalars().all()
-    buy_price, _ = await get_marketplace_prices(db)
-    
+    _, default_sell_price = await get_marketplace_prices(db)
+
     groups = {}
     for acc in accounts:
         prefix, name = get_country_code_and_name(acc.phone)
@@ -208,10 +215,14 @@ async def get_stock_categories(db: AsyncSession) -> list[dict]:
                 "country_code": prefix,
                 "country_name": name,
                 "ready_stock": 0,
-                "price": buy_price,
+                "price": default_sell_price,  # fallback
             }
         groups[prefix]["ready_stock"] += 1
-        
+        # Keep the minimum price in the category as the display "from" price
+        acc_price = acc.sell_price or default_sell_price
+        if groups[prefix]["price"] > acc_price:
+            groups[prefix]["price"] = acc_price
+
     return sorted(list(groups.values()), key=lambda x: x["country_code"])
 
 
@@ -226,7 +237,7 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
         )
     )
     accounts = result.scalars().all()
-    
+
     matched = []
     for acc in accounts:
         prefix, _ = get_country_code_and_name(acc.phone)
@@ -236,23 +247,22 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
                 "telegram_id": acc.telegram_id,
                 "twofa_enabled": acc.twofa_enabled,
                 "recovery_email_available": acc.recovery_email is not None,
+                "sell_price": acc.sell_price,
             })
-            
+
     return matched
 
 
 async def buy_account(db: AsyncSession, user: User, account_id: str) -> TelegramAccount:
-    """Atomic buy transaction. Locks the account row, checks balance, updates ownership and debits balance."""
+    """Atomic buy transaction.
+
+    Locks the account row, checks buyer balance, transfers ownership,
+    credits the seller's balance.
+    """
     try:
         acc_uuid = UUID(account_id)
     except ValueError:
         raise ValueError("Invalid account ID format.")
-        
-    # Get buy price
-    buy_price, _ = await get_marketplace_prices(db)
-    
-    if user.balance < buy_price:
-        raise ValueError("Insufficient balance to buy this account.")
 
     # Select the account with a row-level write lock (FOR UPDATE)
     stmt = select(TelegramAccount).where(
@@ -262,26 +272,57 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
             TelegramAccount.is_sold == False,
         )
     ).with_for_update()
-    
+
     result = await db.execute(stmt)
     account = result.scalar_one_or_none()
-    
+
     if not account:
         raise ValueError("Account is no longer available for purchase.")
-        
-    # 1. Update ownership and flags
+
+    # Use the account's own sell_price; fallback to default
+    buy_price = account.sell_price or 7000
+
+    if user.balance < buy_price:
+        raise ValueError("Insufficient balance to buy this account.")
+
+    # Identify the seller (who gets credited)
+    seller_id = account.seller_id or account.user_id
+
+    # 1. Debit buyer's balance
+    user.balance -= buy_price
+
+    # 2. Credit seller's balance
+    seller_result = await db.execute(
+        select(User).where(User.id == seller_id).with_for_update()
+    )
+    seller = seller_result.scalar_one_or_none()
+    if seller:
+        seller.balance += buy_price
+    else:
+        # If seller no longer exists, the platform keeps the balance
+        # (e.g. user was deleted). Just skip the credit.
+        logger.warning("Seller %s not found for account %s — keeping balance as platform revenue", seller_id, account_id)
+
+    # 3. Update ownership and flags
     account.user_id = user.id
     account.for_sale = False
     account.is_sold = True
     account.sold_at = datetime.now(timezone.utc)
     # The buyer starts with a clean slate: inactive until they choose to activate it
     account.is_active = False
-    
-    # 2. Debit user balance
-    user.balance -= buy_price
-    
-    # 3. Create transaction audit log
-    audit = AccountAuditLog(
+
+    # 4. Create transaction audit log
+    audit_seller = AccountAuditLog(
+        user_id=seller_id,
+        account_id=account.id,
+        action="sell",
+        price=buy_price,
+        phone=account.phone,
+        telegram_id=account.telegram_id,
+    )
+    db.add(audit_seller)
+
+    audit_buyer = AccountAuditLog(
         user_id=user.id,
         account_id=account.id,
         action="buy",
@@ -289,7 +330,7 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
         phone=account.phone,
         telegram_id=account.telegram_id,
     )
-    db.add(audit)
-    
+    db.add(audit_buyer)
+
     await db.flush()
     return account
