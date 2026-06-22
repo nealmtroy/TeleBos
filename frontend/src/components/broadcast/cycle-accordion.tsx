@@ -20,6 +20,7 @@ interface CycleAccordionProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  latestCycleNumber: number | null;
   children: (cycleNumber: number) => React.ReactNode;
 }
 
@@ -32,10 +33,11 @@ export default function CycleAccordion({
   page,
   totalPages,
   onPageChange,
+  latestCycleNumber,
   children,
 }: CycleAccordionProps) {
   const _ = useT();
-  const latestCycle =
+  const latestCycle = latestCycleNumber;
     cycles.length > 0 ? Math.max(...cycles.map((c) => c.cycleNumber)) : null;
 
   if (loading) {

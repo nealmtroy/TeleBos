@@ -295,6 +295,7 @@ export default function BroadcastLogsPage() {
               page={cyclePage}
               totalPages={totalCyclePages}
               onPageChange={setCyclePage}
+              latestCycleNumber={knownMaxCycleRef.current}
             >
               {(cycleNumber) => {
                 const logs = cycleNumber === expandedCycle ? logsForCycle : [];
