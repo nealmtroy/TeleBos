@@ -108,6 +108,9 @@ export default function GroupListsPage() {
   const [bulkText, setBulkText] = useState("");
   const [bulkPreview, setBulkPreview] = useState<GroupListItem[]>([]);
 
+  // Expand state
+  const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
+
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -236,64 +239,84 @@ export default function GroupListsPage() {
               key={list.id}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden"
             >
-              <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900">{list.name}</h3>
-                <span className="text-xs text-gray-400">
-                  {Array.isArray(list.items) ? list.items.length : 0} {_("groupLists.groups")}
-                </span>
+              <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 gap-3 sm:gap-0">
                 <div className="flex items-center gap-3">
+                  <h3 className="font-semibold text-gray-900">{list.name}</h3>
+                  <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    {Array.isArray(list.items) ? list.items.length : 0} {_("groupLists.groups")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      setBulkListId(list.id);
-                      setBulkText("");
-                      setBulkPreview([]);
+                      setExpandedLists((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(list.id)) next.delete(list.id);
+                        else next.add(list.id);
+                        return next;
+                      });
                     }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-md transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition"
                   >
-                    <Upload className="h-3.5 w-3.5" />
-                    {_("groupLists.bulkImportLabel")}
+                    {expandedLists.has(list.id) ? _("groupLists.hideDetails") : _("groupLists.viewDetails")}
                   </button>
                   <button
                     onClick={() => {
                       setDeleteTargetId(list.id);
                       setConfirmOpen(true);
                     }}
-                    className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
                     title={_("groupLists.deleteConfirm")}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {_("groupLists.delete")}
                   </button>
                 </div>
               </div>
 
-              <div className="p-4 space-y-2">
-                {!Array.isArray(list.items) || list.items.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">{_("groupLists.noItems")}</p>
-                ) : (
-                  list.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-gray-200 px-1.5 py-0.5 rounded font-mono">
-                          {item.type}
-                        </span>
-                        <span className="text-gray-700">{item.value}</span>
-                      </div>
+              {expandedLists.has(list.id) && (
+                <>
+                  <div className="p-4 space-y-2">
+                    <div className="flex justify-end mb-2">
                       <button
-                        onClick={() => handleRemoveItem(list.id, idx, list.items)}
-                        className="text-red-400 hover:text-red-600 p-1"
+                        onClick={() => {
+                          setBulkListId(list.id);
+                          setBulkText("");
+                          setBulkPreview([]);
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-md transition"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <Upload className="h-3.5 w-3.5" />
+                        {_("groupLists.bulkImportLabel")}
                       </button>
                     </div>
-                  ))
-                )}
-              </div>
+                    {!Array.isArray(list.items) || list.items.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">{_("groupLists.noItems")}</p>
+                    ) : (
+                      list.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-gray-200 px-1.5 py-0.5 rounded font-mono">
+                              {item.type}
+                            </span>
+                            <span className="text-gray-700">{item.value}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveItem(list.id, idx, list.items)}
+                            className="text-red-400 hover:text-red-600 p-1"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
 
-              {/* Bulk import panel */}
-              {bulkListId === list.id && (
+                  {/* Bulk import panel */}
+                  {bulkListId === list.id && (
                 <div className="border-t border-primary-200 bg-primary-50/50 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-primary-800">
@@ -393,6 +416,8 @@ export default function GroupListsPage() {
                   {_("groupLists.add")}
                 </button>
               </div>
+                </>
+              )}
             </div>
           ))}
         </div>

@@ -313,6 +313,9 @@ const en: Dict = {
     placeholderUsername: "@group",
     placeholderLink: "t.me/...",
     placeholderGroupId: "123456789",
+    viewDetails: "View Details",
+    hideDetails: "Hide Details",
+    delete: "Delete",
   },
 
   // ── Text Lists ──────────────────────────────────────────────────────────

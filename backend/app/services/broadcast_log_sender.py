@@ -57,7 +57,7 @@ def _format_cycle_summary(
     lines.append("<b>Details:</b>")
 
     for log in cycle_logs:
-        acc_name = accounts_by_id.get(str(log.account_id)) or "Unknown"
+        acc_name = accounts_by_id.get(str(log.account_id_used)) or "Unknown"
         acc_str = html.escape(acc_name)
 
         item_type = item_type_by_identifier.get(log.group_identifier, "unknown")
@@ -90,7 +90,17 @@ async def send_cycle_summary(
     item_type_by_identifier: dict,
 ) -> None:
     dest = job.log_destination
+    if dest == "web_only":
+        return
     if not dest:
+        from app.config import get_settings
+        try:
+            settings = get_settings()
+            dest = settings.BROADCAST_LOG_DEFAULT_DEST
+        except Exception:
+            dest = "@teleboslogging_bot"
+            
+    if not dest or dest == "web_only":
         return
         
     try:
@@ -105,7 +115,7 @@ async def send_cycle_summary(
         accounts_map = {}
         for acc_id, acc in accounts_by_id.items():
             if acc:
-                accounts_map[str(acc_id)] = acc.name or acc.phone
+                accounts_map[str(acc_id)] = acc.first_name or acc.phone
         
         text = _format_cycle_summary(
             job_name=job.name,

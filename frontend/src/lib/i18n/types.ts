@@ -313,6 +313,9 @@ export interface Dict {
     placeholderUsername: string;
     placeholderLink: string;
     placeholderGroupId: string;
+    viewDetails: string;
+    hideDetails: string;
+    delete: string;
   };
 
   // Text Lists

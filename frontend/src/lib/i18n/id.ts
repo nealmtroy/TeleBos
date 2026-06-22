@@ -313,6 +313,9 @@ const id: Dict = {
     placeholderUsername: "@grup",
     placeholderLink: "t.me/...",
     placeholderGroupId: "123456789",
+    viewDetails: "Lihat Detail",
+    hideDetails: "Tutup Detail",
+    delete: "Hapus",
   },
 
   // ── Daftar Teks ─────────────────────────────────────────────────────────

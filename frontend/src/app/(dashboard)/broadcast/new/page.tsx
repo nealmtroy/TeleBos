@@ -11,6 +11,7 @@ import {
   useTextLists,
   useStartBroadcast,
   useBroadcastJob,
+  useBroadcastJobs,
   useBroadcastLogs,
   useBroadcastAction,
 } from "@/hooks/use-broadcast";
@@ -28,6 +29,7 @@ export default function NewBroadcastPage() {
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const { data: groupLists, isLoading: groupListsLoading } = useGroupLists();
   const { data: textLists, isLoading: textListsLoading } = useTextLists();
+  const { data: allJobs } = useBroadcastJobs();
   const startMutation = useStartBroadcast();
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -42,6 +44,9 @@ export default function NewBroadcastPage() {
   const [logDestination, setLogDestination] = useState("@teleboslogging_bot");
   const [logWebOnly, setLogWebOnly] = useState(false);
   const [stopConfirmOpen, setStopConfirmOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [conflictNames, setConflictNames] = useState<string[]>([]);
 
   // Active job tracking — via WebSocket for real-time updates
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -94,7 +99,27 @@ export default function NewBroadcastPage() {
     }
   }, [accounts, selectedAccountIds]);
 
-  async function handleStart() {
+  function handlePreStart() {
+    if (selectedAccountIds.length === 0 || !groupListId) return;
+
+    // Check for running jobs with selected accounts
+    const runningJobs = (allJobs || []).filter(j => j.status === "running");
+    const runningAccIds = new Set<string>();
+    runningJobs.forEach(j => {
+      (j.account_ids || []).forEach(id => runningAccIds.add(id));
+    });
+
+    const conflicts = selectedAccountIds.filter(id => runningAccIds.has(id));
+    if (conflicts.length > 0) {
+      const names = accounts?.filter(a => conflicts.includes(a.id)).map(a => a.first_name || a.phone) || [];
+      setConflictNames(names);
+      setWarningOpen(true);
+    } else {
+      setConfirmOpen(true);
+    }
+  }
+
+  async function handleConfirmStart() {
     if (selectedAccountIds.length === 0 || !groupListId) return;
     try {
       const job = await startMutation.mutateAsync({
@@ -111,7 +136,9 @@ export default function NewBroadcastPage() {
           ? "web_only"
           : (logDestination.trim() || null),
       });
-      setActiveJobId(job.id);
+      setConfirmOpen(false);
+      setWarningOpen(false);
+      router.push(`/broadcast/success/${job.id}`);
     } catch (err) {
       // handled by mutation
     }
@@ -414,7 +441,7 @@ export default function NewBroadcastPage() {
 
         {/* Start button */}
         <button
-          onClick={handleStart}
+          onClick={handlePreStart}
           disabled={
             selectedAccountIds.length === 0 || !groupListId || startMutation.isPending ||
             (mode === "multi_random" && !textListId) ||
@@ -582,6 +609,45 @@ export default function NewBroadcastPage() {
         confirmText={_("newBroadcast.stop")}
         cancelText={_("navbar.cancel")}
         variant="danger"
+      />
+
+      {/* Warning Modal for already running broadcasts */}
+      <ConfirmDialog
+        open={warningOpen}
+        onOpenChange={setWarningOpen}
+        onConfirm={() => {
+          setWarningOpen(false);
+          setConfirmOpen(true);
+        }}
+        title="Active Broadcast Detected"
+        message={`The following accounts already have a running broadcast: ${conflictNames.join(", ")}. Are you sure you want to start another broadcast with them? This might cause rate limits or conflicts.`}
+        confirmText="Continue Anyway"
+        cancelText="Cancel"
+        variant="danger"
+      />
+
+      {/* Final Confirmation Modal */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={handleConfirmStart}
+        title="Confirm Broadcast Details"
+        message={
+          <div className="space-y-3 text-sm text-gray-600 mt-2 text-left">
+            <p>Please review your broadcast settings before starting:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>Accounts:</strong> {selectedAccountIds.length} selected</li>
+              <li><strong>Group List:</strong> {(groupLists || []).find(g => g.id === groupListId)?.name || "-"}</li>
+              <li><strong>Text Source:</strong> {mode === "single_text" ? "Custom Text" : ((textLists || []).find(t => t.id === textListId)?.name || "-")}</li>
+              <li><strong>Delay per Group:</strong> {delayRandomized ? "5-30s (Random)" : `${delayPerGroup}s`}</li>
+              <li><strong>Delay after Cycle:</strong> {delayAfterAll}s</li>
+            </ul>
+            <p className="mt-4 font-medium text-gray-900">Do you want to start this broadcast now?</p>
+          </div>
+        }
+        confirmText={startMutation.isPending ? "Starting..." : "Start Broadcast"}
+        cancelText="Cancel"
+        variant="primary"
       />
     </div>
   );
