@@ -261,8 +261,8 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 bg-slate-950 border-r border-slate-900 flex flex-col transition-all duration-300 ease-in-out text-slate-300 group/sidebar relative shrink-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-[72px]",
+          "fixed lg:relative inset-y-0 left-0 z-50 bg-slate-950 border-r border-slate-900 flex flex-col transition-all duration-300 ease-in-out text-slate-300 group/sidebar shrink-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           sidebarOpen ? "w-64" : "w-64 lg:w-[72px]"
         )}
       >
