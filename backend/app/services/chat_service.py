@@ -446,7 +446,7 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         hash_clean = invite_hash.lstrip("+")
         try:
             info = await client(telethon.tl.functions.messages.CheckChatInviteRequest(hash=hash_clean))
-            if hasattr(info, "chat"):
+            if isinstance(info, telethon.tl.types.ChatInviteAlready):
                 entity = info.chat  # already a member
             else:
                 result = await client(telethon.tl.functions.messages.ImportChatInviteRequest(hash=hash_clean))

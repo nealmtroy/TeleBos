@@ -5,7 +5,8 @@ import logging
 import random
 from datetime import datetime, timezone
 
-from telethon import errors as tg_errors
+import telethon
+from telethon.tl import types
 from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
 from telethon.errors.rpcerrorlist import (
     UserBannedInChannelError,
@@ -192,22 +193,47 @@ class BroadcastWorkerManager:
         error_code = None
 
         try:
-            entity = None
             # Resolve entity by username, link, or ID
-            if group_identifier.startswith("https://t.me/") or group_identifier.startswith("t.me/"):
-                invite_hash = group_identifier.split("/")[-1]
-                # Try to join if invite link
-                try:
-                    updates = await client(ImportChatInviteRequest(invite_hash))
-                    entity = updates.chats[0] if updates.chats else None
-                    await asyncio.sleep(2)  # brief wait after join
-                except Exception:
-                    pass
-                if not entity:
+            is_tme_link = group_identifier.startswith("https://t.me/") or group_identifier.startswith("http://t.me/") or group_identifier.startswith("t.me/")
+            if is_tme_link:
+                # Check if it's public or invite hash
+                if "+" not in group_identifier and "joinchat" not in group_identifier:
+                    # Public username link
+                    username = group_identifier.rstrip("/").split("/")[-1]
                     try:
-                        entity = await client.get_entity(invite_hash)
+                        entity = await client.get_entity(username)
                     except Exception:
                         entity = None
+                else:
+                    # Invite link
+                    clean_url = group_identifier.rstrip("/")
+                    invite_hash = clean_url.split("/")[-1] if "/" in clean_url else clean_url
+                    invite_hash = invite_hash.lstrip("+")
+                    
+                    try:
+                        invite_info = await client(CheckChatInviteRequest(hash=invite_hash))
+                        if isinstance(invite_info, types.ChatInviteAlready):
+                            entity = invite_info.chat
+                        else:
+                            updates = await client(ImportChatInviteRequest(hash=invite_hash))
+                            entity = updates.chats[0] if (updates and hasattr(updates, "chats") and updates.chats) else None
+                            await asyncio.sleep(2)
+                    except telethon.errors.UserAlreadyParticipantError:
+                        try:
+                            entity = await client.get_entity(invite_hash)
+                        except Exception:
+                            entity = None
+                    except Exception:
+                        # Fallback try join or get_entity
+                        try:
+                            updates = await client(ImportChatInviteRequest(hash=invite_hash))
+                            entity = updates.chats[0] if (updates and hasattr(updates, "chats") and updates.chats) else None
+                            await asyncio.sleep(2)
+                        except Exception:
+                            try:
+                                entity = await client.get_entity(invite_hash)
+                            except Exception:
+                                entity = None
             elif group_identifier.startswith("-") and group_identifier.lstrip("-").isdigit():
                 entity = await client.get_entity(int(group_identifier))
             else:

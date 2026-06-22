@@ -239,9 +239,9 @@ async def _resolve_group(client, item_type: str, group_identifier: str, telethon
 
     # ── Step 2: For links, try the invite / join flow ─────────────────────
     if item_type == "link":
-        invite_hash = group_identifier.split("/")[-1] if "/" in group_identifier else group_identifier
-        if invite_hash.startswith("+"):
-            invite_hash = invite_hash[1:]
+        clean_url = group_identifier.rstrip("/")
+        invite_hash = clean_url.split("/")[-1] if "/" in clean_url else clean_url
+        invite_hash = invite_hash.lstrip("+")
         try:
             # Try to check the invite first (no side-effects)
             try:
@@ -249,7 +249,7 @@ async def _resolve_group(client, item_type: str, group_identifier: str, telethon
                     telethon_mod.tl.functions.messages.CheckChatInviteRequest(hash=invite_hash)
                 )
                 # If chat is already accessible from the check, use it
-                if hasattr(invite_info, "chat"):
+                if isinstance(invite_info, telethon_mod.tl.types.ChatInviteAlready):
                     entity = invite_info.chat
                 else:
                     # Need to actually join to get the entity
@@ -511,9 +511,9 @@ async def execute_invite(job_id: str):
                     # Not a member — try to join
                     try:
                         if job.destination_type == "link":
-                            invite_hash = job.destination_group.split("/")[-1]
-                            if invite_hash.startswith("+"):
-                                invite_hash = invite_hash[1:]
+                            clean_url = job.destination_group.rstrip("/")
+                            invite_hash = clean_url.split("/")[-1] if "/" in clean_url else clean_url
+                            invite_hash = invite_hash.lstrip("+")
                             await acc["client"](
                                 telethon.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash)
                             )
