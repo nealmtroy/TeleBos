@@ -40,40 +40,40 @@ def _format_cycle_summary(
     error_count = sum(1 for log in cycle_logs if log.status == "error")
 
     lines = [
-        f"<b>Broadcast Cycle Log 🚀</b>",
-        f"<b>Job:</b> {html.escape(job_name)}",
-        f"<b>Cycle:</b> #{cycle_number}",
-        f"<b>Duration:</b> {duration_str}",
-        f"<b>Groups Total:</b> {total_groups} | <b>Active:</b> {active_this_round}",
-        f"<b>Sent:</b> ✅ {success_count}  |  <b>Failed:</b> ❌ {error_count}",
+        f"<b>Broadcast Cycle #{cycle_number} 🚀</b>",
+        "",
+        "<blockquote>",
+        f"<b>Job</b>: {html.escape(job_name)}",
+        f"<b>Duration</b>: {duration_str}",
     ]
 
     if text_list_name:
-        lines.insert(3, f"<b>Text List:</b> {html.escape(text_list_name)}")
+        lines.append(f"<b>Text List</b>: {html.escape(text_list_name)}")
     if group_list_name:
-        lines.insert(4, f"<b>Group List:</b> {html.escape(group_list_name)}")
+        lines.append(f"<b>Group List</b>: {html.escape(group_list_name)}")
 
-    lines.append("")
-    lines.append("<b>Details:</b>")
+    lines.append(f"<b>Groups Total</b>: {total_groups} | <b>Active</b>: {active_this_round}")
+    lines.append(f"<b>Sent</b>: ✅ {success_count}  |  <b>Failed</b>: ❌ {error_count}")
+    lines.append("</blockquote>")
 
-    for log in cycle_logs:
-        acc_name = accounts_by_id.get(str(log.account_id_used)) or "Unknown"
-        acc_str = html.escape(acc_name)
+    # Separate success and failed
+    success_logs = [log for log in cycle_logs if log.status == "success"]
+    error_logs = [log for log in cycle_logs if log.status == "error"]
 
-        item_type = item_type_by_identifier.get(log.group_identifier, "unknown")
-        
-        # Linkify target if possible
-        target_display = html.escape(log.group_identifier)
-        if item_type == "username":
-            target_display = f'<a href="https://t.me/{html.escape(log.group_identifier.lstrip("@"))}">{target_display}</a>'
-        elif item_type == "link" and log.group_identifier.startswith("http"):
-            target_display = f'<a href="{html.escape(log.group_identifier)}">Link</a>'
+    if success_logs:
+        lines.append("")
+        lines.append("<b>Berhasil Terkirim</b>:")
+        for log in success_logs:
+            target_display = html.escape(log.group_identifier)
+            lines.append(f"✅ {target_display}")
 
-        if log.status == "success":
-            lines.append(f"✅ <b>{target_display}</b> (by {acc_str})")
-        else:
+    if error_logs:
+        lines.append("")
+        lines.append("<b>Gagal Terkirim</b>:")
+        for log in error_logs:
+            target_display = html.escape(log.group_identifier)
             reason = html.escape(log.error_type or "Unknown Error")
-            lines.append(f"❌ <b>{target_display}</b> (by {acc_str}) — <i>{reason}</i>")
+            lines.append(f"❌ {target_display} — {reason}")
 
     return "\n".join(lines)
 
