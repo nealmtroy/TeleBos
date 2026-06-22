@@ -448,32 +448,71 @@ async def _join_and_resolve_chatlist(client, target: str) -> list:
 
 
 async def _join_and_resolve_target(client, target: str):
-    from telethon.tl.functions.channels import JoinChannelRequest
-    from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
+    from telethon.tl.functions.channels import JoinChannelRequest, GetFullChannelRequest
+    from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
+    from telethon.tl.types import ChatInviteAlready, ChatInvite, Channel
+    from telethon.errors import UserAlreadyParticipantError
 
     invite = _invite_hash(target)
-    if invite:
-        try:
-            updates = await client(ImportChatInviteRequest(invite))
-            if getattr(updates, "chats", None):
-                return updates.chats[0]
-        except Exception:
-            invite_info = await client(CheckChatInviteRequest(invite))
-            chat = getattr(invite_info, "chat", None)
-            if chat:
-                return chat
-            raise
+    entity = None
 
-    public = _public_target(target)
-    if public.lstrip("-").isdigit():
-        return await client.get_entity(int(public))
-    try:
-        updates = await client(JoinChannelRequest(public))
-        if getattr(updates, "chats", None):
-            return updates.chats[0]
-    except Exception:
-        pass
-    return await client.get_entity(public)
+    if invite:
+        # Check invite link status before joining
+        invite_info = await client(CheckChatInviteRequest(invite))
+        if isinstance(invite_info, ChatInviteAlready):
+            entity = invite_info.chat
+        else:
+            try:
+                updates = await client(ImportChatInviteRequest(invite))
+                if getattr(updates, "chats", None):
+                    entity = updates.chats[0]
+            except UserAlreadyParticipantError:
+                # Fallback: if CheckChatInviteRequest did not return ChatInviteAlready
+                # but we are already a participant, search dialogue list by name matching the invite title
+                expected_title = getattr(invite_info, "title", None)
+                if expected_title:
+                    async for dialog in client.iter_dialogs():
+                        if dialog.name == expected_title:
+                            entity = dialog.entity
+                            break
+                if not entity:
+                    raise ValueError(f"Already a participant but could not find private chat with title '{expected_title}' in dialogs")
+    else:
+        public = _public_target(target)
+        if public.lstrip("-").isdigit():
+            entity = await client.get_entity(int(public))
+        else:
+            entity = await client.get_entity(public)
+
+        try:
+            await client(JoinChannelRequest(entity))
+        except UserAlreadyParticipantError:
+            pass
+        except Exception:
+            # Fallback in case JoinChannelRequest fails for other reasons but entity is accessible
+            pass
+
+    if not entity:
+        raise ValueError(f"Could not resolve or join target: {target}")
+
+    # If the resolved entity is a broadcast Channel, look for its linked discussion group
+    if isinstance(entity, Channel) and entity.broadcast:
+        try:
+            full_channel = await client(GetFullChannelRequest(entity))
+            discussion_chat_id = full_channel.full_chat.linked_chat_id
+            if discussion_chat_id:
+                discussion_entity = await client.get_entity(discussion_chat_id)
+                try:
+                    await client(JoinChannelRequest(discussion_entity))
+                except UserAlreadyParticipantError:
+                    pass
+                except Exception:
+                    pass
+                entity = discussion_entity
+        except Exception as e:
+            logger.warning("Failed to resolve/join discussion group for channel %s: %s", target, e)
+
+    return entity
 
 
 async def _broadcast_entities_for_target(client, target: str) -> list:
@@ -613,6 +652,7 @@ async def execute_broadcast(job_id: str):
             current_acc_idx = 0
             joined_pool: dict = {}
             pending_pool: dict = {}
+            permanent_failures_pool: set = set()
 
             while True:
                 is_looping = job.loop_enabled
@@ -780,6 +820,10 @@ async def execute_broadcast(job_id: str):
                     if pkey in pending_pool:
                         continue
 
+                    # ── Skip groups that failed permanently ──
+                    if pkey in permanent_failures_pool:
+                        continue
+
                     # Defensive cap: even though the column is now TEXT, keep
                     # extreme blobs out of logs/WS payloads so a stray mega-paste
                     # in a group_list can't blow up a job.
@@ -857,7 +901,7 @@ async def execute_broadcast(job_id: str):
                         err_type, err_msg = classify_telegram_error(resolve_exc)
 
                         # If we failed during resolution with a retryable error, put it in pending_pool
-                        if err_type in ("flood", "peer_flood", "slowmode", "admin_only", "must_join_discussion", "guest_restricted", "send_restricted"):
+                        if err_type in ("flood", "peer_flood", "slowmode", "must_join_discussion", "guest_restricted", "send_restricted"):
                             pkey = f"{item_type}:{group_identifier}"
                             pending_pool[pkey] = {
                                 "group_identifier": group_identifier,
@@ -881,6 +925,8 @@ async def execute_broadcast(job_id: str):
                             log.sent_at = datetime.now(timezone.utc)
                             db.add(log)
                             failed += 1
+                            # Mark as permanent failure so we don't retry in future cycles
+                            permanent_failures_pool.add(pkey)
 
                             # If resolution failed due to flood/slowmode, set account join cooldown (NOT global cooldown)
                             if err_type == "flood":
@@ -960,6 +1006,10 @@ async def execute_broadcast(job_id: str):
                             log.sent_at = datetime.now(timezone.utc)
                             db.add(log)
                             failed += 1
+
+                            # If it's a permanent send error (like admin_only, banned, etc.), add to permanent failures
+                            if err_type in ("admin_only", "banned", "invalid_username", "invalid_link", "private_channel"):
+                                permanent_failures_pool.add(pkey)
 
                             if err_type == "flood":
                                 wait = 30
