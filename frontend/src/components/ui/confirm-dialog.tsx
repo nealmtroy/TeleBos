@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Trash2, AlertTriangle, Info, Loader2 } from "lucide-react";
 
@@ -9,7 +9,7 @@ interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmText?: string;
   cancelText?: string;
   variant?: "danger" | "warning" | "info";
@@ -99,7 +99,7 @@ export function ConfirmDialog({
             <Icon className={`h-6 w-6 ${fg}`} />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
-          <p className="text-sm text-gray-500 mb-6">{message}</p>
+          <div className="text-sm text-gray-500 mb-6">{message}</div>
         </div>
         <div className="flex gap-3">
           <button

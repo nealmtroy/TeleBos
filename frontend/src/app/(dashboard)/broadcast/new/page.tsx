@@ -647,7 +647,7 @@ export default function NewBroadcastPage() {
         }
         confirmText={startMutation.isPending ? "Starting..." : "Start Broadcast"}
         cancelText="Cancel"
-        variant="primary"
+        variant="info"
       />
     </div>
   );
