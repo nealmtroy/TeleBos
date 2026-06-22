@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-this-secret-key-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # Encryption (Fernet key — 32 base64-encoded bytes)
     ENCRYPTION_KEY: str = (

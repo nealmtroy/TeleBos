@@ -13,6 +13,16 @@ const api = axios.create({
 let accessToken: string | null =
   typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
+// ── Refresh lock: prevents concurrent 401s from racing each other ──
+// When the access token expires and multiple API calls fire simultaneously,
+// they all hit 401.  Without this lock each one calls /auth/refresh independently.
+// The first succeeds (blacklisting the old token), and the rest fail because the
+// token is already consumed — forcing a spurious logout.
+let refreshPromise: Promise<{
+  access_token: string;
+  refresh_token: string;
+}> | null = null;
+
 export function setTokens(access: string, _refresh: string) {
   // Store access token in memory + localStorage (short-lived fallback)
   accessToken = access;
@@ -50,31 +60,38 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry
-    ) {
-      originalRequest._retry = true;
-      try {
-        // Refresh token is sent automatically via httpOnly cookie (withCredentials: true)
-        const { data } = await axios.post(
-          `${API_BASE}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-        setTokens(data.access_token, data.refresh_token);
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
-        }
-        return api(originalRequest);
-      } catch {
-        clearTokens();
-        if (typeof window !== "undefined") {
-          window.location.href = "/";
-        }
-      }
+    // Only attempt refresh on 401, and only once per request
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+    originalRequest._retry = true;
+
+    try {
+      // If a refresh is already in-flight, piggyback on it —
+      // all queued requests share the SAME call so the old token
+      // is consumed exactly once.
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
+          .then((res) => res.data);
+      }
+
+      const data = await refreshPromise;
+      refreshPromise = null;
+
+      setTokens(data.access_token, data.refresh_token);
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+      }
+      return api(originalRequest);
+    } catch {
+      refreshPromise = null;
+      clearTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+      return Promise.reject(error);
+    }
   }
 );
 
