@@ -399,7 +399,9 @@ async def get_accounts_in_folder(
 
 async def get_account(db: AsyncSession, account_id: str, user_id: str) -> TelegramAccount | None:
     result = await db.execute(
-        select(TelegramAccount).where(
+        select(TelegramAccount)
+        .options(selectinload(TelegramAccount.folders))
+        .where(
             TelegramAccount.id == account_id,
             TelegramAccount.user_id == user_id,
         )

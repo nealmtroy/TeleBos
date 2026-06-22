@@ -5,6 +5,10 @@ from uuid import UUID
 from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 class SendCodeRequest(BaseModel):
@@ -72,7 +76,13 @@ class AccountResponse(BaseModel):
     @classmethod
     def extract_folder_ids(cls, data: Any) -> Any:
         if hasattr(data, "folders"):
-            data.folder_ids = [f.id for f in data.folders]
+            try:
+                data.folder_ids = [f.id for f in data.folders]
+            except Exception as exc:
+                # Lazy-load outside greenlet context (MissingGreenlet) or
+                # detached instance — graceful fallback to empty list
+                logger.warning("Failed to load folders for account (will use empty): %s", exc)
+                data.folder_ids = []
         return data
 
 

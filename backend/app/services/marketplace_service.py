@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select, func, and_
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.telegram_account import TelegramAccount
@@ -80,7 +81,9 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
     from app.services.user_account_price_service import resolve_telegram_id_price
 
     result = await db.execute(
-        select(TelegramAccount).where(
+        select(TelegramAccount)
+        .options(selectinload(TelegramAccount.folders))
+        .where(
             and_(
                 TelegramAccount.user_id == user.id,
                 TelegramAccount.phone_verified == True,
