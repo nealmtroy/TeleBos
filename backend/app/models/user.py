@@ -35,7 +35,10 @@ class User(Base):
 
     # Relationships
     accounts: Mapped[list["TelegramAccount"]] = relationship(
-        "TelegramAccount", back_populates="user", cascade="all, delete-orphan"
+        "TelegramAccount",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="[TelegramAccount.user_id]"
     )
     group_lists: Mapped[list["GroupList"]] = relationship(
         "GroupList", back_populates="user", cascade="all, delete-orphan"

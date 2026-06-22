@@ -74,7 +74,7 @@ class TelegramAccount(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="accounts")
+    user: Mapped["User"] = relationship("User", back_populates="accounts", foreign_keys=[user_id])
     chat_folders: Mapped[list["ChatFolder"]] = relationship(
         "ChatFolder", back_populates="account", cascade="all, delete-orphan"
     )
