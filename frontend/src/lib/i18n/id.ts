@@ -20,6 +20,33 @@ const id: Dict = {
     marketplace: "Marketplace",
   },
 
+  // ── Account Folders ──────────────────────────────────────────────────────
+  accountFolders: {
+    title: "Folder Akun",
+    manageFolders: "Kelola Folder",
+    createFolder: "Buat Folder",
+    renameFolder: "Ubah Nama Folder",
+    deleteFolder: "Hapus Folder",
+    deleteConfirm: "Hapus folder ini? Akun di dalam folder tidak akan dihapus.",
+    folderName: "Nama Folder",
+    folderNamePlaceholder: "Misal: Pribadi, Kerja, Klien A",
+    noFolders: "Belum ada folder. Buat folder pertama untuk mengatur akun.",
+    folderAccounts: 'Akun di "{name}"',
+    allAccounts: "Semua Akun",
+    addAccounts: "Tambah Akun",
+    searchAccounts: "Cari akun...",
+    save: "Simpan",
+    edit: "Edit",
+    delete: "Hapus",
+    created: "Folder dibuat",
+    renamed: "Nama folder diubah",
+    deleted: "Folder dihapus",
+    accountsAdded: "Akun ditambahkan ke folder",
+    accountsRemoved: "Akun dihapus dari folder",
+    nameRequired: "Nama folder wajib diisi",
+    folderFilter: "Filter berdasarkan folder",
+  },
+
   // ── Bilah Atas ──────────────────────────────────────────────────────────
   navbar: {
     settings: "Pengaturan",

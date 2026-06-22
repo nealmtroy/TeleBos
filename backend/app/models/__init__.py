@@ -15,6 +15,8 @@ from .redeem_code import RedeemCode
 from .redeem_log import RedeemLog
 from .account_audit_log import AccountAuditLog
 from .user_account_price import TelegramIdPrefixPrice
+from .account_folder import AccountFolder
+from .account_folder_member import AccountFolderMember
 
 __all__ = [
     "User",
@@ -34,4 +36,6 @@ __all__ = [
     "RedeemLog",
     "AccountAuditLog",
     "TelegramIdPrefixPrice",
+    "AccountFolder",
+    "AccountFolderMember",
 ]

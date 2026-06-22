@@ -24,6 +24,7 @@ export interface Account {
   spam_detail: string | null;
   spam_last_checked_at: string | null;
   sell_price: number | null;
+  folder_ids: string[];
 }
 
 export interface ApiError {

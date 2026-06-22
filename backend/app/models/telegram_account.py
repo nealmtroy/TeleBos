@@ -81,3 +81,8 @@ class TelegramAccount(Base):
     chat_folders: Mapped[list["ChatFolder"]] = relationship(
         "ChatFolder", back_populates="account", cascade="all, delete-orphan"
     )
+    folders: Mapped[list["AccountFolder"]] = relationship(
+        "AccountFolder",
+        secondary="account_folder_members",
+        viewonly=True,
+    )

@@ -20,6 +20,33 @@ export interface Dict {
     marketplace: string;
   };
 
+  // Account Folders
+  accountFolders: {
+    title: string;
+    manageFolders: string;
+    createFolder: string;
+    renameFolder: string;
+    deleteFolder: string;
+    deleteConfirm: string;
+    folderName: string;
+    folderNamePlaceholder: string;
+    noFolders: string;
+    folderAccounts: string;
+    allAccounts: string;
+    addAccounts: string;
+    searchAccounts: string;
+    save: string;
+    edit: string;
+    delete: string;
+    created: string;
+    renamed: string;
+    deleted: string;
+    accountsAdded: string;
+    accountsRemoved: string;
+    nameRequired: string;
+    folderFilter: string;
+  };
+
   // Navbar
   navbar: {
     settings: string;

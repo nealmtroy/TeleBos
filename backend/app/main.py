@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
-from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices
+from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices, account_folders
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
 
@@ -387,6 +387,46 @@ def _run_migrations(connection):
         text("CREATE INDEX IF NOT EXISTS ix_invite_logs_account_used ON invite_logs (account_id_used)")
     )
 
+    # ── Account folders ──────────────────────────────────────────────────
+    if "account_folders" not in tables:
+        connection.execute(
+            text(
+                "CREATE TABLE account_folders ("
+                "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+                "  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                "  name VARCHAR(100) NOT NULL,"
+                "  created_at TIMESTAMPTZ DEFAULT now(),"
+                "  updated_at TIMESTAMPTZ DEFAULT now()"
+                ")"
+            )
+        )
+    connection.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_account_folders_user_id ON account_folders (user_id)")
+    )
+
+    if "account_folder_members" not in tables:
+        connection.execute(
+            text(
+                "CREATE TABLE account_folder_members ("
+                "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+                "  folder_id UUID NOT NULL REFERENCES account_folders(id) ON DELETE CASCADE,"
+                "  account_id UUID NOT NULL REFERENCES telegram_accounts(id) ON DELETE CASCADE"
+                ")"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_uq_folder_account "
+                "ON account_folder_members (folder_id, account_id)"
+            )
+        )
+    connection.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_account_folder_members_folder ON account_folder_members (folder_id)")
+    )
+    connection.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_account_folder_members_account ON account_folder_members (account_id)")
+    )
+
     # ── User balance & role migrations ────────────────────────────────
     user_cols = [c["name"] for c in inspector.get_columns("users")]
     if "balance" not in user_cols:
@@ -604,6 +644,7 @@ app.include_router(redeem.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_smm.router, prefix="/api/v1")
 app.include_router(admin_account_prices.router, prefix="/api/v1")
+app.include_router(account_folders.router, prefix="/api/v1")
 app.include_router(ws.router)
 app.include_router(system.router)
 

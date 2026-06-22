@@ -2,7 +2,8 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from typing import Any
+from pydantic import BaseModel, Field, model_validator
 
 
 
@@ -63,7 +64,16 @@ class AccountResponse(BaseModel):
     spam_detail: str | None = None
     spam_last_checked_at: datetime | None = None
 
+    folder_ids: list[UUID] = []
+
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_folder_ids(cls, data: Any) -> Any:
+        if hasattr(data, "folders"):
+            data.folder_ids = [f.id for f in data.folders]
+        return data
 
 
 class AutoReplyUpdateRequest(BaseModel):

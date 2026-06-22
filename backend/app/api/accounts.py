@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Query, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -215,10 +215,14 @@ async def upload_session(
 
 @router.get("", response_model=AccountListResponse)
 async def list_accounts(
+    folder_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    accounts = await account_service.get_accounts_for_user(db, user)
+    if folder_id:
+        accounts = await account_service.get_accounts_in_folder(db, user, folder_id)
+    else:
+        accounts = await account_service.get_accounts_for_user(db, user)
     return AccountListResponse(accounts=accounts)
 
 

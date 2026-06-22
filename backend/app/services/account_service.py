@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from sqlalchemy import func
 
@@ -357,7 +358,40 @@ async def get_accounts_for_user(
 ) -> list[TelegramAccount]:
     result = await db.execute(
         select(TelegramAccount)
+        .options(selectinload(TelegramAccount.folders))
         .where(TelegramAccount.user_id == user.id)
+        .order_by(TelegramAccount.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_accounts_in_folder(
+    db: AsyncSession, user: User, folder_id: str
+) -> list[TelegramAccount]:
+    """Return accounts that belong to the given folder (and user)."""
+    from app.models.account_folder import AccountFolder
+    from app.models.account_folder_member import AccountFolderMember
+
+    # Verify folder belongs to user
+    folder_result = await db.execute(
+        select(AccountFolder).where(
+            AccountFolder.id == folder_id,
+            AccountFolder.user_id == user.id,
+        )
+    )
+    folder = folder_result.scalar_one_or_none()
+    if not folder:
+        return []
+
+    # Get accounts via membership join with eager-loaded folders
+    result = await db.execute(
+        select(TelegramAccount)
+        .options(selectinload(TelegramAccount.folders))
+        .join(AccountFolderMember, TelegramAccount.id == AccountFolderMember.account_id)
+        .where(
+            AccountFolderMember.folder_id == folder_id,
+            TelegramAccount.user_id == user.id,
+        )
         .order_by(TelegramAccount.created_at.desc())
     )
     return list(result.scalars().all())

@@ -49,3 +49,6 @@ class User(Base):
     orders: Mapped[list["Order"]] = relationship(
         "Order", back_populates="user", cascade="all, delete-orphan"
     )
+    account_folders: Mapped[list["AccountFolder"]] = relationship(
+        "AccountFolder", back_populates="user", cascade="all, delete-orphan"
+    )

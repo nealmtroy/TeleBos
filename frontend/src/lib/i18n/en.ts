@@ -20,6 +20,33 @@ const en: Dict = {
     marketplace: "Marketplace",
   },
 
+  // ── Account Folders ──────────────────────────────────────────────────────
+  accountFolders: {
+    title: "Account Folders",
+    manageFolders: "Manage Folders",
+    createFolder: "Create Folder",
+    renameFolder: "Rename Folder",
+    deleteFolder: "Delete Folder",
+    deleteConfirm: "Delete this folder? Accounts in the folder will not be deleted.",
+    folderName: "Folder Name",
+    folderNamePlaceholder: "e.g. Personal, Work, Client A",
+    noFolders: "No folders yet. Create your first folder to organize accounts.",
+    folderAccounts: 'Accounts in "{name}"',
+    allAccounts: "All Accounts",
+    addAccounts: "Add Accounts",
+    searchAccounts: "Search accounts...",
+    save: "Save",
+    edit: "Edit",
+    delete: "Delete",
+    created: "Folder created",
+    renamed: "Folder renamed",
+    deleted: "Folder deleted",
+    accountsAdded: "Accounts added to folder",
+    accountsRemoved: "Accounts removed from folder",
+    nameRequired: "Folder name is required",
+    folderFilter: "Filter by folder",
+  },
+
   // ── Navbar ──────────────────────────────────────────────────────────────
   navbar: {
     settings: "Settings",
