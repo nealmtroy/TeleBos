@@ -38,6 +38,7 @@ yarn-error.log*
 htmlcov/
 .mypy_cache/
 .playwright-mcp/
+testing/
 
 # Celery & Logs
 celerybeat-schedule
