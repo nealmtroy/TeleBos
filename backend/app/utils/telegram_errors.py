@@ -304,5 +304,15 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "INPUT_USER_DEACTIVATED" in msg:
         return ("deactivated", "User account is deactivated")
 
+    if "CHAT_WRITE_FORBIDDEN" in msg:
+        # Could be permanent admin_only or temporary new-member restriction.
+        # Default to a softer "admin_only" so the caller decides retryability.
+        if "need to join" in msg.lower() or "join the group" in msg.lower():
+            return ("must_join_discussion", "You must join the discussion group before commenting")
+        return ("admin_only", "Only admins can send messages in this group")
+
+    if "JOIN_GROUP" in msg or "join the discussion" in msg.lower() or "before commenting" in msg.lower():
+        return ("must_join_discussion", "You must join the discussion group before commenting")
+
     return ("unknown", msg[:500])
 
