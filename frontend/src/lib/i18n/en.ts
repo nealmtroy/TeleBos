@@ -245,6 +245,12 @@ const en: Dict = {
     step2: "Create a Text List with message templates",
     step3: "Go to New Broadcast, select account, list, and delays",
     step4: "Monitor progress in real-time and check Logs for results",
+    noAccountsTitle: "No Accounts Connected",
+    noAccountsDesc: "You need to add at least one Telegram account before you can use the broadcast feature.",
+    noAccountsBtn: "Add Telegram Account",
+    noGroupListsTitle: "No Group Lists Created",
+    noGroupListsDesc: "You need to create at least one Group List with your target groups before starting a broadcast.",
+    noGroupListsBtn: "Create Group List",
   },
 
   // ── New Broadcast ───────────────────────────────────────────────────────

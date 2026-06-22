@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAccounts } from "@/hooks/use-accounts";
@@ -20,7 +21,7 @@ import type { Account } from "@/hooks/use-accounts";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
-import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle, Wifi, RefreshCw, Info, Search } from "lucide-react";
+import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle, Wifi, RefreshCw, Info, Search, UserPlus, Plus, List } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function NewBroadcastPage() {
@@ -167,6 +168,48 @@ export default function NewBroadcastPage() {
         <div className="space-y-4">
           <CardSkeleton lines={2} />
           <CardSkeleton lines={3} />
+        </div>
+      ) : !accounts || accounts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-primary-50 p-5 rounded-full text-primary-600 animate-pulse">
+            <UserPlus className="h-10 w-10 text-primary-600" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-gray-900">
+              {_("broadcastDashboard.noAccountsTitle")}
+            </h2>
+            <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+              {_("broadcastDashboard.noAccountsDesc")}
+            </p>
+          </div>
+          <Link
+            href="/accounts"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow active:scale-98"
+          >
+            <Plus className="h-4 w-4" />
+            {_("broadcastDashboard.noAccountsBtn")}
+          </Link>
+        </div>
+      ) : !groupLists || groupLists.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-blue-50 p-5 rounded-full text-blue-600 animate-pulse">
+            <List className="h-10 w-10 text-blue-600" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-gray-900">
+              {_("broadcastDashboard.noGroupListsTitle")}
+            </h2>
+            <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+              {_("broadcastDashboard.noGroupListsDesc")}
+            </p>
+          </div>
+          <Link
+            href="/broadcast/group-lists"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow active:scale-98"
+          >
+            <Plus className="h-4 w-4" />
+            {_("broadcastDashboard.noGroupListsBtn")}
+          </Link>
         </div>
       ) : (
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">

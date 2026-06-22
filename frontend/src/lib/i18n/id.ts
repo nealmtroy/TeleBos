@@ -245,6 +245,12 @@ const id: Dict = {
     step2: "Buat Daftar Teks dengan templat pesan",
     step3: "Buka Siaran Baru, pilih akun, daftar, dan penundaan",
     step4: "Pantau progres real-time dan periksa Log untuk hasil",
+    noAccountsTitle: "Belum Ada Akun Terhubung",
+    noAccountsDesc: "Anda perlu menambahkan setidaknya satu akun Telegram sebelum dapat menggunakan fitur siaran.",
+    noAccountsBtn: "Tambah Akun Telegram",
+    noGroupListsTitle: "Belum Ada Daftar Grup",
+    noGroupListsDesc: "Anda perlu membuat setidaknya satu Daftar Grup dengan grup target Anda sebelum memulai siaran.",
+    noGroupListsBtn: "Buat Daftar Grup",
   },
 
   // ── Siaran Baru ─────────────────────────────────────────────────────────

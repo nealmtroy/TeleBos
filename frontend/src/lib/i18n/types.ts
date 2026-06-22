@@ -245,6 +245,12 @@ export interface Dict {
     step2: string;
     step3: string;
     step4: string;
+    noAccountsTitle: string;
+    noAccountsDesc: string;
+    noAccountsBtn: string;
+    noGroupListsTitle: string;
+    noGroupListsDesc: string;
+    noGroupListsBtn: string;
   };
 
   // New Broadcast
