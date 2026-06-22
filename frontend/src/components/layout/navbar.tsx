@@ -99,7 +99,7 @@ export function Navbar() {
         <LanguageSwitcher />
 
         {/* Profile section */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative lg:hidden" ref={dropdownRef}>
           <button
             onClick={handleProfileToggle}
             className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-1.5 transition-all duration-200 active:scale-95"

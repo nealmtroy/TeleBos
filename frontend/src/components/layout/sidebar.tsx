@@ -299,7 +299,7 @@ export function Sidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-4 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto no-scrollbar">
           {navGroups.map((group, groupIdx) => {
             // Filter items in the group by user role
             const visibleItems = group.items.filter((item) => {
@@ -463,7 +463,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer (Profile Section) */}
-        <div className="p-3 border-t border-slate-900 shrink-0 relative" ref={profileRef}>
+        <div className="p-3 border-t border-slate-900 shrink-0 relative hidden lg:block" ref={profileRef}>
           {/* Profile Card */}
           <button
             onClick={() => setProfileOpen(!profileOpen)}
