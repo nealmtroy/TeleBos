@@ -156,7 +156,3 @@ export function useDeletePrefixPrice() {
     },
   });
 }
-      queryClient.invalidateQueries({ queryKey: ["admin", "account-prices"] });
-    },
-  });
-}
