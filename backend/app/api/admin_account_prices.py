@@ -1,4 +1,4 @@
-"""Admin API endpoints for managing per-user account sell prices."""
+"""Admin API endpoints for telegram_id prefix-based account pricing."""
 
 import logging
 
@@ -9,9 +9,9 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.user_account_price import (
-    UserAccountPriceResponse,
-    UserAccountPriceUpdate,
-    UserAccountPriceBulkUpdate,
+    TelegramIdPrefixPriceResponse,
+    TelegramIdPrefixPriceCreate,
+    TelegramIdPrefixPriceUpdate,
 )
 from app.services import user_account_price_service
 
@@ -26,33 +26,65 @@ async def _require_owner(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.get("", response_model=list[UserAccountPriceResponse])
+@router.get("", response_model=list[TelegramIdPrefixPriceResponse])
 async def get_account_prices(
     db: AsyncSession = Depends(get_db),
     _owner: User = Depends(_require_owner),
 ):
-    """Get sell prices for all users (owner only)."""
-    prices = await user_account_price_service.get_all_user_prices(db)
-    return prices
+    """Get all telegram_id prefix price rules (owner only)."""
+    return await user_account_price_service.get_all_prefix_prices(db)
 
 
-@router.put("", response_model=list[UserAccountPriceResponse])
-async def update_account_prices(
-    payload: UserAccountPriceBulkUpdate,
+@router.post("", response_model=TelegramIdPrefixPriceResponse, status_code=201)
+async def create_price_rule(
+    payload: TelegramIdPrefixPriceCreate,
     db: AsyncSession = Depends(get_db),
     _owner: User = Depends(_require_owner),
 ):
-    """Bulk update sell prices for multiple users (owner only)."""
+    """Create a new prefix price rule (owner only)."""
     try:
-        prices_data = [
-            {"user_id": item.user_id, "sell_price": item.sell_price}
-            for item in payload.prices
-        ]
-        await user_account_price_service.bulk_upsert_prices(db, prices_data)
+        result = await user_account_price_service.upsert_prefix_price(
+            db, payload.id_prefix, payload.sell_price, payload.note
+        )
         await db.commit()
-        # Return updated list
-        return await user_account_price_service.get_all_user_prices(db)
+        return result
     except Exception as exc:
         await db.rollback()
-        logger.exception("Failed to update account prices: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to update account prices")
+        logger.exception("Failed to create price rule: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to create price rule")
+
+
+@router.put("/{id_prefix}", response_model=TelegramIdPrefixPriceResponse)
+async def update_price_rule(
+    id_prefix: str,
+    payload: TelegramIdPrefixPriceUpdate,
+    db: AsyncSession = Depends(get_db),
+    _owner: User = Depends(_require_owner),
+):
+    """Update a prefix price rule (owner only)."""
+    try:
+        result = await user_account_price_service.upsert_prefix_price(
+            db, id_prefix, payload.sell_price, payload.note
+        )
+        await db.commit()
+        return result
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("Failed to update price rule: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to update price rule")
+
+
+@router.delete("/{id_prefix}", status_code=204)
+async def delete_price_rule(
+    id_prefix: str,
+    db: AsyncSession = Depends(get_db),
+    _owner: User = Depends(_require_owner),
+):
+    """Delete a prefix price rule (owner only)."""
+    try:
+        await user_account_price_service.delete_prefix_price(db, id_prefix)
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("Failed to delete price rule: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to delete price rule")

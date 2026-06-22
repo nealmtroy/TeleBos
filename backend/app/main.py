@@ -334,14 +334,15 @@ def _run_migrations(connection):
             )
         )
 
-    # ── User account prices table ────────────────────────────────────
-    if "user_account_prices" not in tables:
+    # ── Telegram ID prefix prices table ─────────────────────────────
+    if "telegram_id_prefix_prices" not in tables:
         connection.execute(
             text(
-                "CREATE TABLE user_account_prices ("
+                "CREATE TABLE telegram_id_prefix_prices ("
                 "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
-                "  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                "  id_prefix VARCHAR(20) NOT NULL,"
                 "  sell_price BIGINT NOT NULL DEFAULT 5500,"
+                "  note TEXT,"
                 "  created_at TIMESTAMPTZ DEFAULT now(),"
                 "  updated_at TIMESTAMPTZ DEFAULT now()"
                 ")"
@@ -349,8 +350,8 @@ def _run_migrations(connection):
         )
         connection.execute(
             text(
-                "CREATE UNIQUE INDEX ix_user_account_prices_user_id "
-                "ON user_account_prices (user_id)"
+                "CREATE UNIQUE INDEX ix_telegram_id_prefix_prices_prefix "
+                "ON telegram_id_prefix_prices (id_prefix)"
             )
         )
 

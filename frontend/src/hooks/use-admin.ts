@@ -100,18 +100,18 @@ export function useDeleteUser() {
   });
 }
 
-// ── Account Price Management ─────────────────────────────────────────────────
+// ── Telegram ID Prefix Price Management ──────────────────────────────────────
 
-export interface UserAccountPrice {
-  user_id: string;
-  user_email: string | null;
-  user_full_name: string | null;
+export interface TelegramIdPrefixPrice {
+  id: string;
+  id_prefix: string;
   sell_price: number;
+  note: string | null;
 }
 
-export function useAccountPrices() {
-  return useQuery<UserAccountPrice[]>({
-    queryKey: ["admin", "account-prices"],
+export function usePrefixPrices() {
+  return useQuery<TelegramIdPrefixPrice[]>({
+    queryKey: ["admin", "prefix-prices"],
     queryFn: async () => {
       const { data } = await api.get("/admin/account-prices");
       return data || [];
@@ -119,14 +119,43 @@ export function useAccountPrices() {
   });
 }
 
-export function useUpdateAccountPrices() {
+export function useCreatePrefixPrice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (prices: { user_id: string; sell_price: number }[]) => {
-      const { data } = await api.put("/admin/account-prices", { prices });
-      return data as UserAccountPrice[];
+    mutationFn: async (payload: { id_prefix: string; sell_price: number; note?: string }) => {
+      const { data } = await api.post("/admin/account-prices", payload);
+      return data as TelegramIdPrefixPrice;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "prefix-prices"] });
+    },
+  });
+}
+
+export function useUpdatePrefixPrice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id_prefix, sell_price, note }: { id_prefix: string; sell_price: number; note?: string }) => {
+      const { data } = await api.put(`/admin/account-prices/${id_prefix}`, { sell_price, note });
+      return data as TelegramIdPrefixPrice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "prefix-prices"] });
+    },
+  });
+}
+
+export function useDeletePrefixPrice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id_prefix: string) => {
+      await api.delete(`/admin/account-prices/${id_prefix}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "prefix-prices"] });
+    },
+  });
+}
       queryClient.invalidateQueries({ queryKey: ["admin", "account-prices"] });
     },
   });

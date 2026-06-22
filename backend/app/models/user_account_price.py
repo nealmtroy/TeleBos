@@ -1,34 +1,37 @@
-"""UserAccountPrice model — owner sets per-user prices for selling Telegram accounts."""
+"""TelegramIdPrefixPrice model — owner sets sell price by telegram_id prefix.
+
+Example:
+  prefix "7"  → sell_price = 6000  (matches 7780645374, 7780645372, …)
+  prefix "1"  → sell_price = 5000  (matches 1197078139, …)
+  prefix "5"  → sell_price = 2000  (matches 5720511596, …)
+
+Matching rule: the LONGEST matching prefix wins. If none match, the
+global SmmSetting account_sell_price is used as fallback.
+"""
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, func
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, DateTime, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 
-class UserAccountPrice(Base):
-    """Per-user pricing for marketplace. Owner sets how much each user
-    gets per account when they sell.
-
-    If no row exists for a user, the global default SmmSetting
-    account_sell_price is used as fallback.
-    """
-    __tablename__ = "user_account_prices"
+class TelegramIdPrefixPrice(Base):
+    """Owner-configured sell price for all accounts whose telegram_id starts with a given prefix."""
+    __tablename__ = "telegram_id_prefix_prices"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        primary_key=True, default=uuid.uuid4
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False, unique=True, index=True,
+    id_prefix: Mapped[str] = mapped_column(
+        String(20), nullable=False, unique=True, index=True,
     )
     sell_price: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=5500,
     )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -36,6 +39,3 @@ class UserAccountPrice(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-
-    # Relationship
-    user: Mapped["User"] = relationship("User")

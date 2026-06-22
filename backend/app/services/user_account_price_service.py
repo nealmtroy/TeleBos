@@ -1,89 +1,128 @@
-"""Service for managing per-user account sell prices (owner only)."""
+"""Service for managing telegram_id prefix-based pricing (owner only)."""
 
 import logging
-from uuid import UUID
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
-from app.models.user_account_price import UserAccountPrice
+from app.models.telegram_account import TelegramAccount
+from app.models.user_account_price import TelegramIdPrefixPrice
+from app.models.smm_setting import SmmSetting
 
 logger = logging.getLogger(__name__)
 
 
-async def get_all_user_prices(db: AsyncSession) -> list[dict]:
-    """Get sell prices for all users. Shows users without explicit price too
-    (returns global default as their price)."""
-    # All users
-    users_result = await db.execute(
-        select(User).where(User.role != "owner").order_by(User.full_name)
-    )
-    users = users_result.scalars().all()
-
-    # Explicit prices
-    prices_result = await db.execute(select(UserAccountPrice))
-    prices = prices_result.scalars().all()
-    price_map = {str(p.user_id): p.sell_price for p in prices}
-
-    # Get global default
-    from app.models.smm_setting import SmmSetting
-    setting_result = await db.execute(
-        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
-    )
-    setting = setting_result.scalar_one_or_none()
-    default_price = int(setting.value) if setting and setting.value else 5500
-
-    result = []
-    for user in users:
-        sell_price = price_map.get(str(user.id), default_price)
-        result.append({
-            "user_id": user.id,
-            "user_email": user.email,
-            "user_full_name": user.full_name,
-            "sell_price": sell_price,
-        })
-
-    return sorted(result, key=lambda r: r.get("user_full_name") or r["user_email"])
-
-
-async def upsert_user_price(db: AsyncSession, user_id: UUID, sell_price: int):
-    """Create or update a user's sell price."""
+async def get_all_prefix_prices(db: AsyncSession) -> list[dict]:
+    """Get all configured prefix prices."""
     result = await db.execute(
-        select(UserAccountPrice).where(UserAccountPrice.user_id == user_id)
+        select(TelegramIdPrefixPrice).order_by(TelegramIdPrefixPrice.id_prefix)
     )
-    user_price = result.scalar_one_or_none()
+    return [
+        {
+            "id": str(p.id),
+            "id_prefix": p.id_prefix,
+            "sell_price": p.sell_price,
+            "note": p.note,
+        }
+        for p in result.scalars().all()
+    ]
 
-    if user_price:
-        user_price.sell_price = sell_price
+
+async def upsert_prefix_price(db: AsyncSession, id_prefix: str, sell_price: int, note: str | None = None):
+    """Create or update a prefix price."""
+    result = await db.execute(
+        select(TelegramIdPrefixPrice).where(TelegramIdPrefixPrice.id_prefix == id_prefix)
+    )
+    entry = result.scalar_one_or_none()
+
+    if entry:
+        entry.sell_price = sell_price
+        if note is not None:
+            entry.note = note
     else:
-        user_price = UserAccountPrice(user_id=user_id, sell_price=sell_price)
-        db.add(user_price)
+        entry = TelegramIdPrefixPrice(
+            id_prefix=id_prefix,
+            sell_price=sell_price,
+            note=note,
+        )
+        db.add(entry)
 
     await db.flush()
-    return user_price
+    return {
+        "id": str(entry.id),
+        "id_prefix": entry.id_prefix,
+        "sell_price": entry.sell_price,
+        "note": entry.note,
+    }
 
 
-async def bulk_upsert_prices(db: AsyncSession, prices: list[dict]):
-    """Bulk create or update sell prices."""
-    for item in prices:
-        await upsert_user_price(db, item["user_id"], item["sell_price"])
-    await db.flush()
-
-
-async def get_user_sell_price(db: AsyncSession, user_id: UUID) -> int:
-    """Get the effective sell price for a specific user."""
+async def delete_prefix_price(db: AsyncSession, id_prefix: str):
+    """Delete a prefix price entry."""
     result = await db.execute(
-        select(UserAccountPrice).where(UserAccountPrice.user_id == user_id)
+        select(TelegramIdPrefixPrice).where(TelegramIdPrefixPrice.id_prefix == id_prefix)
     )
-    user_price = result.scalar_one_or_none()
-    if user_price:
-        return user_price.sell_price
+    entry = result.scalar_one_or_none()
+    if entry:
+        await db.delete(entry)
+        await db.flush()
+
+
+async def get_price_for_telegram_id(db: AsyncSession, telegram_id: int) -> int:
+    """Get the sell price for a telegram_id by matching LONGEST prefix.
+
+    E.g. if entries exist for "7" (3000) and "77" (5000), then
+    telegram_id 7780645374 matches "77" (5000), not "7" (3000).
+    """
+    tid_str = str(telegram_id)
+
+    result = await db.execute(
+        select(TelegramIdPrefixPrice)
+    )
+    entries = result.scalars().all()
+
+    # Find the longest matching prefix
+    best_price = None
+    best_len = 0
+
+    for entry in entries:
+        if tid_str.startswith(entry.id_prefix) and len(entry.id_prefix) > best_len:
+            best_price = entry.sell_price
+            best_len = len(entry.id_prefix)
+
+    if best_price is not None:
+        return best_price
 
     # Fallback to global default
-    from app.models.smm_setting import SmmSetting
     setting_result = await db.execute(
         select(SmmSetting).where(SmmSetting.key == "account_sell_price")
     )
     setting = setting_result.scalar_one_or_none()
     return int(setting.value) if setting and setting.value else 5500
+
+
+async def resolve_telegram_id_price(db: AsyncSession, account: TelegramAccount) -> int:
+    """Resolve price for a TelegramAccount using its telegram_id."""
+    if account.telegram_id:
+        return await get_price_for_telegram_id(db, account.telegram_id)
+    # No telegram_id? Use global default
+    setting_result = await db.execute(
+        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
+    )
+    setting = setting_result.scalar_one_or_none()
+    return int(setting.value) if setting and setting.value else 5500
+
+
+async def get_available_prefixes(db: AsyncSession) -> list[str]:
+    """Get list of unique first-digit prefixes from all active accounts that have telegram_id."""
+    result = await db.execute(
+        select(TelegramAccount.telegram_id).where(
+            TelegramAccount.telegram_id.isnot(None),
+            TelegramAccount.for_sale == False,
+            TelegramAccount.is_sold == False,
+        )
+    )
+    ids = result.scalars().all()
+    prefixes = set()
+    for tid in ids:
+        if tid:
+            prefixes.add(str(tid)[0])
+    return sorted(prefixes)
