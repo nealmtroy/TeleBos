@@ -441,8 +441,12 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-# Suppress verbose Telethon INFO logs (flood waits, etc.)
+# Suppress verbose Telethon logs
+# - telethon.client.users: PersistentTimestampOutdatedError spam from
+#   GetChannelDifferenceRequest when Telegram's internal state diverges
 logging.getLogger("telethon").setLevel(logging.WARNING)
+logging.getLogger("telethon.client.users").setLevel(logging.ERROR)
+logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
 
 
 @asynccontextmanager

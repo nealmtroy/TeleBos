@@ -388,6 +388,10 @@ export interface Dict {
     colMessage: string;
     colSentText: string;
     colTime: string;
+    live: string;
+    total: string;
+    noEntriesForCycle: string;
+    noEntriesMatchFilter: string;
   };
 
   // Chats

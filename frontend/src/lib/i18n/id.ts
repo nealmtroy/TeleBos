@@ -388,6 +388,10 @@ const id: Dict = {
     colMessage: "Pesan",
     colSentText: "Teks Terkirim",
     colTime: "Waktu",
+    live: "LIVE",
+    total: "Total",
+    noEntriesForCycle: "Tidak ada entri log untuk siklus ini.",
+    noEntriesMatchFilter: "Tidak ada entri yang cocok dengan filter saat ini.",
   },
 
   // ── Obrolan ─────────────────────────────────────────────────────────────

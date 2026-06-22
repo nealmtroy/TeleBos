@@ -1,21 +1,29 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAccounts } from "@/hooks/use-accounts";
-import { useBroadcastJobs, type BroadcastJob, type BroadcastLog } from "@/hooks/use-broadcast";
+import { type BroadcastJob, type BroadcastLog } from "@/hooks/use-broadcast";
 import { cn, formatDate } from "@/lib/utils";
 import { TableSkeleton } from "@/components/ui/skeleton-cards";
-import { CheckCircle, XCircle, AlertTriangle, FileDown, Search, Filter, Layers } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  FileDown,
+  Search,
+  Filter,
+  Layers,
+} from "lucide-react";
 import { useT } from "@/lib/i18n";
+import CycleAccordion, { type CycleSummary } from "@/components/broadcast/cycle-accordion";
 
 export default function BroadcastLogsPage() {
   const _ = useT();
   const searchParams = useSearchParams();
   const { data: accounts } = useAccounts();
-  const { data: jobs, isLoading: jobsLoading } = useQuery<BroadcastJob[]>({
+  const { data: jobs } = useQuery<BroadcastJob[]>({
     queryKey: ["broadcast-jobs"],
     queryFn: async () => {
       const { data } = await api.get("/broadcast/history");
@@ -27,7 +35,7 @@ export default function BroadcastLogsPage() {
   const [selectedJobId, setSelectedJobId] = useState<string>(() => searchParams.get("jobId") || "");
   const [statusFilter, setStatusFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
-  const [cycleFilter, setCycleFilter] = useState("");
+  const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
 
   // Auto-select running job on load
   useEffect(() => {
@@ -41,6 +49,11 @@ export default function BroadcastLogsPage() {
     }
   }, [jobs, selectedJobId, searchParams]);
 
+  // Reset expanded cycle when job changes
+  useEffect(() => {
+    setExpandedCycle(null);
+  }, [selectedJobId]);
+
   // Account Map for easy lookup
   const accountMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -52,10 +65,11 @@ export default function BroadcastLogsPage() {
 
   const selectedJob: BroadcastJob | undefined = jobs?.find((j) => j.id === selectedJobId);
 
-  // Get available cycles for the selected job from the logs
+  // Fetch all logs for the selected job (limit 500, polled if running)
   const {
     data: allLogs,
     isLoading: logsLoading,
+    isError,
     refetch,
   } = useQuery<BroadcastLog[]>({
     queryKey: ["broadcast-logs", selectedJobId],
@@ -68,34 +82,70 @@ export default function BroadcastLogsPage() {
     refetchInterval: selectedJob?.status === "running" ? 3000 : false,
   });
 
-  // Compute available cycles from the full logs
-  const availableCycles = useMemo(() => {
-    if (!allLogs) return [];
-    const cycles = new Set(allLogs.map((l) => l.cycle_number));
-    return Array.from(cycles).sort((a, b) => a - b);
+  // Group logs by cycle_number to produce cycle summaries
+  const cycleSummaries: CycleSummary[] = useMemo(() => {
+    if (!allLogs || allLogs.length === 0) return [];
+    const map = new Map<number, { total: number; success: number; error: number }>();
+    for (const log of allLogs) {
+      const key = log.cycle_number;
+      if (!map.has(key)) {
+        map.set(key, { total: 0, success: 0, error: 0 });
+      }
+      const entry = map.get(key)!;
+      entry.total += 1;
+      if (log.status === "success") entry.success += 1;
+      else if (log.status === "error") entry.error += 1;
+    }
+    return Array.from(map.entries())
+      .map(([cycleNumber, counts]) => ({
+        cycleNumber,
+        totalCount: counts.total,
+        successCount: counts.success,
+        errorCount: counts.error,
+      }))
+      .sort((a, b) => a.cycleNumber - b.cycleNumber);
   }, [allLogs]);
 
-  // Fetch filtered logs
-  const {
-    data: filteredLogs,
-    isLoading: filteredLoading,
-  } = useQuery<BroadcastLog[]>({
-    queryKey: ["broadcast-logs", selectedJobId, statusFilter, searchFilter, cycleFilter],
-    queryFn: async () => {
-      if (!selectedJobId) return [];
-      const params = new URLSearchParams();
-      if (statusFilter) params.set("status", statusFilter);
-      if (searchFilter) params.set("search", searchFilter);
-      if (cycleFilter) params.set("cycle", cycleFilter);
-      const { data } = await api.get(`/broadcast/${selectedJobId}/logs?${params}`);
-      return data;
-    },
-    enabled: !!selectedJobId,
-    refetchInterval: selectedJob?.status === "running" ? 3000 : false,
-  });
+  // Auto-expand the latest cycle when data loads or a new cycle appears
+  useEffect(() => {
+    if (cycleSummaries.length > 0 && expandedCycle === null) {
+      const latest = Math.max(...cycleSummaries.map((c) => c.cycleNumber));
+      setExpandedCycle(latest);
+    }
+  }, [cycleSummaries, expandedCycle]);
 
-  const logs = filteredLogs;
-  const isLoading = filteredLoading;
+  // Auto-expand a newly-appeared cycle (the latest one changes while running)
+  useEffect(() => {
+    if (cycleSummaries.length > 0 && selectedJob?.status === "running") {
+      const latest = Math.max(...cycleSummaries.map((c) => c.cycleNumber));
+      if (expandedCycle !== null && latest > expandedCycle) {
+        setExpandedCycle(latest);
+      }
+    }
+  }, [cycleSummaries, selectedJob?.status, expandedCycle]);
+
+  const handleToggle = useCallback(
+    (cycleNumber: number) => {
+      setExpandedCycle((prev) => (prev === cycleNumber ? prev : cycleNumber));
+    },
+    []
+  );
+
+  // Filter logs for the currently expanded cycle
+  const logsForCycle = useMemo(() => {
+    if (!allLogs || expandedCycle === null) return [];
+    let filtered = allLogs.filter((l) => l.cycle_number === expandedCycle);
+    if (statusFilter) {
+      filtered = filtered.filter((l) => l.status === statusFilter);
+    }
+    if (searchFilter) {
+      const q = searchFilter.toLowerCase();
+      filtered = filtered.filter((l) =>
+        l.group_identifier.toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [allLogs, expandedCycle, statusFilter, searchFilter]);
 
   async function handleExport(format: "csv" | "json") {
     if (!selectedJobId) return;
@@ -149,7 +199,7 @@ export default function BroadcastLogsPage() {
 
       {selectedJobId && (
         <>
-          {/* Filters */}
+          {/* Filters (cycle dropdown removed — replaced by accordion) */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -170,16 +220,6 @@ export default function BroadcastLogsPage() {
               <option value="success">{_("broadcastLogs.success")}</option>
               <option value="error">{_("broadcastLogs.error")}</option>
             </select>
-            <select
-              value={cycleFilter}
-              onChange={(e) => setCycleFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">{_("broadcastLogs.allCycles")}</option>
-              {availableCycles.map((c) => (
-                <option key={c} value={c}>{_("broadcastLogs.cycle")} {c}</option>
-              ))}
-            </select>
             <div className="flex-1" />
             <button
               onClick={() => handleExport("csv")}
@@ -197,93 +237,134 @@ export default function BroadcastLogsPage() {
             </button>
           </div>
 
-          {/* Log table */}
-          {isLoading ? (
-            <TableSkeleton rows={8} cols={7} />
-          ) : !logs || logs.length === 0 ? (
+          {/* Error state */}
+          {isError && (
+            <div className="text-center py-12 bg-white rounded-xl border border-red-200 text-red-600">
+              <p className="mb-2">{_("broadcastLogs.noEntries")}</p>
+              <button
+                onClick={() => refetch()}
+                className="text-sm underline hover:no-underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Cycle accordion */}
+          {logsLoading && !allLogs ? (
+            <TableSkeleton rows={4} cols={3} />
+          ) : !allLogs || allLogs.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-gray-200 text-gray-500">
-              {_("broadcastLogs.noEntries")}
+              <Filter className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+              <p>{_("broadcastLogs.noEntries")}</p>
+            </div>
+          ) : cycleSummaries.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border border-gray-200 text-gray-500">
+              <p>{_("broadcastLogs.noEntries")}</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colCycle")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colGroup")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Account</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colStatus")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colErrorType")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colMessage")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colSentText")}</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colTime")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {logs.map((log) => {
-                      const accountName = log.account_id_used ? accountMap.get(log.account_id_used) || "Deleted Account" : "—";
-                      return (
-                        <tr key={log.id} className="hover:bg-gray-50 transition">
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
-                              <Layers className="h-3 w-3" />
-                              C{log.cycle_number}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">
-                            {log.group_identifier}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 max-w-[150px] truncate" title={accountName}>
-                            {accountName}
-                          </td>
-                          <td className="px-4 py-3">
-                            {log.status === "success" ? (
-                              <span className="inline-flex items-center gap-1 text-green-700">
-                                <CheckCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.success")}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-red-700">
-                                <XCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.error")}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {log.error_type ? (
-                              <span
-                                className={cn(
-                                  "px-2 py-0.5 rounded-full text-xs font-medium",
-                                  log.error_type === "flood" && "bg-orange-100 text-orange-800",
-                                  log.error_type === "banned" && "bg-red-100 text-red-800",
-                                  log.error_type === "admin_only" && "bg-yellow-100 text-yellow-800",
-                                  log.error_type === "slowmode" && "bg-blue-100 text-blue-800",
-                                  log.error_type === "invalid_username" && "bg-purple-100 text-purple-800",
-                                  log.error_type === "invalid_link" && "bg-purple-100 text-purple-800",
-                                  !log.error_type && "bg-gray-100 text-gray-600"
-                                )}
-                              >
-                                {log.error_type || "—"}
-                              </span>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
-                            {log.error_message || "—"}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
-                            {log.sent_text || "—"}
-                          </td>
-                          <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                            {formatDate(log.sent_at)}
-                          </td>
+            <CycleAccordion
+              cycles={cycleSummaries}
+              expandedCycle={expandedCycle}
+              onToggle={handleToggle}
+              isRunning={selectedJob?.status === "running"}
+            >
+              {(cycleNumber) => {
+                const logs = cycleNumber === expandedCycle ? logsForCycle : [];
+
+                if (logs.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      {statusFilter || searchFilter
+                        ? _("broadcastLogs.noEntriesMatchFilter")
+                        : _("broadcastLogs.noEntriesForCycle")}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colCycle")}</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colGroup")}</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">Account</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colStatus")}</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colErrorType")}</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colMessage")}</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colSentText")}</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colTime")}</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {logs.map((log) => {
+                          const accountName = log.account_id_used
+                            ? accountMap.get(log.account_id_used) || "Deleted Account"
+                            : "—";
+                          return (
+                            <tr key={log.id} className="hover:bg-gray-50 transition">
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center gap-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                                  <Layers className="h-3 w-3" />
+                                  C{log.cycle_number}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">
+                                {log.group_identifier}
+                              </td>
+                              <td className="px-4 py-3 text-gray-700 max-w-[150px] truncate" title={accountName}>
+                                {accountName}
+                              </td>
+                              <td className="px-4 py-3">
+                                {log.status === "success" ? (
+                                  <span className="inline-flex items-center gap-1 text-green-700">
+                                    <CheckCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.success")}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-red-700">
+                                    <XCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.error")}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {log.error_type ? (
+                                  <span
+                                    className={cn(
+                                      "px-2 py-0.5 rounded-full text-xs font-medium",
+                                      log.error_type === "flood" && "bg-orange-100 text-orange-800",
+                                      log.error_type === "banned" && "bg-red-100 text-red-800",
+                                      log.error_type === "admin_only" && "bg-yellow-100 text-yellow-800",
+                                      log.error_type === "slowmode" && "bg-blue-100 text-blue-800",
+                                      log.error_type === "invalid_username" && "bg-purple-100 text-purple-800",
+                                      log.error_type === "invalid_link" && "bg-purple-100 text-purple-800",
+                                      !log.error_type && "bg-gray-100 text-gray-600"
+                                    )}
+                                  >
+                                    {log.error_type || "—"}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                                {log.error_message || "—"}
+                              </td>
+                              <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                                {log.sent_text || "—"}
+                              </td>
+                              <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                                {formatDate(log.sent_at)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              }}
+            </CycleAccordion>
           )}
         </>
       )}

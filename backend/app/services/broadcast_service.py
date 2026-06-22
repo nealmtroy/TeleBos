@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import InvalidRequestError
 
 from app.models.broadcast_job import BroadcastJob
 from app.models.broadcast_log import BroadcastLog
@@ -27,6 +28,34 @@ logger = logging.getLogger(__name__)
 # In-process task tracker for background broadcast jobs (replaces Celery)
 _running_tasks: dict[str, asyncio.Task] = {}
 _job_events: dict[str, asyncio.Event] = {}
+
+
+async def _refresh_job_safe(db: AsyncSession, job: BroadcastJob) -> BroadcastJob | None:
+    """Refresh a BroadcastJob from the DB, re-fetching if the session lost track.
+
+    Long-running broadcast jobs hold a single session for hours, and
+    PostgreSQL connection drops (idle_in_transaction_session_timeout, pool
+    recycling, transient network errors) detach the ORM instance from the
+    session.  ``db.refresh()`` then raises ``InvalidRequestError``.  This
+    helper catches that and re-fetches via a fresh query so the broadcast
+    loop can continue.
+    """
+    try:
+        await db.refresh(job)
+        return job
+    except InvalidRequestError:
+        logger.warning("BroadcastJob %s detached from session, re-fetching", job.id)
+        from app.database import async_session_factory
+        async with async_session_factory() as fresh_db:
+            result = await fresh_db.execute(
+                select(BroadcastJob).where(BroadcastJob.id == job.id)
+            )
+            fresh_job = result.scalar_one_or_none()
+            if fresh_job is None:
+                return None
+        # Merge back into the original session so subsequent state changes
+        # are tracked as expected.
+        return await db.merge(fresh_job)
 
 async def _interruptible_sleep(job_id: str, seconds: float) -> bool:
     """Sleep for `seconds`, but wake up immediately if _wake_job is called.
@@ -663,8 +692,8 @@ async def execute_broadcast(job_id: str):
                     newly_joined = []
                     still_pending = {}
                     for pkey, pitem in list(pending_pool.items()):
-                        await db.refresh(job)
-                        if job.status in ("cancelled", "paused"):
+                        job = await _refresh_job_safe(db, job)
+                        if job is None or job.status in ("cancelled", "paused"):
                             break
 
                         # Find ready account for joining (must not be on global cooldown or join cooldown)
@@ -732,13 +761,13 @@ async def execute_broadcast(job_id: str):
                     # Find the next ready account
                     selected_acc = None
                     while True:
-                        await db.refresh(job)
-                        if job.status == "cancelled":
+                        job = await _refresh_job_safe(db, job)
+                        if job is None or job.status == "cancelled":
                             break
                         while job.status == "paused":
                             await _interruptible_sleep(job_id, 86400) # Sleep indefinitely until woken
-                            await db.refresh(job)
-                            if job.status == "cancelled":
+                            job = await _refresh_job_safe(db, job)
+                            if job is None or job.status == "cancelled":
                                 break
                         if job.status == "cancelled":
                             break
@@ -786,8 +815,8 @@ async def execute_broadcast(job_id: str):
                         })
 
                         await _interruptible_sleep(job_id, wait_sec)
-                        await db.refresh(job)
-                        if job.status == "cancelled":
+                        job = await _refresh_job_safe(db, job)
+                        if job is None or job.status == "cancelled":
                             break
 
                     if job.status == "cancelled":
@@ -966,6 +995,17 @@ async def execute_broadcast(job_id: str):
                                             if retry_attempt == 0:
                                                 logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id, acc_id_str, net_exc)
                                                 await asyncio.sleep(2)
+                                                # If the client got disconnected (TTL cleanup, network blip), reconnect
+                                                if not client.is_connected():
+                                                    logger.info("Client %s disconnected, attempting reconnect...", acc_id_str)
+                                                    try:
+                                                        await client.connect()
+                                                        if not await client.is_user_authorized():
+                                                            raise ValueError("Session expired after disconnect")
+                                                        logger.info("Client %s reconnected successfully", acc_id_str)
+                                                    except Exception as reconnect_exc:
+                                                        logger.error("Failed to reconnect client %s: %s", acc_id_str, reconnect_exc)
+                                                        raise
                                                 continue
                                             raise
 
@@ -1081,8 +1121,8 @@ async def execute_broadcast(job_id: str):
                     await _interruptible_sleep(job_id, actual_delay)
 
                 # Check if cancelled mid-cycle
-                await db.refresh(job)
-                if job.status == "cancelled":
+                job = await _refresh_job_safe(db, job)
+                if job is None or job.status == "cancelled":
                     break
 
                 if is_looping:
@@ -1133,13 +1173,13 @@ async def execute_broadcast(job_id: str):
                         # We still need to loop and check status if woken up
                         end_time = time.time() + job.delay_after_all
                         while time.time() < end_time:
-                            await db.refresh(job)
-                            if job.status in ("cancelled", "completed", "failed"):
+                            job = await _refresh_job_safe(db, job)
+                            if job is None or job.status in ("cancelled", "completed", "failed"):
                                 break
                             while job.status == "paused":
                                 await _interruptible_sleep(job_id, 86400) # Sleep indefinitely until woken
-                                await db.refresh(job)
-                                if job.status in ("cancelled", "completed", "failed"):
+                                job = await _refresh_job_safe(db, job)
+                                if job is None or job.status in ("cancelled", "completed", "failed"):
                                     break
 
                             if job.status in ("cancelled", "completed", "failed"):
@@ -1155,8 +1195,8 @@ async def execute_broadcast(job_id: str):
                     break
 
             # Mark completed (only for non-looping jobs)
-            await db.refresh(job)
-            if job.status == "running" and not job.loop_enabled:
+            job = await _refresh_job_safe(db, job)
+            if job is not None and job.status == "running" and not job.loop_enabled:
                 job.status = "completed"
                 job.progress = 100
                 job.sent_count = sent

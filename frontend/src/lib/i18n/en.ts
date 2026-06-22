@@ -388,6 +388,10 @@ const en: Dict = {
     colMessage: "Message",
     colSentText: "Sent Text",
     colTime: "Time",
+    live: "LIVE",
+    total: "Total",
+    noEntriesForCycle: "No log entries for this cycle.",
+    noEntriesMatchFilter: "No entries match the current filters.",
   },
 
   // ── Chats ───────────────────────────────────────────────────────────────
