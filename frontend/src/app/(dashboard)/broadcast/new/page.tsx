@@ -6,7 +6,9 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAccounts } from "@/hooks/use-accounts";
+import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
 import {
   useGroupLists,
   useTextLists,
@@ -28,6 +30,7 @@ export default function NewBroadcastPage() {
   const _ = useT();
   const router = useRouter();
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { data: folders } = useAccountFolders();
   const { data: groupLists, isLoading: groupListsLoading } = useGroupLists();
   const { data: textLists, isLoading: textListsLoading } = useTextLists();
   const { data: allJobs } = useBroadcastJobs();
@@ -35,6 +38,7 @@ export default function NewBroadcastPage() {
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [accountSearchQuery, setAccountSearchQuery] = useState("");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [groupListId, setGroupListId] = useState("");
   const [textListId, setTextListId] = useState("");
   const [mode, setMode] = useState<"multi_random" | "single_text">("multi_random");
@@ -148,13 +152,19 @@ export default function NewBroadcastPage() {
   const isRunning = activeJob && activeJob.status === "running";
   const isCompleted = activeJob && activeJob.status === "completed";
 
-  const filteredAccounts = (accounts || []).filter((acc: Account) => {
+  const filteredByFolder = selectedFolderId
+    ? (accounts || []).filter((acc: Account) => acc.folder_ids?.includes(selectedFolderId))
+    : (accounts || []);
+
+  const filteredAccounts = filteredByFolder.filter((acc: Account) => {
     const q = accountSearchQuery.toLowerCase();
     return (
       (acc.first_name || "").toLowerCase().includes(q) ||
       (acc.phone || "").toLowerCase().includes(q)
     );
   });
+
+  const folderList = Array.isArray(folders) ? folders : [];
 
   return (
     <div className="space-y-6">
@@ -238,6 +248,15 @@ export default function NewBroadcastPage() {
                 Clear
               </button>
             </div>
+          </div>
+
+          {/* Folder filter */}
+          <div className="mb-3">
+            <FolderFilterBar
+              folders={folderList}
+              selectedFolderId={selectedFolderId}
+              onSelect={setSelectedFolderId}
+            />
           </div>
 
           {/* Search */}

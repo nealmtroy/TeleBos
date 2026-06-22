@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useAccounts } from "@/hooks/use-accounts";
+import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
 import {
   useInviteJobs,
   useStartInvite,
@@ -104,10 +106,12 @@ function NewInviteTab() {
   const _ = useT();
   const queryClient = useQueryClient();
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { data: folders } = useAccountFolders();
   const startMutation = useStartInvite();
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [accountSearchQuery, setAccountSearchQuery] = useState("");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [destGroup, setDestGroup] = useState("");
   const [destType, setDestType] = useState<"username" | "link" | "group_id">("username");
   const [sourceGroups, setSourceGroups] = useState<{ type: string; value: string }[]>([]);
@@ -195,13 +199,19 @@ function NewInviteTab() {
     { value: "group_id", label: _("invite.typeGroupId") },
   ];
 
-  const filteredAccounts = (accounts || []).filter((acc: Account) => {
+  const filteredByFolder = selectedFolderId
+    ? (accounts || []).filter((acc: Account) => acc.folder_ids?.includes(selectedFolderId))
+    : (accounts || []);
+
+  const filteredAccounts = filteredByFolder.filter((acc: Account) => {
     const q = accountSearchQuery.toLowerCase();
     return (
       (acc.first_name || "").toLowerCase().includes(q) ||
       (acc.phone || "").toLowerCase().includes(q)
     );
   });
+
+  const folderList = Array.isArray(folders) ? folders : [];
 
   return (
     <div className="space-y-6">
@@ -241,6 +251,16 @@ function NewInviteTab() {
                   Clear
                 </button>
               </div>
+            </div>
+
+            {/* Search */}
+            {/* Folder filter */}
+            <div className="mb-3">
+              <FolderFilterBar
+                folders={folderList}
+                selectedFolderId={selectedFolderId}
+                onSelect={setSelectedFolderId}
+              />
             </div>
 
             {/* Search */}
