@@ -36,17 +36,13 @@ export interface ApiError {
 // ── Photo URL helpers ────────────────────────────────────────────────────────
 // Profile photos are public now — no auth token needed.
 // Use ?v=version so the URL stays stable → browser caching works.
-// When version is 0 (default/unset) we still use a cache-busting t= param
-// for safety, but once a photo_version is known the URL is stable.
+// Even when version is 0 the URL is stable (it only changes on upload/delete),
+// so we never need legacy cache-busting with t=Date.now().
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export function getPhotoUrl(accountId: string, version?: number) {
-  if (version && version > 0) {
-    return `${baseUrl}/accounts/${accountId}/photo?v=${version}`;
-  }
-  // No version yet — fall through to legacy cache-bust
-  return `${baseUrl}/accounts/${accountId}/photo?t=${Date.now()}`;
+  return `${baseUrl}/accounts/${accountId}/photo?v=${version ?? 0}`;
 }
 
 export function useAccounts() {

@@ -505,6 +505,7 @@ async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
         f.write(data)
 
     account.profile_photo_path = photo_path
+    account.photo_version += 1
     return data
 
 
