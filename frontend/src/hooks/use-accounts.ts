@@ -22,6 +22,7 @@ export interface Account {
   spam_status: string | null;
   spam_detail: string | null;
   spam_last_checked_at: string | null;
+  sell_price: number | null;
 }
 
 export interface ApiError {

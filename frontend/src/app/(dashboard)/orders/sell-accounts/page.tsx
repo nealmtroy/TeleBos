@@ -7,6 +7,7 @@ import {
   DollarSign,
   AlertCircle,
   Wallet,
+  Hash,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   useSellEligibleAccounts,
   useSellAccounts,
-  useMarketplacePricing,
 } from "@/hooks/use-marketplace";
 
 export default function SellAccountsPage() {
@@ -23,14 +23,17 @@ export default function SellAccountsPage() {
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { data: eligible, isLoading, error } = useSellEligibleAccounts();
-  const { data: pricing } = useMarketplacePricing();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sellConfirmOpen, setSellConfirmOpen] = useState(false);
   const [selling, setSelling] = useState(false);
 
   const sellMutation = useSellAccounts();
 
-  const sellPrice = pricing?.sell_price || 5500;
+  const getPriceForAccount = (id: string): number => {
+    if (!eligible) return 0;
+    const acc = eligible.find((a) => a.id === id);
+    return acc?.sell_price || 0;
+  };
 
   const handleSelectAll = () => {
     if (!eligible) return;
@@ -62,7 +65,7 @@ export default function SellAccountsPage() {
     }
   };
 
-  const totalReceive = sellPrice * selectedIds.length;
+  const totalReceive = selectedIds.reduce((sum, id) => sum + getPriceForAccount(id), 0);
 
   if (isLoading) {
     return (
@@ -119,28 +122,11 @@ export default function SellAccountsPage() {
       <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
         <DollarSign className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-amber-800 space-y-1">
-          <p className="font-semibold">Auto-Pricing by Owner</p>
+          <p className="font-semibold">Auto-Pricing by Telegram ID Prefix</p>
           <p>
-            Your sell price is <strong>Rp {sellPrice.toLocaleString()}</strong> per account (set by the platform owner).
+            Each account has a price based on its Telegram ID prefix (set by the platform owner).
             Your balance will <strong>not</strong> be credited immediately — you only get paid when a buyer purchases your account.
           </p>
-        </div>
-      </div>
-
-      {/* Summary Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 rounded-xl border border-gray-200 gap-3">
-        <div>
-          <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
-            {_("orders.eligibleAccounts")}
-          </h4>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Select one or more accounts. Sold accounts immediately cease active broadcasting and auto-replies.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 self-end sm:self-auto">
-          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 font-semibold px-2.5 py-1">
-            Rp {sellPrice.toLocaleString()} / account
-          </Badge>
         </div>
       </div>
 
@@ -161,11 +147,13 @@ export default function SellAccountsPage() {
                 <th className="py-3 px-4 text-left">Telegram Account</th>
                 <th className="py-3 px-4 text-left">Username</th>
                 <th className="py-3 px-4 text-left">Telegram ID</th>
+                <th className="py-3 px-4 text-center">Price (Rp)</th>
               </tr>
             </thead>
             <tbody>
               {eligible.map((acc) => {
                 const isSelected = selectedIds.includes(acc.id);
+                const price = acc.sell_price || 0;
                 return (
                   <tr
                     key={acc.id}
@@ -200,7 +188,19 @@ export default function SellAccountsPage() {
                       {acc.username ? `@${acc.username}` : "—"}
                     </td>
                     <td className="py-3 px-4 text-gray-600 font-mono text-xs">
-                      {acc.telegram_id || "—"}
+                      <div className="flex items-center gap-1">
+                        <Hash className="h-3 w-3 text-gray-400" />
+                        {acc.telegram_id || "—"}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {price > 0 ? (
+                        <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold px-2.5 py-1">
+                          Rp {price.toLocaleString()}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">No price set</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -214,9 +214,20 @@ export default function SellAccountsPage() {
       {selectedIds.length > 0 && (
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 bg-white border border-gray-200 shadow-2xl rounded-2xl p-4 sm:p-5 flex flex-col space-y-4 animate-in slide-in-from-bottom-6 duration-200">
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
-              <span>Selected Accounts:</span>
-              <span className="font-bold text-gray-900">{selectedIds.length} accounts</span>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto">
+              {selectedIds.slice(0, 5).map((id) => {
+                const acc = eligible.find((a) => a.id === id);
+                const price = getPriceForAccount(id);
+                return (
+                  <div key={id} className="flex justify-between text-xs text-gray-500">
+                    <span className="truncate">{acc?.phone || id.slice(0, 8)}</span>
+                    <span className="font-semibold text-gray-700">Rp {price.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+              {selectedIds.length > 5 && (
+                <p className="text-xs text-gray-400">+{selectedIds.length - 5} more accounts</p>
+              )}
             </div>
             <div className="flex justify-between items-center text-sm font-semibold text-gray-900 border-t border-gray-100 pt-2">
               <span>{_("orders.balanceToReceive")}:</span>
@@ -225,7 +236,7 @@ export default function SellAccountsPage() {
               </span>
             </div>
             <p className="text-[11px] text-gray-400 italic">
-              Price: Rp {sellPrice.toLocaleString()} / account. You'll only be paid when a buyer purchases.
+              You'll only be paid when a buyer purchases your account(s).
             </p>
           </div>
           <Button
@@ -249,20 +260,21 @@ export default function SellAccountsPage() {
             <p className="text-sm text-gray-500">
               Are you sure you want to sell these {selectedIds.length} Telegram account(s)? This will stop all active broadcasting and auto-replies immediately.
             </p>
-            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
-              <div className="flex justify-between">
-                <span>Selected Accounts:</span>
-                <span className="font-semibold text-gray-900">{selectedIds.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Price per account:</span>
-                <span className="font-semibold text-gray-900">Rp {sellPrice.toLocaleString()}</span>
-              </div>
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2 text-xs text-gray-600">
+              <p className="font-semibold text-gray-900 text-[11px] uppercase tracking-wider">Price Breakdown</p>
+              {selectedIds.map((id) => {
+                const acc = eligible.find((a) => a.id === id);
+                const price = getPriceForAccount(id);
+                return (
+                  <div key={id} className="flex justify-between">
+                    <span className="truncate mr-2">{acc?.phone || id.slice(0, 8)}</span>
+                    <span className="font-semibold text-gray-900">Rp {price.toLocaleString()}</span>
+                  </div>
+                );
+              })}
               <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
-                <span className="text-gray-900">{_("orders.balanceToReceive")}:</span>
-                <span className="text-emerald-600 font-bold">
-                  Rp {totalReceive.toLocaleString()}
-                </span>
+                <span className="text-gray-900">Total:</span>
+                <span className="text-emerald-600 font-bold">Rp {totalReceive.toLocaleString()}</span>
               </div>
             </div>
             <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-xs text-amber-700">

@@ -77,6 +77,8 @@ def get_country_code_and_name(phone: str) -> tuple[str, str]:
 
 async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[TelegramAccount]:
     """Get all connected accounts owned by the user that can be listed for sale."""
+    from app.services.user_account_price_service import resolve_telegram_id_price
+
     result = await db.execute(
         select(TelegramAccount).where(
             and_(
@@ -87,7 +89,13 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
             )
         ).order_by(TelegramAccount.created_at.desc())
     )
-    return list(result.scalars().all())
+    accounts = list(result.scalars().all())
+
+    # Inject sell_price from prefix pricing (not persisted, just for display)
+    for acc in accounts:
+        acc.sell_price = await resolve_telegram_id_price(db, acc)
+
+    return accounts
 
 
 async def get_marketplace_prices(db: AsyncSession) -> tuple[int, int]:
