@@ -72,6 +72,8 @@ export interface SmmStats {
 
 export interface SmmSettings {
   global_markup_percent: number;
+  account_buy_price?: number;
+  account_sell_price?: number;
 }
 
 // ── Profile ───────────────────────────────────────────────────────────────────
@@ -245,7 +247,11 @@ export function useAdminSmmSettings() {
 export function useAdminUpdateSmmSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (settings: { global_markup_percent: number }) => {
+    mutationFn: async (settings: {
+      global_markup_percent?: number;
+      account_buy_price?: number;
+      account_sell_price?: number;
+    }) => {
       const { data } = await api.put("/admin/smm/settings", settings);
       return data;
     },

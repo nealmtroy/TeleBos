@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
-from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem
+from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
 
@@ -189,6 +189,28 @@ def _run_migrations(connection):
             )
         )
 
+    # ── Marketplace columns on telegram_accounts ──────────────────────────
+    if "for_sale" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN for_sale BOOLEAN DEFAULT false NOT NULL")
+        )
+    if "is_sold" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN is_sold BOOLEAN DEFAULT false NOT NULL")
+        )
+    if "seller_id" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN seller_id UUID REFERENCES users(id) ON DELETE SET NULL")
+        )
+    if "sold_at" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN sold_at TIMESTAMPTZ DEFAULT NULL")
+        )
+    if "recovery_email" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN recovery_email VARCHAR(255) DEFAULT NULL")
+        )
+
     # ── Auto-reply logs table ───────────────────────────────────────────
     tables = inspector.get_table_names()
     if "auto_reply_logs" not in tables:
@@ -282,6 +304,35 @@ def _run_migrations(connection):
                     "ADD COLUMN account_id_used UUID REFERENCES telegram_accounts(id) ON DELETE SET NULL"
                 )
             )
+
+    # ── Account audit logs table ──────────────────────────────────────
+    if "account_audit_logs" not in tables:
+        connection.execute(
+            text(
+                "CREATE TABLE account_audit_logs ("
+                "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
+                "  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                "  account_id UUID REFERENCES telegram_accounts(id) ON DELETE SET NULL,"
+                "  action VARCHAR(20) NOT NULL,"
+                "  price BIGINT NOT NULL,"
+                "  phone VARCHAR(50),"
+                "  telegram_id BIGINT,"
+                "  created_at TIMESTAMPTZ DEFAULT now()"
+                ")"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX ix_account_audit_logs_user_id "
+                "ON account_audit_logs (user_id)"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX ix_account_audit_logs_account_id "
+                "ON account_audit_logs (account_id)"
+            )
+        )
 
     # ── Performance Indexes ───────────────────────────────────────────
     connection.execute(
@@ -523,6 +574,7 @@ app.include_router(api_settings.router, prefix="/api/v1")
 app.include_router(broadcast.router, prefix="/api/v1")
 app.include_router(invite.router, prefix="/api/v1")
 app.include_router(orders.router, prefix="/api/v1")
+app.include_router(marketplace.router, prefix="/api/v1")
 app.include_router(redeem.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_smm.router, prefix="/api/v1")

@@ -4,14 +4,47 @@ import { useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useTelegramServices, usePlaceOrder, usePlaceMassOrder, useOrderHistory, useRefreshAllOrders, useRefreshOrderStatus, SMMService } from "@/hooks/use-orders";
-import { ShoppingCart, Plus, Minus, RefreshCw, Search, AlertCircle, CheckCircle2, Loader2, Trash2, ListOrdered, FileText, Wallet, Grid3X3, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  RefreshCw,
+  Search,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  Trash2,
+  ListOrdered,
+  FileText,
+  Wallet,
+  Grid3X3,
+  ChevronDown,
+  ChevronRight,
+  DollarSign,
+  Check,
+  Mail,
+  Shield,
+  Globe,
+  Sparkles,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  useMarketplaceStock,
+  useMarketplaceStockAccounts,
+  useSellEligibleAccounts,
+  useSellAccounts,
+  useBuyAccount,
+  useMarketplacePricing,
+} from "@/hooks/use-marketplace";
 
-type Tab = "services" | "new" | "mass" | "history";
+type Tab = "services" | "new" | "mass" | "history" | "buy_accounts" | "sell_accounts";
+
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -52,6 +85,8 @@ export default function OrdersPage() {
     { id: "new" as Tab, label: _("orders.newOrder"), icon: Plus },
     { id: "mass" as Tab, label: _("orders.massOrder"), icon: FileText },
     { id: "history" as Tab, label: _("orders.history"), icon: RefreshCw },
+    { id: "buy_accounts" as Tab, label: _("orders.buyAccounts"), icon: ShoppingCart },
+    { id: "sell_accounts" as Tab, label: _("orders.sellAccounts"), icon: DollarSign },
   ];
 
   return (
@@ -97,6 +132,8 @@ export default function OrdersPage() {
       {tab === "new" && <NewOrderTab />}
       {tab === "mass" && <MassOrderTab />}
       {tab === "history" && <HistoryTab />}
+      {tab === "buy_accounts" && <BuyAccountsTab />}
+      {tab === "sell_accounts" && <SellAccountsTab />}
     </div>
   );
 }
@@ -875,3 +912,620 @@ function HistoryTab() {
     </div>
   );
 }
+
+function BuyAccountsTab() {
+  const _ = useT();
+  const user = useAuthStore((s) => s.user);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const { data: stock, isLoading: stockLoading, refetch: refetchStock } = useMarketplaceStock();
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  
+  // Confirmation Modal
+  const [buyConfirmOpen, setBuyConfirmOpen] = useState(false);
+  const [pendingBuyAccount, setPendingBuyAccount] = useState<{
+    id: string;
+    telegram_id: number | null;
+    price: number;
+    country_code: string;
+  } | null>(null);
+
+  // Success Modal
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [boughtAccount, setBoughtAccount] = useState<{
+    id: string;
+    telegram_id: number | null;
+    phone: string;
+    first_name: string | null;
+    last_name: string | null;
+    username: string | null;
+  } | null>(null);
+
+  const buyMutation = useBuyAccount();
+
+  const handleBuyConfirm = async () => {
+    if (!pendingBuyAccount) return;
+    try {
+      const res = await buyMutation.mutateAsync(pendingBuyAccount.id);
+      setBoughtAccount(res);
+      await fetchMe();
+      await refetchStock();
+      setBuyConfirmOpen(false);
+      setPendingBuyAccount(null);
+      setSuccessOpen(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (stockLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!stock || stock.length === 0) {
+    return (
+      <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl">
+        <ShoppingCart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+        <h3 className="font-semibold text-gray-900 mb-1">{_("orders.noOrders") || "No Ready Stock"}</h3>
+        <p className="text-sm text-gray-500">{_("orders.startOrdering") || "Check back later for newly added stock!"}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stock Category Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {stock.map((cat) => {
+          const isExpanded = selectedCountry === cat.country_code;
+          return (
+            <Card
+              key={cat.country_code}
+              className={cn(
+                "hover:shadow-md transition cursor-pointer border-2",
+                isExpanded ? "border-primary-500 shadow-sm" : "border-gray-200"
+              )}
+              onClick={() => setSelectedCountry(isExpanded ? null : cat.country_code)}
+            >
+              <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-gray-400" />
+                      <span className="font-bold text-gray-900">{cat.country_name}</span>
+                    </div>
+                    <p className="text-sm font-mono text-gray-500 font-semibold">{cat.country_code}</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-primary-50 text-primary-700 border-primary-200 font-semibold px-2.5 py-1">
+                    {cat.ready_stock} {_("orders.readyStock")}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <span className="text-xs text-gray-400 font-medium">{_("orders.pricePerAccount")}:</span>
+                  <span className="text-base font-bold text-gray-900">Rp {cat.price.toLocaleString()}</span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Expanded Country Account Details */}
+      {selectedCountry && (
+        <CountryAccountsList
+          countryCode={selectedCountry}
+          price={stock.find((c) => c.country_code === selectedCountry)?.price || 0}
+          onBuyClick={(acc) => {
+            setPendingBuyAccount({
+              id: acc.id,
+              telegram_id: acc.telegram_id,
+              price: stock.find((c) => c.country_code === selectedCountry)?.price || 0,
+              country_code: selectedCountry,
+            });
+            setBuyConfirmOpen(true);
+          }}
+        />
+      )}
+
+      {/* Buy Confirmation Dialog */}
+      <ConfirmDialog
+        open={buyConfirmOpen}
+        onOpenChange={setBuyConfirmOpen}
+        onConfirm={handleBuyConfirm}
+        title={_("orders.confirmBuyTitle")}
+        message={
+          <div className="space-y-3 text-left">
+            <p className="text-sm text-gray-500">
+              {_("orders.confirmBuyMsg")}
+            </p>
+            {pendingBuyAccount && (
+              <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
+                <div className="flex justify-between">
+                  <span>User ID:</span>
+                  <span className="font-semibold text-gray-900">{pendingBuyAccount.telegram_id || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Country Prefix:</span>
+                  <span className="font-semibold text-gray-900 font-mono">{pendingBuyAccount.country_code}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
+                  <span className="text-gray-900">Total Price:</span>
+                  <span className="text-primary-600 font-bold">
+                    Rp {pendingBuyAccount.price.toLocaleString()}
+                  </span>
+                </div>
+                {user && (
+                  <div className="flex justify-between text-[11px] pt-1">
+                    <span>{_("orders.yourBalance")}:</span>
+                    <span className={cn("font-medium", user.balance < pendingBuyAccount.price ? "text-red-600" : "text-green-600")}>
+                      Rp {user.balance.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        }
+        confirmText={_("orders.buyAccounts")}
+        cancelText={_("navbar.cancel")}
+        variant="info"
+        loading={buyMutation.isPending}
+      />
+
+      {/* Purchase Success Modal */}
+      {successOpen && boughtAccount && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                <Sparkles className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                {_("orders.buySuccess")}
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                The account has been transferred to your custody. Here are the account details:
+              </p>
+
+              <div className="w-full bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-left text-xs space-y-2.5 mb-6">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Phone Number:</span>
+                  <span className="font-semibold text-gray-900 font-mono">{boughtAccount.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">User ID:</span>
+                  <span className="font-semibold text-gray-900 font-mono">{boughtAccount.telegram_id || "—"}</span>
+                </div>
+                {(boughtAccount.first_name || boughtAccount.last_name) && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Name:</span>
+                    <span className="font-semibold text-gray-900">
+                      {boughtAccount.first_name || ""} {boughtAccount.last_name || ""}
+                    </span>
+                  </div>
+                )}
+                {boughtAccount.username && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Username:</span>
+                    <span className="font-semibold text-gray-900 font-mono font-semibold">@{boughtAccount.username}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 w-full">
+                <Button
+                  onClick={() => {
+                    setSuccessOpen(false);
+                    setBoughtAccount(null);
+                    window.location.href = "/accounts";
+                  }}
+                  className="w-full"
+                >
+                  View in My Accounts
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSuccessOpen(false);
+                    setBoughtAccount(null);
+                  }}
+                  className="w-full"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CountryAccountsList({
+  countryCode,
+  price,
+  onBuyClick,
+}: {
+  countryCode: string;
+  price: number;
+  onBuyClick: (acc: any) => void;
+}) {
+  const _ = useT();
+  const user = useAuthStore((s) => s.user);
+  const { data: accounts, isLoading, error } = useMarketplaceStockAccounts(countryCode);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2 mt-4 p-4 border border-gray-150 rounded-xl bg-gray-50/50">
+        <Skeleton className="h-6 w-32 animate-pulse bg-gray-200" />
+        <div className="space-y-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full animate-pulse bg-gray-200" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 mt-4 text-xs">
+        <AlertCircle className="h-4 w-4" />
+        <p>Failed to load accounts for this country.</p>
+      </div>
+    );
+  }
+
+  if (!accounts || accounts.length === 0) {
+    return (
+      <div className="text-center py-8 border border-dashed border-gray-200 rounded-xl mt-4 text-xs text-gray-500 bg-white">
+        No accounts available in this country.
+      </div>
+    );
+  }
+
+  return (
+    <Card className="mt-4 border border-gray-200">
+      <CardHeader className="py-4 px-5 bg-gray-50/50 border-b border-gray-100 flex flex-row justify-between items-center">
+        <div>
+          <CardTitle className="text-sm font-bold text-gray-900">
+            Stock Details ({countryCode})
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Hiding sensitive details. Purchase to unlock full credentials.
+          </CardDescription>
+        </div>
+        <Badge className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
+          Rp {price.toLocaleString()} per account
+        </Badge>
+      </CardHeader>
+      <CardContent className="p-0 divide-y divide-gray-150">
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 font-medium">
+                <th className="text-left py-2.5 px-5">Telegram User ID</th>
+                <th className="text-center py-2.5 px-5">2FA Password Status</th>
+                <th className="text-center py-2.5 px-5">Recovery Email</th>
+                <th className="text-right py-2.5 px-5">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.map((acc) => (
+                <tr key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
+                  <td className="py-3 px-5 font-mono text-gray-900 font-semibold">
+                    {acc.telegram_id || "—"}
+                  </td>
+                  <td className="py-3 px-5 text-center">
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                      acc.twofa_enabled
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-gray-50 text-gray-500 border-gray-200"
+                    )}>
+                      <Shield className="h-3 w-3" />
+                      {acc.twofa_enabled ? "Required" : "Not Required"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-5 text-center">
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                      acc.recovery_email_available
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-gray-50 text-gray-500 border-gray-200"
+                    )}>
+                      <Mail className="h-3 w-3" />
+                      {acc.recovery_email_available ? "Available" : "Not Available"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-5 text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => onBuyClick(acc)}
+                      disabled={user ? user.balance < price : false}
+                      className="text-xs h-8"
+                    >
+                      <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                      Buy Account
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="sm:hidden divide-y divide-gray-100">
+          {accounts.map((acc) => (
+            <div key={acc.id} className="p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-gray-400 font-medium">User ID:</span>
+                <span className="text-sm font-semibold text-gray-900 font-mono">{acc.telegram_id || "—"}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="space-y-1">
+                  <p className="text-gray-400 font-medium">2FA Password</p>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
+                    acc.twofa_enabled ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-gray-50 text-gray-500 border-gray-200"
+                  )}>
+                    {acc.twofa_enabled ? "Required" : "Not Required"}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-gray-400 font-medium">Recovery Email</p>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
+                    acc.recovery_email_available ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-500 border-gray-200"
+                  )}>
+                    {acc.recovery_email_available ? "Available" : "Not Available"}
+                  </span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => onBuyClick(acc)}
+                disabled={user ? user.balance < price : false}
+                className="w-full text-xs"
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                Buy Account (Rp {price.toLocaleString()})
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SellAccountsTab() {
+  const _ = useT();
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const { data: eligible, isLoading, error } = useSellEligibleAccounts();
+  const { data: pricing } = useMarketplacePricing();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [sellConfirmOpen, setSellConfirmOpen] = useState(false);
+  const [selling, setSelling] = useState(false);
+
+  const sellMutation = useSellAccounts();
+
+  const handleSelectAll = () => {
+    if (!eligible) return;
+    if (selectedIds.length === eligible.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(eligible.map((acc) => acc.id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSellConfirm = async () => {
+    if (selectedIds.length === 0) return;
+    setSelling(true);
+    try {
+      await sellMutation.mutateAsync(selectedIds);
+      await fetchMe();
+      setSelectedIds([]);
+      setSellConfirmOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSelling(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+        <AlertCircle className="h-5 w-5" />
+        <p>Failed to load eligible accounts.</p>
+      </div>
+    );
+  }
+
+  if (!eligible || eligible.length === 0) {
+    return (
+      <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl">
+        <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+        <h3 className="font-semibold text-gray-900 mb-1">{_("orders.noEligibleAccounts")}</h3>
+        <p className="text-sm text-gray-500">
+          All your connected accounts are already sold or in custody, or you don't have any verified accounts.
+        </p>
+      </div>
+    );
+  }
+
+  const sellPrice = pricing?.sell_price || 5500;
+  const totalReceive = sellPrice * selectedIds.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 rounded-xl border border-gray-200 gap-3">
+        <div>
+          <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
+            {_("orders.eligibleAccounts")}
+          </h4>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Select one or more accounts. Sold accounts immediately cease active broadcasting and auto-replies.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 font-semibold px-2.5 py-1">
+            Rp {sellPrice.toLocaleString()} / account
+          </Badge>
+        </div>
+      </div>
+
+      {/* Eligible Accounts Table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50/50 text-gray-500 font-medium">
+                <th className="py-3 px-4 text-left w-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === eligible.length}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+                  />
+                </th>
+                <th className="py-3 px-4 text-left">Telegram Account</th>
+                <th className="py-3 px-4 text-left">Username</th>
+                <th className="py-3 px-4 text-left">Telegram ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eligible.map((acc) => {
+                const isSelected = selectedIds.includes(acc.id);
+                return (
+                  <tr
+                    key={acc.id}
+                    className={cn(
+                      "border-b border-gray-100 hover:bg-gray-50/50 transition-colors last:border-b-0 cursor-pointer",
+                      isSelected && "bg-primary-50/20"
+                    )}
+                    onClick={() => handleToggleSelect(acc.id)}
+                  >
+                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(acc.id)}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center font-bold text-primary-700 text-xs shrink-0">
+                          {acc.first_name ? acc.first_name[0].toUpperCase() : "U"}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {acc.first_name || "Unnamed"} {acc.last_name || ""}
+                          </p>
+                          <p className="text-xs font-mono text-gray-500">{acc.phone}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 font-mono text-xs">
+                      {acc.username ? `@${acc.username}` : "—"}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 font-mono text-xs">
+                      {acc.telegram_id || "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Sell Floating Action Panel */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 bg-white border border-gray-200 shadow-2xl rounded-2xl p-4 sm:p-5 flex flex-col space-y-4 animate-in slide-in-from-bottom-6 duration-200">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs text-gray-500 font-medium">
+              <span>Selected Accounts:</span>
+              <span className="font-bold text-gray-900">{selectedIds.length} accounts</span>
+            </div>
+            <div className="flex justify-between items-center text-sm font-semibold text-gray-900 border-t border-gray-100 pt-2">
+              <span>{_("orders.balanceToReceive")}:</span>
+              <span className="text-emerald-600 text-lg font-bold">
+                Rp {totalReceive.toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <Button
+            onClick={() => setSellConfirmOpen(true)}
+            className="w-full bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white border-none shadow-sm font-semibold"
+          >
+            <DollarSign className="h-4 w-4 mr-2" />
+            Sell {selectedIds.length} Account(s)
+          </Button>
+        </div>
+      )}
+
+      {/* Multi-Sell Confirmation Dialog */}
+      <ConfirmDialog
+        open={sellConfirmOpen}
+        onOpenChange={setSellConfirmOpen}
+        onConfirm={handleSellConfirm}
+        title={_("orders.confirmSellTitle")}
+        message={
+          <div className="space-y-3 text-left">
+            <p className="text-sm text-gray-500">
+              Are you sure you want to sell these {selectedIds.length} Telegram account(s)? This will stop all active broadcasting and auto-replies immediately.
+            </p>
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
+              <div className="flex justify-between">
+                <span>Selected Accounts:</span>
+                <span className="font-semibold text-gray-900">{selectedIds.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Price per account:</span>
+                <span className="font-semibold text-gray-900">Rp {sellPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
+                <span className="text-gray-900">{_("orders.balanceToReceive")}:</span>
+                <span className="text-emerald-600 font-bold">
+                  Rp {totalReceive.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+        confirmText={_("orders.sellAccount")}
+        cancelText={_("navbar.cancel")}
+        variant="warning"
+        loading={selling}
+      />
+    </div>
+  );
+}
+

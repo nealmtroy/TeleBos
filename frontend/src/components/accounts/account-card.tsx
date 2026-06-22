@@ -1,7 +1,7 @@
 import type { Account } from "@/hooks/use-accounts";
 import { useAccountStats } from "@/hooks/use-account-stats";
 import { cn } from "@/lib/utils";
-import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock } from "lucide-react";
+import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useState, useCallback } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -9,6 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import api from "@/lib/api";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { useSellAccounts, useMarketplacePricing } from "@/hooks/use-marketplace";
+import { useAuthStore } from "@/store/auth-store";
+
 
 interface AccountCardProps {
   account: Account;
@@ -53,6 +56,26 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [sellOpen, setSellOpen] = useState(false);
+  const sellAccountsMutation = useSellAccounts();
+  const { data: pricing } = useMarketplacePricing();
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const [selling, setSelling] = useState(false);
+
+  const handleSellConfirm = async () => {
+    setSelling(true);
+    try {
+      await sellAccountsMutation.mutateAsync([account.id]);
+      await fetchMe();
+      setSellOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSelling(false);
+    }
+  };
+
 
   const formatOwned = (total: number, owned: number) => {
     if (owned > 0) {
@@ -214,16 +237,25 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             {_("accountDetail.groupsChannels")}
           </Link>
         </div>
-        <button
-          onClick={() => {
-            setPendingDelete(account.id);
-            setDeleteOpen(true);
-          }}
-          className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          {_("accountCard.delete")}
-        </button>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            onClick={() => {
+              setPendingDelete(account.id);
+              setDeleteOpen(true);
+            }}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {_("accountCard.delete")}
+          </button>
+          <button
+            onClick={() => setSellOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition"
+          >
+            <DollarSign className="h-3.5 w-3.5" />
+            {_("orders.sellAccount")}
+          </button>
+        </div>
       </div>
 
       <ConfirmDialog
@@ -240,6 +272,43 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         cancelText={_("navbar.cancel")}
         variant="danger"
       />
+
+      <ConfirmDialog
+        open={sellOpen}
+        onOpenChange={setSellOpen}
+        onConfirm={handleSellConfirm}
+        title={_("orders.confirmSellTitle")}
+        message={
+          <div className="space-y-3 text-left">
+            <p className="text-sm text-gray-500">
+              {_("orders.confirmSellMsg")}
+            </p>
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
+              <div className="flex justify-between">
+                <span>User ID:</span>
+                <span className="font-semibold text-gray-900">{account.telegram_id || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{_("orders.pricePerAccount")}:</span>
+                <span className="font-semibold text-gray-900">
+                  Rp {pricing?.sell_price ? pricing.sell_price.toLocaleString() : "5,500"}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
+                <span className="text-gray-900">{_("orders.balanceToReceive")}:</span>
+                <span className="text-emerald-600 font-bold">
+                  Rp {pricing?.sell_price ? pricing.sell_price.toLocaleString() : "5,500"}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+        confirmText={_("orders.sellAccount")}
+        cancelText={_("navbar.cancel")}
+        variant="warning"
+        loading={selling}
+      />
     </div>
   );
 }
+

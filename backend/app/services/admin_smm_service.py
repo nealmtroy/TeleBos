@@ -409,18 +409,23 @@ async def get_global_settings(db: AsyncSession) -> dict:
 
     return {
         "global_markup_percent": int(settings.get(SETTING_GLOBAL_MARKUP, "0")),
+        "account_buy_price": int(settings.get("account_buy_price", "0")),
+        "account_sell_price": int(settings.get("account_sell_price", "0")),
     }
 
 
 async def update_global_settings(db: AsyncSession, updates: dict) -> dict:
     """Update SMM global settings."""
-    if "global_markup_percent" in updates:
-        value = str(updates["global_markup_percent"])
-        existing = await db.get(SmmSetting, SETTING_GLOBAL_MARKUP)
-        if existing:
-            existing.value = value
-        else:
-            db.add(SmmSetting(key=SETTING_GLOBAL_MARKUP, value=value))
+    for key in ["global_markup_percent", "account_buy_price", "account_sell_price"]:
+        if key in updates and updates[key] is not None:
+            value = str(updates[key])
+            # Use SETTING_GLOBAL_MARKUP for key if it matches
+            db_key = SETTING_GLOBAL_MARKUP if key == "global_markup_percent" else key
+            existing = await db.get(SmmSetting, db_key)
+            if existing:
+                existing.value = value
+            else:
+                db.add(SmmSetting(key=db_key, value=value))
 
     await db.flush()
     return await get_global_settings(db)

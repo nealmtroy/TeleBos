@@ -897,11 +897,19 @@ function SettingsTab() {
   const { data: settings, isLoading } = useAdminSmmSettings();
   const updateSettings = useAdminUpdateSmmSettings();
   const [globalMarkup, setGlobalMarkup] = useState("0");
+  const [accountBuyPrice, setAccountBuyPrice] = useState("7000");
+  const [accountSellPrice, setAccountSellPrice] = useState("5500");
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (settings) {
       setGlobalMarkup(String(settings.global_markup_percent));
+      if (settings.account_buy_price !== undefined) {
+        setAccountBuyPrice(String(settings.account_buy_price));
+      }
+      if (settings.account_sell_price !== undefined) {
+        setAccountSellPrice(String(settings.account_sell_price));
+      }
     }
   }, [settings]);
 
@@ -921,6 +929,24 @@ function SettingsTab() {
     try {
       await updateSettings.mutateAsync({ global_markup_percent: pct });
       setActionMsg({ type: "success", text: "Global markup saved!" });
+    } catch {
+      setActionMsg({ type: "error", text: "Failed to save settings" });
+    }
+  }
+
+  async function handleSaveMarketplacePricing() {
+    const buy = parseInt(accountBuyPrice);
+    const sell = parseInt(accountSellPrice);
+    if (isNaN(buy) || buy < 0 || isNaN(sell) || sell < 0) {
+      setActionMsg({ type: "error", text: "Prices must be positive numbers" });
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({
+        account_buy_price: buy,
+        account_sell_price: sell,
+      });
+      setActionMsg({ type: "success", text: "Marketplace prices saved!" });
     } catch {
       setActionMsg({ type: "error", text: "Failed to save settings" });
     }
@@ -993,6 +1019,56 @@ function SettingsTab() {
               Effective price = original_price × (100 + markup) / 100
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Account Marketplace Pricing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Account Marketplace Pricing</CardTitle>
+          <CardDescription>
+            Configure the prices for buying and selling Telegram accounts on the platform.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Account Buy Price (IDR)
+              </label>
+              <input
+                type="number"
+                value={accountBuyPrice}
+                onChange={(e) => setAccountBuyPrice(e.target.value)}
+                min={0}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+              <p className="text-xs text-gray-400 mt-1">Price paid by users to buy an account</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Account Sell Price (IDR)
+              </label>
+              <input
+                type="number"
+                value={accountSellPrice}
+                onChange={(e) => setAccountSellPrice(e.target.value)}
+                min={0}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+              <p className="text-xs text-gray-400 mt-1">Balance received by users when selling an account</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSaveMarketplacePricing}
+            disabled={updateSettings.isPending}
+            className="w-full sm:w-auto mt-2"
+          >
+            {updateSettings.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Save Marketplace Prices
+          </Button>
         </CardContent>
       </Card>
 

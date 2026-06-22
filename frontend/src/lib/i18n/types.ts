@@ -930,6 +930,26 @@ export interface Dict {
     topUp: string;
     massOrderDesc: string;
     refreshSuccess: string;
+    buyAccounts: string;
+    sellAccounts: string;
+    sellAccount: string;
+    readyStock: string;
+    balanceToReceive: string;
+    pricePerAccount: string;
+    eligibleAccounts: string;
+    noEligibleAccounts: string;
+    confirmSellTitle: string;
+    confirmSellMsg: string;
+    confirmBuyTitle: string;
+    confirmBuyMsg: string;
+    buySuccess: string;
+    sellSuccess: string;
+    twoFaStatus: string;
+    recoveryEmail: string;
+    available: string;
+    unavailable: string;
+    sellPrice: string;
+    buyPrice: string;
   };
 
   // Admin SMM
