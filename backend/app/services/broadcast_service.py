@@ -44,11 +44,18 @@ async def _refresh_job_safe(db: AsyncSession, job: BroadcastJob) -> BroadcastJob
         await db.refresh(job)
         return job
     except InvalidRequestError:
-        logger.warning("BroadcastJob %s detached from session, re-fetching", job.id)
+        from sqlalchemy import inspect
+        state = inspect(job)
+        job_id = state.identity[0] if state and state.identity else None
+        if not job_id:
+            logger.warning("BroadcastJob detached from session and has no identity, cannot re-fetch")
+            return None
+
+        logger.warning("BroadcastJob %s detached from session, re-fetching", job_id)
         from app.database import async_session_factory
         async with async_session_factory() as fresh_db:
             result = await fresh_db.execute(
-                select(BroadcastJob).where(BroadcastJob.id == job.id)
+                select(BroadcastJob).where(BroadcastJob.id == job_id)
             )
             fresh_job = result.scalar_one_or_none()
             if fresh_job is None:
@@ -393,17 +400,26 @@ async def _push_broadcast(job_id: str, event_type: str, data: dict) -> None:
         logger.warning("WS push failed for job %s: %s", job_id, push_exc)
 
 
-async def _account_for_log(db: AsyncSession, account_id: str) -> TelegramAccount | None:
+async def _account_for_log(account_id: str, db: AsyncSession | None = None) -> TelegramAccount | None:
     """Fetch a TelegramAccount by id-string for log labeling."""
     import uuid as _uuid
     try:
         acc_uuid = _uuid.UUID(account_id)
     except (ValueError, TypeError):
         return None
-    res = await db.execute(
-        select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
-    )
-    return res.scalar_one_or_none()
+
+    if db is not None:
+        res = await db.execute(
+            select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
+        )
+        return res.scalar_one_or_none()
+
+    from app.database import async_session_factory
+    async with async_session_factory() as fresh_db:
+        res = await fresh_db.execute(
+            select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
+        )
+        return res.scalar_one_or_none()
 
 def _invite_hash(target: str) -> str | None:
     text = target.strip()
@@ -572,55 +588,86 @@ async def execute_broadcast(job_id: str):
     except ValueError:
         job_uuid = job_id
 
-    async with async_session_factory() as db:
-        try:
+    job_id_str = str(job_uuid)
+
+    # Helper to check and retrieve the current status of the job using a fresh session
+    async def _get_current_status(jid):
+        async with async_session_factory() as sdb:
+            res = await sdb.execute(
+                select(BroadcastJob.status).where(BroadcastJob.id == jid)
+            )
+            return res.scalar_one_or_none()
+
+    try:
+        # ── Initial Setup (runs in a short-lived DB session) ──
+        async with async_session_factory() as db:
             result = await db.execute(
                 select(BroadcastJob).where(BroadcastJob.id == job_uuid)
             )
-            job = result.scalar_one_or_none()
-            if job is None:
+            job_orm = result.scalar_one_or_none()
+            if job_orm is None:
                 return
-            # Jika sudah di-cancel/stop sebelum execution sempat mulai
-            if job.status in ("cancelled", "completed"):
+            # If already cancelled/completed before execution starts
+            if job_orm.status in ("cancelled", "completed"):
                 return
 
-            # Pastikan status running (mungkin sudah dari awal)
-            job.status = "running"
+            # Ensure status is running
+            job_orm.status = "running"
             await db.commit()
-            await _push_broadcast(job_id, "status", {
+
+            # Copy required parameters into memory
+            loop_enabled = job_orm.loop_enabled
+            delay_randomized = job_orm.delay_randomized
+            delay_per_group = job_orm.delay_per_group
+            delay_after_all = job_orm.delay_after_all
+            log_destination = job_orm.log_destination
+            mode = job_orm.mode
+            custom_text = job_orm.custom_text
+            account_ids = list(job_orm.account_ids)
+            sent = job_orm.sent_count
+            failed = job_orm.fail_count
+            total_groups = job_orm.total_groups
+
+            await _push_broadcast(job_id_str, "status", {
                 "status": "running",
-                "total": job.total_groups,
-                "sent": job.sent_count,
-                "failed": job.fail_count,
+                "total": total_groups,
+                "sent": sent,
+                "failed": failed,
             })
 
-            # Load group list & texts
+            # Load group list
             gl_result = await db.execute(
-                select(GroupList).where(GroupList.id == job.group_list_id)
+                select(GroupList).where(GroupList.id == job_orm.group_list_id)
             )
             group_list = gl_result.scalar_one_or_none()
-
-            text_list = None
-            if job.text_list_id:
-                tl_result = await db.execute(
-                    select(TextList).where(TextList.id == job.text_list_id)
-                )
-                text_list = tl_result.scalar_one_or_none()
-
-            if not group_list or not job.account_ids:
-                job.status = "failed"
+            if not group_list or not account_ids:
+                job_orm.status = "failed"
                 await db.commit()
-                await _push_broadcast(job_id, "error", {
+                await _push_broadcast(job_id_str, "error", {
                     "status": "failed",
                     "message": "Group list or accounts not configured properly",
                 })
                 return
+            items = list(group_list.items)
+            group_list_name = group_list.name
+
+            # Load texts
+            texts = []
+            if job_orm.text_list_id:
+                tl_result = await db.execute(
+                    select(TextList).where(TextList.id == job_orm.text_list_id)
+                )
+                text_list = tl_result.scalar_one_or_none()
+                if text_list and text_list.texts:
+                    texts = list(text_list.texts)
+            if mode == "single_text" and custom_text:
+                texts = [custom_text]
 
             # Load active accounts
             active_accounts = []
             settings = get_settings()
 
-            for acc_id_str in job.account_ids:
+            for acc_id_str in account_ids:
                 try:
                     acc_uuid = _uuid.UUID(acc_id_str)
                 except ValueError:
@@ -651,497 +698,493 @@ async def execute_broadcast(job_id: str):
                     logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
 
             if not active_accounts:
-                job.status = "failed"
+                job_orm.status = "failed"
                 await db.commit()
-                await _push_broadcast(job_id, "error", {
+                await _push_broadcast(job_id_str, "error", {
                     "status": "failed",
                     "message": "No authorized Telegram accounts could be connected",
                 })
                 return
 
-            items = group_list.items
-            texts = []
-            if text_list and text_list.texts:
-                texts = text_list.texts
-            if job.mode == "single_text" and job.custom_text:
-                texts = [job.custom_text]
-
-            sent = job.sent_count
-            failed = job.fail_count
-            total = len(items)
-
             # Query current max cycle to support resuming correctly
-            # Start a fresh cycle to avoid mixing logs with a partial previous cycle
             cycle_res = await db.execute(
-                select(func.max(BroadcastLog.cycle_number)).where(BroadcastLog.job_id == job.id)
+                select(func.max(BroadcastLog.cycle_number)).where(BroadcastLog.job_id == job_uuid)
             )
             max_cycle = cycle_res.scalar()
             cycle_count = max_cycle if max_cycle is not None else 0
 
-            current_acc_idx = 0
-            joined_pool: dict = {}
-            pending_pool: dict = {}
-            permanent_failures_pool: set = set()
+        # Setup is complete and db session is closed.
+        current_acc_idx = 0
+        joined_pool: dict = {}
+        pending_pool: dict = {}
+        permanent_failures_pool: set = set()
 
-            while True:
-                is_looping = job.loop_enabled
-                current_cycle = cycle_count + 1
+        while True:
+            is_looping = loop_enabled
+            current_cycle = cycle_count + 1
 
-                # ── Every cycle, retry pending groups first ──
-                if pending_pool and is_looping:
-                    newly_joined = []
-                    still_pending = {}
-                    for pkey, pitem in list(pending_pool.items()):
-                        job = await _refresh_job_safe(db, job)
-                        if job is None or job.status in ("cancelled", "paused"):
-                            break
+            # ── Every cycle, retry pending groups first ──
+            if pending_pool and is_looping:
+                newly_joined = []
+                still_pending = {}
+                for pkey, pitem in list(pending_pool.items()):
+                    current_status = await _get_current_status(job_uuid)
+                    if current_status is None or current_status in ("cancelled", "paused"):
+                        break
 
-                        # Find ready account for joining (must not be on global cooldown or join cooldown)
-                        selected_acc = None
-                        now_ts = time.time()
-                        ready_accs = [
-                            a for a in active_accounts 
-                            if now_ts >= a["cooldown_until"] and now_ts >= a.get("join_cooldown_until", 0.0)
-                        ]
-                        if not ready_accs:
-                            # No accounts can join right now. Keep all remaining in still_pending.
-                            still_pending[pkey] = pitem
-                            for k, v in pending_pool.items():
-                                if k not in newly_joined and k not in joined_pool:
-                                    still_pending[k] = v
-                            break
-
-                        for offset in range(len(active_accounts)):
-                            i_idx = (current_acc_idx + offset) % len(active_accounts)
-                            candidate = active_accounts[i_idx]
-                            if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
-                                selected_acc = candidate
-                                current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                break
-
-                        if not selected_acc:
-                            still_pending[pkey] = pitem
-                            continue
-
-                        client = selected_acc["client"]
-                        try:
-                            # Try resolving/joining using the new logic
-                            entities_retry = await _broadcast_entities_for_target(client, pitem["group_identifier"])
-                            if entities_retry:
-                                joined_pool[pkey] = entities_retry
-                                newly_joined.append(pkey)
-                                await _push_broadcast(job_id, "pending_joined", {
-                                    "group": pitem["group_identifier"],
-                                    "message": f"Retry join successful for {pitem['group_identifier']}",
-                                })
-                            else:
-                                still_pending[pkey] = pitem
-                        except Exception as resolve_exc:
-                            resolve_err = classify_telegram_error(resolve_exc)
-                            err_type, _ = resolve_err
-                            if err_type in ("flood", "peer_flood", "slowmode"):
-                                still_pending[pkey] = pitem
-                                wait = 30
-                                if hasattr(resolve_exc, "seconds"):
-                                    wait = resolve_exc.seconds
-                                
-                                # Record join flood wait on this account
-                                selected_acc["join_cooldown_until"] = time.time() + wait
-                                continue
-                            elif err_type == "already_invited":
-                                joined_pool[pkey] = True
-                                newly_joined.append(pkey)
-                                continue
-                            # Permanent error — leave out of pool entirely
-                            continue
-
-                    pending_pool = still_pending
-
-                for idx, item in enumerate(items):
-                    # Find the next ready account
+                    # Find ready account for joining
                     selected_acc = None
-                    while True:
-                        job = await _refresh_job_safe(db, job)
-                        if job is None or job.status == "cancelled":
-                            break
-                        while job.status == "paused":
-                            await _interruptible_sleep(job_id, 86400) # Sleep indefinitely until woken
-                            job = await _refresh_job_safe(db, job)
-                            if job is None or job.status == "cancelled":
-                                break
-                        if job.status == "cancelled":
-                            break
+                    now_ts = time.time()
+                    ready_accs = [
+                        a for a in active_accounts 
+                        if now_ts >= a["cooldown_until"] and now_ts >= a.get("join_cooldown_until", 0.0)
+                    ]
+                    if not ready_accs:
+                        still_pending[pkey] = pitem
+                        for k, v in pending_pool.items():
+                            if k not in newly_joined and k not in joined_pool:
+                                still_pending[k] = v
+                        break
 
-                        if not active_accounts:
-                            break
-
-                        now_ts = time.time()
-                        ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
-                        if ready_accs:
-                            target_val = item.get("value", "") or ""
-                            target_type = item.get("type", "username")
-                            target_pkey = f"{target_type}:{target_val}"
-                            is_target_joined = target_pkey in joined_pool
-
-                            # If target is not yet joined, prefer an account not on join cooldown
-                            if not is_target_joined:
-                                for offset in range(len(active_accounts)):
-                                    i_idx = (current_acc_idx + offset) % len(active_accounts)
-                                    candidate = active_accounts[i_idx]
-                                    if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
-                                        selected_acc = candidate
-                                        current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                        break
-
-                            # Select next ready account if none selected yet
-                            if not selected_acc:
-                                for offset in range(len(active_accounts)):
-                                    i_idx = (current_acc_idx + offset) % len(active_accounts)
-                                    candidate = active_accounts[i_idx]
-                                    if now_ts >= candidate["cooldown_until"]:
-                                        selected_acc = candidate
-                                        current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                        break
-
-                            if selected_acc:
-                                break
-
-                        earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
-                        wait_sec = max(1.0, earliest_ready_time - now_ts)
-
-                        await _push_broadcast(job_id, "flood_wait", {
-                            "wait_seconds": int(wait_sec),
-                            "message": f"All accounts on cooldown. Waiting {int(wait_sec)}s...",
-                        })
-
-                        await _interruptible_sleep(job_id, wait_sec)
-                        job = await _refresh_job_safe(db, job)
-                        if job is None or job.status == "cancelled":
+                    for offset in range(len(active_accounts)):
+                        i_idx = (current_acc_idx + offset) % len(active_accounts)
+                        candidate = active_accounts[i_idx]
+                        if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
+                            selected_acc = candidate
+                            current_acc_idx = (i_idx + 1) % len(active_accounts)
                             break
 
-                    if job.status == "cancelled":
+                    if not selected_acc:
+                        still_pending[pkey] = pitem
+                        continue
+
+                    client = selected_acc["client"]
+                    try:
+                        entities_retry = await _broadcast_entities_for_target(client, pitem["group_identifier"])
+                        if entities_retry:
+                            joined_pool[pkey] = entities_retry
+                            newly_joined.append(pkey)
+                            await _push_broadcast(job_id_str, "pending_joined", {
+                                "group": pitem["group_identifier"],
+                                "message": f"Retry join successful for {pitem['group_identifier']}",
+                            })
+                        else:
+                            still_pending[pkey] = pitem
+                    except Exception as resolve_exc:
+                        resolve_err = classify_telegram_error(resolve_exc)
+                        err_type, _ = resolve_err
+                        if err_type in ("flood", "peer_flood", "slowmode"):
+                            still_pending[pkey] = pitem
+                            wait = 30
+                            if hasattr(resolve_exc, "seconds"):
+                                wait = resolve_exc.seconds
+                            selected_acc["join_cooldown_until"] = time.time() + wait
+                            continue
+                        elif err_type == "already_invited":
+                            joined_pool[pkey] = True
+                            newly_joined.append(pkey)
+                            continue
+                        continue
+
+                pending_pool = still_pending
+
+            for idx, item in enumerate(items):
+                # Find the next ready account
+                selected_acc = None
+                while True:
+                    current_status = await _get_current_status(job_uuid)
+                    if current_status is None or current_status == "cancelled":
+                        break
+                    while current_status == "paused":
+                        await _interruptible_sleep(job_id_str, 86400) # Sleep indefinitely until woken
+                        current_status = await _get_current_status(job_uuid)
+                        if current_status is None or current_status == "cancelled":
+                            break
+                    if current_status == "cancelled":
                         break
 
                     if not active_accounts:
-                        job.status = "failed"
-                        job.sent_count = sent
-                        job.fail_count = failed
-                        job.completed_at = datetime.now(timezone.utc)
-                        await db.commit()
-                        await _push_broadcast(job_id, "error", {
-                            "status": "failed",
-                            "message": "All Telegram accounts have been limited or failed. Job stopped.",
-                        })
                         break
 
-                    client = selected_acc["client"]
-                    acc_id_str = selected_acc["account_id"]
-                    acc_name = selected_acc["account_name"]
+                    now_ts = time.time()
+                    ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
+                    if ready_accs:
+                        target_val = item.get("value", "") or ""
+                        target_type = item.get("type", "username")
+                        target_pkey = f"{target_type}:{target_val}"
+                        is_target_joined = target_pkey in joined_pool
 
-                    group_identifier = item.get("value", "") or ""
-                    item_type = item.get("type", "username")
+                        if not is_target_joined:
+                            for offset in range(len(active_accounts)):
+                                i_idx = (current_acc_idx + offset) % len(active_accounts)
+                                candidate = active_accounts[i_idx]
+                                if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
+                                    selected_acc = candidate
+                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                    break
 
-                    # ── Check joined_pool first (skip join if already joined) ──
-                    pkey = f"{item_type}:{group_identifier}"
-                    cached_entity = joined_pool.get(pkey)
+                        if not selected_acc:
+                            for offset in range(len(active_accounts)):
+                                i_idx = (current_acc_idx + offset) % len(active_accounts)
+                                candidate = active_accounts[i_idx]
+                                if now_ts >= candidate["cooldown_until"]:
+                                    selected_acc = candidate
+                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                    break
 
-                    # ── Skip groups still in pending pool (will retry next cycle) ──
-                    if pkey in pending_pool:
-                        continue
+                        if selected_acc:
+                            break
 
-                    # ── Skip groups that failed permanently ──
-                    if pkey in permanent_failures_pool:
-                        continue
+                    earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
+                    wait_sec = max(1.0, earliest_ready_time - now_ts)
 
-                    # Defensive cap: even though the column is now TEXT, keep
-                    # extreme blobs out of logs/WS payloads so a stray mega-paste
-                    # in a group_list can't blow up a job.
-                    if len(group_identifier) > 2000:
-                        group_identifier = group_identifier[:2000] + "…"
+                    await _push_broadcast(job_id_str, "flood_wait", {
+                        "wait_seconds": int(wait_sec),
+                        "message": f"All accounts on cooldown. Waiting {int(wait_sec)}s...",
+                    })
 
-                    start_time = time.time()
-                    log = BroadcastLog(
-                        job_id=job.id,
-                        cycle_number=current_cycle,
-                        group_identifier=group_identifier,
-                        account_id_used=_uuid.UUID(acc_id_str)
-                    )
+                    await _interruptible_sleep(job_id_str, wait_sec)
 
-                    # Pick text
-                    if texts:
-                        chosen_text = random.choice(texts)
-                        log.sent_text = chosen_text
-                    else:
-                        chosen_text = ""
+                current_status = await _get_current_status(job_uuid)
+                if current_status is None or current_status == "cancelled":
+                    break
 
-                    # If we need to resolve/join, but the selected account is on join cooldown
-                    if cached_entity is None and time.time() < selected_acc.get("join_cooldown_until", 0.0):
-                        log.status = "error"
-                        log.error_type = "join_cooldown"
-                        log.error_message = "Skipped join: account is on join limit/cooldown"
-                        log.sent_at = datetime.now(timezone.utc)
-                        db.add(log)
-                        failed += 1
+                if not active_accounts:
+                    async with async_session_factory() as db_fail:
+                        result = await db_fail.execute(
+                            select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                        )
+                        db_job = result.scalar_one_or_none()
+                        if db_job:
+                            db_job.status = "failed"
+                            db_job.sent_count = sent
+                            db_job.fail_count = failed
+                            db_job.completed_at = datetime.now(timezone.utc)
+                            await db_fail.commit()
+                    await _push_broadcast(job_id_str, "error", {
+                        "status": "failed",
+                        "message": "All Telegram accounts have been limited or failed. Job stopped.",
+                    })
+                    break
+
+                client = selected_acc["client"]
+                acc_id_str = selected_acc["account_id"]
+                acc_name = selected_acc["account_name"]
+
+                group_identifier = item.get("value", "") or ""
+                item_type = item.get("type", "username")
+
+                pkey = f"{item_type}:{group_identifier}"
+                cached_entity = joined_pool.get(pkey)
+
+                if pkey in pending_pool:
+                    continue
+
+                if pkey in permanent_failures_pool:
+                    continue
+
+                if len(group_identifier) > 2000:
+                    group_identifier = group_identifier[:2000] + "…"
+
+                start_time = time.time()
+                
+                # Pick text
+                if texts:
+                    chosen_text = random.choice(texts)
+                else:
+                    chosen_text = ""
+
+                log_status = "error"
+                log_err_type = None
+                log_err_msg = None
+                log_duration_ms = None
+                log_group_id = None
+
+                # If we need to resolve/join, but the selected account is on join cooldown
+                if cached_entity is None and time.time() < selected_acc.get("join_cooldown_until", 0.0):
+                    log_status = "error"
+                    log_err_type = "join_cooldown"
+                    log_err_msg = "Skipped join: account is on join limit/cooldown"
+                    
+                    pending_pool[pkey] = {
+                        "group_identifier": group_identifier,
+                        "item_type": item_type,
+                    }
+                    failed += 1
+
+                    # Update progress & save log in fresh session
+                    async with async_session_factory() as fresh_db:
+                        job_res = await fresh_db.execute(
+                            select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                        )
+                        db_job = job_res.scalar_one_or_none()
+                        if db_job:
+                            db_job.progress = int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                            db_job.sent_count = sent
+                            db_job.fail_count = failed
                         
-                        # Put in pending pool to retry next cycle
-                        pending_pool[pkey] = {
-                            "group_identifier": group_identifier,
-                            "item_type": item_type,
-                        }
-                        
-                        # Update progress + push to WS, then continue
-                        job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                        job.sent_count = sent
-                        job.fail_count = failed
-                        await db.commit()
+                        db_log = BroadcastLog(
+                            job_id=job_uuid,
+                            cycle_number=current_cycle,
+                            group_identifier=group_identifier,
+                            account_id_used=_uuid.UUID(acc_id_str) if acc_id_str else None,
+                            sent_text=chosen_text,
+                            status=log_status,
+                            error_type=log_err_type,
+                            error_message=log_err_msg,
+                            sent_at=datetime.now(timezone.utc),
+                        )
+                        fresh_db.add(db_log)
+                        await fresh_db.commit()
 
-                        await _push_broadcast(job_id, "progress", {
-                            "current": idx + 1,
-                            "total": total,
-                            "progress": job.progress,
-                            "sent": sent,
-                            "failed": failed,
-                            "cycle": current_cycle,
-                            "status": job.status,
-                        })
-                        await _push_broadcast(job_id, "log", {
-                            "group": group_identifier,
-                            "status": log.status,
-                            "error_type": log.error_type,
-                            "text": log.sent_text,
-                            "cycle": current_cycle,
-                            "account_id_used": acc_id_str,
-                            "account_name": acc_name,
-                        })
-                        continue
-
-                    entities = None
-                    try:
-                        # Use cached entities if already joined (skip resolution entirely)
-                        if cached_entity is not None:
-                            entities = cached_entity
-                        else:
-                            # Resolve target to a list of entities (auto-join if needed)
-                            entities = await _broadcast_entities_for_target(client, group_identifier)
-                            if not entities:
-                                raise ValueError(f"Could not resolve any entities for: {group_identifier}")
-
-                    except Exception as resolve_exc:
-                        err_type, err_msg = classify_telegram_error(resolve_exc)
-
-                        # If we failed during resolution with a retryable error, put it in pending_pool
-                        if err_type in ("flood", "peer_flood", "slowmode", "must_join_discussion", "guest_restricted", "send_restricted"):
-                            pkey = f"{item_type}:{group_identifier}"
-                            pending_pool[pkey] = {
-                                "group_identifier": group_identifier,
-                                "item_type": item_type,
-                            }
-
-                        # Check for special success-like cases (invite request sent / already invited)
-                        if err_type in ("invite_request_sent", "already_invited"):
-                            log.status = "success"
-                            log.error_type = err_type
-                            log.error_message = err_msg
-                            log.sent_at = datetime.now(timezone.utc)
-                            log.duration_ms = int((time.time() - start_time) * 1000)
-                            db.add(log)
-                            sent += 1
-                        else:
-                            # Standard resolution error
-                            log.status = "error"
-                            log.error_type = err_type
-                            log.error_message = err_msg
-                            log.sent_at = datetime.now(timezone.utc)
-                            db.add(log)
-                            failed += 1
-                            # Mark as permanent failure so we don't retry in future cycles
-                            permanent_failures_pool.add(pkey)
-
-                            # If resolution failed due to flood/slowmode, set account join cooldown (NOT global cooldown)
-                            if err_type == "flood":
-                                wait = 30
-                                if hasattr(resolve_exc, "seconds"):
-                                    wait = resolve_exc.seconds
-                                selected_acc["join_cooldown_until"] = time.time() + wait
-                            elif err_type == "peer_flood":
-                                backoff_time = 7200
-                                selected_acc["join_cooldown_until"] = time.time() + backoff_time
-                            elif err_type == "slowmode":
-                                wait = 30
-                                if hasattr(resolve_exc, "seconds"):
-                                    wait = resolve_exc.seconds
-                                selected_acc["join_cooldown_until"] = time.time() + wait
-                    else:
-                        try:
-                            # Send message
-                            if chosen_text:
-                                for entity in entities:
-                                    # Retry loop for transient network/RPC errors
-                                    for retry_attempt in range(2):
-                                        try:
-                                            await client.send_message(entity, chosen_text)
-                                            break # Success
-                                        except telethon.errors.UserNotParticipantError as unpe:
-                                            if retry_attempt == 0:
-                                                # Not a member, try to join now
-                                                try:
-                                                    await client(telethon.errors.channels.JoinChannelRequest(entity))
-                                                    await asyncio.sleep(2)
-                                                    continue # retry send
-                                                except Exception as join_err:
-                                                    raise join_err
-                                            raise
-                                        except (ConnectionError, TimeoutError, OSError) as net_exc:
-                                            if retry_attempt == 0:
-                                                logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id, acc_id_str, net_exc)
-                                                await asyncio.sleep(2)
-                                                # If the client got disconnected (TTL cleanup, network blip), reconnect
-                                                if not client.is_connected():
-                                                    logger.info("Client %s disconnected, attempting reconnect...", acc_id_str)
-                                                    try:
-                                                        await client.connect()
-                                                        if not await client.is_user_authorized():
-                                                            raise ValueError("Session expired after disconnect")
-                                                        logger.info("Client %s reconnected successfully", acc_id_str)
-                                                    except Exception as reconnect_exc:
-                                                        logger.error("Failed to reconnect client %s: %s", acc_id_str, reconnect_exc)
-                                                        raise
-                                                continue
-                                            raise
-
-                            # Use the first entity's ID for log.group_id
-                            if entities:
-                                try:
-                                    log.group_id = get_peer_id(entities[0])
-                                except Exception:
-                                    log.group_id = getattr(entities[0], "id", None)
-                            else:
-                                log.group_id = None
-
-                            # Register into joined_pool (so next cycle skips join)
-                            if entities:
-                                joined_pool[pkey] = entities
-
-                            log.status = "success"
-                            log.sent_at = datetime.now(timezone.utc)
-                            log.duration_ms = int((time.time() - start_time) * 1000)
-                            log.error_message = None
-                            log.error_type = None
-                            db.add(log)
-                            sent += 1
-
-                            # Reset flood state on success
-                            fc.record_success(acc_id_str)
-
-                        except Exception as exc:
-                            err_type, err_msg = classify_telegram_error(exc)
-
-                            # Even if send fails, the group was resolved/joined — remember for next cycle
-                            if entities:
-                                joined_pool[pkey] = entities
-
-                            log.status = "error"
-                            log.error_type = err_type
-                            log.error_message = err_msg
-                            log.sent_at = datetime.now(timezone.utc)
-                            db.add(log)
-                            failed += 1
-
-                            # If it's a permanent send error (like admin_only, banned, etc.), add to permanent failures
-                            if err_type in ("admin_only", "banned", "invalid_username", "invalid_link", "private_channel"):
-                                permanent_failures_pool.add(pkey)
-
-                            if err_type == "flood":
-                                wait = 30
-                                if hasattr(exc, "seconds"):
-                                    wait = exc.seconds
-                                fc.record_flood(acc_id_str, wait)
-                                selected_acc["cooldown_until"] = time.time() + wait
-                            elif err_type == "peer_flood":
-                                backoff_time = 7200
-                                fc.record_flood(acc_id_str, backoff_time)
-                                selected_acc["cooldown_until"] = time.time() + backoff_time
-                            elif err_type == "slowmode":
-                                wait = 30
-                                if hasattr(exc, "seconds"):
-                                    wait = exc.seconds
-                                selected_acc["cooldown_until"] = time.time() + wait
-
-                            if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
-                                await _push_broadcast(job_id, "account_failed", {
-                                    "account": acc_name,
-                                    "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
-                                })
-                                # Remove from client_pool
-                                from app.services.telegram_client import client_pool
-                                await client_pool.remove(acc_id_str)
-                                # Deactivate account in DB
-                                from app.database import async_session_factory
-                                async with async_session_factory() as db_session:
-                                    acc = await _account_for_log(db_session, acc_id_str)
-                                    if acc:
-                                        acc.is_active = False
-                                        await db_session.commit()
-                                active_accounts.remove(selected_acc)
-                                if current_acc_idx >= len(active_accounts) and active_accounts:
-                                    current_acc_idx = 0
-
-                    # Update progress + push to WS
-                    job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                    job.sent_count = sent
-                    job.fail_count = failed
-                    await db.commit()
-
-                    await _push_broadcast(job_id, "progress", {
+                    await _push_broadcast(job_id_str, "progress", {
                         "current": idx + 1,
-                        "total": total,
-                        "progress": job.progress,
+                        "total": len(items),
+                        "progress": int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0,
                         "sent": sent,
                         "failed": failed,
                         "cycle": current_cycle,
-                        "status": job.status,
+                        "status": current_status,
                     })
-                    await _push_broadcast(job_id, "log", {
+                    await _push_broadcast(job_id_str, "log", {
                         "group": group_identifier,
-                        "status": log.status,
-                        "error_type": log.error_type,
-                        "text": log.sent_text,
+                        "status": log_status,
+                        "error_type": log_err_type,
+                        "text": chosen_text,
                         "cycle": current_cycle,
                         "account_id_used": acc_id_str,
                         "account_name": acc_name,
                     })
+                    continue
 
-                    # Delay between groups (use flood-controlled delay if larger)
-                    if job.delay_randomized:
-                        base_delay = random.randint(5, 30)
+                entities = None
+                try:
+                    if cached_entity is not None:
+                        entities = cached_entity
                     else:
-                        base_delay = job.delay_per_group
-                    flood_delay = fc.get_delay(acc_id_str)
-                    actual_delay = max(base_delay, flood_delay)
-                    await _interruptible_sleep(job_id, actual_delay)
+                        entities = await _broadcast_entities_for_target(client, group_identifier)
+                        if not entities:
+                            raise ValueError(f"Could not resolve any entities for: {group_identifier}")
 
-                # Check if cancelled mid-cycle
-                job = await _refresh_job_safe(db, job)
-                if job is None or job.status == "cancelled":
-                    break
+                except Exception as resolve_exc:
+                    err_type, err_msg = classify_telegram_error(resolve_exc)
 
-                if is_looping:
-                    cycle_count += 1
-                    await _push_broadcast(job_id, "cycle_complete", {
-                        "cycle": cycle_count,
-                        "sent": sent,
-                        "failed": failed,
-                        "status": "running",
-                    })
+                    if err_type in ("flood", "peer_flood", "slowmode", "must_join_discussion", "guest_restricted", "send_restricted"):
+                        pending_pool[pkey] = {
+                            "group_identifier": group_identifier,
+                            "item_type": item_type,
+                        }
 
-                    # Send per-cycle log summary via the broadcasting account itself
+                    if err_type in ("invite_request_sent", "already_invited"):
+                        log_status = "success"
+                        log_err_type = err_type
+                        log_err_msg = err_msg
+                        log_duration_ms = int((time.time() - start_time) * 1000)
+                        sent += 1
+                    else:
+                        log_status = "error"
+                        log_err_type = err_type
+                        log_err_msg = err_msg
+                        failed += 1
+                        permanent_failures_pool.add(pkey)
+
+                        if err_type == "flood":
+                            wait = 30
+                            if hasattr(resolve_exc, "seconds"):
+                                wait = resolve_exc.seconds
+                            selected_acc["join_cooldown_until"] = time.time() + wait
+                        elif err_type == "peer_flood":
+                            backoff_time = 7200
+                            selected_acc["join_cooldown_until"] = time.time() + backoff_time
+                        elif err_type == "slowmode":
+                            wait = 30
+                            if hasattr(resolve_exc, "seconds"):
+                                wait = resolve_exc.seconds
+                            selected_acc["join_cooldown_until"] = time.time() + wait
+                else:
                     try:
-                        from app.services.broadcast_log_sender import send_cycle_summary
+                        if chosen_text:
+                            for entity in entities:
+                                for retry_attempt in range(2):
+                                    try:
+                                        await client.send_message(entity, chosen_text)
+                                        break
+                                    except telethon.errors.UserNotParticipantError as unpe:
+                                        if retry_attempt == 0:
+                                            try:
+                                                await client(telethon.errors.channels.JoinChannelRequest(entity))
+                                                await asyncio.sleep(2)
+                                                continue
+                                            except Exception as join_err:
+                                                raise join_err
+                                        raise
+                                    except (ConnectionError, TimeoutError, OSError) as net_exc:
+                                        if retry_attempt == 0:
+                                            logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id_str, acc_id_str, net_exc)
+                                            await asyncio.sleep(2)
+                                            if not client.is_connected():
+                                                logger.info("Client %s disconnected, attempting reconnect...", acc_id_str)
+                                                try:
+                                                    await client.connect()
+                                                    if not await client.is_user_authorized():
+                                                        raise ValueError("Session expired after disconnect")
+                                                    logger.info("Client %s reconnected successfully", acc_id_str)
+                                                except Exception as reconnect_exc:
+                                                    logger.error("Failed to reconnect client %s: %s", acc_id_str, reconnect_exc)
+                                                    raise
+                                            continue
+                                        raise
+
+                        if entities:
+                            try:
+                                log_group_id = get_peer_id(entities[0])
+                            except Exception:
+                                log_group_id = getattr(entities[0], "id", None)
+                        else:
+                            log_group_id = None
+
+                        if entities:
+                            joined_pool[pkey] = entities
+
+                        log_status = "success"
+                        log_duration_ms = int((time.time() - start_time) * 1000)
+                        log_err_msg = None
+                        log_err_type = None
+                        sent += 1
+
+                        fc.record_success(acc_id_str)
+
+                    except Exception as exc:
+                        err_type, err_msg = classify_telegram_error(exc)
+
+                        if entities:
+                            joined_pool[pkey] = entities
+
+                        log_status = "error"
+                        log_err_type = err_type
+                        log_err_msg = err_msg
+                        failed += 1
+
+                        if err_type in ("admin_only", "banned", "invalid_username", "invalid_link", "private_channel"):
+                            permanent_failures_pool.add(pkey)
+
+                        if err_type == "flood":
+                            wait = 30
+                            if hasattr(exc, "seconds"):
+                                wait = exc.seconds
+                            fc.record_flood(acc_id_str, wait)
+                            selected_acc["cooldown_until"] = time.time() + wait
+                        elif err_type == "peer_flood":
+                            backoff_time = 7200
+                            fc.record_flood(acc_id_str, backoff_time)
+                            selected_acc["cooldown_until"] = time.time() + backoff_time
+                        elif err_type == "slowmode":
+                            wait = 30
+                            if hasattr(exc, "seconds"):
+                                wait = exc.seconds
+                            selected_acc["cooldown_until"] = time.time() + wait
+
+                        if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
+                            await _push_broadcast(job_id_str, "account_failed", {
+                                "account": acc_name,
+                                "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
+                            })
+                            from app.services.telegram_client import client_pool
+                            await client_pool.remove(acc_id_str)
+                            
+                            async with async_session_factory() as db_session:
+                                acc = await _account_for_log(acc_id_str, db_session)
+                                if acc:
+                                    acc.is_active = False
+                                    await db_session.commit()
+                            active_accounts.remove(selected_acc)
+                            if current_acc_idx >= len(active_accounts) and active_accounts:
+                                current_acc_idx = 0
+
+                # Save log and update progress
+                async with async_session_factory() as fresh_db:
+                    job_res = await fresh_db.execute(
+                        select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                    )
+                    db_job = job_res.scalar_one_or_none()
+                    if db_job:
+                        db_job.progress = int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                        db_job.sent_count = sent
+                        db_job.fail_count = failed
+                    
+                    db_log = BroadcastLog(
+                        job_id=job_uuid,
+                        cycle_number=current_cycle,
+                        group_identifier=group_identifier,
+                        account_id_used=_uuid.UUID(acc_id_str) if acc_id_str else None,
+                        sent_text=chosen_text,
+                        status=log_status,
+                        error_type=log_err_type,
+                        error_message=log_err_msg,
+                        duration_ms=log_duration_ms,
+                        group_id=log_group_id,
+                        sent_at=datetime.now(timezone.utc),
+                    )
+                    fresh_db.add(db_log)
+                    await fresh_db.commit()
+
+                await _push_broadcast(job_id_str, "progress", {
+                    "current": idx + 1,
+                    "total": len(items),
+                    "progress": int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0,
+                    "sent": sent,
+                    "failed": failed,
+                    "cycle": current_cycle,
+                    "status": current_status,
+                })
+                await _push_broadcast(job_id_str, "log", {
+                    "group": group_identifier,
+                    "status": log_status,
+                    "error_type": log_err_type,
+                    "text": chosen_text,
+                    "cycle": current_cycle,
+                    "account_id_used": acc_id_str,
+                    "account_name": acc_name,
+                })
+
+                # Delay between groups (use flood-controlled delay if larger)
+                if delay_randomized:
+                    base_delay = random.randint(5, 30)
+                else:
+                    base_delay = delay_per_group
+                flood_delay = fc.get_delay(acc_id_str)
+                actual_delay = max(base_delay, flood_delay)
+                await _interruptible_sleep(job_id_str, actual_delay)
+
+            # Check if cancelled mid-cycle
+            current_status = await _get_current_status(job_uuid)
+            if current_status is None or current_status == "cancelled":
+                break
+
+            if is_looping:
+                cycle_count += 1
+                await _push_broadcast(job_id_str, "cycle_complete", {
+                    "cycle": cycle_count,
+                    "sent": sent,
+                    "failed": failed,
+                    "status": "running",
+                })
+
+                # Send per-cycle log summary via the broadcasting account itself
+                try:
+                    from app.services.broadcast_log_sender import send_cycle_summary
+                    async with async_session_factory() as db_summary:
                         cycle_logs = await get_job_logs(
-                            db, str(job.id), {"cycle": cycle_count}, limit=9999
+                            db_summary, job_id_str, {"cycle": cycle_count}, limit=9999
                         )
+                        # Re-fetch database job to satisfy send_cycle_summary dependencies
+                        result = await db_summary.execute(
+                            select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                        )
+                        db_job_summary = result.scalar_one_or_none()
+
                         accounts_by_id = {
-                            a["account_id"]: await _account_for_log(db, a["account_id"])
+                            a["account_id"]: await _account_for_log(a["account_id"], db_summary)
                             for a in active_accounts
                         }
                         item_type_by_id = {
@@ -1151,113 +1194,119 @@ async def execute_broadcast(job_id: str):
                         sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
                         await send_cycle_summary(
                             client=sender["client"],
-                            job=job,
+                            job=db_job_summary,
                             cycle_number=cycle_count,
-                            group_list_name=group_list.name if group_list else "—",
-                            total_groups=total,
-                            active_this_round=total,
-                            cycle_logs=cycle_logs,
-                            accounts_by_id=accounts_by_id,
-                            item_type_by_identifier=item_type_by_id,
-                        )
-                    except Exception as log_exc:
-                        logger.warning("cycle log send failed for job %s: %s", job_id, log_exc)
-
-                    # Delay after all groups before starting next cycle
-                    if job.delay_after_all > 0:
-                        logger.info(
-                            "Job %s cycle %d complete (sent=%d failed=%d), waiting %ds before next cycle",
-                            job_id, cycle_count, sent, failed, job.delay_after_all,
-                        )
-                        # Use interruptible sleep so we can pause/cancel during the delay_after_all
-                        # We still need to loop and check status if woken up
-                        end_time = time.time() + job.delay_after_all
-                        while time.time() < end_time:
-                            job = await _refresh_job_safe(db, job)
-                            if job is None or job.status in ("cancelled", "completed", "failed"):
-                                break
-                            while job.status == "paused":
-                                await _interruptible_sleep(job_id, 86400) # Sleep indefinitely until woken
-                                job = await _refresh_job_safe(db, job)
-                                if job is None or job.status in ("cancelled", "completed", "failed"):
-                                    break
-
-                            if job.status in ("cancelled", "completed", "failed"):
-                                break
-
-                            remaining = max(0, end_time - time.time())
-                            if remaining > 0:
-                                await _interruptible_sleep(job_id, remaining)
-
-                        if job.status in ("cancelled", "completed", "failed"):
-                            break
-                else:
-                    break
-
-            # Mark completed (only for non-looping jobs)
-            job = await _refresh_job_safe(db, job)
-            if job is not None and job.status == "running" and not job.loop_enabled:
-                job.status = "completed"
-                job.progress = 100
-                job.sent_count = sent
-                job.fail_count = failed
-                job.completed_at = datetime.now(timezone.utc)
-                await db.commit()
-                await _push_broadcast(job_id, "completed", {
-                    "total": total,
-                    "sent": sent,
-                    "failed": failed,
-                })
-
-                # Send final cycle summary via the broadcasting account
-                try:
-                    from app.services.broadcast_log_sender import send_cycle_summary
-                    final_cycle = (cycle_count or 0) + 1
-                    cycle_logs = await get_job_logs(
-                        db, str(job.id), {"cycle": final_cycle}, limit=9999
-                    )
-                    accounts_by_id = {
-                        a["account_id"]: await _account_for_log(db, a["account_id"])
-                        for a in active_accounts
-                    }
-                    item_type_by_id = {
-                        i.get("value", ""): i.get("type", "username") for i in items
-                    }
-                    if active_accounts:
-                        sender = active_accounts[
-                            (current_acc_idx - 1) % len(active_accounts)
-                        ]
-                        await send_cycle_summary(
-                            client=sender["client"],
-                            job=job,
-                            cycle_number=final_cycle,
-                            group_list_name=group_list.name if group_list else "—",
-                            total_groups=total,
-                            active_this_round=total,
+                            group_list_name=group_list_name or "—",
+                            total_groups=len(items),
+                            active_this_round=len(items),
                             cycle_logs=cycle_logs,
                             accounts_by_id=accounts_by_id,
                             item_type_by_identifier=item_type_by_id,
                         )
                 except Exception as log_exc:
-                    logger.warning("final log send failed for job %s: %s", job_id, log_exc)
+                    logger.warning("cycle log send failed for job %s: %s", job_id_str, log_exc)
 
-        except Exception as exc:
-            logger.exception("Broadcast job %s failed: %s", job_id, exc)
-            try:
-                await db.rollback()
-                result = await db.execute(
+                # Delay after all groups before starting next cycle
+                if delay_after_all > 0:
+                    logger.info(
+                        "Job %s cycle %d complete (sent=%d failed=%d), waiting %ds before next cycle",
+                        job_id_str, cycle_count, sent, failed, delay_after_all,
+                    )
+                    end_time = time.time() + delay_after_all
+                    while time.time() < end_time:
+                        current_status = await _get_current_status(job_uuid)
+                        if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                            break
+                        while current_status == "paused":
+                            await _interruptible_sleep(job_id_str, 86400) # Sleep indefinitely until woken
+                            current_status = await _get_current_status(job_uuid)
+                            if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                                break
+
+                        if current_status in ("cancelled", "completed", "failed"):
+                            break
+
+                        remaining = max(0, end_time - time.time())
+                        if remaining > 0:
+                            await _interruptible_sleep(job_id_str, remaining)
+
+                    current_status = await _get_current_status(job_uuid)
+                    if current_status in ("cancelled", "completed", "failed"):
+                        break
+            else:
+                break
+
+        # Mark completed (only for non-looping jobs)
+        current_status = await _get_current_status(job_uuid)
+        if current_status == "running" and not loop_enabled:
+            async with async_session_factory() as db_complete:
+                result = await db_complete.execute(
                     select(BroadcastJob).where(BroadcastJob.id == job_uuid)
                 )
-                job = result.scalar_one_or_none()
-                if job:
-                    job.status = "failed"
-                    await db.commit()
-                    await _push_broadcast(job_id, "error", {
-                        "status": "failed",
-                        "message": str(exc),
+                db_job_complete = result.scalar_one_or_none()
+                if db_job_complete:
+                    db_job_complete.status = "completed"
+                    db_job_complete.progress = 100
+                    db_job_complete.sent_count = sent
+                    db_job_complete.fail_count = failed
+                    db_job_complete.completed_at = datetime.now(timezone.utc)
+                    await db_complete.commit()
+                    
+                    await _push_broadcast(job_id_str, "completed", {
+                        "total": len(items),
+                        "sent": sent,
+                        "failed": failed,
                     })
-            except Exception:
-                pass
+
+                    # Send final cycle summary via the broadcasting account
+                    try:
+                        from app.services.broadcast_log_sender import send_cycle_summary
+                        final_cycle = (cycle_count or 0) + 1
+                        cycle_logs = await get_job_logs(
+                            db_complete, job_id_str, {"cycle": final_cycle}, limit=9999
+                        )
+                        accounts_by_id = {
+                            a["account_id"]: await _account_for_log(a["account_id"], db_complete)
+                            for a in active_accounts
+                        }
+                        item_type_by_id = {
+                            i.get("value", ""): i.get("type", "username") for i in items
+                        }
+                        if active_accounts:
+                            sender = active_accounts[
+                                (current_acc_idx - 1) % len(active_accounts)
+                            ]
+                            await send_cycle_summary(
+                                client=sender["client"],
+                                job=db_job_complete,
+                                cycle_number=final_cycle,
+                                group_list_name=group_list_name or "—",
+                                total_groups=len(items),
+                                active_this_round=len(items),
+                                cycle_logs=cycle_logs,
+                                accounts_by_id=accounts_by_id,
+                                item_type_by_identifier=item_type_by_id,
+                            )
+                    except Exception as log_exc:
+                        logger.warning("final log send failed for job %s: %s", job_id_str, log_exc)
+
+    except Exception as exc:
+        logger.exception("Broadcast job %s failed: %s", job_id_str, exc)
+        try:
+            async with async_session_factory() as db_err:
+                result = await db_err.execute(
+                    select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                )
+                job_err = result.scalar_one_or_none()
+                if job_err:
+                    job_err.status = "failed"
+                    await db_err.commit()
+                await _push_broadcast(job_id_str, "error", {
+                    "status": "failed",
+                    "message": str(exc),
+                })
+        except Exception:
+            pass
 
 
 async def resume_running_broadcasts_on_startup(db: AsyncSession) -> int:

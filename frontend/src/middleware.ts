@@ -5,6 +5,9 @@ import type { NextRequest } from "next/server";
 const PUBLIC_PATHS = [
   "/login",
   "/register",
+  "/privacy",
+  "/tos",
+  "/help",
   "/api/v1/auth/login",
   "/api/v1/auth/register",
   "/api/v1/health",
@@ -19,7 +22,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
