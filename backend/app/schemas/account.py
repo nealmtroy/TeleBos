@@ -99,6 +99,10 @@ class BulkAutoReplyUpdateRequest(BaseModel):
 
 class AccountListResponse(BaseModel):
     accounts: list[AccountResponse]
+    total: int | None = None
+    page: int | None = None
+    pages: int | None = None
+    limit: int | None = None
 
 
 class ProfileUpdateRequest(BaseModel):

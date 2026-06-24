@@ -150,6 +150,10 @@ const id: Dict = {
     tryAgain: "Coba lagi",
     noAccounts: "Belum ada akun Telegram.",
     addYourFirst: "Tambah Akun Pertama",
+    searchPlaceholder: "Cari nama, no hp, user ID, username...",
+    showingAccounts: "Menampilkan {start}-{end} dari {total} akun",
+    prev: "Sebelumnya",
+    next: "Berikutnya",
   },
 
   // ── Kartu Akun ──────────────────────────────────────────────────────────

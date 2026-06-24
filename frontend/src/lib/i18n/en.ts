@@ -150,6 +150,10 @@ const en: Dict = {
     tryAgain: "Try again",
     noAccounts: "No Telegram accounts added yet.",
     addYourFirst: "Add Your First Account",
+    searchPlaceholder: "Search name, phone, user ID, username...",
+    showingAccounts: "Showing {start}-{end} of {total} accounts",
+    prev: "Previous",
+    next: "Next",
   },
 
   // ── Account Card ────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ShieldAlert, Loader2, RefreshCw } from "lucide-react";
+import { ShieldAlert, Loader2, RefreshCw, Lock, Eye, EyeOff, Smartphone, KeyRound } from "lucide-react";
 import { useT } from "@/lib/i18n";
 
 export default function AddAccountPage() {
@@ -60,6 +60,7 @@ function OTPLoginForm() {
   const [codes, setCodes] = useState<string[]>(["", "", "", "", ""]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [twofaPassword, setTwofaPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [v2lHint, setV2lHint] = useState<string | null>(null);
@@ -81,6 +82,16 @@ function OTPLoginForm() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Autofocus the first box when transitioning to the OTP verification step
+  useEffect(() => {
+    if (step === "otp") {
+      setTimeout(() => {
+        const firstInput = document.getElementById("otp-input-0");
+        firstInput?.focus();
+      }, 50);
+    }
+  }, [step]);
 
   const sendCode = async () => {
     setError("");
@@ -126,11 +137,10 @@ function OTPLoginForm() {
   const getFullCode = () => codes.join("");
 
   const handleCodeChange = (index: number, value: string) => {
-    // Only allow numbers
     if (!/^\d*$/.test(value)) return;
 
     const newCodes = [...codes];
-    newCodes[index] = value.slice(-1); // Only keep last character
+    newCodes[index] = value.slice(-1);
 
     setCodes(newCodes);
 
@@ -143,10 +153,34 @@ function OTPLoginForm() {
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !codes[index] && index > 0) {
-      // Go back to previous input on backspace
       const prevInput = document.getElementById(`otp-input-${index - 1}`);
       prevInput?.focus();
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+      prevInput?.focus();
+    } else if (e.key === "ArrowRight" && index < 4) {
+      const nextInput = document.getElementById(`otp-input-${index + 1}`);
+      nextInput?.focus();
     }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").trim();
+    if (!/^\d+$/.test(pastedData)) return;
+
+    const digits = pastedData.slice(0, 5).split("");
+    const newCodes = [...codes];
+    for (let i = 0; i < 5; i++) {
+      if (digits[i] !== undefined) {
+        newCodes[i] = digits[i];
+      }
+    }
+    setCodes(newCodes);
+
+    const targetIndex = Math.min(digits.length, 4);
+    const targetInput = document.getElementById(`otp-input-${targetIndex}`);
+    targetInput?.focus();
   };
 
   const handleResendCode = async () => {
@@ -177,11 +211,7 @@ function OTPLoginForm() {
         twofa_password: twofaPassword || undefined,
       });
       if (data.requires_2fa) {
-        if (data.v2l_hint) {
-          setV2lHint(data.v2l_hint);
-        } else {
-          setV2lHint(null);
-        }
+        setV2lHint(data.v2l_hint || null);
         setStep("2fa");
         return;
       }
@@ -196,18 +226,83 @@ function OTPLoginForm() {
   const canSubmit = getFullCode().length === 5 && !loading;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Stepper progress */}
+      <div className="flex items-center justify-between border-b border-gray-100 pb-5">
+        {[
+          { key: "phone", label: "Phone Number", stepNum: 1 },
+          { key: "otp", label: "OTP Verification", stepNum: 2 },
+          { key: "2fa", label: "2FA Password", stepNum: 3 },
+        ].map((s, idx) => {
+          const active = step === s.key;
+          const isPast =
+            (step === "otp" && s.key === "phone") ||
+            (step === "2fa" && (s.key === "phone" || s.key === "otp"));
+
+          return (
+            <React.Fragment key={s.key}>
+              {idx > 0 && (
+                <div
+                  className={cn(
+                    "h-[2px] flex-1 mx-4 transition-all duration-300",
+                    isPast ? "bg-primary-600" : "bg-gray-200"
+                  )}
+                />
+              )}
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold border transition-all duration-200",
+                    active
+                      ? "bg-primary-600 border-primary-600 text-white ring-4 ring-primary-100"
+                      : isPast
+                      ? "bg-green-600 border-green-600 text-white"
+                      : "bg-gray-50 border-gray-200 text-gray-400"
+                  )}
+                >
+                  {isPast ? "✓" : s.stepNum}
+                </span>
+                <span
+                  className={cn(
+                    "text-xs font-medium hidden sm:inline whitespace-nowrap",
+                    active
+                      ? "text-gray-900 font-bold"
+                      : isPast
+                      ? "text-green-600 font-medium"
+                      : "text-gray-400"
+                  )}
+                >
+                  {s.label}
+                </span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
-          <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3.5 rounded-xl text-sm flex items-start gap-2.5 shadow-sm">
+          <ShieldAlert className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5" />
+          <div className="flex-1 font-medium">{error}</div>
         </div>
       )}
 
       {step === "phone" && (
-        <>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-2">
+            <div className="p-2 bg-primary-50 rounded-lg text-primary-600">
+              <Smartphone className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">Telegram Login</h4>
+              <p className="text-xs text-gray-500">
+                You will receive a secure OTP code in your Telegram app or SMS.
+              </p>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               {_("addAccount.phoneLabel")}
             </label>
             <input
@@ -215,9 +310,9 @@ function OTPLoginForm() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder={_("addAccount.phonePlaceholder")}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-100 focus:border-primary-500 outline-none transition"
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 mt-1.5">
               {_("addAccount.phoneHint")}
             </p>
           </div>
@@ -225,7 +320,7 @@ function OTPLoginForm() {
           <button
             onClick={sendCode}
             disabled={loading || !phone}
-            className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300 transition"
+            className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -236,43 +331,40 @@ function OTPLoginForm() {
               _("addAccount.sendOtp")
             )}
           </button>
-        </>
+        </div>
       )}
 
       {step === "otp" && (
-        <>
-          <div className="text-center mb-4">
+        <div className="space-y-5">
+          <div className="text-center bg-gray-50 p-4 rounded-xl border border-gray-100">
             <p className="text-sm text-gray-600">
               {_("addAccount.otpSentTo")}{" "}
-              <span className="font-semibold">{phone}</span>
             </p>
+            <p className="text-lg font-bold text-gray-900 mt-1 font-mono tracking-wide">{phone}</p>
           </div>
 
           {/* OTP Input Boxes */}
-          <div className="grid grid-cols-5 gap-2 sm:gap-3">
+          <div className="grid grid-cols-5 gap-3 max-w-sm mx-auto">
             {codes.map((digit, index) => (
               <input
                 key={index}
                 id={`otp-input-${index}`}
-                ref={(el) => {
-                  if (el && index === focusedIndex) {
-                    el.focus();
-                  }
-                }}
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={handlePaste}
                 onFocus={() => setFocusedIndex(index)}
+                onBlur={() => setFocusedIndex(null)}
                 className={cn(
-                  "w-full aspect-square flex items-center justify-center text-2xl font-bold rounded-lg border-2 transition-all",
+                  "w-full aspect-square flex items-center justify-center text-3xl font-extrabold rounded-xl border-2 transition-all text-center outline-none",
                   focusedIndex === index
-                    ? "border-primary-600 ring-2 ring-primary-200 text-primary-900"
+                    ? "border-primary-600 ring-4 ring-primary-100 text-primary-900 bg-white"
                     : digit
-                    ? "border-green-500 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-gray-50 text-gray-900"
+                    ? "border-gray-300 text-gray-900 bg-white"
+                    : "border-gray-200 bg-gray-50 text-gray-400"
                 )}
                 placeholder="-"
               />
@@ -281,100 +373,124 @@ function OTPLoginForm() {
 
           {/* Timer and Resend */}
           {timeLeft > 0 ? (
-            <div className="text-center mt-4">
-              <p className="text-sm text-gray-500">
-                {_("addAccount.resendAvailable")} <span className="font-mono font-semibold text-primary-600">{formatTime(timeLeft)}</span>
+            <div className="text-center py-1">
+              <p className="text-xs text-gray-500">
+                {_("addAccount.resendAvailable")}{" "}
+                <span className="font-mono font-bold text-primary-600 bg-primary-50 px-2.5 py-1 rounded-full ml-1">
+                  {formatTime(timeLeft)}
+                </span>
               </p>
             </div>
           ) : (
-            <div className="text-center mt-4">
+            <div className="text-center py-1">
               <button
                 onClick={handleResendCode}
                 disabled={loading}
-                className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium transition"
+                className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-semibold transition"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-4.5 w-4.5" />
                 )}
                 {_("addAccount.resendCode")}
               </button>
             </div>
           )}
 
-          <button
-            onClick={verifyCode}
-            disabled={!canSubmit || loading}
-            className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition mt-4"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {_("addAccount.verifying")}
-              </span>
-            ) : (
-              _("addAccount.verifyLogin")
-            )}
-          </button>
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={verifyCode}
+              disabled={!canSubmit || loading}
+              className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition shadow-sm"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {_("addAccount.verifying")}
+                </span>
+              ) : (
+                _("addAccount.verifyLogin")
+              )}
+            </button>
 
-          <button
-            onClick={() => {
-              cancelLogin(phone);
-              setStep("phone");
-              setTimeLeft(120);
-              setCodes(["", "", "", "", ""]);
-            }}
-            className="w-full text-sm text-gray-500 hover:text-gray-700"
-          >
-            {_("addAccount.changePhone")}
-          </button>
-        </>
+            <button
+              onClick={() => {
+                cancelLogin(phone);
+                setStep("phone");
+                setTimeLeft(120);
+                setCodes(["", "", "", "", ""]);
+              }}
+              className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 transition py-1.5"
+            >
+              {_("addAccount.changePhone")}
+            </button>
+          </div>
+        </div>
       )}
 
       {step === "2fa" && (
-        <>
-          <div
-            className={cn(
-              "px-4 py-3 rounded-lg text-sm flex items-start gap-2",
-              "bg-yellow-50 border border-yellow-200 text-yellow-800"
-            )}
-          >
-            <ShieldAlert className="h-5 w-5 shrink-0" />
-            <span>
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3.5 rounded-xl text-sm flex items-start gap-2.5 shadow-sm">
+            <Lock className="h-5 w-5 flex-shrink-0 text-yellow-600 mt-0.5" />
+            <div className="flex-1 font-medium leading-relaxed">
               {v2lHint || _("addAccount.twoFaWarning")}
-            </span>
+            </div>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               {_("addAccount.twoFaLabel")}
             </label>
-            <input
-              type="password"
-              value={twofaPassword}
-              onChange={(e) => setTwofaPassword(e.target.value)}
-              placeholder={_("addAccount.twoFaPlaceholder")}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-            />
-            <p className="text-xs text-gray-400 mt-1">
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={twofaPassword}
+                onChange={(e) => setTwofaPassword(e.target.value)}
+                placeholder={_("addAccount.twoFaPlaceholder")}
+                className="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-100 focus:border-primary-500 outline-none transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+              >
+                {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">
               {_("addAccount.twoFaHint")}
             </p>
           </div>
-          <button
-            onClick={verifyCode}
-            disabled={loading || !twofaPassword}
-            className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300 transition"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {_("addAccount.verifying")}
-              </span>
-            ) : (
-              _("addAccount.verifyLogin")
-            )}
-          </button>
-        </>
+
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={verifyCode}
+              disabled={loading || !twofaPassword}
+              className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {_("addAccount.verifying")}
+                </span>
+              ) : (
+                _("addAccount.verifyLogin")
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setStep("otp");
+                setTwofaPassword("");
+                setError("");
+              }}
+              className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 transition py-1.5"
+            >
+              ← Back to OTP verification
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

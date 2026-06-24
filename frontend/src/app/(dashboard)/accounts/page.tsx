@@ -2,17 +2,18 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { useAccounts, type Account as AccountType } from "@/hooks/use-accounts";
+import { useAccounts, useAccountsPaginated, type Account as AccountType } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountCard } from "@/components/accounts/account-card";
 import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
 import { FolderManagerDialog } from "@/components/accounts/folder-manager-dialog";
 import { useRouter } from "next/navigation";
-import { Plus, FolderOpen, Info } from "lucide-react";
+import { Plus, FolderOpen, Info, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 // Role-based account limits
 const ROLE_LIMITS: Record<string, number> = {
@@ -28,11 +29,35 @@ export default function AccountsListPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
 
-  const { data: accountsData, isLoading, error } = useAccounts();
-  const { data: foldersData } = useAccountFolders();
-
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [folderManagerOpen, setFolderManagerOpen] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search input to prevent excessive backend queries
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const handleSelectFolder = (id: string | null) => {
+    setSelectedFolderId(id);
+    setPage(1);
+  };
+
+  const { data: accountsData } = useAccounts(); // For limit checks and offline calculations
+  const { data: paginatedData, isLoading, error } = useAccountsPaginated({
+    page,
+    limit: 10,
+    search: debouncedSearch,
+    folder_id: selectedFolderId,
+  });
+  const { data: foldersData } = useAccountFolders();
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -46,10 +71,10 @@ export default function AccountsListPage() {
   const allAccounts = Array.isArray(accountsData) ? accountsData : [];
   const folders = Array.isArray(foldersData) ? foldersData : [];
 
-  // Filter accounts by selected folder
-  const accounts = selectedFolderId
-    ? allAccounts.filter((a) => a.folder_ids?.includes(selectedFolderId))
-    : allAccounts;
+  // Paginated accounts loaded from backend
+  const accounts = paginatedData?.accounts || [];
+  const totalItems = paginatedData?.total || 0;
+  const totalPages = paginatedData?.pages || 0;
 
   const accountLimit = ROLE_LIMITS[user?.role || "basic"] ?? 1;
   const atLimit = allAccounts.length >= accountLimit;
@@ -93,12 +118,26 @@ export default function AccountsListPage() {
         </div>
       </div>
 
-      {/* Folder filter bar */}
-      <FolderFilterBar
-        folders={folders}
-        selectedFolderId={selectedFolderId}
-        onSelect={setSelectedFolderId}
-      />
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <FolderFilterBar
+            folders={folders}
+            selectedFolderId={selectedFolderId}
+            onSelect={handleSelectFolder}
+          />
+        </div>
+        <div className="relative w-full sm:w-72 shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder={_("accountsList.searchPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
+          />
+        </div>
+      </div>
 
       {/* List */}
       {isLoading ? (
@@ -123,14 +162,26 @@ export default function AccountsListPage() {
           <p className="text-gray-500 mb-4">
             {selectedFolderId
               ? "No accounts in this folder."
+              : debouncedSearch
+              ? "No accounts match your search."
               : _("accountsList.noAccounts")}
           </p>
           {selectedFolderId ? (
             <button
-              onClick={() => setSelectedFolderId(null)}
+              onClick={() => handleSelectFolder(null)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
             >
               {_("accountFolders.allAccounts")}
+            </button>
+          ) : debouncedSearch ? (
+            <button
+              onClick={() => {
+                setSearch("");
+                setDebouncedSearch("");
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+            >
+              Clear Search
             </button>
           ) : (
             <Link
@@ -152,6 +203,54 @@ export default function AccountsListPage() {
               onView={(id) => router.push(`/accounts/${id}`)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {!isLoading && !error && totalItems > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-gray-200 mt-6">
+          <p className="text-sm text-gray-500">
+            {_("accountsList.showingAccounts", {
+              start: (page - 1) * 10 + 1,
+              end: Math.min(page * 10, totalItems),
+              total: totalItems,
+            })}
+          </p>
+          <div className="flex items-center gap-1.5 self-center sm:self-auto">
+            <button
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page === 1}
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              title={_("accountsList.prev")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNum = idx + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={cn(
+                    "inline-flex items-center justify-center w-9 h-9 rounded-lg border text-sm font-medium transition",
+                    page === pageNum
+                      ? "bg-primary-600 border-primary-600 text-white shadow-sm"
+                      : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              disabled={page === totalPages}
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              title={_("accountsList.next")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 

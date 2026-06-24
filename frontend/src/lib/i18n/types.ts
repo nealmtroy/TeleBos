@@ -150,6 +150,10 @@ export interface Dict {
     tryAgain: string;
     noAccounts: string;
     addYourFirst: string;
+    searchPlaceholder: string;
+    showingAccounts: string;
+    prev: string;
+    next: string;
   };
 
   // Account Card

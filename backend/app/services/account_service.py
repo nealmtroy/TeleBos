@@ -217,7 +217,13 @@ async def verify_code(
 
         if isinstance(exc, SessionPasswordNeededError):
             if twofa_password:
-                await unauth_client.sign_in(password=twofa_password)
+                try:
+                    await unauth_client.sign_in(password=twofa_password)
+                except Exception as pwd_exc:
+                    from telethon.errors import PasswordHashInvalidError
+                    if isinstance(pwd_exc, PasswordHashInvalidError) or "PASSWORD_HASH_INVALID" in str(pwd_exc):
+                        raise ValueError("Password V2L/2FA salah. Silakan coba lagi.") from pwd_exc
+                    raise
             else:
                 # Try to get password hint for display
                 try:
@@ -240,7 +246,13 @@ async def verify_code(
                 ) from exc
             if "PASSWORD_HASH_REQUIRED" in msg or "2FA" in msg:
                 if twofa_password:
-                    await unauth_client.sign_in(password=twofa_password)
+                    try:
+                        await unauth_client.sign_in(password=twofa_password)
+                    except Exception as pwd_exc:
+                        from telethon.errors import PasswordHashInvalidError
+                        if isinstance(pwd_exc, PasswordHashInvalidError) or "PASSWORD_HASH_INVALID" in str(pwd_exc):
+                            raise ValueError("Password V2L/2FA salah. Silakan coba lagi.") from pwd_exc
+                        raise
                 else:
                     return None, True, None
             else:
@@ -363,6 +375,65 @@ async def get_accounts_for_user(
         .order_by(TelegramAccount.created_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def get_accounts_paginated(
+    db: AsyncSession,
+    user: User,
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+    folder_id: str | None = None,
+) -> tuple[list[TelegramAccount], int]:
+    """Get paginated accounts for a user with optional search and folder filter."""
+    from sqlalchemy import or_, cast, String, func
+    from app.models.account_folder_member import AccountFolderMember
+
+    # Base query select from TelegramAccount
+    query = (
+        select(TelegramAccount)
+        .options(selectinload(TelegramAccount.folders))
+        .where(TelegramAccount.user_id == user.id)
+    )
+
+    # Filter by folder
+    if folder_id:
+        query = query.join(
+            AccountFolderMember,
+            TelegramAccount.id == AccountFolderMember.account_id
+        ).where(AccountFolderMember.folder_id == folder_id)
+
+    # Apply search filter
+    if search:
+        search_term = f"%{search.strip()}%"
+        conditions = [
+            TelegramAccount.first_name.ilike(search_term),
+            TelegramAccount.last_name.ilike(search_term),
+            TelegramAccount.phone.ilike(search_term),
+            TelegramAccount.username.ilike(search_term),
+        ]
+        # Also check if search query is a number to match telegram_id directly
+        if search.strip().isdigit():
+            conditions.append(TelegramAccount.telegram_id == int(search.strip()))
+        else:
+            conditions.append(cast(TelegramAccount.telegram_id, String).ilike(search_term))
+            
+        query = query.where(or_(*conditions))
+
+    # Get total count (before pagination limit/offset)
+    count_query = select(func.count()).select_from(query.subquery())
+    total = await db.scalar(count_query) or 0
+
+    # Apply ordering, limit and offset
+    query = query.order_by(TelegramAccount.created_at.desc())
+    
+    # Calculate offset
+    offset = (page - 1) * limit
+    query = query.offset(offset).limit(limit)
+
+    result = await db.execute(query)
+    accounts = list(result.scalars().all())
+    return accounts, total
 
 
 async def get_accounts_in_folder(

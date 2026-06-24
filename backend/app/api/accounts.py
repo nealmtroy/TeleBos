@@ -216,14 +216,39 @@ async def upload_session(
 @router.get("", response_model=AccountListResponse)
 async def list_accounts(
     folder_id: str | None = Query(None),
+    page: int | None = Query(None),
+    limit: int | None = Query(None),
+    search: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if folder_id:
-        accounts = await account_service.get_accounts_in_folder(db, user, folder_id)
+    if page is not None or limit is not None or search is not None:
+        p = page or 1
+        lim = limit or 10
+        accounts, total = await account_service.get_accounts_paginated(
+            db, user, page=p, limit=lim, search=search, folder_id=folder_id
+        )
+        import math
+        pages = math.ceil(total / lim) if lim > 0 else 0
+        return AccountListResponse(
+            accounts=accounts,
+            total=total,
+            page=p,
+            pages=pages,
+            limit=lim
+        )
     else:
-        accounts = await account_service.get_accounts_for_user(db, user)
-    return AccountListResponse(accounts=accounts)
+        if folder_id:
+            accounts = await account_service.get_accounts_in_folder(db, user, folder_id)
+        else:
+            accounts = await account_service.get_accounts_for_user(db, user)
+        return AccountListResponse(
+            accounts=accounts,
+            total=len(accounts),
+            page=1,
+            pages=1,
+            limit=len(accounts)
+        )
 
 
 @router.get("/{account_id}", response_model=AccountResponse)

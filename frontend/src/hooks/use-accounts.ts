@@ -56,6 +56,36 @@ export function useAccounts() {
   });
 }
 
+export interface AccountsResponse {
+  accounts: Account[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
+export function useAccountsPaginated(params: {
+  page: number;
+  limit: number;
+  search?: string;
+  folder_id?: string | null;
+}) {
+  return useQuery<AccountsResponse>({
+    queryKey: ["accounts", "paginated", params],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", params.page.toString());
+      queryParams.append("limit", params.limit.toString());
+      if (params.search) queryParams.append("search", params.search);
+      if (params.folder_id) queryParams.append("folder_id", params.folder_id);
+
+      const { data } = await api.get(`/accounts?${queryParams.toString()}`);
+      return data;
+    },
+    placeholderData: (keepPreviousData) => keepPreviousData,
+  });
+}
+
 export function useAccount(id: string) {
   return useQuery<Account>({
     queryKey: ["accounts", id],
