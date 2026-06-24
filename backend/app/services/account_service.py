@@ -695,6 +695,10 @@ def _photo_path(account_id: str) -> str:
 
 async def remove_account(db: AsyncSession, account: TelegramAccount) -> None:
     """Disconnect client, clean up cached photo, clear flood state, and delete account from DB."""
+    # Detach event relay handlers first to clean up listeners and references
+    from app.services.event_relay import event_relay
+    await event_relay.detach(str(account.id))
+
     await client_pool.remove(str(account.id))
 
     # Clean up flood control state for this account

@@ -147,6 +147,8 @@ class TelegramEventRelay:
 
     async def _on_new_message(self, account_id: str, event) -> None:
         """Fire when a new message arrives (incoming)."""
+        if account_id not in self._handlers:
+            return
         msg: Message = event.message
 
         # get_chat/get_sender can fail with "Request was unsuccessful 6 time(s)"
@@ -245,6 +247,8 @@ class TelegramEventRelay:
 
     async def _on_outgoing_message(self, account_id: str, event) -> None:
         """Fire when we send a message."""
+        if account_id not in self._handlers:
+            return
         msg: Message = event.message
         try:
             chat = await event.get_chat()
@@ -271,6 +275,8 @@ class TelegramEventRelay:
 
     async def _on_message_edited(self, account_id: str, event) -> None:
         """Fire when a message is edited."""
+        if account_id not in self._handlers:
+            return
         msg: Message = event.message
         try:
             chat = await event.get_chat()
@@ -296,6 +302,8 @@ class TelegramEventRelay:
 
     async def _on_message_read(self, account_id: str, event) -> None:
         """Fire when someone reads our messages (updates unread count)."""
+        if account_id not in self._handlers:
+            return
         channel = f"chats:{account_id}"
         await manager.broadcast(
             channel,
@@ -311,6 +319,8 @@ class TelegramEventRelay:
 
     async def _on_user_update(self, account_id: str, event) -> None:
         """User status update (online/offline/typing)."""
+        if account_id not in self._handlers:
+            return
         channel = f"chats:{account_id}"
         user = event
         if hasattr(user, "status"):
@@ -326,6 +336,8 @@ class TelegramEventRelay:
 
     async def _on_chat_action(self, account_id: str, event) -> None:
         """Chat action: someone joined, left, pinned a message, etc."""
+        if account_id not in self._handlers:
+            return
         channel = f"chats:{account_id}"
         try:
             user_name = getattr(await event.get_user(), "first_name", None) if event.user_id else None
@@ -531,6 +543,8 @@ class TelegramEventRelay:
         from another client (official app, desktop, etc.). We only process
         events for our own user_id, then trigger an immediate sync.
         """
+        if account_id not in self._handlers:
+            return
         # Extract user_id from the raw update
         tg_user_id = getattr(event, "user_id", None)
         if tg_user_id is None:
