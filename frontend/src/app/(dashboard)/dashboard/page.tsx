@@ -42,8 +42,6 @@ export default function DashboardPage() {
       label: _("dashboard.totalAccounts"),
       value: totalCount,
       icon: Smartphone,
-      gradient: "bg-primary",
-      bgGlow: "bg-primary/10",
       description: _("dashboard.accountsConnected"),
       href: "/accounts",
     },
@@ -51,8 +49,6 @@ export default function DashboardPage() {
       label: _("dashboard.activeAccounts"),
       value: activeCount,
       icon: Activity,
-      gradient: "bg-primary",
-      bgGlow: "bg-primary/10",
       description: _("dashboard.sessionsRunning"),
       href: "/accounts",
     },
@@ -60,8 +56,6 @@ export default function DashboardPage() {
       label: _("dashboard.broadcast"),
       value: _("dashboard.newBroadcast"),
       icon: Send,
-      gradient: "bg-primary",
-      bgGlow: "bg-primary/10",
       description: _("dashboard.quickNewBroadcastDesc"),
       href: "/broadcast/new",
     },
@@ -69,8 +63,6 @@ export default function DashboardPage() {
       label: _("dashboard.auditLog"),
       value: _("dashboard.viewLogs"),
       icon: BarChart3,
-      gradient: "bg-primary",
-      bgGlow: "bg-primary/10",
       description: _("dashboard.quickHistoryDesc"),
       href: "/broadcast/logs",
     },
@@ -82,16 +74,16 @@ export default function DashboardPage() {
       <div className="relative rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-medium text-emerald-300 uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 mb-2 text-blue-400">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <span className="text-xs font-medium">
                 {_("dashboard.systemOnline")}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight truncate">
               {_("dashboard.welcome")}
             </h1>
-            <p className="text-white/60 text-sm mt-1 line-clamp-2">
+            <p className="text-white/60 text-sm mt-1 line-clamp-2 max-w-prose">
               {_("dashboard.welcomeDesc")}
             </p>
           </div>
@@ -114,26 +106,25 @@ export default function DashboardPage() {
           ? Array.from({ length: 4 }).map((_, i) => <StatsCardSkeleton key={i} />)
           : stats.map((stat) => (
           <Link key={stat.label} href={stat.href} className="block group">
-            <Card className="h-full border-gray-200/80 bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+            <Card className="h-full bg-white hover:shadow-lg transition-all duration-200 overflow-hidden">
               <CardContent className="p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider truncate mr-2">
+                  <span className="text-xs font-medium text-muted-foreground truncate mr-2">
                     {stat.label}
                   </span>
                   <div
                     className={cn(
-                      "flex-shrink-0 p-2 rounded-xl text-white shadow-sm",
-                      "group-hover:scale-110 transition-transform duration-300",
-                      stat.gradient
+                      "flex-shrink-0 p-2 rounded-xl text-primary bg-primary/10",
+                      "group-hover:bg-primary group-hover:text-white transition-colors duration-200"
                     )}
                   >
                     <stat.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
                 </div>
-                <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 tracking-tight truncate">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight truncate">
                   {stat.value}
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1 truncate">
+                <p className="text-xs text-muted-foreground mt-1.5 font-medium flex items-center gap-1 truncate">
                   <span className="truncate">{stat.description}</span>
                   <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </p>
@@ -166,40 +157,37 @@ export default function DashboardPage() {
           },
         ].map((action) => (
           <Link key={action.title} href={action.href} className="block group">
-            <div
-              className={cn(
-                "bg-white rounded-xl border border-gray-200/80 p-4 sm:p-5",
-                "hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 relative"
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 bg-primary p-2 rounded-xl text-white shadow-sm">
-                  <action.icon className="h-4 w-4" />
+            <Card className="bg-white hover:shadow-lg transition-all duration-200">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 p-2 rounded-xl text-primary bg-primary/10">
+                    <action.icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-semibold text-sm text-foreground truncate">{action.title}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{action.desc}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold text-sm text-gray-900 truncate">{action.title}</h2>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">{action.desc}</p>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </Link>
         ))}
       </div>
 
       {/* Accounts List */}
-      <Card className="border-gray-200/80 shadow-sm bg-white overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 py-4 px-4 sm:px-6 gap-2">
+      <Card className="bg-white overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-foreground/10 py-4 px-4 sm:px-6 gap-2">
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            <CardTitle className="text-base sm:text-lg font-bold text-foreground truncate">
               {_("dashboard.connectedAccounts")}
             </CardTitle>
-            <CardDescription className="text-xs text-gray-500 mt-0.5 truncate">
+            <CardDescription className="text-xs mt-0.5 truncate">
               {_("dashboard.connectedAccountsDesc")}
             </CardDescription>
           </div>
           <Link
             href="/accounts/add"
-            className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 hover:underline font-semibold flex-shrink-0 whitespace-nowrap"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-semibold flex-shrink-0 whitespace-nowrap"
           >
             <Plus className="h-4 w-4" /> {_("dashboard.add")}
           </Link>
@@ -207,18 +195,18 @@ export default function DashboardPage() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="divide-y divide-gray-100/80 p-4 space-y-3">
+            <div className="divide-y divide-foreground/10 p-4 space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <AccountRowSkeleton key={i} />
               ))}
             </div>
           ) : accounts && accounts.length > 0 ? (
-            <div className="divide-y divide-gray-100/80">
+            <div className="divide-y divide-foreground/10">
               {accounts.map((acc) => (
                 <Link
                   key={acc.id}
                   href={`/accounts/${acc.id}`}
-                  className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-gray-50/70 transition duration-200 min-w-0"
+                  className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-muted/50 transition duration-150 min-w-0"
                 >
                   <AccountAvatar
                     accountId={acc.id}
@@ -226,30 +214,29 @@ export default function DashboardPage() {
                     phone={acc.phone}
                     photoVersion={acc.photo_version}
                     size="lg"
-                    className="border border-primary-100/50"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
+                    <p className="text-sm font-semibold text-foreground truncate">
                       {acc.first_name || _("dashboard.unnamed")}{" "}
                       {acc.last_name || ""}
                     </p>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {acc.username ? `@${acc.username}` : acc.phone}
                     </p>
                   </div>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold shadow-sm border flex-shrink-0 whitespace-nowrap",
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 whitespace-nowrap",
                       acc.is_active
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
-                        : "bg-gray-50 text-gray-500 border-gray-200/60"
+                        ? "bg-primary/10 text-primary border-primary/20"
+                        : "bg-muted text-muted-foreground border-border"
                     )}
                   >
                     <span
                       className={cn(
                         "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                        acc.is_active ? "bg-emerald-500" : "bg-gray-400"
+                        acc.is_active ? "bg-primary" : "bg-muted-foreground/50"
                       )}
                     />
                     {acc.is_active ? _("dashboard.online") : _("dashboard.offline")}
@@ -258,17 +245,17 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="p-8 sm:p-12 text-center max-w-md mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="h-8 w-8 text-gray-300" />
+            <div className="p-10 sm:p-14 text-center max-w-md mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-7 w-7 text-muted-foreground/40" />
               </div>
-              <h2 className="font-semibold text-gray-900 mb-1">{_("dashboard.noAccounts")}</h2>
-              <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              <h2 className="font-semibold text-foreground mb-1">{_("dashboard.noAccounts")}</h2>
+              <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
                 {_("dashboard.noAccountsDesc")}
               </p>
               <Link
                 href="/accounts/add"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow-md active:shadow-sm"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition"
               >
                 <Plus className="h-4 w-4" /> {_("dashboard.addFirstAccount")}
               </Link>
