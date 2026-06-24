@@ -283,7 +283,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         message={
           <div className="space-y-3 text-left">
             <p className="text-sm text-gray-500">
-              List this account for sale at Rp {pricing?.sell_price?.toLocaleString() || "5,500"}.
+              List this account for sale at Rp {(account.sell_price ?? pricing?.sell_price ?? 5500).toLocaleString()}.
               Your balance will <strong>not</strong> be credited immediately — you'll be paid when a buyer purchases it.
             </p>
             <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
@@ -294,7 +294,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               <div className="flex justify-between">
                 <span>{_("orders.pricePerAccount")}:</span>
                 <span className="font-semibold text-gray-900">
-                  Rp {pricing?.sell_price ? pricing.sell_price.toLocaleString() : "5,500"}
+                  Rp {(account.sell_price ?? pricing?.sell_price ?? 5500).toLocaleString()}
                 </span>
               </div>
             </div>

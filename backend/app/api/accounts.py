@@ -210,6 +210,8 @@ async def upload_session(
     from app.utils.encryption import decrypt
     await event_relay.attach(str(account.id), decrypt(account.session_string))
 
+    from app.services.user_account_price_service import resolve_telegram_id_price
+    account.sell_price = await resolve_telegram_id_price(db, account)
     return account
 
 
@@ -222,6 +224,8 @@ async def list_accounts(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from app.services.user_account_price_service import resolve_prices_for_accounts
+
     if page is not None or limit is not None or search is not None:
         p = page or 1
         lim = limit or 10
@@ -230,6 +234,9 @@ async def list_accounts(
         )
         import math
         pages = math.ceil(total / lim) if lim > 0 else 0
+        
+        await resolve_prices_for_accounts(db, accounts)
+        
         return AccountListResponse(
             accounts=accounts,
             total=total,
@@ -242,6 +249,9 @@ async def list_accounts(
             accounts = await account_service.get_accounts_in_folder(db, user, folder_id)
         else:
             accounts = await account_service.get_accounts_for_user(db, user)
+            
+        await resolve_prices_for_accounts(db, accounts)
+        
         return AccountListResponse(
             accounts=accounts,
             total=len(accounts),
@@ -260,6 +270,8 @@ async def get_account(
     account = await account_service.get_account(db, account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
+    from app.services.user_account_price_service import resolve_telegram_id_price
+    account.sell_price = await resolve_telegram_id_price(db, account)
     return account
 
 
@@ -285,6 +297,8 @@ async def update_profile(
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    from app.services.user_account_price_service import resolve_telegram_id_price
+    account.sell_price = await resolve_telegram_id_price(db, account)
     return account
 
 
@@ -307,6 +321,8 @@ async def update_auto_reply(
     account.auto_reply_enabled = payload.auto_reply_enabled
     account.auto_reply_text = payload.auto_reply_text or None
     await db.flush()
+    from app.services.user_account_price_service import resolve_telegram_id_price
+    account.sell_price = await resolve_telegram_id_price(db, account)
     return account
 
 
@@ -499,6 +515,8 @@ async def check_spam(
         await db.commit()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    from app.services.user_account_price_service import resolve_telegram_id_price
+    account.sell_price = await resolve_telegram_id_price(db, account)
     return account
 
 

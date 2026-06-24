@@ -78,7 +78,7 @@ def get_country_code_and_name(phone: str) -> tuple[str, str]:
 
 async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[TelegramAccount]:
     """Get all connected accounts owned by the user that can be listed for sale."""
-    from app.services.user_account_price_service import resolve_telegram_id_price
+    from app.services.user_account_price_service import resolve_prices_for_accounts
 
     result = await db.execute(
         select(TelegramAccount)
@@ -95,8 +95,7 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
     accounts = list(result.scalars().all())
 
     # Inject sell_price from prefix pricing (not persisted, just for display)
-    for acc in accounts:
-        acc.sell_price = await resolve_telegram_id_price(db, acc)
+    await resolve_prices_for_accounts(db, accounts)
 
     return accounts
 

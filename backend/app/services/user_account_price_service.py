@@ -111,6 +111,44 @@ async def resolve_telegram_id_price(db: AsyncSession, account: TelegramAccount) 
     return int(setting.value) if setting and setting.value else 5500
 
 
+async def resolve_prices_for_accounts(db: AsyncSession, accounts: list[TelegramAccount]) -> None:
+    """Resolve and inject sell_price dynamically on a list of accounts using prefix-based rules."""
+    if not accounts:
+        return
+
+    # 1. Fetch prefix prices
+    prefix_result = await db.execute(select(TelegramIdPrefixPrice))
+    entries = prefix_result.scalars().all()
+
+    # 2. Fetch fallback sell price
+    setting_result = await db.execute(
+        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
+    )
+    setting = setting_result.scalar_one_or_none()
+    fallback_price = int(setting.value) if setting and setting.value else 5500
+
+    # 3. Resolve price in-memory for each account
+    for account in accounts:
+        if account.for_sale or account.is_sold:
+            if account.sell_price is not None:
+                continue
+
+        if not account.telegram_id:
+            account.sell_price = fallback_price
+            continue
+
+        tid_str = str(account.telegram_id)
+        best_price = None
+        best_len = 0
+
+        for entry in entries:
+            if tid_str.startswith(entry.id_prefix) and len(entry.id_prefix) > best_len:
+                best_price = entry.sell_price
+                best_len = len(entry.id_prefix)
+
+        account.sell_price = best_price if best_price is not None else fallback_price
+
+
 async def get_available_prefixes(db: AsyncSession) -> list[str]:
     """Get list of unique first-digit prefixes from all active accounts that have telegram_id."""
     result = await db.execute(
