@@ -110,7 +110,7 @@ export function Navbar() {
               </p>
               <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-sm font-medium shadow-sm transition-transform duration-200 group-hover:scale-105">
+            <div className="w-9 h-9 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-medium shadow-sm transition-transform duration-200 group-hover:scale-105">
               {initials}
             </div>
             <ChevronDown
@@ -139,7 +139,7 @@ export function Navbar() {
               {/* Profile header */}
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-sm font-medium shadow-sm">
+                  <div className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -283,7 +283,7 @@ export function Sidebar() {
 
         {/* Header (Logo + Title) */}
         <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0 relative overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center font-bold text-white shadow-lg shadow-primary-600/20 shrink-0 select-none">
+          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center font-bold text-white shadow-lg shadow-primary-600/20 shrink-0 select-none">
             T
           </div>
           {sidebarOpen && (
@@ -315,7 +315,7 @@ export function Sidebar() {
               <div key={group.id} className="space-y-1">
                 {/* Group Title or Divider */}
                 {sidebarOpen ? (
-                  <div className="text-[10px] font-bold text-slate-500 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
+                  <div className="text-[10px] font-bold text-slate-400 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
                     {group.labelKey}
                   </div>
                 ) : (
@@ -474,7 +474,7 @@ export function Sidebar() {
               !sidebarOpen && "justify-center px-0 hover:bg-slate-900"
             )}
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-semibold shadow-md shrink-0">
+            <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-semibold shadow-md shrink-0">
               {initials}
             </div>
             {sidebarOpen && (
@@ -483,7 +483,7 @@ export function Sidebar() {
                   <p className="text-xs font-semibold text-white truncate">
                     {user?.full_name || _("navbar.user")}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
                 </div>
                 <ChevronDown
                   className={cn(
@@ -511,14 +511,14 @@ export function Sidebar() {
                 {/* Profile Details */}
                 <div className="px-2 py-2 border-b border-slate-850 mb-2">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-semibold shadow-md">
+                    <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-semibold shadow-md">
                       {initials}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-white truncate">
                         {user?.full_name || _("navbar.user")}
                       </p>
-                      <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
                     </div>
                   </div>
                   {/* Role Badge */}

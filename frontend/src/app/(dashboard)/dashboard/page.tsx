@@ -4,13 +4,11 @@ import { useAccounts } from "@/hooks/use-accounts";
 import { useT } from "@/lib/i18n";
 import {
   Smartphone,
-  MessageSquare,
   Send,
   AlertCircle,
   Plus,
   ExternalLink,
   Activity,
-  Zap,
   Radio,
   BarChart3,
 } from "lucide-react";
@@ -18,7 +16,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { StatsCardSkeleton, AccountRowSkeleton } from "@/components/ui/skeleton-cards";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
 
@@ -45,8 +42,8 @@ export default function DashboardPage() {
       label: _("dashboard.totalAccounts"),
       value: totalCount,
       icon: Smartphone,
-      gradient: "from-blue-500 to-sky-400",
-      bgGlow: "bg-blue-500/10",
+      gradient: "bg-primary",
+      bgGlow: "bg-primary/10",
       description: _("dashboard.accountsConnected"),
       href: "/accounts",
     },
@@ -54,8 +51,8 @@ export default function DashboardPage() {
       label: _("dashboard.activeAccounts"),
       value: activeCount,
       icon: Activity,
-      gradient: "from-emerald-500 to-teal-400",
-      bgGlow: "bg-emerald-500/10",
+      gradient: "bg-primary",
+      bgGlow: "bg-primary/10",
       description: _("dashboard.sessionsRunning"),
       href: "/accounts",
     },
@@ -63,8 +60,8 @@ export default function DashboardPage() {
       label: _("dashboard.broadcast"),
       value: _("dashboard.newBroadcast"),
       icon: Send,
-      gradient: "from-violet-500 to-purple-400",
-      bgGlow: "bg-violet-500/10",
+      gradient: "bg-primary",
+      bgGlow: "bg-primary/10",
       description: _("dashboard.quickNewBroadcastDesc"),
       href: "/broadcast/new",
     },
@@ -72,8 +69,8 @@ export default function DashboardPage() {
       label: _("dashboard.auditLog"),
       value: _("dashboard.viewLogs"),
       icon: BarChart3,
-      gradient: "from-amber-500 to-orange-400",
-      bgGlow: "bg-amber-500/10",
+      gradient: "bg-primary",
+      bgGlow: "bg-primary/10",
       description: _("dashboard.quickHistoryDesc"),
       href: "/broadcast/logs",
     },
@@ -82,15 +79,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto">
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 p-6 sm:p-8 text-white shadow-xl">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -right-12 -top-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl" />
-          <div className="absolute -left-8 -bottom-8 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl" />
-          <div className="absolute right-1/4 top-1/2 w-24 h-24 bg-sky-400/10 rounded-full blur-2xl" />
-        </div>
-
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="relative rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 p-6 sm:p-8 text-white">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -127,12 +117,12 @@ export default function DashboardPage() {
             <Card className="h-full border-gray-200/80 bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
               <CardContent className="p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider truncate mr-2">
+                  <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider truncate mr-2">
                     {stat.label}
                   </span>
                   <div
                     className={cn(
-                      "flex-shrink-0 bg-gradient-to-br p-2 rounded-xl text-white shadow-sm",
+                      "flex-shrink-0 p-2 rounded-xl text-white shadow-sm",
                       "group-hover:scale-110 transition-transform duration-300",
                       stat.gradient
                     )}
@@ -143,7 +133,7 @@ export default function DashboardPage() {
                 <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 tracking-tight truncate">
                   {stat.value}
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5 font-medium flex items-center gap-1 truncate">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1.5 font-medium flex items-center gap-1 truncate">
                   <span className="truncate">{stat.description}</span>
                   <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </p>
@@ -161,39 +151,35 @@ export default function DashboardPage() {
             desc: _("dashboard.quickNewBroadcastDesc"),
             icon: Send,
             href: "/broadcast/new",
-            gradient: "from-violet-600 to-indigo-600",
           },
           {
             title: _("dashboard.quickGroupLists"),
             desc: _("dashboard.quickGroupListsDesc"),
             icon: Radio,
             href: "/broadcast/group-lists",
-            gradient: "from-cyan-600 to-blue-600",
           },
           {
             title: _("dashboard.quickHistory"),
             desc: _("dashboard.quickHistoryDesc"),
             icon: BarChart3,
             href: "/broadcast/history",
-            gradient: "from-amber-600 to-orange-600",
           },
         ].map((action) => (
           <Link key={action.title} href={action.href} className="block group">
             <div
               className={cn(
-                "bg-gradient-to-br text-white rounded-xl p-4 sm:p-5",
-                "hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300",
-                "overflow-hidden relative",
-                action.gradient
+                "bg-white rounded-xl border border-gray-200/80 p-4 sm:p-5",
+                "hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 relative"
               )}
             >
-              <div className="absolute -right-4 -bottom-4 opacity-10">
-                <action.icon className="h-20 w-20" />
-              </div>
-              <div className="relative z-10">
-                <action.icon className="h-5 w-5 mb-2 opacity-90" />
-                <h3 className="font-semibold text-sm truncate">{action.title}</h3>
-                <p className="text-xs text-white/70 mt-0.5 truncate">{action.desc}</p>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 bg-primary p-2 rounded-xl text-white shadow-sm">
+                  <action.icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-semibold text-sm text-gray-900 truncate">{action.title}</h2>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{action.desc}</p>
+                </div>
               </div>
             </div>
           </Link>
@@ -207,7 +193,7 @@ export default function DashboardPage() {
             <CardTitle className="text-base sm:text-lg font-bold text-gray-900 truncate">
               {_("dashboard.connectedAccounts")}
             </CardTitle>
-            <CardDescription className="text-xs text-gray-400 mt-0.5 truncate">
+            <CardDescription className="text-xs text-gray-500 mt-0.5 truncate">
               {_("dashboard.connectedAccountsDesc")}
             </CardDescription>
           </div>
@@ -276,7 +262,7 @@ export default function DashboardPage() {
               <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="h-8 w-8 text-gray-300" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-1">{_("dashboard.noAccounts")}</h3>
+              <h2 className="font-semibold text-gray-900 mb-1">{_("dashboard.noAccounts")}</h2>
               <p className="text-gray-500 text-sm mb-6 leading-relaxed">
                 {_("dashboard.noAccountsDesc")}
               </p>
