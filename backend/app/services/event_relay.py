@@ -221,32 +221,15 @@ class TelegramEventRelay:
                 if log_result.scalar_one_or_none() is not None:
                     return  # Already replied to this user
 
-                # 3. Authoritative path: check Telegram for any outgoing messages
-                #    (catches edge case where server crashed between send and DB write)
+                # 3. First DM — send auto-reply as a reply to the incoming message
                 if chat is None:
                     return
 
-                try:
-                    recent = await event.client.get_messages(chat, limit=5)
-                    has_replied = any(getattr(m, "out", False) for m in recent)
-                except Exception:
-                    # If the Telethon API call fails, assume no reply was sent
-                    # so auto-reply can proceed
-                    has_replied = False
-
-                if has_replied:
-                    # Not a first DM — log it so we skip the API check next time
-                    db.add(AutoReplyLog(account_id=account.id, sender_id=sender_id))
-                    await db.flush()
-                    await db.commit()
-                    return
-
-                # 4. First DM — send auto-reply as a reply to the incoming message
                 await event.client.send_message(
                     chat, account.auto_reply_text, reply_to=msg.id
                 )
 
-                # 5. Log the reply so we never reply to this user again
+                # 4. Log the reply so we never reply to this user again
                 db.add(AutoReplyLog(account_id=account.id, sender_id=sender_id))
                 await db.flush()
                 await db.commit()

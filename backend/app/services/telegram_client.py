@@ -1,4 +1,4 @@
-"""Telethon client pool — manages concurrent Telegram client sessions."""
+"""Telethon client pool â manages concurrent Telegram client sessions."""
 
 import logging
 import time
@@ -31,12 +31,70 @@ class TelegramClientPool:
         self._clients: dict[str, dict[str, Any]] = {}
 
     async def _cleanup_stale_clients(self) -> None:
-        """Disconnect and remove clients that haven't been accessed recently."""
+        """Disconnect and remove clients that haven't been accessed recently,
+        unless they have auto-reply enabled or are active in broadcast jobs.
+        """
         now = time.time()
         stale_keys = [
             acc_id for acc_id, data in self._clients.items()
             if now - data["last_accessed"] > CLIENT_TTL_SECONDS
         ]
+        
+        if stale_keys:
+            from app.database import async_session_factory
+            from app.models.telegram_account import TelegramAccount
+            from app.models.broadcast_job import BroadcastJob
+            from sqlalchemy import select
+            import uuid
+            
+            protected_keys = set()
+            try:
+                # Convert string keys to UUID objects for SQLAlchemy query compatibility
+                stale_uuids = []
+                for k in stale_keys:
+                    try:
+                        stale_uuids.append(uuid.UUID(k))
+                    except ValueError:
+                        pass
+                
+                if stale_uuids:
+                    async with async_session_factory() as db:
+                        # 1. Protect active accounts with auto-reply enabled
+                        auto_reply_query = await db.execute(
+                            select(TelegramAccount.id).where(
+                                TelegramAccount.id.in_(stale_uuids),
+                                TelegramAccount.is_active.is_(True),
+                                TelegramAccount.auto_reply_enabled.is_(True)
+                            )
+                        )
+                        for row in auto_reply_query.scalars():
+                            protected_keys.add(str(row))
+                        
+                        # 2. Protect accounts in active broadcast jobs (pending, running, paused)
+                        active_jobs_query = await db.execute(
+                            select(BroadcastJob.account_ids).where(
+                                BroadcastJob.status.in_(["pending", "running", "paused"])
+                            )
+                        )
+                        active_job_accounts = active_jobs_query.scalars().all()
+                        for acc_list in active_job_accounts:
+                            if isinstance(acc_list, list):
+                                for acc_id in acc_list:
+                                    if acc_id in stale_keys:
+                                        protected_keys.add(str(acc_id))
+            except Exception as exc:
+                logger.error("Error checking protected clients in DB: %s", exc)
+                # Play safe on DB error, protect everyone
+                protected_keys = set(stale_keys)
+
+            # Filter out protected keys
+            stale_keys = [k for k in stale_keys if k not in protected_keys]
+            
+            # Update last_accessed for protected keys so we don't query DB on every get()
+            for k in protected_keys:
+                if k in self._clients:
+                    self._clients[k]["last_accessed"] = now
+
         for acc_id in stale_keys:
             data = self._clients.pop(acc_id, None)
             if data and data["client"]:
@@ -78,7 +136,7 @@ class TelegramClientPool:
                     system_version=ios_params["system_version"],
                     lang_code=ios_params["lang_code"],
                     system_lang_code=ios_params["system_lang_code"],
-                    # Raise FloodWaitError immediately instead of silently sleeping �
+                    # Raise FloodWaitError immediately instead of silently sleeping 
                     # the broadcast service drives cooldown via FloodController so it
                     # needs to see every flood event, even short ones.
                     flood_sleep_threshold=0,
