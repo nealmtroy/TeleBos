@@ -60,8 +60,10 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Only attempt refresh on 401, and only once per request
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    // Only attempt refresh on 401, and only once per request.
+    // Do not attempt refresh or redirect for login/auth requests.
+    const isLoginRequest = originalRequest.url?.includes("/auth/login");
+    if (error.response?.status !== 401 || originalRequest._retry || isLoginRequest) {
       return Promise.reject(error);
     }
     originalRequest._retry = true;
