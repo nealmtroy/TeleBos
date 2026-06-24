@@ -87,6 +87,7 @@ export interface Dict {
     loginFailed: string;
     noAccount: string;
     register: string;
+    rememberMe: string;
   };
 
   // Auth — Register

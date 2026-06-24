@@ -23,11 +23,11 @@ def _create_access_token(user_id: str, jti: str) -> str:
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def _create_refresh_token(user_id: str, jti: str) -> str:
+def _create_refresh_token(user_id: str, jti: str, remember_me: bool = False) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
     )
-    payload = {"sub": user_id, "exp": expire, "type": "refresh", "jti": jti}
+    payload = {"sub": user_id, "exp": expire, "type": "refresh", "jti": jti, "rem": remember_me}
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -66,17 +66,17 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     return user
 
 
-def generate_tokens(user_id: str) -> tuple[str, str]:
+def generate_tokens(user_id: str, remember_me: bool = False) -> tuple[str, str]:
     """Return (access_token, refresh_token)."""
     access_jti = str(uuid.uuid4())
     refresh_jti = str(uuid.uuid4())
     access = _create_access_token(user_id, access_jti)
-    refresh = _create_refresh_token(user_id, refresh_jti)
+    refresh = _create_refresh_token(user_id, refresh_jti, remember_me)
     return access, refresh
 
 
-async def refresh_access_token(refresh_token: str) -> tuple[str, str]:
-    """Validate refresh token and return new (access_token, refresh_token)."""
+async def refresh_access_token(refresh_token: str) -> tuple[str, str, bool]:
+    """Validate refresh token and return new (access_token, refresh_token, remember_me)."""
     import time
     from app.utils.redis import is_token_blacklisted, blacklist_token
     try:
@@ -91,6 +91,7 @@ async def refresh_access_token(refresh_token: str) -> tuple[str, str]:
         jti = payload.get("jti")
         exp = payload.get("exp")
         user_id: str = payload.get("sub")
+        remember_me: bool = payload.get("rem", False)
         
         if jti and await is_token_blacklisted(jti):
             raise ValueError("Refresh token has been revoked or already used")
@@ -100,7 +101,8 @@ async def refresh_access_token(refresh_token: str) -> tuple[str, str]:
             if remaining > 0:
                 await blacklist_token(jti, remaining)
                 
-        return generate_tokens(user_id)
+        access, refresh = generate_tokens(user_id, remember_me)
+        return access, refresh, remember_me
     except Exception as exc:
         raise ValueError(f"Invalid or expired refresh token: {exc}")
 

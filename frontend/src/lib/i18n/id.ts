@@ -87,6 +87,7 @@ const id: Dict = {
     loginFailed: "Login gagal. Periksa kredensial Anda.",
     noAccount: "Belum punya akun?",
     register: "Daftar",
+    rememberMe: "Ingat saya",
   },
 
   // ── Daftar ──────────────────────────────────────────────────────────────

@@ -87,6 +87,7 @@ const en: Dict = {
     loginFailed: "Login failed. Check your credentials.",
     noAccount: "Don't have an account?",
     register: "Register",
+    rememberMe: "Remember me",
   },
 
   // ── Register ────────────────────────────────────────────────────────────

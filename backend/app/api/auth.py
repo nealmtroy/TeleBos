@@ -31,33 +31,41 @@ def _cookie_secure() -> bool:
     return settings.PRODUCTION
 
 
-def _set_refresh_cookie(response: JSONResponse, refresh_token: str) -> None:
+def _set_refresh_cookie(response: JSONResponse, refresh_token: str, remember_me: bool = False) -> None:
     """Set refresh_token as an httpOnly cookie (inaccessible to JavaScript)."""
+    max_age = settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400 if remember_me else None
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
-        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        max_age=max_age,
         path="/api/v1/auth/refresh",
     )
 
 
-def _set_auth_session_cookie(response: JSONResponse, access_token: str) -> None:
+def _set_auth_session_cookie(response: JSONResponse, access_token: str, remember_me: bool = False) -> None:
     """Set a lightweight auth_session cookie for Next.js middleware validation.
 
     This cookie signals to the middleware that the user is authenticated.
-    It mirrors the access_token lifetime (60 min default).
+    It mirrors the access_token lifetime (60 min default) if remember_me is False.
+    If remember_me is True, we set it to match the refresh token lifetime (30 days)
+    so that middleware doesn't redirect the user to login while they have a valid refresh token.
     httpOnly=True so JavaScript cannot read it.
     """
+    max_age = (
+        settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400
+        if remember_me
+        else settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
     response.set_cookie(
         key="auth_session",
         value=access_token,
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
-        max_age=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        max_age=max_age,
         path="/",
     )
 
@@ -120,15 +128,15 @@ async def login(request: Request, payload: UserLogin, db: AsyncSession = Depends
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
 
-    access, refresh = auth_service.generate_tokens(str(user.id))
+    access, refresh = auth_service.generate_tokens(str(user.id), payload.remember_me)
 
     response = JSONResponse(content={
         "access_token": access,
         "refresh_token": refresh,
         "token_type": "bearer",
     })
-    _set_refresh_cookie(response, refresh)
-    _set_auth_session_cookie(response, access)
+    _set_refresh_cookie(response, refresh, payload.remember_me)
+    _set_auth_session_cookie(response, access, payload.remember_me)
     return response
 
 
@@ -152,7 +160,7 @@ async def refresh(
         raise HTTPException(status_code=401, detail="Refresh token missing")
 
     try:
-        access, refresh = await auth_service.refresh_access_token(refresh_token)
+        access, refresh, remember_me = await auth_service.refresh_access_token(refresh_token)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
 
@@ -161,8 +169,8 @@ async def refresh(
         "refresh_token": refresh,
         "token_type": "bearer",
     })
-    _set_refresh_cookie(response, refresh)
-    _set_auth_session_cookie(response, access)
+    _set_refresh_cookie(response, refresh, remember_me)
+    _set_auth_session_cookie(response, access, remember_me)
     return response
 
 
