@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useAccount, getPhotoUrl, useDeleteAccount, useCheckSpam } from "@/hooks/use-accounts";
+import { useAccount, getPhotoUrl, useDeleteAccount, useCheckSpam, useProfileSync } from "@/hooks/use-accounts";
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
@@ -38,6 +38,7 @@ export default function AccountDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  useProfileSync(id);
   const { data: account, isLoading, error } = useAccount(id);
   const deleteMutation = useDeleteAccount();
   const checkSpamMutation = useCheckSpam();

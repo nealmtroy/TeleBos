@@ -189,6 +189,15 @@ def _run_migrations(connection):
             )
         )
 
+    # ── Profile photo ID for change detection ─────────────────────────────
+    if "profile_photo_id" not in acct_cols:
+        connection.execute(
+            text(
+                "ALTER TABLE telegram_accounts "
+                "ADD COLUMN profile_photo_id BIGINT DEFAULT NULL"
+            )
+        )
+
     # ── Marketplace columns on telegram_accounts ──────────────────────────
     if "for_sale" not in acct_cols:
         connection.execute(
@@ -571,6 +580,22 @@ async def lifespan(app: FastAPI):
     from app.services.stats_service import background_stats_updater
     stats_updater_task = asyncio.create_task(background_stats_updater())
 
+    # 4. Spawn profile sync background loop (checks every 5 minutes)
+    from app.services.profile_sync_service import sync_all_profiles
+
+    async def _profile_sync_loop():
+        """Periodically sync Telegram profile changes."""
+        await asyncio.sleep(60)  # Initial delay — let accounts connect first
+        while True:
+            try:
+                await sync_all_profiles()
+            except Exception as exc:
+                logger.warning("Profile sync loop error: %s", exc)
+            await asyncio.sleep(300)  # Every 5 minutes
+
+    profile_sync_task = asyncio.create_task(_profile_sync_loop())
+    logger.info("Profile sync background task started (5-min interval)")
+
     yield
     # Shutdown
     logger.info("Shutting down TeleBos API...")
@@ -585,6 +610,12 @@ async def lifespan(app: FastAPI):
     stats_updater_task.cancel()
     try:
         await stats_updater_task
+    except asyncio.CancelledError:
+        pass
+
+    profile_sync_task.cancel()
+    try:
+        await profile_sync_task
     except asyncio.CancelledError:
         pass
 

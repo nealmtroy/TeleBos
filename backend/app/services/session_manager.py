@@ -22,6 +22,7 @@ class SessionManager:
         self._running = False
         self._task: asyncio.Task | None = None
         self._last_spam_check = 0.0
+        self._last_profile_sync = 0.0
 
     async def start(self) -> None:
         """Start the periodic health check loop."""

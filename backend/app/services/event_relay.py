@@ -23,6 +23,10 @@ from telethon.tl.types import (
     PeerUser,
     PeerChat,
     PeerChannel,
+    # Raw TL types for profile change detection
+    UpdateUserName,
+    UpdateUserPhone,
+    UpdateUser,
 )
 
 from app.services.telegram_client import client_pool
@@ -43,6 +47,7 @@ class TelegramEventRelay:
 
     def __init__(self) -> None:
         self._handlers: dict[str, list] = {}  # account_id -> list of handler callables
+        self._tg_id_map: dict[str, int] = {}  # account_id -> telegram_id (for self-detection)
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -95,6 +100,24 @@ class TelegramEventRelay:
             )
         )
 
+        # Raw TL handler for profile changes (instant detection)
+        # Catches UpdateUserName, UpdateUserPhone, UpdateUser for self
+        raw_profile_handler = client.on(
+            events.Raw(types=(UpdateUserName, UpdateUserPhone, UpdateUser))
+        )(
+            lambda event: asyncio.create_task(
+                self._on_profile_change(account_id, event)
+            )
+        )
+
+        # Cache our own telegram_id for self-detection in raw handlers
+        try:
+            me = await client.get_me()
+            if me:
+                self._tg_id_map[account_id] = me.id
+        except Exception:
+            pass
+
         self._handlers[account_id] = [
             new_msg_handler,
             outgoing_handler,
@@ -102,6 +125,7 @@ class TelegramEventRelay:
             read_handler,
             typing_handler,
             chat_action_handler,
+            raw_profile_handler,
         ]
         logger.info("Event handlers attached for account %s", account_id)
         return True
@@ -109,6 +133,7 @@ class TelegramEventRelay:
     async def detach(self, account_id: str) -> None:
         """Remove all event handlers for an account."""
         handlers = self._handlers.pop(account_id, None)
+        self._tg_id_map.pop(account_id, None)
         if handlers is None:
             return
         client = (await client_pool.get_connected_clients()).get(account_id)
@@ -311,6 +336,52 @@ class TelegramEventRelay:
                 "user_name": user_name,
             },
         )
+
+
+    async def _on_profile_change(self, account_id: str, event) -> None:
+        """Handle raw TL profile updates (UpdateUserName, UpdateUserPhone, UpdateUser).
+
+        These are pushed by Telegram when the account's profile is changed
+        from another client (official app, desktop, etc.). We only process
+        events for our own user_id, then trigger an immediate sync.
+        """
+        # Extract user_id from the raw update
+        tg_user_id = getattr(event, "user_id", None)
+        if tg_user_id is None:
+            return
+
+        # Only process if this is OUR profile (self-detection)
+        my_tg_id = self._tg_id_map.get(account_id)
+        if my_tg_id is None or tg_user_id != my_tg_id:
+            return
+
+        update_type = type(event).__name__
+        logger.info(
+            "Profile change detected via %s for account %s (tg_id=%s)",
+            update_type, account_id, tg_user_id,
+        )
+
+        # Trigger immediate profile sync (deferred import to avoid circular)
+        from app.services.profile_sync_service import sync_account_profile
+
+        try:
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount).where(TelegramAccount.id == account_id)
+                )
+                account = result.scalar_one_or_none()
+                if account:
+                    changes = await sync_account_profile(db, account)
+                    if changes:
+                        await db.commit()
+                        logger.info(
+                            "Instant profile sync completed for %s: %s",
+                            account_id, list(changes.keys()),
+                        )
+        except Exception as exc:
+            logger.warning(
+                "Instant profile sync failed for %s: %s", account_id, exc
+            )
 
 
 # Singleton

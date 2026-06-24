@@ -150,3 +150,36 @@ export function useCheckSpam() {
     },
   });
 }
+
+import { useEffect } from "react";
+
+/**
+ * Hook that listens for real-time profile sync events via WebSocket.
+ * When Telegram profile changes are detected by the backend (name, username,
+ * phone, photo), this hook auto-invalidates the accounts query cache so the
+ * UI refreshes without manual reload.
+ */
+export function useProfileSync(accountId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!accountId) return;
+
+    const { connectChatSocket } = require("@/lib/socket");
+    const ws = connectChatSocket(accountId);
+
+    const handler = (data: any) => {
+      if (data.type === "profile_sync" && data.account_id === accountId) {
+        // Invalidate both the list and the individual account query
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        queryClient.invalidateQueries({ queryKey: ["accounts", accountId] });
+      }
+    };
+
+    ws.on("profile_sync", handler);
+
+    return () => {
+      ws.off("profile_sync", handler);
+    };
+  }, [accountId, queryClient]);
+}

@@ -1,4 +1,4 @@
-import type { Account } from "@/hooks/use-accounts";
+import { useProfileSync, type Account } from "@/hooks/use-accounts";
 import { useAccountStats } from "@/hooks/use-account-stats";
 import { cn } from "@/lib/utils";
 import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign } from "lucide-react";
@@ -52,6 +52,7 @@ function CopyableId({ id }: { id: number | null }) {
 
 export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const _ = useT();
+  useProfileSync(account.id);
   const { data: stats, isLoading: statsLoading, refetch } = useAccountStats(account.id);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
