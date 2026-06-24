@@ -281,13 +281,10 @@ export function Sidebar() {
           )}
         </button>
 
-        {/* Header (Logo + Title) */}
+        {/* Header (Title only) */}
         <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0 relative overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center font-bold text-white shadow-lg shadow-primary-600/20 shrink-0 select-none">
-            T
-          </div>
           {sidebarOpen && (
-            <span className="text-xl font-bold text-white tracking-tight ml-3 animate-in fade-in slide-in-from-left-2 duration-200">
+            <span className="text-xl font-bold text-white tracking-tight animate-in fade-in slide-in-from-left-2 duration-200">
               TeleBos
             </span>
           )}
