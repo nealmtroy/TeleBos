@@ -15,21 +15,25 @@ from app.utils.encryption import decrypt
 logger = logging.getLogger(__name__)
 
 
+_sync_semaphore = asyncio.Semaphore(3)  # Limit concurrent full syncs on startup
+
+
 async def _background_chat_sync(account_id: str) -> None:
     """Run chat synchronization in the background using a fresh DB session."""
     from app.database import async_session_factory
     from app.services.chat_service import sync_chats_to_db
 
-    try:
-        async with async_session_factory() as db:
-            result = await db.execute(
-                select(TelegramAccount).where(TelegramAccount.id == account_id)
-            )
-            account = result.scalar_one_or_none()
-            if account:
-                await sync_chats_to_db(account, db)
-    except Exception as exc:
-        logger.error("Error in background chat sync for account %s: %s", account_id, exc)
+    async with _sync_semaphore:
+        try:
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount).where(TelegramAccount.id == account_id)
+                )
+                account = result.scalar_one_or_none()
+                if account:
+                    await sync_chats_to_db(account, db)
+        except Exception as exc:
+            logger.error("Error in background chat sync for account %s: %s", account_id, exc)
 
 
 class SessionManager:

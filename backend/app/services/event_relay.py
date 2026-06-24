@@ -48,6 +48,7 @@ class TelegramEventRelay:
     def __init__(self) -> None:
         self._handlers: dict[str, list] = {}  # account_id -> list of handler callables
         self._tg_id_map: dict[str, int] = {}  # account_id -> telegram_id (for self-detection)
+        self._db_sem = asyncio.Semaphore(10)  # Limit concurrent DB writes to prevent pool exhaustion
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -394,57 +395,59 @@ class TelegramEventRelay:
         last_msg = msg.text or "[non-text message]" if msg.text else ""
         last_time = msg.date
 
-        async with async_session_factory() as db:
-            try:
-                # Build upsert statement
-                stmt = insert(TelegramChat).values(
-                    id=uuid.uuid4(),
-                    account_id=account_id,
-                    chat_id=chat.id,
-                    title=title,
-                    username=username,
-                    type=chat_type_val,
-                    unread_count=0 if is_outgoing else 1,
-                    last_message=last_msg,
-                    last_message_date=last_time,
-                    is_active=True,
-                    is_creator=is_creator,
-                )
+        async with self._db_sem:
+            async with async_session_factory() as db:
+                try:
+                    # Build upsert statement
+                    stmt = insert(TelegramChat).values(
+                        id=uuid.uuid4(),
+                        account_id=account_id,
+                        chat_id=chat.id,
+                        title=title,
+                        username=username,
+                        type=chat_type_val,
+                        unread_count=0 if is_outgoing else 1,
+                        last_message=last_msg,
+                        last_message_date=last_time,
+                        is_active=True,
+                        is_creator=is_creator,
+                    )
 
-                set_clause = {
-                    "last_message": stmt.excluded.last_message,
-                    "last_message_date": stmt.excluded.last_message_date,
-                    "is_active": True,
-                    "updated_at": func.now(),
-                }
-                if not is_outgoing:
-                    set_clause["unread_count"] = TelegramChat.unread_count + 1
+                    set_clause = {
+                        "last_message": stmt.excluded.last_message,
+                        "last_message_date": stmt.excluded.last_message_date,
+                        "is_active": True,
+                        "updated_at": func.now(),
+                    }
+                    if not is_outgoing:
+                        set_clause["unread_count"] = TelegramChat.unread_count + 1
 
-                stmt = stmt.on_conflict_do_update(
-                    constraint="uq_telegram_chat_account_chat",
-                    set_=set_clause
-                )
-                await db.execute(stmt)
-                await db.commit()
-            except Exception as exc:
-                logger.warning("Failed to update chat on message in DB (account %s): %s", account_id, exc)
+                    stmt = stmt.on_conflict_do_update(
+                        constraint="uq_telegram_chat_account_chat",
+                        set_=set_clause
+                    )
+                    await db.execute(stmt)
+                    await db.commit()
+                except Exception as exc:
+                    logger.warning("Failed to update chat on message in DB (account %s): %s", account_id, exc)
 
     async def _update_chat_read(self, account_id: str, event) -> None:
         # If we read it (event.inbox is True)
         if getattr(event, "inbox", False):
             from app.models.telegram_chat import TelegramChat
             from sqlalchemy import update, func
-            async with async_session_factory() as db:
-                try:
-                    await db.execute(
-                        update(TelegramChat)
-                        .where(TelegramChat.account_id == account_id)
-                        .where(TelegramChat.chat_id == event.chat_id)
-                        .values(unread_count=0, updated_at=func.now())
-                    )
-                    await db.commit()
-                except Exception as exc:
-                    logger.warning("Failed to reset chat unread count in DB (account %s): %s", account_id, exc)
+            async with self._db_sem:
+                async with async_session_factory() as db:
+                    try:
+                        await db.execute(
+                            update(TelegramChat)
+                            .where(TelegramChat.account_id == account_id)
+                            .where(TelegramChat.chat_id == event.chat_id)
+                            .values(unread_count=0, updated_at=func.now())
+                        )
+                        await db.commit()
+                    except Exception as exc:
+                        logger.warning("Failed to reset chat unread count in DB (account %s): %s", account_id, exc)
 
     async def _update_chat_action(self, account_id: str, event) -> None:
         my_tg_id = self._tg_id_map.get(account_id)
@@ -457,18 +460,19 @@ class TelegramEventRelay:
         if (event.user_left or event.user_kicked) and event.user_id == my_tg_id:
             from app.models.telegram_chat import TelegramChat
             from sqlalchemy import update, func
-            async with async_session_factory() as db:
-                try:
-                    await db.execute(
-                        update(TelegramChat)
-                        .where(TelegramChat.account_id == account_id)
-                        .where(TelegramChat.chat_id == chat_id)
-                        .values(is_active=False, updated_at=func.now())
-                    )
-                    await db.commit()
-                    logger.info("Deactivated chat %s for account %s (user left/kicked)", chat_id, account_id)
-                except Exception as exc:
-                    logger.warning("Failed to deactivate chat on action in DB (account %s): %s", account_id, exc)
+            async with self._db_sem:
+                async with async_session_factory() as db:
+                    try:
+                        await db.execute(
+                            update(TelegramChat)
+                            .where(TelegramChat.account_id == account_id)
+                            .where(TelegramChat.chat_id == chat_id)
+                            .values(is_active=False, updated_at=func.now())
+                        )
+                        await db.commit()
+                        logger.info("Deactivated chat %s for account %s (user left/kicked)", chat_id, account_id)
+                    except Exception as exc:
+                        logger.warning("Failed to deactivate chat on action in DB (account %s): %s", account_id, exc)
 
         # If we joined / were added
         elif (event.user_joined or event.user_added) and event.user_id == my_tg_id:
@@ -503,37 +507,38 @@ class TelegramEventRelay:
             chat_type_val = "group"
             is_creator = getattr(chat, "creator", False)
 
-        async with async_session_factory() as db:
-            try:
-                stmt = insert(TelegramChat).values(
-                    id=uuid.uuid4(),
-                    account_id=account_id,
-                    chat_id=chat.id,
-                    title=title,
-                    username=username,
-                    type=chat_type_val,
-                    unread_count=0,
-                    last_message=None,
-                    last_message_date=None,
-                    is_active=True,
-                    is_creator=is_creator,
-                )
-                stmt = stmt.on_conflict_do_update(
-                    constraint="uq_telegram_chat_account_chat",
-                    set_={
-                        "title": stmt.excluded.title,
-                        "username": stmt.excluded.username,
-                        "type": stmt.excluded.type,
-                        "is_active": True,
-                        "is_creator": stmt.excluded.is_creator,
-                        "updated_at": func.now(),
-                    }
-                )
-                await db.execute(stmt)
-                await db.commit()
-                logger.info("Upserted joined chat %s for account %s", chat.id, account_id)
-            except Exception as exc:
-                logger.warning("Failed to upsert chat on join in DB (account %s): %s", account_id, exc)
+        async with self._db_sem:
+            async with async_session_factory() as db:
+                try:
+                    stmt = insert(TelegramChat).values(
+                        id=uuid.uuid4(),
+                        account_id=account_id,
+                        chat_id=chat.id,
+                        title=title,
+                        username=username,
+                        type=chat_type_val,
+                        unread_count=0,
+                        last_message=None,
+                        last_message_date=None,
+                        is_active=True,
+                        is_creator=is_creator,
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        constraint="uq_telegram_chat_account_chat",
+                        set_={
+                            "title": stmt.excluded.title,
+                            "username": stmt.excluded.username,
+                            "type": stmt.excluded.type,
+                            "is_active": True,
+                            "is_creator": stmt.excluded.is_creator,
+                            "updated_at": func.now(),
+                        }
+                    )
+                    await db.execute(stmt)
+                    await db.commit()
+                    logger.info("Upserted joined chat %s for account %s", chat.id, account_id)
+                except Exception as exc:
+                    logger.warning("Failed to upsert chat on join in DB (account %s): %s", account_id, exc)
 
 
     async def _on_profile_change(self, account_id: str, event) -> None:
