@@ -80,15 +80,17 @@ export default function RootLayout({
           */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content={`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')}; font-src 'self' data:; connect-src 'self' ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')} ws: wss:; base-uri 'self'; form-action 'self'`}
+          content={`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'${process.env.NODE_ENV === 'development' ? ' http://localhost:8400' : ''}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')}; font-src 'self' data:; connect-src 'self' ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')} ws: wss:${process.env.NODE_ENV === 'development' ? ' ws://localhost:8400 http://localhost:8400' : ''}; base-uri 'self'; form-action 'self'`}
         />
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
-      {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js"></script>
-{/* impeccable-live-end */}
-</body>
+        {/* impeccable-live-start */}
+        {process.env.NODE_ENV === 'development' && (
+          <script src="http://localhost:8400/live.js"></script>
+        )}
+        {/* impeccable-live-end */}
+      </body>
     </html>
   );
 }
