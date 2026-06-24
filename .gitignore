@@ -48,3 +48,17 @@ celerybeat-schedule
 *.session
 *.session-journal
 
+# AI Agent / IDE Skill Directories (not production)
+.agents/
+.codex/
+.cursor/
+.gemini/
+.kiro/
+.qoder/
+.claude/skills/
+.claude/settings.local.json
+.impeccable/
+
+# Local tsconfig build info
+tsconfig.tsbuildinfo
+
