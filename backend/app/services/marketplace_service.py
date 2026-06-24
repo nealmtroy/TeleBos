@@ -183,7 +183,9 @@ async def sell_accounts(
         account.auto_reply_enabled = False
         account.sale_listed_at = datetime.now(timezone.utc)
 
-        # 3. Remove client session from memory pool
+        # 3. Detach event relay and remove client session from memory pool
+        from app.services.event_relay import event_relay
+        await event_relay.detach(str(account.id))
         await client_pool.remove(str(account.id))
 
         # 4. Write audit log

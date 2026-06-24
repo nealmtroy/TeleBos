@@ -2,6 +2,7 @@
 
 import logging
 import time
+import asyncio
 from typing import Any
 
 from telethon import TelegramClient
@@ -100,7 +101,7 @@ class TelegramClientPool:
             if data and data["client"]:
                 logger.info("Disconnecting idle Telegram client for account %s", acc_id)
                 try:
-                    await data["client"].disconnect()
+                    await asyncio.wait_for(data["client"].disconnect(), timeout=2.0)
                 except Exception as e:
                     logger.debug("Error disconnecting idle client %s: %s", acc_id, e)
 
@@ -144,7 +145,7 @@ class TelegramClientPool:
                 await client.connect()
                 if not await client.is_user_authorized():
                     logger.warning("Session expired for account %s", account_id)
-                    await client.disconnect()
+                    await asyncio.wait_for(client.disconnect(), timeout=2.0)
                     self._clients.pop(account_id, None)
                     return None
                 self._clients[account_id] = {"client": client, "last_accessed": time.time()}
@@ -158,7 +159,7 @@ class TelegramClientPool:
         data = self._clients.pop(account_id, None)
         if data is not None and data["client"]:
             try:
-                await data["client"].disconnect()
+                await asyncio.wait_for(data["client"].disconnect(), timeout=2.0)
             except Exception:
                 pass
 

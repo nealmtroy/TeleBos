@@ -1090,6 +1090,8 @@ async def execute_broadcast(job_id: str):
                                 "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
                             })
                             from app.services.telegram_client import client_pool
+                            from app.services.event_relay import event_relay
+                            await event_relay.detach(acc_id_str)
                             await client_pool.remove(acc_id_str)
                             
                             async with async_session_factory() as db_session:
