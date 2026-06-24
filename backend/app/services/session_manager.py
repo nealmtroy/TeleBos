@@ -15,6 +15,23 @@ from app.utils.encryption import decrypt
 logger = logging.getLogger(__name__)
 
 
+async def _background_chat_sync(account_id: str) -> None:
+    """Run chat synchronization in the background using a fresh DB session."""
+    from app.database import async_session_factory
+    from app.services.chat_service import sync_chats_to_db
+
+    try:
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(TelegramAccount).where(TelegramAccount.id == account_id)
+            )
+            account = result.scalar_one_or_none()
+            if account:
+                await sync_chats_to_db(account, db)
+    except Exception as exc:
+        logger.error("Error in background chat sync for account %s: %s", account_id, exc)
+
+
 class SessionManager:
     """Manages Telethon client lifecycle including event handlers."""
 
@@ -207,6 +224,7 @@ class SessionManager:
             success = await event_relay.attach(str(account.id), session_str)
             if success:
                 logger.info("Account %s connected + event handlers attached", account.id)
+                asyncio.create_task(_background_chat_sync(str(account.id)))
 
             return success
         except Exception as exc:

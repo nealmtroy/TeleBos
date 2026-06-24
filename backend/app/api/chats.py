@@ -39,7 +39,7 @@ async def list_chats(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         chats, total = await chat_service.get_dialogs(
-            account, page=page, page_size=page_size, chat_type=chat_type,
+            account, db, page=page, page_size=page_size, chat_type=chat_type,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

@@ -87,3 +87,6 @@ class TelegramAccount(Base):
         secondary="account_folder_members",
         viewonly=True,
     )
+    chats: Mapped[list["TelegramChat"]] = relationship(
+        "TelegramChat", back_populates="account", cascade="all, delete-orphan"
+    )

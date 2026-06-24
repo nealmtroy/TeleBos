@@ -17,6 +17,7 @@ from .account_audit_log import AccountAuditLog
 from .user_account_price import TelegramIdPrefixPrice
 from .account_folder import AccountFolder
 from .account_folder_member import AccountFolderMember
+from .telegram_chat import TelegramChat
 
 __all__ = [
     "User",
@@ -38,4 +39,5 @@ __all__ = [
     "TelegramIdPrefixPrice",
     "AccountFolder",
     "AccountFolderMember",
+    "TelegramChat",
 ]

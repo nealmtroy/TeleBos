@@ -24,7 +24,7 @@ async def refresh_account_stats(db: AsyncSession, account) -> None:
     from app.services.chat_service import get_dialog_stats
 
     try:
-        stats = await get_dialog_stats(account)
+        stats = await get_dialog_stats(account, db)
     except RuntimeError as exc:
         logger.warning("Skipping stats refresh for account %s: %s", account.id, exc)
         return

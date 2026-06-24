@@ -1,95 +1,157 @@
 """Chat and folder business logic."""
 
 import logging
+import uuid
 from typing import Any
 
 import telethon
-from sqlalchemy import select
+from sqlalchemy import select, func, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.telegram_account import TelegramAccount
 from app.models.chat_folder import ChatFolder
+from app.models.telegram_chat import TelegramChat
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 
 
+async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
+    """Sync groups, channels, supergroups, and user chats into local DB."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        logger.error("Failed to sync chats for account %s: Client is disconnected", account.id)
+        return
+
+    logger.info("Starting chat synchronization for account %s...", account.id)
+
+    synced_chat_ids = set()
+    values = []
+
+    try:
+        dialogs = await client.get_dialogs(limit=None)
+        for d in dialogs:
+            chat_type_val = _classify_chat(d.entity)
+            is_creator = getattr(d.entity, "creator", False)
+
+            # Save the last message text and date
+            last_msg = None
+            last_time = None
+            if d.message:
+                last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+                last_time = d.message.date
+
+            values.append({
+                "id": uuid.uuid4(),
+                "account_id": account.id,
+                "chat_id": d.id,
+                "title": d.name or d.title or "Unknown",
+                "username": getattr(d.entity, "username", None),
+                "type": chat_type_val,
+                "unread_count": d.unread_count or 0,
+                "last_message": last_msg,
+                "last_message_date": last_time,
+                "is_active": True,
+                "is_creator": is_creator,
+            })
+            synced_chat_ids.add(d.id)
+    except Exception as exc:
+        logger.error("Error during get_dialogs for account %s: %s", account.id, exc)
+        return
+
+    if not values:
+        logger.info("No dialogs found for account %s to sync", account.id)
+        return
+
+    # Bulk upsert using ON CONFLICT DO UPDATE
+    # Let's batch inserts in chunks of 100 to avoid giant SQL statements
+    chunk_size = 100
+    for i in range(0, len(values), chunk_size):
+        chunk = values[i : i + chunk_size]
+        stmt = insert(TelegramChat).values(chunk)
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_telegram_chat_account_chat",
+            set_={
+                "title": stmt.excluded.title,
+                "username": stmt.excluded.username,
+                "type": stmt.excluded.type,
+                "unread_count": stmt.excluded.unread_count,
+                "last_message": stmt.excluded.last_message,
+                "last_message_date": stmt.excluded.last_message_date,
+                "is_active": True,
+                "is_creator": stmt.excluded.is_creator,
+                "updated_at": func.now(),
+            }
+        )
+        await db.execute(stmt)
+
+    # Mark other chats no longer present in sync as inactive
+    await db.execute(
+        update(TelegramChat)
+        .where(TelegramChat.account_id == account.id)
+        .where(TelegramChat.chat_id.not_in(list(synced_chat_ids)))
+        .values(is_active=False, updated_at=func.now())
+    )
+
+    await db.commit()
+    logger.info("Successfully synced %d chats for account %s", len(synced_chat_ids), account.id)
+
+
 async def get_dialogs(
-    account: TelegramAccount, *, page: int = 1, page_size: int = 50,
+    account: TelegramAccount,
+    db: AsyncSession,
+    *,
+    page: int = 1,
+    page_size: int = 50,
     chat_type: str | None = None,
 ) -> tuple[list[dict], int]:
-    """Fetch dialogs from Telegram API.
+    """Fetch dialogs from PostgreSQL database.
 
     If *chat_type* is provided it may be a comma-separated list of types
     (e.g. ``"group,supergroup"``) — only dialogs whose classified type
     matches one of the values are returned.
     """
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    stmt = select(TelegramChat).where(
+        TelegramChat.account_id == account.id,
+        TelegramChat.is_active == True,
+    )
 
     # Parse chat_type filter
-    allowed_types: set[str] | None = None
     if chat_type:
         allowed_types = {t.strip() for t in chat_type.split(",")}
+        stmt = stmt.where(TelegramChat.type.in_(allowed_types))
 
-    dialogs = await client.get_dialogs(limit=page * page_size)
+    # Get total count before pagination
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = await db.scalar(count_stmt) or 0
 
-    result = []
-    for d in dialogs:
-        chat_type_val = _classify_chat(d.entity)
+    # Order and paginate
+    stmt = stmt.order_by(TelegramChat.last_message_date.desc().nullslast())
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
 
-        # Apply type filter early so pagination is correct
-        if allowed_types and chat_type_val not in allowed_types:
-            continue
+    result = await db.execute(stmt)
+    chats = result.scalars().all()
 
-        last_msg = ""
-        last_time = None
-        if d.message:
-            last_msg = d.message.text or "[non-text message]" if d.message.text else ""
-            last_time = d.message.date
-
-        is_pinned = getattr(d, "pinned", False)
-        is_muted = False
-        notify_settings = getattr(d.dialog, "notify_settings", None)
-        if notify_settings:
-            mute_until = getattr(notify_settings, "mute_until", None)
-            if mute_until:
-                if hasattr(mute_until, "timestamp"):
-                    import datetime
-                    is_muted = mute_until.timestamp() > datetime.datetime.now().timestamp()
-                elif isinstance(mute_until, (int, float)):
-                    import time
-                    is_muted = mute_until > time.time()
-            elif getattr(notify_settings, "silent", False):
-                is_muted = True
-
-        folder_id = getattr(d.dialog, "folder_id", None)
-        folder_id = folder_id if folder_id is not None else 0
-
-        result.append({
-            "chat_id": d.id,
-            "title": d.name or d.title or "",
-            "username": getattr(d.entity, "username", None),
-            "chat_type": chat_type_val,
-            "last_message": last_msg,
-            "last_message_time": last_time.isoformat() if last_time else None,
-            "unread_count": d.unread_count or 0,
-            "is_muted": is_muted,
-            "is_pinned": is_pinned,
-            "folder_id": folder_id,
-            "is_archived": folder_id == 1,
-            "is_creator": getattr(d.entity, "creator", False),
+    page_dialogs = []
+    for c in chats:
+        last_time_str = c.last_message_date.isoformat() if c.last_message_date else None
+        page_dialogs.append({
+            "chat_id": c.chat_id,
+            "title": c.title,
+            "username": c.username,
+            "chat_type": c.type,
+            "last_message": c.last_message,
+            "last_message_time": last_time_str,
+            "unread_count": c.unread_count,
+            "is_muted": False,
+            "is_pinned": False,
+            "folder_id": 0,
+            "is_archived": False,
+            "is_creator": c.is_creator,
         })
-
-    total = len(result)
-
-    # Paginate after filtering
-    start = (page - 1) * page_size
-    end = start + page_size
-    page_dialogs = result[start:end]
 
     return page_dialogs, total
 
@@ -111,46 +173,38 @@ def _classify_chat(entity: Any) -> str:
     return "unknown"
 
 
-async def get_dialog_stats(account: "TelegramAccount") -> dict:
-    """Fetch aggregate dialog statistics for an account.
+async def get_dialog_stats(account: "TelegramAccount", db: AsyncSession) -> dict:
+    """Fetch aggregate dialog statistics for an account using database + Telegram contacts check."""
+    # Count chats from database
+    stmt = select(
+        func.count().filter(TelegramChat.type.in_(["group", "supergroup"])).label("total_groups"),
+        func.count().filter(TelegramChat.type.in_(["group", "supergroup"]) & TelegramChat.is_creator).label("owned_groups"),
+        func.count().filter(TelegramChat.type == "channel").label("total_channels"),
+        func.count().filter((TelegramChat.type == "channel") & TelegramChat.is_creator).label("owned_channels"),
+    ).where(
+        TelegramChat.account_id == account.id,
+        TelegramChat.is_active == True,
+    )
+    res = await db.execute(stmt)
+    row = res.fetchone()
 
-    Returns best-effort counts for contacts, groups (total + owned),
-    and channels (total + owned).  Contacts count defaults to 0 if
-    the underlying RPC fails.
-    """
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    total_groups = row.total_groups if row else 0
+    owned_groups = row.owned_groups if row else 0
+    total_channels = row.total_channels if row else 0
+    owned_channels = row.owned_channels if row else 0
 
-    # ── Fetch all dialogs and classify ──────────────────────────────────
-    dialogs = await client.get_dialogs(limit=None)
-    total_groups = 0
-    owned_groups = 0
-    total_channels = 0
-    owned_channels = 0
-
-    for d in dialogs:
-        chat_type = _classify_chat(d.entity)
-        is_creator = getattr(d.entity, "creator", False)
-        if chat_type in ("group", "supergroup"):
-            total_groups += 1
-            if is_creator:
-                owned_groups += 1
-        elif chat_type == "channel":
-            total_channels += 1
-            if is_creator:
-                owned_channels += 1
-
-    # ── Contacts count (best-effort) ───────────────────────────────────
+    # Contacts count (best-effort from Telegram API)
     contacts_count = 0
     try:
-        from telethon.tl.functions.contacts import GetContactsRequest
-        result = await client(GetContactsRequest(0))
-        if result and result.users:
-            contacts_count = len(result.users)
-    except Exception:
-        logger.warning("Failed to fetch contacts count for account %s", account.id)
+        session_str = decrypt(account.session_string)
+        client = await client_pool.get(str(account.id), session_str)
+        if client is not None:
+            from telethon.tl.functions.contacts import GetContactsRequest
+            result = await client(GetContactsRequest(0))
+            if result and result.users:
+                contacts_count = len(result.users)
+    except Exception as exc:
+        logger.warning("Failed to fetch contacts count for account %s: %s", account.id, exc)
 
     return {
         "contacts_count": contacts_count,
@@ -159,6 +213,7 @@ async def get_dialog_stats(account: "TelegramAccount") -> dict:
         "total_channels": total_channels,
         "owned_channels": owned_channels,
     }
+
 
 
 async def get_folders(account_id: str, db: AsyncSession) -> list[ChatFolder]:
