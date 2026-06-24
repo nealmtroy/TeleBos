@@ -556,19 +556,48 @@ async def update_profile(
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    await client.edit_profile(
-        first_name=first_name or account.first_name or "",
-        last_name=last_name or account.last_name or "",
-        about=bio or account.bio or "",
+    from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
+    from telethon.errors import (
+        UsernameOccupiedError,
+        UsernameInvalidError,
+        AboutTooLongError,
+        FloodWaitError,
+        RPCError,
     )
 
-    if username is not None:
-        await client.edit_username(username)
+    tg_first_name = first_name if first_name is not None else (account.first_name or "")
+    tg_last_name = last_name if last_name is not None else (account.last_name or "")
+    tg_bio = bio if bio is not None else (account.bio or "")
 
-    account.first_name = first_name or account.first_name
-    account.last_name = last_name or account.last_name
-    account.username = username or account.username
-    account.bio = bio or account.bio
+    try:
+        await client(UpdateProfileRequest(
+            first_name=tg_first_name,
+            last_name=tg_last_name,
+            about=tg_bio,
+        ))
+
+        if username is not None and username != account.username:
+            await client(UpdateUsernameRequest(username=username))
+    except UsernameOccupiedError:
+        raise RuntimeError("Username sudah digunakan oleh akun lain.")
+    except UsernameInvalidError:
+        raise RuntimeError("Format username tidak valid. Username minimal 5 karakter, hanya boleh berisi huruf, angka, dan underscore.")
+    except AboutTooLongError:
+        raise RuntimeError("Bio terlalu panjang.")
+    except FloodWaitError as exc:
+        raise RuntimeError(f"Terlalu banyak permintaan. Silakan coba lagi setelah {exc.seconds} detik.")
+    except RPCError as exc:
+        raise RuntimeError(f"Gagal memperbarui profil: {exc.message}")
+
+    if first_name is not None:
+        account.first_name = first_name
+    if last_name is not None:
+        account.last_name = last_name
+    if username is not None:
+        account.username = username if username != "" else None
+    if bio is not None:
+        account.bio = bio
+
     await db.flush()
     return account
 
