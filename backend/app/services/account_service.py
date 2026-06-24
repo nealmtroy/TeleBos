@@ -16,6 +16,11 @@ from app.services.telegram_client import client_pool
 from app.utils.encryption import encrypt, decrypt
 from app.utils.session_converter import convert_to_telethon
 
+class DuplicateAccountError(Exception):
+    """Raised when trying to add a Telegram account that already exists in the system."""
+    pass
+
+
 # ── Role-based account limits ──────────────────────────────────────────────
 
 ROLE_ACCOUNT_LIMITS: dict[str, int] = {
@@ -190,10 +195,7 @@ async def verify_code(
         ValueError: If the code is invalid or expired (retryable), or role account limit reached.
         Exception: For fatal errors where the pending login should be discarded.
     """
-    # Role-based account limit check
-    if db is not None and user is not None:
-        await check_account_limit(db, user)
-
+    # Verify the code (and optional 2FA password)
     try:
         await unauth_client.sign_in(
             phone=phone,
@@ -264,6 +266,8 @@ async def verify_code(
         session_string = unauth_client.session.save()
 
     me = await unauth_client.get_me()
+    if not me or not me.id:
+        raise ValueError("Gagal mengambil informasi profil Telegram.")
 
     # Check live 2FA status from Telegram
     twofa_enabled = False
@@ -273,6 +277,35 @@ async def verify_code(
         twofa_enabled = pwd.has_password
     except Exception:
         pass
+
+    if db is not None and me.id:
+        existing = await db.execute(
+            select(TelegramAccount).where(TelegramAccount.telegram_id == me.id)
+        )
+        existing_acc = existing.scalar_one_or_none()
+        if existing_acc:
+            if user is None or existing_acc.user_id != user.id:
+                raise DuplicateAccountError(
+                    f"Akun Telegram (ID: {me.id}) sudah terdaftar di TeleBos oleh pengguna lain."
+                )
+            else:
+                # Same user: update existing account and set active
+                existing_acc.session_string = encrypt(session_string)
+                existing_acc.phone = phone
+                existing_acc.first_name = me.first_name
+                existing_acc.last_name = me.last_name
+                existing_acc.username = me.username
+                existing_acc.twofa_enabled = twofa_enabled
+                if twofa_password:
+                    existing_acc.twofa_password = encrypt(twofa_password)
+                existing_acc.is_active = True
+                existing_acc.for_sale = False
+                existing_acc.is_sold = False
+                return existing_acc, False, None
+
+    # New account registration — check account limit first
+    if db is not None and user is not None:
+        await check_account_limit(db, user)
 
     account = TelegramAccount(
         phone=phone,
@@ -284,6 +317,8 @@ async def verify_code(
         telegram_id=me.id,
         twofa_enabled=twofa_enabled,
     )
+    if twofa_password:
+        account.twofa_password = encrypt(twofa_password)
     return account, False, None
 
 
@@ -295,9 +330,6 @@ async def login_with_session(
     """Add an account by uploading an existing session string.
     Phone number is extracted automatically from Telegram after connecting.
     """
-    # Role-based account limit check
-    await check_account_limit(db, user)
-
     # Convert session string to Telethon format (supports GramJS, Pyrogram, raw)
     try:
         session_string = convert_to_telethon(session_string)
@@ -337,6 +369,36 @@ async def login_with_session(
 
     # Use phone from Telegram if available, fallback to placeholder
     phone = me.phone or ""
+
+    if not me or not me.id:
+        raise ValueError("Gagal mengambil informasi profil Telegram.")
+
+    # Check for duplicate by telegram_id
+    if me.id:
+        existing = await db.execute(
+            select(TelegramAccount).where(TelegramAccount.telegram_id == me.id)
+        )
+        existing_acc = existing.scalar_one_or_none()
+        if existing_acc:
+            if existing_acc.user_id != user.id:
+                raise ValueError(
+                    f"Akun Telegram (ID: {me.id}) sudah terdaftar di TeleBos oleh pengguna lain."
+                )
+            else:
+                # Same user: update existing account and set active
+                existing_acc.session_string = encrypt(session_string)
+                existing_acc.phone = phone
+                existing_acc.first_name = me.first_name
+                existing_acc.last_name = me.last_name
+                existing_acc.username = me.username
+                existing_acc.is_active = True
+                existing_acc.for_sale = False
+                existing_acc.is_sold = False
+                await db.flush()
+                return existing_acc
+
+    # New account registration — check account limit first
+    await check_account_limit(db, user)
 
     # Check for duplicate by phone (skip if phone is empty)
     if phone:
