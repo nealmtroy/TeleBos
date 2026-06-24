@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 import {
   useMarketplaceStock,
   useMarketplaceStockAccounts,
@@ -27,6 +28,7 @@ import {
 
 export default function BuyAccountsPage() {
   const _ = useT();
+  const { toast } = useToast();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { data: stock, isLoading: stockLoading, refetch: refetchStock } = useMarketplaceStock();
@@ -61,11 +63,21 @@ export default function BuyAccountsPage() {
       setBoughtAccount(res);
       await fetchMe();
       await refetchStock();
+      toast({
+        variant: "success",
+        title: "Success",
+        description: _("orders.buySuccess") || "Account purchased successfully!",
+      });
       setBuyConfirmOpen(false);
       setPendingBuyAccount(null);
       setSuccessOpen(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast({
+        variant: "error",
+        title: "Error",
+        description: err?.response?.data?.detail || "Failed to purchase account.",
+      });
     }
   };
 

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import {
   useSellEligibleAccounts,
   useSellAccounts,
@@ -20,6 +21,7 @@ import {
 
 export default function SellAccountsPage() {
   const _ = useT();
+  const { toast } = useToast();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { data: eligible, isLoading, error } = useSellEligibleAccounts();
@@ -56,10 +58,20 @@ export default function SellAccountsPage() {
     try {
       await sellMutation.mutateAsync(selectedIds);
       await fetchMe();
+      toast({
+        variant: "success",
+        title: "Success",
+        description: _("orders.sellSuccess") || "Account(s) listed successfully!",
+      });
       setSelectedIds([]);
       setSellConfirmOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast({
+        variant: "error",
+        title: "Error",
+        description: err?.response?.data?.detail || "Failed to sell account(s).",
+      });
     } finally {
       setSelling(false);
     }
