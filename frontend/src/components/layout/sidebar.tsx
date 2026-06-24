@@ -214,6 +214,7 @@ export function Sidebar() {
           minRole: 0,
         },
         { href: "/subscriptions", labelKey: "subscription.title", icon: Crown, minRole: 0 },
+        { href: "/redeem", labelKey: "redeem.title", icon: Ticket, minRole: 0 },
       ],
     },
     {

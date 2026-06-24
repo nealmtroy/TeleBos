@@ -318,8 +318,8 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     account.for_sale = False
     account.is_sold = True
     account.sold_at = datetime.now(timezone.utc)
-    # The buyer starts with a clean slate: inactive until they choose to activate it
-    account.is_active = False
+    # Set purchased account to active upon purchase
+    account.is_active = True
 
     # 4. Create transaction audit log
     audit_seller = AccountAuditLog(
@@ -343,4 +343,17 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     db.add(audit_buyer)
 
     await db.flush()
+
+    # 5. Reconnect and attach event handlers immediately
+    from app.services.session_manager import session_manager
+    try:
+        await session_manager.attach_and_reconnect(db, account)
+    except Exception as exc:
+        logger.error(
+            "Failed to auto-reconnect purchased account %s (%s): %s",
+            account.id,
+            account.phone,
+            exc,
+        )
+
     return account

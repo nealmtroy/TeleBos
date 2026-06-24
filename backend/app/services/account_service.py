@@ -573,6 +573,36 @@ async def update_profile(
     return account
 
 
+def resize_to_avatar(image_bytes: bytes, size: tuple[int, int] = (320, 320)) -> bytes:
+    """Resize image bytes to the target size, keeping aspect ratio and cropping to square if necessary."""
+    from PIL import Image
+    import io
+
+    img = Image.open(io.BytesIO(image_bytes))
+    
+    # Convert to RGB if not already (PNGs might be RGBA, we want JPEG)
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+        
+    # Crop to square first if it's not square
+    width, height = img.size
+    if width != height:
+        min_dim = min(width, height)
+        left = (width - min_dim) // 2
+        top = (height - min_dim) // 2
+        right = (width + min_dim) // 2
+        bottom = (height + min_dim) // 2
+        img = img.crop((left, top, right, bottom))
+        
+    # Resize to target size
+    img = img.resize(size, Image.Resampling.LANCZOS)
+    
+    # Save to bytes
+    out_buf = io.BytesIO()
+    img.save(out_buf, format="JPEG", quality=85)
+    return out_buf.getvalue()
+
+
 async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: bytes) -> None:
     """Upload profile photo to Telegram and cache locally."""
     from telethon.tl.functions.photos import UploadProfilePhotoRequest
@@ -601,8 +631,13 @@ async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: 
             downloaded = await client.download_profile_photo(me, file=buf)
             if downloaded:
                 buf.seek(0)
+                data = buf.read()
+                try:
+                    data = resize_to_avatar(data)
+                except Exception as e:
+                    logger.warning("Failed to resize uploaded profile photo for %s: %s", account.id, e)
                 with open(photo_path, "wb") as f:
-                    f.write(buf.read())
+                    f.write(data)
                 account.profile_photo_path = photo_path
             else:
                 account.profile_photo_path = None
@@ -666,6 +701,10 @@ async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
 
     buf.seek(0)
     data = buf.read()
+    try:
+        data = resize_to_avatar(data)
+    except Exception as e:
+        logger.warning("Failed to resize profile photo for %s: %s", account.id, e)
 
     # Cache locally
     _ensure_photo_dir()

@@ -5,8 +5,20 @@ import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useRedeemCode } from "@/hooks/use-subscriptions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ticket, CheckCircle, AlertCircle, Loader2, ArrowRight, Gift, Coins, Crown } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Ticket,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  ArrowRight,
+  Coins,
+  Crown,
+  Clipboard,
+  Star,
+  Wallet,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -40,128 +52,234 @@ export default function RedeemPage() {
     }
   }
 
+  async function handlePaste() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) setCode(text.trim().toUpperCase());
+    } catch {
+      // clipboard not available
+    }
+  }
+
+  const userPlan = user?.role || "basic";
+  const planMeta: Record<string, { icon: typeof Star; color: string; bg: string }> = {
+    basic: { icon: Star, color: "text-slate-500", bg: "bg-slate-100" },
+    pro: { icon: Star, color: "text-primary-600", bg: "bg-primary-50" },
+    premium: { icon: Crown, color: "text-amber-600", bg: "bg-amber-50" },
+    owner: { icon: Crown, color: "text-rose-600", bg: "bg-rose-50" },
+  };
+  const currentPlanMeta = planMeta[userPlan] || planMeta.basic;
+  const PlanIcon = currentPlanMeta.icon;
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("redeem.title")}</h1>
-        <p className="text-gray-500 mt-1">{_("redeem.desc")}</p>
+      {/* Hero Header */}
+      <div className="relative rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 p-6 sm:p-8 text-white overflow-hidden">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{
+          backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "24px 24px",
+        }} />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 rounded-xl bg-primary-500/20">
+              <Ticket className="h-6 w-6 text-primary-400" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-semibold">{_("redeem.heroTitle")}</h1>
+          </div>
+          <p className="text-sm text-slate-400 max-w-lg leading-relaxed">
+            {_("redeem.heroDesc")}
+          </p>
+        </div>
       </div>
 
-      {/* Current Balance & Plan */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center gap-6 flex-wrap">
+      {/* Status Row — Balance & Plan side by side */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Balance */}
+        <Card>
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600">
-                <Coins className="h-5 w-5" />
+              <div className="p-2 rounded-lg bg-emerald-50">
+                <Wallet className="h-5 w-5 text-emerald-600" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Balance</p>
-                <p className="text-lg font-bold text-gray-900">
-                  {user?.balance?.toLocaleString() ?? 0}
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{_("redeem.yourBalance")}</p>
+                <p className="text-lg font-semibold text-foreground tabular-nums">
+                  {(user?.balance ?? 0).toLocaleString()}
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Plan */}
+        <Card>
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600">
-                <Crown className="h-5 w-5" />
+              <div className={cn("p-2 rounded-lg", currentPlanMeta.bg)}>
+                <PlanIcon className={cn("h-5 w-5", currentPlanMeta.color)} />
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Plan</p>
-                <p className="text-lg font-bold text-gray-900 capitalize">
-                  {user?.role ?? "basic"}
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{_("redeem.yourPlan")}</p>
+                <p className="text-lg font-semibold text-foreground capitalize">
+                  {userPlan}
                 </p>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Redeem Form */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5 text-primary-600" />
-            {_("redeem.codeLabel")}
-          </CardTitle>
-          <CardDescription>{_("redeem.desc")}</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder={_("redeem.codePlaceholder")}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 uppercase"
-                autoFocus
-                disabled={redeemMutation.isPending}
-              />
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {_("redeem.codeLabel")}
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    placeholder={_("redeem.codePlaceholder")}
+                    className="w-full border border-input rounded-lg px-4 py-3 text-base font-mono tracking-widest focus:outline-none focus:ring-3 focus:ring-ring/50 focus:border-primary uppercase bg-background text-foreground placeholder:text-muted-foreground"
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={redeemMutation.isPending}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePaste}
+                  className="flex items-center gap-1.5 px-3.5 border border-input rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+                  title={_("redeem.pasteCode")}
+                >
+                  <Clipboard className="h-4 w-4" />
+                  <span className="hidden sm:inline">{_("redeem.pasteCode")}</span>
+                </button>
+              </div>
             </div>
 
             <Button
               type="submit"
               disabled={redeemMutation.isPending || !code.trim()}
-              className="w-full"
+              className="w-full h-11 text-sm font-medium"
+              size="lg"
             >
               {redeemMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {_("redeem.redeeming")}
+                </>
               ) : (
-                <ArrowRight className="h-4 w-4 mr-2" />
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {_("redeem.redeem")}
+                </>
               )}
-              {redeemMutation.isPending ? _("redeem.redeeming") : _("redeem.redeem")}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* Result */}
+      {/* Result Feedback */}
       {result && (
         <div
           className={cn(
-            "flex items-start gap-3 p-4 rounded-xl border",
+            "rounded-xl border p-5",
             result.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
+              ? "bg-emerald-50 border-emerald-200"
+              : "bg-red-50 border-red-200"
           )}
         >
-          {result.type === "success" ? (
-            <CheckCircle className="h-5 w-5 mt-0.5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
-          )}
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{result.message}</p>
-            {result.type === "success" && result.data?.balance_added && (
-              <p className="text-sm opacity-75">
-                +{result.data.balance_added} credits added to your balance.
-              </p>
+          <div className="flex items-start gap-3">
+            {result.type === "success" ? (
+              <div className="p-1.5 rounded-full bg-emerald-100">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              </div>
+            ) : (
+              <div className="p-1.5 rounded-full bg-red-100">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
             )}
-            {result.type === "success" && result.data?.plan && (
-              <p className="text-sm opacity-75">
-                Plan upgraded to {result.data.plan}.
+            <div className="flex-1 min-w-0 space-y-1">
+              <p className={cn(
+                "text-sm font-semibold",
+                result.type === "success" ? "text-emerald-800" : "text-red-800"
+              )}>
+                {result.message}
               </p>
-            )}
-            {result.type === "success" && result.data?.expires_at && (
-              <p className="text-sm opacity-75">
-                Valid until {new Date(result.data.expires_at).toLocaleString()}.
-              </p>
-            )}
+              {result.type === "success" && result.data?.balance_added && (
+                <p className="text-sm text-emerald-700">
+                  +{result.data.balance_added.toLocaleString()} {_("redeem.creditsAdded")}
+                </p>
+              )}
+              {result.type === "success" && result.data?.plan && (
+                <p className="text-sm text-emerald-700">
+                  {_("redeem.planUpgraded")} <span className="font-semibold capitalize">{result.data.plan}</span>
+                </p>
+              )}
+              {result.type === "success" && result.data?.expires_at && (
+                <p className="text-sm text-emerald-700">
+                  {_("redeem.validUntil")} {new Date(result.data.expires_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
 
+      {/* How it Works */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-emerald-50 shrink-0">
+                <Coins className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground mb-0.5">{_("adminRedeem.typeBalance")}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {_("redeem.balanceCodeDesc")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-primary-50 shrink-0">
+                <Crown className="h-4 w-4 text-primary-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground mb-0.5">{_("adminRedeem.typeSubscription")}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {_("redeem.subscriptionCodeDesc")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Link to Subscription page */}
-      <div className="text-center">
+      <div className="text-center pt-1 pb-2">
         <Link
           href="/subscriptions"
-          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
+          className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
         >
           <Crown className="h-4 w-4" />
-          View subscription details
-          <ArrowRight className="h-4 w-4" />
+          {_("redeem.viewSubscription")}
+          <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
     </div>

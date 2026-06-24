@@ -1066,6 +1066,16 @@ export interface Dict {
     upgradePlans: string;
     redeemBtn: string;
     perMonth: string;
+    basicDesc: string;
+    proDesc: string;
+    premiumDesc: string;
+    upgradePrompt: string;
+    recommended: string;
+    featureAllFuture: string;
+    included: string;
+    notIncluded: string;
+    compareFeatures: string;
+    feature: string;
   };
 
   // Redeem
@@ -1081,6 +1091,18 @@ export interface Dict {
     invalidCode: string;
     expiredCode: string;
     maxUsed: string;
+    heroTitle: string;
+    heroDesc: string;
+    yourBalance: string;
+    yourPlan: string;
+    howItWorks: string;
+    balanceCodeDesc: string;
+    subscriptionCodeDesc: string;
+    pasteCode: string;
+    creditsAdded: string;
+    planUpgraded: string;
+    validUntil: string;
+    viewSubscription: string;
   };
 
   // Admin Redeem
