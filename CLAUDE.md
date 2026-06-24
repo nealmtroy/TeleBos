@@ -188,3 +188,14 @@ curl http://localhost:8000/api/v1/health
 - **Encryption key rotation**: Changing `ENCRYPTION_KEY` will break existing session strings. Keys are auto-generated if invalid, which would corrupt data. Always back up the key.
 - **i18n**: Two locales (en, id) in `frontend/src/lib/i18n/` using a Zustand store. Use the `useT()` hook for translations.
 - **Error classification file**: `backend/app/utils/telegram_errors.py` — extend this when adding new error types.
+
+## Design Context
+
+This project has a formal visual design system defined in two files at the project root:
+
+- **`PRODUCT.md`** — Strategic: register (product), users, brand personality, anti-references, design principles.
+- **`DESIGN.md`** — Visual: color palette (dark-primary identity, Tool Blue accent), typography (Inter single-family), components, elevation philosophy, Do's and Don'ts.
+
+Refer to these before any UI work. The companion `.impeccable/design.json` sidecar carries tonal ramps and component HTML/CSS snippets for the live variant panel.
+
+Key identity signals: dark-mode first, flat/tonal layering (no shadows at rest), surgical blue accent ≤15%, neutral surfaces are truly neutral (no warm tint), Inter for all text — hierarchy expressed through weight/size alone.

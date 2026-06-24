@@ -80,7 +80,7 @@ function AnimatedBackground() {
   return (
     <div className="absolute inset-0 -z-10 overflow-hidden">
       <motion.div
-        className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary-200/30 to-purple-300/20 blur-3xl"
+        className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary-200/30 to-primary-400/20 blur-3xl"
         animate={{
           x: [0, 50, -30, 0],
           y: [0, -40, 30, 0],
@@ -98,7 +98,7 @@ function AnimatedBackground() {
         transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-1/3 left-1/3 w-[350px] h-[350px] rounded-full bg-gradient-to-br from-violet-200/20 to-pink-200/20 blur-3xl"
+        className="absolute bottom-1/3 left-1/3 w-[350px] h-[350px] rounded-full bg-gradient-to-br from-primary-300/20 to-primary-500/10 blur-3xl"
         animate={{
           x: [0, 40, -50, 0],
           y: [0, -30, 50, 0],
@@ -462,7 +462,7 @@ export default function LandingPage() {
 
             {/* Subtitle */}
             <motion.p
-              className="mt-6 text-lg sm:text-xl text-gray-500 leading-relaxed max-w-2xl mx-auto"
+              className="mt-6 text-lg sm:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
@@ -554,7 +554,7 @@ export default function LandingPage() {
                   <div className="text-2xl sm:text-3xl font-bold text-primary-600">
                     {stat.value}
                   </div>
-                  <div className="mt-1 text-xs sm:text-sm text-gray-500">
+                  <div className="mt-1 text-xs sm:text-sm text-gray-600">
                     {stat.label}
                   </div>
                 </motion.div>
@@ -575,13 +575,13 @@ export default function LandingPage() {
                   {/* Glow on hover */}
                   <div className="absolute -inset-1 bg-primary-400/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="relative z-10">
+                    <h2 className="font-semibold text-gray-900 mb-2 text-lg">
+                      {item.title}
+                    </h2>
                     <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-4">
                       <item.icon className="h-5 w-5 text-primary-600" />
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">
+                    <p className="text-sm text-gray-600 leading-relaxed">
                       {item.desc}
                     </p>
                   </div>
@@ -608,7 +608,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
               {_("landing.featuresTitle")}
             </h2>
-            <p className="mt-4 text-lg text-gray-500">
+            <p className="mt-4 text-lg text-gray-600">
               {_("landing.featuresSubtitle")}
             </p>
           </motion.div>
@@ -624,16 +624,16 @@ export default function LandingPage() {
                 whileHover={{ y: -8, transition: { duration: 0.25 } }}
                 className="group relative bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 hover:border-primary-100 hover:shadow-lg hover:shadow-primary-50 transition-all duration-300"
               >
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  {feature.title}
+                </h2>
                 <motion.div
                   className="w-12 h-12 rounded-xl bg-primary-50 group-hover:bg-primary-100 flex items-center justify-center mb-5 transition-colors"
                   whileHover={{ rotate: [0, -10, 10, -10, 0], transition: { duration: 0.5 } }}
                 >
                   <feature.icon className="h-6 w-6 text-primary-600" />
                 </motion.div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-500 text-sm leading-relaxed">
+                <p className="text-gray-600 text-sm leading-relaxed">
                   {feature.desc}
                 </p>
               </motion.div>
@@ -658,7 +658,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
               {_("landing.howItWorks")}
             </h2>
-            <p className="mt-4 text-lg text-gray-500">
+            <p className="mt-4 text-lg text-gray-600">
               {_("landing.howItWorksSubtitle")}
             </p>
           </motion.div>
@@ -678,9 +678,12 @@ export default function LandingPage() {
                   <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-primary-200 to-transparent" />
                 )}
 
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  {step.title}
+                </h2>
                 <motion.div
                   className="w-16 h-16 rounded-2xl bg-primary-50 flex items-center justify-center mx-auto mb-6"
-                  whileHover={{ scale: 1.15, backgroundColor: "rgb(224 231 255)" }}
+                  whileHover={{ scale: 1.15, backgroundColor: "rgba(59,130,246,0.1)" }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
                   <motion.span
@@ -690,10 +693,7 @@ export default function LandingPage() {
                     {step.num}
                   </motion.span>
                 </motion.div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-gray-500 text-sm leading-relaxed">
+                <p className="text-gray-600 text-sm leading-relaxed">
                   {step.desc}
                 </p>
               </motion.div>
@@ -710,7 +710,7 @@ export default function LandingPage() {
         viewport={{ once: true, margin: "-100px" }}
       >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-indigo-800 p-8 sm:p-12">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-primary-950 p-8 sm:p-12">
             {/* Background orbs */}
             <motion.div
               className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 blur-3xl"
@@ -721,7 +721,7 @@ export default function LandingPage() {
               transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
-              className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-indigo-300/10 blur-3xl"
+              className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-primary-400/10 blur-3xl"
               animate={{
                 x: [0, 20, -20, 0],
                 y: [0, -20, 20, 0],
@@ -788,7 +788,7 @@ export default function LandingPage() {
 
       {/* ── CTA ─────────────────────────────────────────────────────────── */}
       <motion.section
-        className="py-20 sm:py-28 bg-gradient-to-br from-primary-900 via-primary-800 to-indigo-900 relative overflow-hidden"
+        className="py-20 sm:py-28 bg-gradient-to-br from-primary-900 via-primary-800 to-slate-900 relative overflow-hidden"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
@@ -868,7 +868,7 @@ export default function LandingPage() {
                 </motion.div>
                 <span className="text-lg font-bold text-white">TeleBos</span>
               </div>
-              <p className="text-sm text-gray-500 leading-relaxed max-w-xs">
+              <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
                 {_("login.brandSubtitle")}
               </p>
             </motion.div>
