@@ -147,6 +147,8 @@ class TelegramEventRelay:
 
     async def _on_new_message(self, account_id: str, event) -> None:
         """Fire when a new message arrives (incoming)."""
+        if not event.is_private:
+            return
         if account_id not in self._handlers:
             return
         msg: Message = event.message
@@ -247,6 +249,8 @@ class TelegramEventRelay:
 
     async def _on_outgoing_message(self, account_id: str, event) -> None:
         """Fire when we send a message."""
+        if not event.is_private:
+            return
         if account_id not in self._handlers:
             return
         msg: Message = event.message
@@ -275,6 +279,8 @@ class TelegramEventRelay:
 
     async def _on_message_edited(self, account_id: str, event) -> None:
         """Fire when a message is edited."""
+        if not event.is_private:
+            return
         if account_id not in self._handlers:
             return
         msg: Message = event.message
@@ -302,6 +308,8 @@ class TelegramEventRelay:
 
     async def _on_message_read(self, account_id: str, event) -> None:
         """Fire when someone reads our messages (updates unread count)."""
+        if not event.is_private:
+            return
         if account_id not in self._handlers:
             return
         channel = f"chats:{account_id}"
