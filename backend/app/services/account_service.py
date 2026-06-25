@@ -301,6 +301,7 @@ async def verify_code(
                 existing_acc.is_active = True
                 existing_acc.for_sale = False
                 existing_acc.is_sold = False
+                await remove_from_expired_folder(db, existing_acc.id, existing_acc.user_id)
                 return existing_acc, False, None
 
     # New account registration — check account limit first
@@ -394,6 +395,7 @@ async def login_with_session(
                 existing_acc.is_active = True
                 existing_acc.for_sale = False
                 existing_acc.is_sold = False
+                await remove_from_expired_folder(db, existing_acc.id, existing_acc.user_id)
                 await db.flush()
                 return existing_acc
 
@@ -849,3 +851,69 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
     account.spam_last_checked_at = datetime.now(timezone.utc)
     await db.flush()
     return account
+
+
+async def remove_from_expired_folder(db: AsyncSession, account_id: Any, user_id: Any) -> None:
+    """Remove account from the 'Expired' folder if it exists for the user."""
+    from app.models.account_folder import AccountFolder
+    from app.models.account_folder_member import AccountFolderMember
+    from sqlalchemy import select, delete
+    
+    # Find the user's Expired folder
+    folder_result = await db.execute(
+        select(AccountFolder).where(
+            AccountFolder.user_id == user_id,
+            AccountFolder.name == "Expired"
+        )
+    )
+    folder = folder_result.scalar_one_or_none()
+    if folder:
+        # Delete membership from the Expired folder
+        await db.execute(
+            delete(AccountFolderMember).where(
+                AccountFolderMember.folder_id == folder.id,
+                AccountFolderMember.account_id == account_id
+            )
+        )
+        await db.flush()
+
+
+async def move_to_expired_folder(db: AsyncSession, account_id: Any, user_id: Any) -> None:
+    """Deactivate account and move it to the 'Expired' folder, removing it from other folders."""
+    from app.models.telegram_account import TelegramAccount
+    from app.models.account_folder import AccountFolder
+    from app.models.account_folder_member import AccountFolderMember
+    from sqlalchemy import select, delete, update
+
+    # 1. Deactivate account
+    await db.execute(
+        update(TelegramAccount)
+        .where(TelegramAccount.id == account_id)
+        .values(is_active=False)
+    )
+
+    # 2. Get or create 'Expired' folder
+    folder_result = await db.execute(
+        select(AccountFolder).where(
+            AccountFolder.user_id == user_id,
+            AccountFolder.name == "Expired"
+        )
+    )
+    folder = folder_result.scalar_one_or_none()
+    if not folder:
+        folder = AccountFolder(user_id=user_id, name="Expired")
+        db.add(folder)
+        await db.flush()
+        await db.refresh(folder)
+
+    # 3. Remove from all other folders
+    await db.execute(
+        delete(AccountFolderMember).where(
+            AccountFolderMember.account_id == account_id
+        )
+    )
+
+    # 4. Add to 'Expired' folder
+    db.add(AccountFolderMember(folder_id=folder.id, account_id=account_id))
+    await db.flush()
+    logger.info("Account %s marked as expired and moved to 'Expired' folder", account_id)

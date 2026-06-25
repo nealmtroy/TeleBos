@@ -47,6 +47,13 @@ async def terminate_device(
         await device_service.terminate_device(account, int(device_hash))
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        from app.utils.telegram_errors import classify_telegram_error
+        err_type, err_msg = classify_telegram_error(exc)
+        if err_type != "unknown":
+            raise HTTPException(status_code=400, detail=err_msg)
+        raise HTTPException(status_code=400, detail=str(exc))
+
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
@@ -66,3 +73,10 @@ async def terminate_all_other_sessions(
         await device_service.terminate_all_other_sessions(account)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        from app.utils.telegram_errors import classify_telegram_error
+        err_type, err_msg = classify_telegram_error(exc)
+        if err_type != "unknown":
+            raise HTTPException(status_code=400, detail=err_msg)
+        raise HTTPException(status_code=400, detail=str(exc))
+

@@ -7,6 +7,12 @@ from typing import Any
 
 from telethon import TelegramClient
 from telethon.sessions import StringSession
+from telethon.errors import (
+    AuthKeyUnregisteredError,
+    AuthKeyDuplicatedError,
+    SessionRevokedError,
+    UserDeactivatedBanError,
+)
 
 from app.config import get_settings
 from app.utils.device_spoof import deterministic_ios_device, random_ios_device
@@ -147,12 +153,46 @@ class TelegramClientPool:
                     logger.warning("Session expired for account %s", account_id)
                     await asyncio.wait_for(client.disconnect(), timeout=2.0)
                     self._clients.pop(account_id, None)
+                    await self._handle_expired_session(account_id)
                     return None
                 self._clients[account_id] = {"client": client, "last_accessed": time.time()}
                 return client
+            except (AuthKeyUnregisteredError, AuthKeyDuplicatedError, SessionRevokedError, UserDeactivatedBanError) as exc:
+                logger.warning("Session expired for account %s: %s", account_id, exc)
+                self._clients.pop(account_id, None)
+                await self._handle_expired_session(account_id)
+                return None
             except Exception as exc:
                 logger.error("Failed to connect account %s: %s", account_id, exc)
+                exc_str = str(exc).lower()
+                if any(k in exc_str for k in ["auth_key", "session_revoked", "user_deactivated", "session expired"]):
+                    self._clients.pop(account_id, None)
+                    await self._handle_expired_session(account_id)
                 return None
+
+    async def _handle_expired_session(self, account_id: str) -> None:
+        """Mark the account as inactive and move it to the 'Expired' folder in the database."""
+        try:
+            from app.database import async_session_factory
+            from app.models.telegram_account import TelegramAccount
+            from sqlalchemy import select
+            import uuid
+
+            acc_uuid = uuid.UUID(account_id)
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
+                )
+                account = result.scalar_one_or_none()
+                if not account:
+                    return
+
+                # Import helper and run it
+                from app.services.account_service import move_to_expired_folder
+                await move_to_expired_folder(db, account.id, account.user_id)
+                await db.commit()
+        except Exception as e:
+            logger.error("Failed to handle expired session for account %s: %s", account_id, e)
 
     async def remove(self, account_id: str) -> None:
         """Disconnect and remove a client from the pool."""

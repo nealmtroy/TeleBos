@@ -201,11 +201,14 @@ class SessionManager:
                 account.phone,
                 exc,
             )
-            account.is_active = False
             try:
+                from app.services.account_service import move_to_expired_folder
+                await move_to_expired_folder(db, account.id, account.user_id)
                 await db.commit()
-            except Exception as commit_exc:
-                logger.error("Failed to commit deactivation of account %s: %s", account.id, commit_exc)
+            except Exception as folder_exc:
+                logger.error("Failed to move account %s to Expired folder: %s", account.id, folder_exc)
+                account.is_active = False
+                await db.commit()
             return False
 
         try:

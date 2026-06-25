@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { useI18nStore } from "@/lib/i18n";
 import { ToastProvider } from "@/components/ui/toast";
+import { Toaster } from "sonner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,7 +56,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ToastProvider>
         <LanguageSync />
         {children}
+        <Toaster richColors position="top-right" />
       </ToastProvider>
     </QueryClientProvider>
   );
 }
+

@@ -11,6 +11,7 @@ import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface Device {
   hash: string;
@@ -42,19 +43,32 @@ export default function DevicesPage() {
     mutationFn: async (hash: string) => {
       await api.delete(`/accounts/${id}/devices/${hash}`);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["devices", id] }),
+    onSuccess: () => {
+      toast.success("Device session terminated successfully");
+      queryClient.invalidateQueries({ queryKey: ["devices", id] });
+    },
+    onError: (err: any) => {
+      const errMsg = err.response?.data?.detail || "Failed to terminate device session";
+      toast.error(errMsg);
+    },
   });
 
   const terminateAllMutation = useMutation({
     mutationFn: async () => {
       await api.delete(`/accounts/${id}/devices`);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["devices", id] }),
+    onSuccess: () => {
+      toast.success("All other sessions terminated successfully");
+      queryClient.invalidateQueries({ queryKey: ["devices", id] });
+    },
+    onError: (err: any) => {
+      const errMsg = err.response?.data?.detail || "Failed to terminate other sessions";
+      toast.error(errMsg);
+    },
   });
 
   const [terminateAllOpen, setTerminateAllOpen] = useState(false);
+
   const devices = devicesData?.devices || [];
 
   return (

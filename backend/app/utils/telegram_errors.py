@@ -84,6 +84,12 @@ try:
 except ImportError:
     ChatGuestSendForbiddenError = None
 
+try:
+    from telethon.errors import FreshResetAuthorisationForbiddenError
+except ImportError:
+    FreshResetAuthorisationForbiddenError = None
+
+
 
 # ── AddChatUserRequest / InviteToChannelRequest specific errors ────────
 try:
@@ -149,6 +155,10 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
 
     if ChatGuestSendForbiddenError and isinstance(exc, ChatGuestSendForbiddenError):
         return ("guest_restricted", "Account not yet joined or guest restricted — may need to join first or wait for new-member probation to end")
+
+    if FreshResetAuthorisationForbiddenError and isinstance(exc, FreshResetAuthorisationForbiddenError):
+        return ("fresh_reset_forbidden", "The current session is too new and cannot be used to reset other authorizations yet. Please wait a few hours or days before trying again.")
+
 
     if isinstance(exc, ChatAdminRequiredError):
         return ("admin_only", "Admin privileges required to perform this action")
@@ -320,5 +330,9 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "JOIN_GROUP" in msg or "join the discussion" in msg.lower() or "before commenting" in msg.lower():
         return ("must_join_discussion", "You must join the discussion group before commenting")
 
+    if "FRESH_RESET_AUTHORISATION_FORBIDDEN" in msg or "fresh reset" in msg.lower():
+        return ("fresh_reset_forbidden", "The current session is too new and cannot be used to reset other authorizations yet. Please wait a few hours or days before trying again.")
+
     return ("unknown", msg[:500])
+
 
