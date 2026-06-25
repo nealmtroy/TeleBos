@@ -603,15 +603,33 @@ async def unarchive_chat(account: TelegramAccount, chat_id: int) -> None:
     await client(EditFolderRequest(folder_peers=[InputFolderPeer(peer, folder_id=0)]))
 
 
-async def delete_chat(account: TelegramAccount, chat_id: int) -> None:
+async def delete_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) -> None:
     """Delete a chat / conversation completely."""
+    logger.info("Deleting chat %s for account %s", chat_id, account.id)
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    entity = await client.get_input_entity(chat_id)
-    await client.delete_dialog(entity, revoke=True)
+    # 1. Try to delete on Telegram
+    try:
+        entity = await client.get_input_entity(chat_id)
+        await client.delete_dialog(entity, revoke=True)
+        logger.info("Successfully deleted chat %s on Telegram for account %s", chat_id, account.id)
+    except Exception as exc:
+        # If it was already deleted on Telegram, we still want to deactivate it locally.
+        logger.warning("Failed to delete chat %s on Telegram: %s. Proceeding to deactivate locally.", chat_id, exc)
+
+    # 2. Deactivate locally in the database
+    stmt = (
+        update(TelegramChat)
+        .where(TelegramChat.account_id == account.id)
+        .where(TelegramChat.chat_id == chat_id)
+        .values(is_active=False, updated_at=func.now())
+    )
+    await db.execute(stmt)
+    await db.commit()
+    logger.info("Deactivated chat %s in local database for account %s", chat_id, account.id)
 
 
 async def batch_archive_chats(account: TelegramAccount, chat_ids: list[int]) -> None:
@@ -623,10 +641,10 @@ async def batch_archive_chats(account: TelegramAccount, chat_ids: list[int]) -> 
             logger.warning("Failed to archive chat %s: %s", chat_id, exc)
 
 
-async def batch_delete_chats(account: TelegramAccount, chat_ids: list[int]) -> None:
+async def batch_delete_chats(db: AsyncSession, account: TelegramAccount, chat_ids: list[int]) -> None:
     """Delete multiple chats at once."""
     for chat_id in chat_ids:
         try:
-            await delete_chat(account, chat_id)
+            await delete_chat(db, account, chat_id)
         except Exception as exc:
             logger.warning("Failed to delete chat %s: %s", chat_id, exc)

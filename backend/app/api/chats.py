@@ -232,7 +232,7 @@ async def delete_chat(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        await chat_service.delete_chat(account, chat_id)
+        await chat_service.delete_chat(db, account, chat_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -269,7 +269,7 @@ async def batch_delete(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        await chat_service.batch_delete_chats(account, payload.chat_ids)
+        await chat_service.batch_delete_chats(db, account, payload.chat_ids)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
