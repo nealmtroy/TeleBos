@@ -17,7 +17,8 @@ from app.bot.keyboards import (
 )
 from app.bot.utils import auth_required, format_dashboard_message
 from app.services.uptimerobot_status import uptimerobot_service
-from app.core.redis import redis_client
+import json
+from app.utils.redis import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def register_base_handlers(client):
             return
 
         # Initialize state in Redis: step waiting_email (expires in 5 minutes)
-        await redis_client.set_temp(f"bot_auth_state:{sender_id}", {"step": "waiting_email"}, ttl=300)
+        await redis_client.setex(f"bot_auth_state:{sender_id}", 300, json.dumps({"step": "waiting_email"}))
         
         await event.edit(
             "💬 **Langkah 1 dari 2: Email**\n\n"
@@ -78,7 +79,7 @@ def register_base_handlers(client):
             return
 
         # Delete state from Redis
-        await redis_client.delete_temp(f"bot_auth_state:{sender_id}")
+        await redis_client.delete(f"bot_auth_state:{sender_id}")
         
         await event.edit(
             "❌ **Login Dibatalkan.**\n\n"
@@ -95,7 +96,8 @@ def register_base_handlers(client):
             return
 
         # Check if user is in an active login flow
-        state = await redis_client.get_temp(f"bot_auth_state:{sender_id}")
+        raw_state = await redis_client.get(f"bot_auth_state:{sender_id}")
+        state = json.loads(raw_state) if raw_state else None
         if not state:
             # If not in login flow, ignore or let ReplyKeyboardMarkup buttons handle it
             return
@@ -114,10 +116,10 @@ def register_base_handlers(client):
                 return
 
             # Update state in Redis
-            await redis_client.set_temp(
+            await redis_client.setex(
                 f"bot_auth_state:{sender_id}",
-                {"step": "waiting_password", "email": email},
-                ttl=300
+                300,
+                json.dumps({"step": "waiting_password", "email": email})
             )
             
             await event.respond(
@@ -147,7 +149,7 @@ def register_base_handlers(client):
 
                 if not user or not verify_password(password, user.password_hash):
                     # Clear state on failure
-                    await redis_client.delete_temp(f"bot_auth_state:{sender_id}")
+                    await redis_client.delete(f"bot_auth_state:{sender_id}")
                     await event.respond(
                         "❌ **Email atau password salah!** Login gagal.\n\n"
                         "Silakan klik tombol di bawah untuk mencoba kembali:",
@@ -156,14 +158,14 @@ def register_base_handlers(client):
                     return
 
                 if not user.is_active:
-                    await redis_client.delete_temp(f"bot_auth_state:{sender_id}")
+                    await redis_client.delete(f"bot_auth_state:{sender_id}")
                     await event.respond("❌ **Akun Anda telah dinonaktifkan oleh administrator.**")
                     return
 
                 # Enforce 1-to-1 mapping:
                 # 1. Check if this TeleBos user is already linked to another Telegram chat ID
                 if user.telegram_chat_id is not None and user.telegram_chat_id != sender_id:
-                    await redis_client.delete_temp(f"bot_auth_state:{sender_id}")
+                    await redis_client.delete(f"bot_auth_state:{sender_id}")
                     await event.respond(
                         f"❌ **Gagal Menghubungkan!**\n\n"
                         f"Akun TeleBos dengan email `{email}` sudah terhubung ke akun Telegram lain. "
@@ -178,7 +180,7 @@ def register_base_handlers(client):
                 )
                 other_user = result_other.scalar_one_or_none()
                 if other_user:
-                    await redis_client.delete_temp(f"bot_auth_state:{sender_id}")
+                    await redis_client.delete(f"bot_auth_state:{sender_id}")
                     await event.respond(
                         "❌ **Gagal Menghubungkan!**\n\n"
                         "Akun Telegram Anda sudah terhubung ke akun TeleBos lain. "
@@ -192,7 +194,7 @@ def register_base_handlers(client):
                 await session.commit()
 
             # Clear state on success
-            await redis_client.delete_temp(f"bot_auth_state:{sender_id}")
+            await redis_client.delete(f"bot_auth_state:{sender_id}")
 
             await event.respond(
                 f"🟢 **Hubungkan Akun Berhasil!**\n\n"

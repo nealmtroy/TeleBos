@@ -48,21 +48,14 @@ async def main():
     register_broadcasts_handlers(client)
     register_autoreply_handlers(client)
 
-    # Connect to Redis
-    from app.core.redis import redis_client
-    await redis_client.connect()
-
-    try:
-        logger.info("Starting Telegram Bot (Polling)...")
-        await client.start(bot_token=settings.TELEGRAM_BOT_TOKEN)
-        
-        bot_me = await client.get_me()
-        logger.info("🤖 Bot @%s is online and ready!", bot_me.username)
-        
-        # Block and run until disconnected
-        await client.run_until_disconnected()
-    finally:
-        await redis_client.disconnect()
+    logger.info("Starting Telegram Bot (Polling)...")
+    await client.start(bot_token=settings.TELEGRAM_BOT_TOKEN)
+    
+    bot_me = await client.get_me()
+    logger.info("🤖 Bot @%s is online and ready!", bot_me.username)
+    
+    # Block and run until disconnected
+    await client.run_until_disconnected()
 
 
 if __name__ == "__main__":

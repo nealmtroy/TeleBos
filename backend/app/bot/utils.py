@@ -26,9 +26,10 @@ def auth_required(func):
 
         if not user:
             # Check if they are currently in the middle of a login flow
-            from app.core.redis import redis_client
-            state = await redis_client.get_temp(f"bot_auth_state:{sender_id}")
-            if state:
+            import json
+            from app.utils.redis import redis_client
+            raw_state = await redis_client.get(f"bot_auth_state:{sender_id}")
+            if raw_state:
                 # If they are in a login flow, let the text handler process the input
                 return
 
