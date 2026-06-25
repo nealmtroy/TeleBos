@@ -75,15 +75,44 @@ class AccountResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def extract_folder_ids(cls, data: Any) -> Any:
-        if hasattr(data, "folders"):
-            try:
-                data.folder_ids = [f.id for f in data.folders]
-            except Exception as exc:
-                # Lazy-load outside greenlet context (MissingGreenlet) or
-                # detached instance — graceful fallback to empty list
-                logger.warning("Failed to load folders for account (will use empty): %s", exc)
-                data.folder_ids = []
+        # Avoid lazy loading during serialization (MissingGreenlet)
+        if isinstance(data, dict):
+            if "folders" in data:
+                try:
+                    data["folder_ids"] = [
+                        f.id if hasattr(f, "id") else f.get("id") if isinstance(f, dict) else f
+                        for f in data["folders"]
+                    ]
+                except Exception as exc:
+                    logger.warning("Failed to load folders for account dict (will use empty): %s", exc)
+                    data["folder_ids"] = []
+            elif "folder_ids" not in data:
+                data["folder_ids"] = []
+        else:
+            # It's an object (SQLAlchemy model, mock, etc.)
+            # Check if 'folders' is in the __dict__ of the ORM model (which means it's loaded in SQLAlchemy)
+            # to avoid lazy loading.
+            is_orm = hasattr(data, "_sa_instance_state")
+            folders_loaded = False
+            if is_orm:
+                folders_loaded = "folders" in getattr(data, "__dict__", {})
+            else:
+                folders_loaded = hasattr(data, "folders")
+
+            if folders_loaded:
+                try:
+                    data.folder_ids = [f.id for f in data.folders]
+                except Exception as exc:
+                    logger.warning("Failed to load folders for account (will use empty): %s", exc)
+                    data.folder_ids = []
+            else:
+                if not hasattr(data, "folder_ids"):
+                    try:
+                        data.folder_ids = []
+                    except Exception:
+                        pass
         return data
+
 
 
 class AutoReplyUpdateRequest(BaseModel):
