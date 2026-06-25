@@ -140,6 +140,7 @@ const en: Dict = {
     noAccounts: "No Accounts Yet",
     noAccountsDesc: "You haven't added any Telegram sessions yet. Add your first account to start managing and broadcasting.",
     addFirstAccount: "Add First Account",
+    viewAllAccounts: "View all accounts",
   },
 
   // ── Accounts List ───────────────────────────────────────────────────────

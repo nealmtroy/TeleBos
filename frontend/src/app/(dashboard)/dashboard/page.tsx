@@ -201,49 +201,61 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : accounts && accounts.length > 0 ? (
-            <div className="divide-y divide-foreground/10">
-              {accounts.map((acc) => (
-                <Link
-                  key={acc.id}
-                  href={`/accounts/${acc.id}`}
-                  className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-muted/50 transition duration-150 min-w-0"
-                >
-                  <AccountAvatar
-                    accountId={acc.id}
-                    firstName={acc.first_name}
-                    phone={acc.phone}
-                    photoVersion={acc.photo_version}
-                    size="lg"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {acc.first_name || _("dashboard.unnamed")}{" "}
-                      {acc.last_name || ""}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {acc.username ? `@${acc.username}` : acc.phone}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 whitespace-nowrap",
-                      acc.is_active
-                        ? "bg-primary/10 text-primary border-primary/20"
-                        : "bg-muted text-muted-foreground border-border"
-                    )}
+            <>
+              <div className="divide-y divide-foreground/10">
+                {accounts.slice(0, 5).map((acc) => (
+                  <Link
+                    key={acc.id}
+                    href={`/accounts/${acc.id}`}
+                    className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-muted/50 transition duration-150 min-w-0"
                   >
-                    <span
-                      className={cn(
-                        "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                        acc.is_active ? "bg-primary" : "bg-muted-foreground/50"
-                      )}
+                    <AccountAvatar
+                      accountId={acc.id}
+                      firstName={acc.first_name}
+                      phone={acc.phone}
+                      photoVersion={acc.photo_version}
+                      size="lg"
                     />
-                    {acc.is_active ? _("dashboard.online") : _("dashboard.offline")}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {acc.first_name || _("dashboard.unnamed")}{" "}
+                        {acc.last_name || ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {acc.username ? `@${acc.username}` : acc.phone}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 whitespace-nowrap",
+                        acc.is_active
+                          ? "bg-primary/10 text-primary border-primary/20"
+                          : "bg-muted text-muted-foreground border-border"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                          acc.is_active ? "bg-primary" : "bg-muted-foreground/50"
+                        )}
+                      />
+                      {acc.is_active ? _("dashboard.online") : _("dashboard.offline")}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+              {accounts.length > 5 && (
+                <div className="border-t border-foreground/10 px-4 sm:px-6 py-3.5 bg-slate-50/50 text-center">
+                  <Link
+                    href="/accounts"
+                    className="text-xs font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-1"
+                  >
+                    {_("dashboard.viewAllAccounts")} ({accounts.length})
+                  </Link>
+                </div>
+              )}
+            </>
           ) : (
             <div className="p-10 sm:p-14 text-center max-w-md mx-auto">
               <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">

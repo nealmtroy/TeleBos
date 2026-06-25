@@ -140,6 +140,7 @@ const id: Dict = {
     noAccounts: "Belum Ada Akun",
     noAccountsDesc: "Anda belum menambahkan sesi Telegram. Tambahkan akun pertama untuk mulai mengelola dan broadcast.",
     addFirstAccount: "Tambah Akun Pertama",
+    viewAllAccounts: "Lihat semua akun",
   },
 
   // ── Daftar Akun ─────────────────────────────────────────────────────────

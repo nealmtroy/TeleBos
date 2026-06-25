@@ -144,6 +144,23 @@ function ChatsContent() {
     setToken(localStorage.getItem("access_token"));
   }, []);
 
+  // Adjust shell main container padding & overflow for a full-bleed app experience
+  useEffect(() => {
+    const mainEl = document.querySelector("main");
+    if (!mainEl) return;
+
+    const originalOverflow = mainEl.style.overflow;
+    const originalPadding = mainEl.style.padding;
+
+    mainEl.style.overflow = "hidden";
+    mainEl.style.padding = "0";
+
+    return () => {
+      mainEl.style.overflow = originalOverflow;
+      mainEl.style.padding = originalPadding;
+    };
+  }, []);
+
   const getApiUrl = useCallback(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
     if (typeof window !== "undefined" && apiUrl.includes("backend:8000")) {
@@ -392,18 +409,18 @@ function ChatsContent() {
 
   return (
     <>
-    <div className="flex h-[calc(100vh-7rem)] -m-6 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+    <div className="flex h-full w-full bg-white overflow-hidden">
       {/* ── Left Panel: Chat List ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex flex-col border-r border-gray-200 bg-white transition-all duration-200",
-          selectedChatId ? "hidden md:flex w-[360px] flex-shrink-0" : "flex-1 md:w-[360px] md:flex-shrink-0"
+          "flex flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out relative z-10 shrink-0",
+          selectedChatId ? "hidden lg:flex w-[360px] xl:w-[380px]" : "flex-1 lg:w-[360px] lg:flex-shrink-0"
         )}
       >
         {/* List Header */}
-        <div className="p-4 border-b border-gray-100 space-y-3">
+        <div className="p-4 border-b border-slate-100 space-y-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-bold text-gray-900">{_("chats.title")}</h1>
+            <h1 className="text-lg font-bold text-slate-900">{_("chats.title")}</h1>
             <div className="flex items-center gap-2">
               {connected ? (
                 <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium bg-green-50 px-2 py-0.5 rounded-full">
@@ -411,7 +428,7 @@ function ChatsContent() {
                   {_("chats.live")}
                 </span>
               ) : selectedAccount ? (
-                <span className="inline-flex items-center gap-1 text-gray-400 text-xs">
+                <span className="inline-flex items-center gap-1 text-slate-400 text-xs">
                   <WifiOff className="h-3 w-3" /> {_("chats.offline")}
                 </span>
               ) : null}
@@ -426,8 +443,8 @@ function ChatsContent() {
                   className={cn(
                     "p-1.5 rounded-lg transition",
                     selectionMode
-                      ? "bg-primary-100 text-primary-600"
-                      : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                      ? "bg-primary/10 text-primary"
+                      : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                   )}
                   title={selectionMode ? _("chats.exitSelection") : _("chats.selectChats")}
                 >
@@ -445,7 +462,7 @@ function ChatsContent() {
               setSelectedChatId(null);
               setFolderFilter({ type: "all" });
             }}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 text-gray-700"
+            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-150 ease-in-out bg-slate-50 text-slate-700 font-medium cursor-pointer"
           >
             <option value="">{_("chats.selectAccount")}</option>
             {(Array.isArray(accounts) ? accounts : []).map((acc) => (
@@ -456,20 +473,20 @@ function ChatsContent() {
           </select>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={_("chats.search")}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-150 ease-in-out"
             />
           </div>
         </div>
 
         {/* Folder Filter Tabs */}
         {selectedAccount && folderFilters.length > 0 && (
-          <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-slate-100 overflow-x-auto no-scrollbar">
             {folderFilters.map((ff) => {
               const isActive =
                 (ff.type === "all" && folderFilter.type === "all") ||
@@ -486,10 +503,10 @@ function ChatsContent() {
                   key={ff.type === "folder" ? `folder-${ff.folderId}` : ff.type}
                   onClick={() => setFolderFilter(ff)}
                   className={cn(
-                    "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
+                    "flex-shrink-0 px-3.5 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap",
                     isActive
-                      ? "bg-primary-600 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   )}
                 >
                   {ff.type === "archived" && <Archive className="h-3 w-3 inline mr-1" />}
@@ -504,33 +521,35 @@ function ChatsContent() {
         {/* Chat list body */}
         <div className="flex-1 overflow-y-auto">
           {!selectedAccount ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-6">
-              <MessageSquare className="h-10 w-10 text-gray-200 mb-3" />
-              <p className="text-sm text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-4">
+                <MessageSquare className="h-5 w-5 text-slate-400" />
+              </div>
+              <p className="text-sm font-semibold text-slate-600">
                 {Array.isArray(accounts) && accounts.length > 0
                   ? _("chats.selectAccount")
                   : _("chats.noAccounts")}
               </p>
             </div>
           ) : isLoading ? (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-50">
               {Array.from({ length: 8 }).map((_, i) => (
                 <ChatRowSkeleton key={i} />
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-sm text-red-400 mb-2">{_("chats.failedToLoad")}</p>
-              <button onClick={() => refetch()} className="text-sm text-primary-600 hover:underline">
+            <div className="flex flex-col items-center justify-center h-full text-center p-6">
+              <p className="text-sm text-red-500 font-semibold mb-2">{_("chats.failedToLoad")}</p>
+              <button onClick={() => refetch()} className="text-sm text-primary hover:underline font-semibold">
                 {_("chats.retry")}
               </button>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-sm text-gray-400">
+            <div className="flex items-center justify-center h-full text-sm text-slate-400 font-medium py-12">
               {folderFilter.type === "archived" ? _("chats.noArchived") : _("chats.noChats")}
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-100">
               {filtered.map((chat) => {
                 const isSelected = selectedChatIds.has(chat.chat_id);
                 const isBusy =
@@ -543,11 +562,11 @@ function ChatsContent() {
                     key={chat.chat_id}
                     onClick={() => handleSelectChat(chat)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-3 w-full text-left transition-colors duration-150 group relative",
+                      "flex items-center gap-3.5 px-4 py-3.5 w-full text-left transition-all duration-200 group relative border-b border-slate-100",
                       selectedChatId === chat.chat_id && !selectionMode
-                        ? "bg-primary-50 hover:bg-primary-50"
-                        : "hover:bg-gray-50",
-                      chat.is_archived && "opacity-80"
+                        ? "bg-slate-50 text-slate-900"
+                        : "bg-white hover:bg-slate-50/50 text-slate-600 hover:text-slate-900",
+                      chat.is_archived && "opacity-60"
                     )}
                   >
                     {/* Selection checkbox */}
@@ -557,8 +576,8 @@ function ChatsContent() {
                           className={cn(
                             "w-5 h-5 rounded border-2 flex items-center justify-center transition",
                             isSelected
-                              ? "bg-primary-600 border-primary-600 text-white"
-                              : "border-gray-300"
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-slate-300"
                           )}
                         >
                           {isSelected && <Check className="h-3.5 w-3.5" />}
@@ -567,7 +586,7 @@ function ChatsContent() {
                     )}
 
                     {/* Avatar */}
-                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-gray-100">
+                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50">
                       {token && selectedAccount && (
                         <img
                           src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
@@ -582,11 +601,11 @@ function ChatsContent() {
                       )}
                       <div
                         className={cn(
-                          "w-full h-full flex items-center justify-center text-white font-bold text-sm",
-                          chat.chat_type === "user" && "bg-blue-500",
-                          (chat.chat_type === "group" || chat.chat_type === "supergroup") && "bg-green-500",
-                          chat.chat_type === "channel" && "bg-purple-500",
-                          chat.chat_type === "bot" && "bg-orange-500"
+                          "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none",
+                          chat.chat_type === "user" && "bg-gradient-to-br from-blue-500 to-indigo-600",
+                          (chat.chat_type === "group" || chat.chat_type === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
+                          chat.chat_type === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
+                          chat.chat_type === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
                         )}
                         style={{ display: token && selectedAccount ? "none" : "flex" }}
                       >
@@ -595,8 +614,8 @@ function ChatsContent() {
 
                       {/* Archived badge on avatar */}
                       {chat.is_archived && !selectionMode && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gray-100 rounded-full flex items-center justify-center shadow-sm border border-white">
-                          <Archive className="h-2.5 w-2.5 text-gray-500" />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-slate-100 rounded-full flex items-center justify-center shadow-sm border border-white">
+                          <Archive className="h-2.5 w-2.5 text-slate-500" />
                         </div>
                       )}
                     </div>
@@ -606,26 +625,26 @@ function ChatsContent() {
                         <h3
                           className={cn(
                             "text-sm font-semibold truncate",
-                            chat.is_archived ? "text-gray-400" : "text-gray-900"
+                            chat.is_archived ? "text-slate-400" : "text-slate-900"
                           )}
                         >
                           {chat.title || _("chats.unknown")}
                         </h3>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">
+                        <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">
                           {formatRelative(chat.last_message_time)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-0.5">
                         <p
                           className={cn(
-                            "text-xs truncate pr-2",
-                            chat.is_archived ? "text-gray-300" : "text-gray-500"
+                            "text-xs truncate pr-2 font-medium",
+                            chat.unread_count > 0 ? "text-slate-900 font-semibold" : "text-slate-500"
                           )}
                         >
                           {chat.last_message || "—"}
                         </p>
                         {chat.unread_count > 0 && (
-                          <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary-600 text-white text-[10px] font-bold rounded-full flex-shrink-0">
+                          <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm">
                             {chat.unread_count > 99 ? "99+" : chat.unread_count}
                           </span>
                         )}
@@ -713,8 +732,8 @@ function ChatsContent() {
       {/* ── Right Panel: Messages ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex-1 flex flex-col bg-gray-50 min-w-0",
-          !selectedChatId && "hidden md:flex"
+          "flex-1 flex flex-col bg-slate-50/50 min-w-0 transition-all duration-300 ease-in-out",
+          !selectedChatId && "hidden lg:flex"
         )}
       >
         {selectedChatId ? (
@@ -729,12 +748,12 @@ function ChatsContent() {
             onBack={handleBackToList}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center px-8">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center mb-5">
-              <MessageSquare className="h-9 w-9 text-primary-500" />
+          <div className="flex flex-col items-center justify-center h-full text-center px-8 py-12">
+            <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200/60 flex items-center justify-center mb-5">
+              <MessageSquare className="h-6 w-6 text-primary animate-pulse" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">{_("chats.selectChat")}</h2>
-            <p className="text-sm text-gray-400 max-w-xs">
+            <h2 className="text-base font-bold text-slate-800 mb-1">{_("chats.selectChat")}</h2>
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
               {_("chats.selectChatDesc")}
             </p>
           </div>
@@ -955,15 +974,15 @@ function MessagePane({
   return (
     <>
       {/* Chat header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+      <div className="flex items-center gap-3.5 px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
         <button
           onClick={onBack}
-          className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg transition"
+          className="lg:hidden p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-xl transition duration-200 active:scale-95"
         >
-          <ArrowLeft className="h-5 w-5 text-gray-500" />
+          <ArrowLeft className="h-5 w-5" />
         </button>
 
-        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 relative">
+        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-slate-100 relative ring-2 ring-slate-100/50">
           {token && accountId && (
             <img
               src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo`}
@@ -978,11 +997,11 @@ function MessagePane({
           )}
           <div
             className={cn(
-              "w-full h-full flex items-center justify-center text-white font-bold text-sm",
-              chatType === "user" && "bg-blue-500",
-              (chatType === "group" || chatType === "supergroup") && "bg-green-500",
-              chatType === "channel" && "bg-purple-500",
-              chatType === "bot" && "bg-orange-500"
+              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none",
+              chatType === "user" && "bg-gradient-to-br from-blue-500 to-indigo-600",
+              (chatType === "group" || chatType === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
+              chatType === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
+              chatType === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
             )}
             style={{ display: token && accountId ? "none" : "flex" }}
           >
@@ -991,8 +1010,8 @@ function MessagePane({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 truncate">{chatTitle}</h2>
-          <p className="text-xs text-gray-400 capitalize">{chatType}</p>
+          <h2 className="text-sm font-bold text-slate-900 truncate">{chatTitle}</h2>
+          <p className="text-xs text-slate-400 font-semibold capitalize tracking-wide">{chatType}</p>
         </div>
       </div>
 
@@ -1008,12 +1027,14 @@ function MessagePane({
       >
         {isLoading && allMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : allMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <MessageSquare className="h-8 w-8 text-gray-200 mb-2" />
-            <p className="text-sm text-gray-400">{_("chats.noMessages")}</p>
+          <div className="flex flex-col items-center justify-center h-full text-center py-12">
+            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center mb-4">
+              <MessageSquare className="h-5 w-5 text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-500">{_("chats.noMessages")}</p>
           </div>
         ) : (
           <div className="max-w-3xl mx-auto space-y-1">
@@ -1023,10 +1044,10 @@ function MessagePane({
                 <button
                   onClick={handleLoadOlder}
                   disabled={isFetching}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-xs text-gray-500 hover:bg-gray-50 hover:shadow-sm transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:shadow-sm transition disabled:opacity-50"
                 >
                   {isFetching ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
                   ) : (
                     <ChevronUp className="h-3 w-3" />
                   )}
@@ -1038,8 +1059,8 @@ function MessagePane({
             {groupedMessages.map((group) => (
               <div key={group.date}>
                 {/* Date separator */}
-                <div className="flex items-center justify-center py-3">
-                  <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-[11px] text-gray-500 rounded-full shadow-sm border border-gray-100 font-medium">
+                <div className="flex items-center justify-center py-4">
+                  <span className="px-3.5 py-1 bg-slate-100/90 backdrop-blur-sm text-[10px] text-slate-500 rounded-full border border-slate-200/50 font-semibold select-none">
                     {group.date}
                   </span>
                 </div>
@@ -1058,21 +1079,21 @@ function MessagePane({
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex mb-0.5",
+                        "flex mb-1",
                         isOut ? "justify-end" : "justify-start"
                       )}
                     >
                       <div
                         className={cn(
-                          "group relative max-w-[75%] min-w-[80px] px-3 py-1.5 rounded-2xl text-sm",
+                          "group relative max-w-[75%] min-w-[80px] px-3.5 py-2 rounded-2xl text-[13px] leading-relaxed shadow-sm",
                           isOut
-                            ? "bg-primary-600 text-white rounded-br-md"
-                            : "bg-white text-gray-900 rounded-bl-md shadow-sm border border-gray-100"
+                            ? "bg-primary text-primary-foreground rounded-br-none"
+                            : "bg-white text-slate-800 rounded-bl-none border border-slate-100/80"
                         )}
                       >
                         {/* Sender name in groups */}
                         {showName && msg.sender_name && (
-                          <p className="text-[11px] font-semibold text-primary-400 mb-0.5 truncate">
+                          <p className="text-[11px] font-bold text-primary mb-1 truncate">
                             {msg.sender_name}
                           </p>
                         )}
@@ -1081,10 +1102,10 @@ function MessagePane({
                         {msg.reply_to_msg_id && (
                           <div
                             className={cn(
-                              "flex items-center gap-1 mb-1 px-2 py-1 rounded-md text-[11px] border-l-2",
+                              "flex items-center gap-1.5 mb-1 px-2.5 py-1.5 rounded-lg text-[10px] border-l-2 font-medium",
                               isOut
-                                ? "bg-primary-700/40 border-primary-300 text-primary-100"
-                                : "bg-gray-50 border-primary-400 text-gray-500"
+                                ? "bg-black/10 border-white/60 text-white/90"
+                                : "bg-slate-50 border-primary/50 text-slate-500"
                             )}
                           >
                             <Reply className="h-3 w-3 flex-shrink-0" />
@@ -1096,18 +1117,18 @@ function MessagePane({
                         {MediaIcon && (
                           <div
                             className={cn(
-                              "inline-flex items-center gap-1 text-[11px] mb-0.5 font-medium",
-                              isOut ? "text-primary-200" : "text-gray-400"
+                              "inline-flex items-center gap-1.5 text-[11px] mb-1 font-semibold",
+                              isOut ? "text-primary-100" : "text-slate-500"
                             )}
                           >
-                            <MediaIcon className="h-3 w-3" />
+                            <MediaIcon className="h-3.5 w-3.5" />
                             {msg.media_filename || msg.media_type}
                           </div>
                         )}
 
                         {/* Message text */}
                         {msg.text && (
-                          <p className="whitespace-pre-wrap break-words leading-snug">
+                          <p className="whitespace-pre-wrap break-words">
                             {msg.text}
                           </p>
                         )}
@@ -1115,14 +1136,14 @@ function MessagePane({
                         {/* Timestamp + reply button */}
                         <div
                           className={cn(
-                            "flex items-center gap-1 mt-0.5",
+                            "flex items-center gap-2 mt-1",
                             isOut ? "justify-end" : "justify-between"
                           )}
                         >
                           <span
                             className={cn(
-                              "text-[10px]",
-                              isOut ? "text-primary-200" : "text-gray-400"
+                              "text-[9px] font-medium tracking-wide select-none",
+                              isOut ? "text-primary-100" : "text-slate-400"
                             )}
                           >
                             {new Date(msg.date).toLocaleTimeString("en-US", {
@@ -1137,8 +1158,8 @@ function MessagePane({
                             className={cn(
                               "opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded",
                               isOut
-                                ? "hover:bg-primary-500 text-primary-200"
-                                : "hover:bg-gray-100 text-gray-400"
+                                ? "hover:bg-black/10 text-primary-100"
+                                : "hover:bg-slate-100 text-slate-400"
                             )}
                             title={_("chats.reply")}
                           >
@@ -1159,51 +1180,51 @@ function MessagePane({
 
       {/* ── Reply preview bar ──────────────────────────────────────── */}
       {replyTo && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-primary-50 border-t border-primary-100">
-          <Reply className="h-4 w-4 text-primary-500 flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border-t border-primary/10">
+          <Reply className="h-4 w-4 text-primary flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-primary-700 truncate">
+            <p className="text-xs font-bold text-primary truncate">
               {replyTo.sender_name || "Message"}
             </p>
-            <p className="text-xs text-primary-500 truncate">
+            <p className="text-xs text-slate-500 truncate mt-0.5">
               {replyTo.text || "[media]"}
             </p>
           </div>
           <button
             onClick={() => setReplyTo(null)}
-            className="p-1 hover:bg-primary-100 rounded transition"
+            className="p-1 hover:bg-primary/10 rounded-lg transition"
           >
-            <X className="h-4 w-4 text-primary-400" />
+            <X className="h-4 w-4 text-primary/60" />
           </button>
         </div>
       )}
 
       {/* ── Attached file preview bar ────────────────────────────────── */}
       {attachedFile && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-primary-50/50 border-t border-gray-200">
-          <Paperclip className="h-4 w-4 text-primary-500 flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-t border-slate-100">
+          <Paperclip className="h-4 w-4 text-primary flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-gray-700 truncate">
+            <p className="text-xs font-bold text-slate-700 truncate">
               {attachedFile.name}
             </p>
-            <p className="text-[10px] text-gray-400">
+            <p className="text-[10px] text-slate-400 mt-0.5">
               {(attachedFile.size / 1024).toFixed(1)} KB
             </p>
           </div>
           <button
             onClick={() => setAttachedFile(null)}
-            className="p-1 hover:bg-gray-100 rounded transition"
+            className="p-1 hover:bg-slate-100 rounded-lg transition"
           >
-            <X className="h-4 w-4 text-gray-400" />
+            <X className="h-4 w-4 text-slate-400" />
           </button>
         </div>
       )}
 
       {/* ── Message input bar ──────────────────────────────────────── */}
-      <div className="flex items-end gap-2 px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
+      <div className="flex items-end gap-2 px-4 py-3 bg-white border-t border-slate-100 flex-shrink-0">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-2.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition flex-shrink-0"
+          className="p-2.5 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition flex-shrink-0"
           title={_("chats.attachFile")}
         >
           <Paperclip className="h-5 w-5" />
@@ -1226,7 +1247,7 @@ function MessagePane({
           onKeyDown={handleKeyDown}
           placeholder={attachedFile ? _("chats.addCaption") : _("chats.typeMessage")}
           rows={1}
-          className="flex-1 resize-none px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none max-h-32 leading-snug"
+          className="flex-1 resize-none px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-150 ease-in-out max-h-32 leading-relaxed"
           style={{
             height: "auto",
             minHeight: "40px",
@@ -1242,10 +1263,10 @@ function MessagePane({
           onClick={handleSend}
           disabled={(!messageText.trim() && !attachedFile) || sendMutation.isPending}
           className={cn(
-            "p-2.5 rounded-full transition-all duration-200 flex-shrink-0",
+            "p-2.5 rounded-xl transition-all duration-200 flex-shrink-0 flex items-center justify-center",
             messageText.trim() || attachedFile
-              ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md hover:shadow-lg active:scale-95"
-              : "bg-gray-100 text-gray-300 cursor-not-allowed"
+              ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-sm"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed"
           )}
         >
           {sendMutation.isPending ? (

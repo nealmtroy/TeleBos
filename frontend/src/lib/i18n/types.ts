@@ -140,6 +140,7 @@ export interface Dict {
     noAccounts: string;
     noAccountsDesc: string;
     addFirstAccount: string;
+    viewAllAccounts: string;
   };
 
   // Accounts List
