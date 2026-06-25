@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # Telethon
     TELEGRAM_API_ID: int = 0  # Fill from my.telegram.org
     TELEGRAM_API_HASH: str = ""
+    TELEGRAM_BOT_TOKEN: str = ""
 
     # UptimeRobot
     UPTIMEROBOT_API_KEY: str = ""

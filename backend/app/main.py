@@ -446,6 +446,10 @@ def _run_migrations(connection):
         connection.execute(
             text("ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMPTZ DEFAULT NULL")
         )
+    if "telegram_chat_id" not in user_cols:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT UNIQUE DEFAULT NULL")
+        )
 
     # ── SMM services schema fixes ───────────────────────────────────────
     if "smm_services" in tables:
