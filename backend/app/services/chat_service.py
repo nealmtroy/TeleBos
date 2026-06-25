@@ -5,7 +5,7 @@ import uuid
 from typing import Any
 
 import telethon
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +35,8 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
         dialogs = await client.get_dialogs(limit=None)
         for d in dialogs:
             chat_type_val = _classify_chat(d.entity)
+            if chat_type_val in ("group", "supergroup", "channel"):
+                continue
             is_creator = getattr(d.entity, "creator", False)
 
             # Save the last message text and date
@@ -87,6 +89,13 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
             }
         )
         await db.execute(stmt)
+
+    # Delete any existing group/channel chats from the DB
+    await db.execute(
+        delete(TelegramChat)
+        .where(TelegramChat.account_id == account.id)
+        .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
+    )
 
     # Mark other chats no longer present in sync as inactive
     await db.execute(

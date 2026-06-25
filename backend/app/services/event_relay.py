@@ -395,6 +395,9 @@ class TelegramEventRelay:
             chat_type_val = "group"
             is_creator = getattr(chat, "creator", False)
 
+        if chat_type_val in ("group", "supergroup", "channel"):
+            return
+
         last_msg = msg.text or "[non-text message]" if msg.text else ""
         last_time = msg.date
 
@@ -509,6 +512,9 @@ class TelegramEventRelay:
         elif isinstance(chat, TLChat):
             chat_type_val = "group"
             is_creator = getattr(chat, "creator", False)
+
+        if chat_type_val in ("group", "supergroup", "channel"):
+            return
 
         async with self._db_sem:
             async with async_session_factory() as db:
