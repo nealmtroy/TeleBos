@@ -21,6 +21,7 @@ from app.schemas.chat import (
     JoinChatResponse,
 )
 from app.services import account_service, chat_service
+from app.utils.rate_limiter import rate_limiter
 
 router = APIRouter(tags=["chats"])
 
