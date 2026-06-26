@@ -1,93 +1,42 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios from "axios";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, // Send cookies (refresh_token) with requests
 });
 
-// ── Token management (access token in-memory only; refresh token in httpOnly cookie) ──
+// ── Session token: set by auth-store.ts after getSession() ────────────────
+// We can't read httpOnly cookies from JS, so the auth store writes it here
+// after calling authClient.getSession().
+let sessionToken: string | null = null;
 
-let accessToken: string | null = null;
-
-// ── Refresh lock: prevents concurrent 401s from racing each other ──
-// When the access token expires and multiple API calls fire simultaneously,
-// they all hit 401.  Without this lock each one calls /auth/refresh independently.
-// The first succeeds (blacklisting the old token), and the rest fail because the
-// token is already consumed — forcing a spurious logout.
-let refreshPromise: Promise<{
-  access_token: string;
-  refresh_token: string;
-}> | null = null;
-
-export function setTokens(access: string, _refresh: string) {
-  // Store access token in memory only — never in localStorage.
-  // Refresh token is handled via httpOnly cookie (inaccessible to JavaScript).
-  accessToken = access;
+export function setSessionToken(token: string | null) {
+  sessionToken = token;
 }
 
-export function getAccessToken() {
-  return accessToken;
+export function getSessionToken(): string | null {
+  return sessionToken;
 }
 
-export function clearTokens() {
-  accessToken = null;
-  // Do NOT remove refresh_token — it's an httpOnly cookie, cleared server-side on logout
-}
+// ── Interceptor: Inject Better Auth session token ───────────────────────────
 
-
-// ── Interceptor ─────────────────────────────────────────────────────────────
-
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (accessToken && config.headers) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+api.interceptors.request.use((config) => {
+  if (sessionToken && config.headers) {
+    config.headers["x-better-auth-token"] = sessionToken;
   }
   return config;
 });
 
 api.interceptors.response.use(
   (res) => res,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-
-    // Only attempt refresh on 401, and only once per request.
-    // Do not attempt refresh or redirect for login/auth requests.
-    const isLoginRequest = originalRequest.url?.includes("/auth/login");
-    if (error.response?.status !== 401 || originalRequest._retry || isLoginRequest) {
-      return Promise.reject(error);
+  async (error) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      // Session expired or invalid — redirect to login
+      window.location.href = "/login";
     }
-    originalRequest._retry = true;
-
-    try {
-      // If a refresh is already in-flight, piggyback on it —
-      // all queued requests share the SAME call so the old token
-      // is consumed exactly once.
-      if (!refreshPromise) {
-        refreshPromise = axios
-          .post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
-          .then((res) => res.data);
-      }
-
-      const data = await refreshPromise;
-      refreshPromise = null;
-
-      setTokens(data.access_token, data.refresh_token);
-      if (originalRequest.headers) {
-        originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
-      }
-      return api(originalRequest);
-    } catch {
-      refreshPromise = null;
-      clearTokens();
-      if (typeof window !== "undefined") {
-        window.location.href = "/";
-      }
-      return Promise.reject(error);
-    }
+    return Promise.reject(error);
   }
 );
 

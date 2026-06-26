@@ -16,7 +16,6 @@ export default function LoginPage() {
   const _ = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -31,11 +30,11 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password, rememberMe);
+      await login(email, password);
       router.push("/dashboard");
     } catch (err: any) {
       setError(
-          err?.response?.data?.detail || _("login.loginFailed")
+        err?.message || _("login.loginFailed")
       );
     } finally {
       setLoading(false);
@@ -51,7 +50,6 @@ export default function LoginPage() {
   }
 
   if (isAuthenticated) return null;
-
 
   const features = [
     {
@@ -160,17 +158,23 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="flex items-center">
-              <input
-                id="rememberMe"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer accent-primary-600"
-              />
-              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900 cursor-pointer select-none">
-                {_("login.rememberMe")}
-              </label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="rememberMe"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer accent-primary-600"
+                />
+                <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900 cursor-pointer select-none">
+                  {_("login.rememberMe")}
+                </label>
+              </div>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-primary-600 hover:underline font-medium"
+              >
+                {_("login.forgotPassword") || "Forgot password?"}
+              </Link>
             </div>
 
             <button

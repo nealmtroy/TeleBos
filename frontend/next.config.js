@@ -11,9 +11,11 @@ const nextConfig = {
       process.env.API_PROXY_TARGET || "http://localhost:8000";
     return [
       {
-        source: "/api/:path*",
-        destination: `${apiTarget}/api/:path*`,
+        source: "/api/v1/:path*",
+        destination: `${apiTarget}/api/v1/:path*`,
       },
+      // Better Auth API ditangani oleh Next.js langsung (tidak di-proxy ke FastAPI)
+      // Route /api/auth/* tidak boleh di-proxy karena Better Auth ada di Next.js
       {
         source: "/ws/:path*",
         destination: `${apiTarget}/ws/:path*`,

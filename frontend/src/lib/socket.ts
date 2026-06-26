@@ -1,9 +1,15 @@
-import { getAccessToken } from "./api";
-
 // Auto-detect secure WS protocol — wss:// when running over HTTPS, ws:// otherwise
 const PROTOCOL = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
 const DEFAULT_WS = `${PROTOCOL}//localhost:8000`;
 const BASE_WS = process.env.NEXT_PUBLIC_WS_URL || DEFAULT_WS;
+
+// Session token is written here by the auth store — we can't read httpOnly cookies from JS.
+// See auth-store.ts's fetchMe() which calls setSocketSessionToken().
+let sessionToken: string | null = null;
+
+export function setSocketSessionToken(token: string | null) {
+  sessionToken = token;
+}
 
 type MessageHandler = (data: any) => void;
 
@@ -39,10 +45,10 @@ class ReconnectingWebSocket {
     this.ws.onopen = () => {
       this._connected = true;
 
-      // Send JWT as first message to authenticate
-      const token = getAccessToken();
-      if (token) {
-        this.send({ type: "auth", token });
+      // Send Better Auth session token as first message to authenticate
+      if (sessionToken) {
+        this.send({ type: "auth", token: sessionToken });
+        this._authenticated = true;
       }
 
       // Start ping keepalive
@@ -54,6 +60,12 @@ class ReconnectingWebSocket {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        // If server asks for auth, send the token
+        if (data.type === "auth_required" && sessionToken && !this._authenticated) {
+          this.send({ type: "auth", token: sessionToken });
+          this._authenticated = true;
+          return;
+        }
         // Emit by type
         const eventType = data.type || "raw";
         this._emit(eventType, data);

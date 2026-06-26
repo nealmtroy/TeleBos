@@ -1,9 +1,7 @@
 """FastAPI dependency injection helpers."""
 
-from fastapi import Depends, HTTPException, status, Query
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
-from sqlalchemy import select
+from fastapi import Depends, HTTPException, status, Query, Request
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -11,43 +9,66 @@ from app.database import get_db
 from app.models.user import User
 
 settings = get_settings()
-security_scheme = HTTPBearer()
-optional_security_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Decode JWT and return the authenticated user."""
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
-        user_id: str | None = payload.get("sub")
-        jti: str | None = payload.get("jti")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload",
-            )
-    except JWTError:
+    """Validate Better Auth session from x-better-auth-token header and return the user.
+
+    The frontend injects the Better Auth session token into every request via
+    the ``x-better-auth-token`` header (read from the ``better-auth.session_token``
+    cookie client-side).  We query the ``session`` table in PostgreSQL directly
+    to validate it.
+
+    This replaces the old custom JWT auth (FastAPI + python-jose).
+    """
+    token = request.headers.get("x-better-auth-token")
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Missing authentication token",
         )
 
-    # Check denylist (Redis)
-    from app.utils.redis import is_token_blacklisted
-    if jti and await is_token_blacklisted(jti):
+    # Validate the Better Auth session token by querying the session table
+    # Better Auth stores sessions in a "session" table with columns:
+    #   id, expires_at, token, created_at, updated_at, ip_address, user_agent, user_id
+    result = await db.execute(
+        text("""
+            SELECT s.user_id, s.expires_at, u.email, u.name, u.is_active, u.role, u.balance
+            FROM session s
+            JOIN "user" u ON u.id = s.user_id
+            WHERE s.token = :token
+            LIMIT 1
+        """),
+        {"token": token},
+    )
+    row = result.one_or_none()
+
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been blacklisted/revoked",
+            detail="Invalid session",
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # Check expiration
+    from datetime import datetime, timezone
+    if row.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired",
+        )
+
+    # Map the Better Auth user to our User model
+    # Better Auth's "user" table has: id, name, email, etc.
+    # Our custom "users" table has role, balance, etc.
+    # For now we fetch the User model separately to preserve app-specific fields.
+    user_result = await db.execute(
+        select(User).where(User.id == row.user_id)
+    )
+    user = user_result.scalar_one_or_none()
+
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -62,50 +83,46 @@ async def get_current_user(
 
 
 async def get_current_user_from_token_or_header(
+    request: Request,
     token: str | None = Query(None),
-    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Decode JWT from Authorization header or 'token' query param, returning authenticated user."""
-    auth_token = None
-    if credentials:
-        auth_token = credentials.credentials
-    elif token:
-        auth_token = token
-
+    """Validate Better Auth session from header or query param, returning authenticated user."""
+    auth_token = token or request.headers.get("x-better-auth-token")
     if not auth_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
 
-    try:
-        payload = jwt.decode(
-            auth_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
-        user_id: str | None = payload.get("sub")
-        jti: str | None = payload.get("jti")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload",
-            )
-    except JWTError:
+    result = await db.execute(
+        text("""
+            SELECT s.user_id, s.expires_at
+            FROM session s
+            WHERE s.token = :token
+            LIMIT 1
+        """),
+        {"token": auth_token},
+    )
+    row = result.one_or_none()
+
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Invalid session",
         )
 
-    # Check denylist (Redis)
-    from app.utils.redis import is_token_blacklisted
-    if jti and await is_token_blacklisted(jti):
+    from datetime import datetime, timezone
+    if row.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been blacklisted/revoked",
+            detail="Session expired",
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    user_result = await db.execute(
+        select(User).where(User.id == row.user_id)
+    )
+    user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -127,4 +144,3 @@ def require_role(allowed_roles: list[str] | str):
             )
         return current_user
     return dependency
-

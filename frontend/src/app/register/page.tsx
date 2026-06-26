@@ -52,7 +52,7 @@ export default function RegisterPage() {
       setTimeout(() => router.push("/login"), 1500);
     } catch (err: any) {
       setError(
-        err?.response?.data?.detail || _("register.registrationFailed")
+        err?.message || _("register.registrationFailed")
       );
     } finally {
       setLoading(false);

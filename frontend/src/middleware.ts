@@ -5,11 +5,14 @@ import type { NextRequest } from "next/server";
 const PUBLIC_PATHS = [
   "/login",
   "/register",
+  "/forgot-password",
+  "/reset-password",
   "/privacy",
   "/tos",
   "/help",
-  "/api/v1/auth/login",
-  "/api/v1/auth/register",
+  "/api/auth",
+  "/api/v1/accounts/send-code",     // OTP flow — unauthenticated
+  "/api/v1/accounts/verify-code",
   "/api/v1/health",
   "/_next/static",
   "/favicon.ico",
@@ -18,7 +21,7 @@ const PUBLIC_PATHS = [
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
@@ -35,10 +38,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for auth_session cookie
-  const authSession = request.cookies.get("auth_session")?.value;
+  // Check Better Auth session via the session cookie
+  const sessionCookie = request.cookies.get("better-auth.session_token")?.value;
 
-  if (!authSession) {
+  if (!sessionCookie) {
     // Not authenticated — redirect to login
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -47,7 +50,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Cookie exists — let the request through.
-  // The backend API validates the actual JWT on every request.
+  // The backend API validates the actual session on every request.
   return NextResponse.next();
 }
 
