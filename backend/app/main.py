@@ -431,41 +431,48 @@ def _run_migrations(connection):
     # This handles the reverse direction: users who were registered before the
     # Better Auth migration.  BA and passlib both use bcrypt, so existing
     # password hashes are compatible.
-    if "users" in tables and "user" in tables and "account" in tables:
-        # Migrate legacy users into BA "user" table
-        r1 = connection.execute(
-            text("""
-                INSERT INTO "user" (id, name, email, "emailVerified", "twoFactorEnabled", "createdAt", "updatedAt")
-                SELECT us.id::text, COALESCE(us.full_name, ''), us.email, true, false, us.created_at, us.updated_at
-                FROM users us
-                WHERE NOT EXISTS (SELECT 1 FROM "user" u WHERE u.id = us.id::text)
-            """)
-        )
-        if r1.rowcount:
-            logger.info("Synced %d legacy users into Better Auth user table", r1.rowcount)
+    #
+    # Wrapped in try/except so failure never blocks startup.
+    # Can also be run manually via: docker exec telebos-backend-1 python /app/migrate_ba_users.py
+    try:
+        if "users" in tables and "user" in tables and "account" in tables:
+            # Migrate legacy users into BA "user" table
+            r1 = connection.execute(
+                text("""
+                    INSERT INTO "user" (id, name, email, "emailVerified", "twoFactorEnabled", "createdAt", "updatedAt")
+                    SELECT us.id::text, COALESCE(us.full_name, ''), us.email, true, false, us.created_at, us.updated_at
+                    FROM users us
+                    WHERE NOT EXISTS (SELECT 1 FROM "user" u WHERE u.id = us.id::text)
+                    ON CONFLICT (id) DO NOTHING
+                """)
+            )
+            if r1.rowcount:
+                logger.info("Synced %d legacy users into BA user table", r1.rowcount)
 
-        # Migrate passwords into BA "account" table
-        r2 = connection.execute(
-            text("""
-                INSERT INTO "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-                SELECT
-                  gen_random_uuid()::text,
-                  us.email,
-                  'email',
-                  us.id::text,
-                  us.password_hash,
-                  us.created_at,
-                  us.updated_at
-                FROM users us
-                WHERE us.password_hash IS NOT NULL
-                  AND NOT EXISTS (
-                    SELECT 1 FROM "account" a
-                    WHERE a."userId" = us.id::text AND a."providerId" = 'email'
-                  )
-            """)
-        )
-        if r2.rowcount:
-            logger.info("Synced accounts/passwords for %d users into Better Auth account table", r2.rowcount)
+            # Migrate passwords into BA "account" table
+            r2 = connection.execute(
+                text("""
+                    INSERT INTO "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+                    SELECT
+                      gen_random_uuid()::text,
+                      us.email,
+                      'email',
+                      us.id::text,
+                      us.password_hash,
+                      us.created_at,
+                      us.updated_at
+                    FROM users us
+                    WHERE us.password_hash IS NOT NULL AND us.password_hash != ''
+                      AND NOT EXISTS (
+                        SELECT 1 FROM "account" a
+                        WHERE a."userId" = us.id::text AND a."providerId" = 'email'
+                      )
+                """)
+            )
+            if r2.rowcount:
+                logger.info("Synced passwords for %d users into BA account table", r2.rowcount)
+    except Exception as exc:
+        logger.warning("BA user sync skipped (tables not ready): %s", exc)
 
     # ── Performance Indexes ───────────────────────────────────────────
     connection.execute(
