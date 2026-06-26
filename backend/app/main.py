@@ -18,6 +18,38 @@ app_settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
+class RealIPMiddleware:
+    """ASGI Middleware to extract real client IP when behind Cloudflare or reverse proxies."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            headers = dict(scope.get("headers", []))
+            # Cloudflare sends CF-Connecting-IP
+            cf_ip = headers.get(b"cf-connecting-ip")
+            if cf_ip:
+                try:
+                    ip_str = cf_ip.decode("utf-8").strip()
+                    port = scope["client"][1] if scope.get("client") else 0
+                    scope["client"] = (ip_str, port)
+                except Exception:
+                    pass
+            else:
+                # Fallback to X-Forwarded-For
+                x_forwarded_for = headers.get(b"x-forwarded-for")
+                if x_forwarded_for:
+                    try:
+                        ips = x_forwarded_for.decode("utf-8").split(",")
+                        ip_str = ips[0].strip()
+                        port = scope["client"][1] if scope.get("client") else 0
+                        scope["client"] = (ip_str, port)
+                    except Exception:
+                        pass
+        await self.app(scope, receive, send)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security hardening headers to every response."""
 
@@ -670,10 +702,8 @@ if "*" not in _allowed_hosts:
     if app_settings.DEBUG or not app_settings.PRODUCTION:
         _allowed_hosts = ["*"]
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=_allowed_hosts,
-)
+# Add RealIPMiddleware to parse correct client IPs when behind Cloudflare/reverse proxy
+app.add_middleware(RealIPMiddleware)
 
 # CORS
 app.add_middleware(
