@@ -68,14 +68,10 @@ function ContactsContent() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ContactItem | null>(null);
   const _ = useT();
-
-  useEffect(() => {
-    setToken(localStorage.getItem("access_token"));
-  }, []);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const getApiUrl = useCallback(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -238,7 +234,7 @@ function ContactsContent() {
                   >
                     {/* Avatar */}
                     <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-gray-100">
-                      {token && selectedAccount && (
+                      {isAuthenticated && selectedAccount && (
                         <img
                           src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${contact.contact_id}/photo`}
                           onError={(e) => {
@@ -252,7 +248,7 @@ function ContactsContent() {
                       )}
                       <div
                         className="w-full h-full flex items-center justify-center text-white font-bold text-sm bg-blue-500"
-                        style={{ display: token && selectedAccount ? "none" : "flex" }}
+                        style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
                       >
                         {(contact.first_name || "?")[0]?.toUpperCase()}
                       </div>
@@ -340,7 +336,7 @@ function ContactsContent() {
                   {/* Avatar & Name */}
                   <div className="flex flex-col items-center text-center">
                     <div className="w-24 h-24 rounded-full overflow-hidden relative shadow-lg mb-4">
-                      {token && selectedAccount && (
+                      {isAuthenticated && selectedAccount && (
                         <img
                           src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${selectedContactId}/photo`}
                           onError={(e) => {
@@ -354,7 +350,7 @@ function ContactsContent() {
                       )}
                       <div
                         className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold"
-                        style={{ display: token && selectedAccount ? "none" : "flex" }}
+                        style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
                       >
                         {(contactDetail.first_name || "?")[0]?.toUpperCase()}
                       </div>

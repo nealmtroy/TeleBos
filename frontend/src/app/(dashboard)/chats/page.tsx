@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect, useCallback, useRef, useMemo } from "rea
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
 import { useChatSocket } from "@/hooks/use-socket";
@@ -119,8 +120,8 @@ function ChatsContent() {
   );
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [token, setToken] = useState<string | null>(null);
   const _ = useT();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const initialChatParam = searchParams.get("chat");
   const [selectedChatId, setSelectedChatId] = useState<number | null>(
     initialChatParam ? Number(initialChatParam) : null
@@ -140,9 +141,7 @@ function ChatsContent() {
   const [deleteChatTarget, setDeleteChatTarget] = useState<ChatItem | null>(null);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
 
-  useEffect(() => {
-    setToken(localStorage.getItem("access_token"));
-  }, []);
+
 
   // Adjust shell main container padding & overflow for a full-bleed app experience
   useEffect(() => {
@@ -587,7 +586,7 @@ function ChatsContent() {
 
                     {/* Avatar */}
                     <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50">
-                      {token && selectedAccount && (
+                      {isAuthenticated && selectedAccount && (
                         <img
                           src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
                           onError={(e) => {
@@ -607,7 +606,7 @@ function ChatsContent() {
                           chat.chat_type === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
                           chat.chat_type === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
                         )}
-                        style={{ display: token && selectedAccount ? "none" : "flex" }}
+                        style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
                       >
                         {(chat.title || "?")[0]?.toUpperCase()}
                       </div>
@@ -743,7 +742,6 @@ function ChatsContent() {
             chatId={selectedChatId}
             chatTitle={selectedChatTitle}
             chatType={selectedChatType}
-            token={token}
             getApiUrl={getApiUrl}
             onBack={handleBackToList}
           />
@@ -793,7 +791,6 @@ function MessagePane({
   chatId,
   chatTitle,
   chatType,
-  token,
   getApiUrl,
   onBack,
 }: {
@@ -801,12 +798,12 @@ function MessagePane({
   chatId: number;
   chatTitle: string;
   chatType: string;
-  token: string | null;
   getApiUrl: () => string;
   onBack: () => void;
 }) {
   const queryClient = useQueryClient();
   const _ = useT();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -983,7 +980,7 @@ function MessagePane({
         </button>
 
         <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-slate-100 relative ring-2 ring-slate-100/50">
-          {token && accountId && (
+          {isAuthenticated && accountId && (
             <img
               src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo`}
               onError={(e) => {
@@ -1003,7 +1000,7 @@ function MessagePane({
               chatType === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
               chatType === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
             )}
-            style={{ display: token && accountId ? "none" : "flex" }}
+            style={{ display: isAuthenticated && accountId ? "none" : "flex" }}
           >
             {(chatTitle || "?")[0]?.toUpperCase()}
           </div>

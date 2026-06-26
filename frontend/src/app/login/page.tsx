@@ -26,25 +26,12 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("remembered_email");
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-    }
-  }, []);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
       await login(email, password, rememberMe);
-      if (rememberMe) {
-        localStorage.setItem("remembered_email", email);
-      } else {
-        localStorage.removeItem("remembered_email");
-      }
       router.push("/dashboard");
     } catch (err: any) {
       setError(

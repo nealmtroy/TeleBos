@@ -10,8 +10,7 @@ const api = axios.create({
 
 // ── Token management (access token in-memory only; refresh token in httpOnly cookie) ──
 
-let accessToken: string | null =
-  typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+let accessToken: string | null = null;
 
 // ── Refresh lock: prevents concurrent 401s from racing each other ──
 // When the access token expires and multiple API calls fire simultaneously,
@@ -24,22 +23,17 @@ let refreshPromise: Promise<{
 }> | null = null;
 
 export function setTokens(access: string, _refresh: string) {
-  // Store access token in memory + localStorage (short-lived fallback)
+  // Store access token in memory only — never in localStorage.
+  // Refresh token is handled via httpOnly cookie (inaccessible to JavaScript).
   accessToken = access;
-  localStorage.setItem("access_token", access);
-  // Refresh token is NOT stored in JS-accessible storage — it's in an httpOnly cookie
 }
 
 export function getAccessToken() {
-  if (!accessToken && typeof window !== "undefined") {
-    accessToken = localStorage.getItem("access_token");
-  }
   return accessToken;
 }
 
 export function clearTokens() {
   accessToken = null;
-  localStorage.removeItem("access_token");
   // Do NOT remove refresh_token — it's an httpOnly cookie, cleared server-side on logout
 }
 

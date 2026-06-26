@@ -45,7 +45,7 @@ def _set_refresh_cookie(response: JSONResponse, refresh_token: str, remember_me:
     )
 
 
-def _set_auth_session_cookie(response: JSONResponse, access_token: str, remember_me: bool = False) -> None:
+def _set_auth_session_cookie(response: JSONResponse, remember_me: bool = False) -> None:
     """Set a lightweight auth_session cookie for Next.js middleware validation.
 
     This cookie signals to the middleware that the user is authenticated.
@@ -61,7 +61,7 @@ def _set_auth_session_cookie(response: JSONResponse, access_token: str, remember
     )
     response.set_cookie(
         key="auth_session",
-        value=access_token,
+        value="true",
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
@@ -136,7 +136,7 @@ async def login(request: Request, payload: UserLogin, db: AsyncSession = Depends
         "token_type": "bearer",
     })
     _set_refresh_cookie(response, refresh, payload.remember_me)
-    _set_auth_session_cookie(response, access, payload.remember_me)
+    _set_auth_session_cookie(response, payload.remember_me)
     return response
 
 
@@ -170,7 +170,7 @@ async def refresh(
         "token_type": "bearer",
     })
     _set_refresh_cookie(response, refresh, remember_me)
-    _set_auth_session_cookie(response, access, remember_me)
+    _set_auth_session_cookie(response, remember_me)
     return response
 
 

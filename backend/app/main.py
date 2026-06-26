@@ -700,7 +700,12 @@ if "*" not in _allowed_hosts:
     ])
     # Allow all hosts in debug/non-production to support arbitrary VPS IPs and tunnels seamlessly
     if app_settings.DEBUG or not app_settings.PRODUCTION:
-        _allowed_hosts = ["*"]
+        # Reject obviously spoofed Host headers but allow common tunnel services
+        # to keep development ergonomic on arbitrary VPS IPs and tunnels.
+        _allowed_hosts.extend([
+            "*.trycloudflare.com",
+            "*.ngrok-free.app",
+        ])
 
 # Add RealIPMiddleware to parse correct client IPs when behind Cloudflare/reverse proxy
 app.add_middleware(RealIPMiddleware)

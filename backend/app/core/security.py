@@ -50,7 +50,11 @@ def _get_fernet() -> Fernet:
     if _fernet is None:
         key = settings.encryption_key
         if not key:
-            key = Fernet.generate_key()
+            raise RuntimeError(
+                "ENCRYPTION_KEY is not set. Generate a valid Fernet key "
+                "(e.g. from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())) "
+                "and set the ENCRYPTION_KEY environment variable."
+            )
         _fernet = Fernet(key.encode() if isinstance(key, str) else key)
     return _fernet
 

@@ -60,14 +60,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 
   fetchMe: async () => {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-    if (!token) {
-      set({ isLoading: false });
-      return;
-    }
     try {
       const { data } = await api.get("/auth/me");
       set({ user: data, isAuthenticated: true, isLoading: false });
