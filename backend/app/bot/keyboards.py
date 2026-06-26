@@ -168,7 +168,8 @@ def autoreply_menu_keyboard(accounts: List[TelegramAccount], page: int = 1, tota
 def login_start_keyboard():
     """InlineKeyboardMarkup to start login flow."""
     return [
-        [Button.inline("🔑 Hubungkan Akun TeleBos", data="login_start")]
+        [Button.inline("🔑 Hubungkan Akun TeleBos", data="login_start")],
+        [Button.url("📝 Daftar Akun TeleBos", url="https://tele.t-me.site/register")]
     ]
 
 

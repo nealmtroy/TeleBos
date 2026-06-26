@@ -47,7 +47,10 @@ def auth_required(func):
                 "⚠️ **Akun TeleBos Belum Tertaut!**\n\n"
                 "Untuk menggunakan bot ini, silakan tautkan akun website TeleBos Anda terlebih dahulu "
                 "secara interaktif.\n\n"
-                "Silakan klik tombol di bawah ini untuk memulai:",
+                "📌 **Belum punya akun TeleBos?**\n"
+                "Silakan register/daftar terlebih dahulu di:\n"
+                "🔗 https://tele.t-me.site/register\n\n"
+                "Silakan klik tombol di bawah ini untuk menghubungkan akun:",
                 buttons=login_start_keyboard()
             )
             return
@@ -170,6 +173,17 @@ def get_account_status_emoji(acc) -> str:
     return "🟢" if acc.is_active else "🔴"
 
 
+def get_twofa_display_value(acc) -> str:
+    """Decrypt the twofa password safely or return appropriate status string."""
+    if acc.twofa_password:
+        from app.utils.encryption import decrypt
+        val = decrypt(acc.twofa_password)
+        if val:
+            return val
+        return acc.twofa_password
+    return "Enabled" if acc.twofa_enabled else "-"
+
+
 def format_accounts_list_message(accounts: list, page: int, total_pages: int) -> str:
     """Format a list of Telegram accounts according to the user's design."""
     lines = []
@@ -178,7 +192,7 @@ def format_accounts_list_message(accounts: list, page: int, total_pages: int) ->
         telegram_id = acc.telegram_id if acc.telegram_id else "-"
         username = f"@{acc.username}" if acc.username else "-"
         phone = acc.phone
-        twofa = acc.twofa_password if acc.twofa_password else ("Enabled" if acc.twofa_enabled else "-")
+        twofa = get_twofa_display_value(acc)
         email = acc.recovery_email if acc.recovery_email else "-"
         
         lines.append(
@@ -206,7 +220,7 @@ def format_autoreply_list_message(accounts: list, page: int, total_pages: int) -
         telegram_id = acc.telegram_id if acc.telegram_id else "-"
         username = f"@{acc.username}" if acc.username else "-"
         phone = acc.phone
-        twofa = acc.twofa_password if acc.twofa_password else ("Enabled" if acc.twofa_enabled else "-")
+        twofa = get_twofa_display_value(acc)
         email = acc.recovery_email if acc.recovery_email else "-"
         ar_status = "🤖 🟢 ON" if acc.auto_reply_enabled else "🤖 🔴 OFF"
         
