@@ -21,11 +21,8 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
-    # JWT
-    JWT_SECRET_KEY: str = "change-this-secret-key-in-production"
-    JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    # App secret — used for signed photo URLs and other HMAC operations
+    APP_SECRET_KEY: str = "change-this-secret-key-in-production"
 
     # Encryption (Fernet key — 32 base64-encoded bytes)
     ENCRYPTION_KEY: str = (
@@ -73,10 +70,10 @@ def get_settings() -> Settings:
     s = Settings()
 
     # ── Guard: reject well-known default secrets in production ────────
-    if s.JWT_SECRET_KEY == "change-this-secret-key-in-production":
+    if s.APP_SECRET_KEY == "change-this-secret-key-in-production":
         raise RuntimeError(
-            "JWT_SECRET_KEY is still set to the insecure default. "
-            "Generate a strong random key and set the JWT_SECRET_KEY env var."
+            "APP_SECRET_KEY is still set to the insecure default. "
+            "Generate a strong random key and set the APP_SECRET_KEY env var."
         )
     if s.ENCRYPTION_KEY == "dGhpcyBpcyBhIDMyIGJ5dGUgYmFzZTY0IGVuY29kZWQga2V5IGZvciBmZXJuZXQ=":
         raise RuntimeError(

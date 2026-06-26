@@ -5,7 +5,7 @@ and Referer headers) with a lightweight HMAC token specific to the resource.
 
 Token format: ``<user_id>:<expiry_timestamp>:<hmac_sig>``
 
-Where *hmac_sig* = HMAC-SHA256(key=JWT_SECRET_KEY, msg=``account_id:user_id:expiry``).
+Where *hmac_sig* = HMAC-SHA256(key=APP_SECRET_KEY, msg=``account_id:user_id:expiry``).
 The token is scoped to a single (account_id, user_id) pair and expires after a
 configurable TTL (default 5 minutes).
 """
@@ -28,7 +28,7 @@ def generate_photo_token(account_id: str, user_id: str, expires_in: int = TOKEN_
     expiry = int(time.time()) + expires_in
     message = f"{account_id}:{user_id}:{expiry}"
     sig = hmac.new(
-        settings.JWT_SECRET_KEY.encode(),
+        settings.APP_SECRET_KEY.encode(),
         message.encode(),
         hashlib.sha256,
     ).hexdigest()[:16]

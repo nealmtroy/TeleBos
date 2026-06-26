@@ -14,27 +14,51 @@ from app.models.user import User
 
 
 async def change_password(
-    db: AsyncSession, user: User, _current_password: str, new_password: str
+    db: AsyncSession, user: User, current_password: str, new_password: str
 ) -> None:
     """Change the user's password in Better Auth's ``account`` table.
 
-    Better Auth stores the bcrypt password hash in the ``account`` table
-    (not in the custom ``users`` table).  We update it directly with a raw
-    SQL query using passlib-compatible bcrypt.
+    Better Auth stores the password hash in the ``account`` table
+    (not in the custom ``users`` table).  We read the current hash,
+    verify the old password, then write the new one using passlib-compatible
+    bcrypt.
 
-    Raises ``ValueError`` on failure.
+    Raises ``ValueError`` on failure (wrong password, or no BA account).
     """
-    # Better Auth uses bcrypt via its own hashing, compatible with passlib.
-    # Hash the new password with bcrypt (same scheme as Better Auth).
     from passlib.context import CryptContext
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+    # 1. Fetch the current password hash from Better Auth
+    result = await db.execute(
+        text("""
+            SELECT password
+            FROM account
+            WHERE user_id = :user_id
+            LIMIT 1
+        """),
+        {"user_id": str(user.id)},
+    )
+    row = result.one_or_none()
+
+    if row is None:
+        raise ValueError("No Better Auth account found for this user")
+
+    current_hash = row.password
+    if not current_hash:
+        raise ValueError("Account has no password set (OAuth-only?)")
+
+    # 2. Verify current password against the stored hash
+    if not pwd_context.verify(current_password, current_hash):
+        raise ValueError("Current password is incorrect")
+
+    # 3. Hash new password with bcrypt (max 72-byte truncation,
+    #    compatible with Better Auth's default scheme)
     new_pwd_bytes = new_password.encode()
     new_pwd_trimmed = new_pwd_bytes[:72].decode(errors="ignore")
     new_hash = pwd_context.hash(new_pwd_trimmed)
 
-    # Update the password in Better Auth's account table
-    result = await db.execute(
+    # 4. Update the password in Better Auth's account table
+    await db.execute(
         text("""
             UPDATE account
             SET password = :password, updated_at = NOW()
@@ -42,7 +66,5 @@ async def change_password(
         """),
         {"password": new_hash, "user_id": str(user.id)},
     )
-    if result.rowcount == 0:
-        raise ValueError("No Better Auth account found for this user")
 
     await db.flush()

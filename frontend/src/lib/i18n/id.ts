@@ -832,7 +832,7 @@ const id: Dict = {
     section2Title: "Bagaimana Kami Menggunakan Informasi Anda",
     section2Desc: "Informasi Anda digunakan semata-mata untuk mengoperasikan dan memelihara layanan TeleBos: mengautentikasi akses Anda, menghubungkan akun Telegram Anda melalui Telethon (string sesi dienkripsi saat disimpan), memproses permintaan siaran, dan memberikan pembaruan real-time. Kami tidak pernah menjual data pribadi Anda kepada pihak ketiga.",
     section3Title: "Penyimpanan & Keamanan Data",
-    section3Desc: "Data Anda disimpan di server yang aman dengan enkripsi standar industri. String sesi Telegram dienkripsi menggunakan Fernet (enkripsi simetris) sebelum disimpan di database kami. Kami menerapkan langkah-langkah keamanan yang memadai termasuk koneksi terenkripsi (HTTPS), otentikasi JWT, dan tinjauan keamanan rutin.",
+    section3Desc: "Data Anda disimpan di server yang aman dengan enkripsi standar industri. String sesi Telegram dienkripsi menggunakan Fernet (enkripsi simetris) sebelum disimpan di database kami. Kami menerapkan langkah-langkah keamanan yang memadai termasuk koneksi terenkripsi (HTTPS), otentikasi sesi aman, dan tinjauan keamanan rutin.",
     section4Title: "Retensi Data",
     section4Desc: "Kami menyimpan informasi akun Anda selama akun Anda aktif. Anda dapat menghapus akun Anda kapan saja, yang akan menghapus data pribadi Anda dan memutuskan semua akun Telegram yang terhubung. Log siaran mungkin disimpan untuk tujuan audit.",
     section5Title: "Layanan Pihak Ketiga",

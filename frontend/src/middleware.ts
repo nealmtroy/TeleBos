@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 // ── Paths that don't require authentication ─────────────────────────────────
 const PUBLIC_PATHS = [
@@ -39,7 +40,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check Better Auth session via the session cookie
-  const sessionCookie = request.cookies.get("better-auth.session_token")?.value;
+  // getSessionCookie() takes the request and returns the cookie name
+  // based on the current environment (handles __Secure- prefix on HTTPS)
+  const sessionCookieName = getSessionCookie(request);
+  const sessionCookie = sessionCookieName
+    ? request.cookies.get(sessionCookieName)?.value
+    : undefined;
 
   if (!sessionCookie) {
     // Not authenticated — redirect to login

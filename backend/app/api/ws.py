@@ -1,4 +1,9 @@
-"""WebSocket manager for real-time broadcast progress and chat updates."""
+"""WebSocket manager for real-time broadcast progress and chat updates.
+
+Validates connections via Better Auth session tokens (opaque string, not JWT).
+The frontend sends the session token as the first WS message:
+    {"type": "auth", "token": "<session_token>"}
+"""
 
 import asyncio
 import json
@@ -7,13 +12,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
-from jose import jwt, JWTError
+from sqlalchemy import select, text
 
-from app.config import get_settings
 from app.database import async_session_factory
 from app.models.user import User as UserModel
 from app.utils.rate_limiter import rate_limiter
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -114,28 +117,34 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
     if not await _ws_rate_limit(websocket, f"connect:ip:{client_host}"):
         return None
 
-    settings = get_settings()
-    try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+    # Validate the token against Better Auth's session table
+    # (same pattern as dependencies.py — raw SQL against BA tables)
+    async with async_session_factory() as db:
+        result = await db.execute(
+            text("""
+                SELECT s.user_id, s.expires_at
+                FROM session s
+                WHERE s.token = :token
+                LIMIT 1
+            """),
+            {"token": token},
         )
-        user_id: str | None = payload.get("sub")
-        jti: str | None = payload.get("jti")
-        if user_id is None:
+        row = result.one_or_none()
+
+        if row is None:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token payload")
             return None
 
-        from app.utils.redis import is_token_blacklisted
-        if jti and await is_token_blacklisted(jti):
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token is blacklisted")
+        from datetime import datetime, timezone
+        if row.expires_at < datetime.now(timezone.utc):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Session expired")
             return None
-    except JWTError:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
-        return None
 
-    async with async_session_factory() as db:
-        result = await db.execute(select(UserModel).where(UserModel.id == user_id))
-        user = result.scalar_one_or_none()
+        # Load the User model to preserve app-specific fields (role, balance, etc.)
+        user_result = await db.execute(
+            select(UserModel).where(UserModel.id == row.user_id)
+        )
+        user = user_result.scalar_one_or_none()
         if user is None or not user.is_active:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found or inactive")
             return None

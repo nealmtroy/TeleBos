@@ -6,7 +6,7 @@ from app.database import async_session_factory
 from app.models.user import User
 from app.models.telegram_account import TelegramAccount
 from app.models.broadcast_job import BroadcastJob
-from app.core.security import verify_password
+from app.utils.encryption import verify_password
 from sqlalchemy.future import select
 from sqlalchemy import func
 from app.bot.keyboards import (

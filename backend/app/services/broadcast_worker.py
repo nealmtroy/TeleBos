@@ -18,9 +18,9 @@ from telethon.errors.rpcerrorlist import (
     SlowModeWaitError,
 )
 
-from app.core.database import async_session_factory
-from app.core.redis import redis_client
-from app.core.telethon_pool import telethon_pool
+from app.database import async_session_factory
+from app.utils.redis import redis_client
+from app.utils.telethon_pool import telethon_pool
 from app.models.broadcast_job import BroadcastJob
 from app.models.broadcast_log import BroadcastLog
 from app.models.group_list import GroupList

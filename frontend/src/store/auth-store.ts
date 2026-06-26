@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { authClient } from "@/lib/auth-client";
-import { setSessionToken } from "@/lib/api";
+import api, { setSessionToken } from "@/lib/api";
 import { setSocketSessionToken } from "@/lib/socket";
 
 export interface User {
@@ -32,60 +32,80 @@ function syncSessionToken(token: string | null) {
   setSocketSessionToken(token);
 }
 
+/**
+ * Fetch the user profile from the FastAPI backend via the shared axios
+ * client (which already has the x-better-auth-token header set).
+ * Falls back to a minimal user derived from the Better Auth session when
+ * the backend is unavailable.
+ */
+async function hydrateUserFromBackend(
+  betterAuthUser: { id: string; email: string; name?: string | null },
+): Promise<User> {
+  try {
+    const { data } = await api.get<User>("/auth/me");
+    if (data) return data;
+  } catch {
+    // Backend unavailable — fall through to Better Auth fallback.
+  }
+  return {
+    id: betterAuthUser.id,
+    email: betterAuthUser.email,
+    full_name: betterAuthUser.name || null,
+    role: "basic",
+    is_active: true,
+    balance: 0,
+  };
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
 
   login: async (email: string, password: string) => {
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-    });
+    const { error } = await authClient.signIn.email({ email, password });
     if (error) throw new Error(error.message || "Login failed");
 
-    // Sync session token for axios and socket interceptors
-    try {
-      const { data: session } = await authClient.getSession();
-      if (session?.session?.token) {
-        syncSessionToken(session.session.token);
-      }
-    } catch {
-      // Best-effort — will retry on fetchMe
+    // Fetch session once — sync token for axios + socket interceptors
+    const { data: session } = await authClient.getSession();
+    if (!session?.user) {
+      syncSessionToken(null);
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      throw new Error("Login succeeded but no session was created");
     }
 
-    // Fetch user profile from backend
-    try {
-      const { data: session } = await authClient.getSession();
-      if (session?.user) {
-        const meResponse = await fetch("/api/v1/auth/me", {
-          headers: {
-            "x-better-auth-token": session.session.token,
-          },
-        });
-        if (meResponse.ok) {
-          const me = await meResponse.json();
-          set({ user: me, isAuthenticated: true, isLoading: false });
-          return;
-        }
-      }
-    } catch {
-      // Fallback below
+    if (session.session?.token) {
+      syncSessionToken(session.session.token);
     }
 
-    set({
-      isAuthenticated: true,
-      isLoading: false,
-    });
+    const user = await hydrateUserFromBackend(session.user);
+    set({ user, isAuthenticated: true, isLoading: false });
   },
 
   register: async (email: string, password: string, name?: string) => {
-    const { data, error } = await authClient.signUp.email({
+    const { error } = await authClient.signUp.email({
       email,
       password,
       name: name || "",
     });
     if (error) throw new Error(error.message || "Registration failed");
+
+    // Better Auth `autoSignIn: true` means we already have a session after
+    // registration — hydrate it so the caller can go straight to /dashboard.
+    try {
+      const { data: session } = await authClient.getSession();
+      if (session?.user) {
+        if (session.session?.token) {
+          syncSessionToken(session.session.token);
+        }
+        const user = await hydrateUserFromBackend(session.user);
+        set({ user, isAuthenticated: true, isLoading: false });
+        return;
+      }
+    } catch {
+      // Fall through — caller will redirect to /login
+    }
+
     set({ isLoading: false });
   },
 
@@ -103,50 +123,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchMe: async () => {
     try {
       const { data: session } = await authClient.getSession();
-      if (!session) {
+      if (!session?.user) {
         syncSessionToken(null);
-        set({ isLoading: false });
+        set({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
 
-      // Sync the token into api.ts and socket.ts
       if (session.session?.token) {
         syncSessionToken(session.session.token);
       }
 
-      // Fetch user details from FastAPI backend
-      try {
-        const meResponse = await fetch("/api/v1/auth/me", {
-          headers: {
-            "x-better-auth-token": session.session.token,
-          },
-        });
-        if (meResponse.ok) {
-          const me = await meResponse.json();
-          set({ user: me, isAuthenticated: true, isLoading: false });
-          return;
-        }
-      } catch {
-        // Backend not available, still authenticated with Better Auth
-      }
-
-      // Fallback: create basic user from Better Auth session
-      const betterAuthUser = session.user;
-      set({
-        user: {
-          id: betterAuthUser.id,
-          email: betterAuthUser.email,
-          full_name: betterAuthUser.name || null,
-          role: "basic",
-          is_active: true,
-          balance: 0,
-        },
-        isAuthenticated: true,
-        isLoading: false,
-      });
+      const user = await hydrateUserFromBackend(session.user);
+      set({ user, isAuthenticated: true, isLoading: false });
     } catch {
       syncSessionToken(null);
-      set({ isLoading: false });
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 }));

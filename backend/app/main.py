@@ -396,6 +396,37 @@ def _run_migrations(connection):
             )
         )
 
+    # ── Better Auth: make users.password_hash nullable ────────────────
+    # Better Auth manages passwords in its own "account" table — the legacy
+    # "users" table's password_hash is unused but still NOT NULL.
+    user_cols_for_migration = [c["name"] for c in inspector.get_columns("users")]
+    if "password_hash" in user_cols_for_migration and any(
+        col["name"] == "password_hash" and getattr(col.get("type"), "nullable", True) is False
+        for col in inspector.get_columns("users")
+    ):
+        try:
+            connection.execute(
+                text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL")
+            )
+        except Exception:
+            # Column may already be nullable in some envs — ignore
+            pass
+
+    # ── Better Auth: sync existing BA users into legacy users table ──
+    # If the BA "user" table exists, ensure every user there has a row in
+    # the legacy "users" table (for existing DBs upgraded after BA migration).
+    if "user" in tables and "users" in tables:
+        connection.execute(
+            text("""
+                INSERT INTO users (id, email, full_name, is_active, role, balance, created_at, updated_at)
+                SELECT u.id, u.email, u.name, true, 'basic', 0, COALESCE(u.created_at, NOW()), NOW()
+                FROM "user" u
+                WHERE NOT EXISTS (SELECT 1 FROM users us WHERE us.id = u.id)
+                ON CONFLICT (id) DO NOTHING
+            """)
+        )
+        logger.info("Synced existing Better Auth users into legacy users table")
+
     # ── Performance Indexes ───────────────────────────────────────────
     connection.execute(
         text("CREATE INDEX IF NOT EXISTS ix_telegram_accounts_user_id ON telegram_accounts (user_id)")

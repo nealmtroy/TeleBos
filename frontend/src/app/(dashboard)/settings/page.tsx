@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { ArrowLeft, Eye, EyeOff, KeyRound, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import api from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
@@ -44,10 +44,11 @@ export default function SettingsPage() {
 
     setLoading(true);
     try {
-      await api.post("/auth/change-password", {
-        current_password: currentPassword,
-        new_password: newPassword,
+      const { error: err } = await authClient.changePassword({
+        currentPassword,
+        newPassword,
       });
+      if (err) throw new Error(err.message || _("settings.failedChangePassword"));
       setSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
@@ -55,11 +56,8 @@ export default function SettingsPage() {
       // Auto-hide success after 4 seconds
       setTimeout(() => setSuccess(false), 4000);
     } catch (err: any) {
-      const detail = err?.response?.data?.detail;
-      if (detail) {
-        setError(detail);
-      } else if (err?.response?.status === 401) {
-        setError(_("settings.sessionExpired"));
+      if (err?.message) {
+        setError(err.message);
       } else {
         setError(_("settings.failedChangePassword"));
       }

@@ -49,7 +49,7 @@ export default function RegisterPage() {
     try {
       await register(email, password, name);
       setSuccess(_("register.accountCreated"));
-      setTimeout(() => router.push("/login"), 1500);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch (err: any) {
       setError(
         err?.message || _("register.registrationFailed")

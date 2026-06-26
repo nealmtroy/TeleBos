@@ -832,7 +832,7 @@ const en: Dict = {
     section2Title: "How We Use Your Information",
     section2Desc: "Your information is used solely to operate and maintain the TeleBos service: authenticating your access, connecting your Telegram accounts via Telethon (session strings are encrypted at rest), processing broadcast requests, and providing real-time updates. We never sell your personal data to third parties.",
     section3Title: "Data Storage & Security",
-    section3Desc: "Your data is stored on secure servers with industry-standard encryption. Telegram session strings are encrypted using Fernet (symmetric encryption) before being stored in our database. We implement reasonable security measures including encrypted connections (HTTPS), JWT authentication, and regular security reviews.",
+    section3Desc: "Your data is stored on secure servers with industry-standard encryption. Telegram session strings are encrypted using Fernet (symmetric encryption) before being stored in our database. We implement reasonable security measures including encrypted connections (HTTPS), secure session authentication, and regular security reviews.",
     section4Title: "Data Retention",
     section4Desc: "We retain your account information for as long as your account is active. You may delete your account at any time, which will remove your personal data and disconnect all linked Telegram accounts. Broadcast logs may be retained for audit purposes.",
     section5Title: "Third-Party Services",
