@@ -645,9 +645,31 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Extract hostnames from CORS origins (strip scheme:// and trailing /)
 _allowed_hosts: list[str] = []
 for origin in app_settings.CORS_ORIGINS:
+    if origin == "*":
+        _allowed_hosts = ["*"]
+        break
     host = origin.removeprefix("https://").removeprefix("http://").rstrip("/")
+    if ":" in host:
+        host = host.split(":")[0]
     _allowed_hosts.append(host)
-_allowed_hosts.extend(["localhost", "127.0.0.1", "localhost:8000", "localhost:3000"])
+    _allowed_hosts.append(f"{host}:8000")
+    _allowed_hosts.append(f"{host}:3000")
+
+if "*" not in _allowed_hosts:
+    _allowed_hosts.extend([
+        "localhost", 
+        "127.0.0.1", 
+        "localhost:8000", 
+        "localhost:3000", 
+        "backend", 
+        "backend:8000",
+        "frontend",
+        "frontend:3000"
+    ])
+    # Allow all hosts in debug/non-production to support arbitrary VPS IPs and tunnels seamlessly
+    if app_settings.DEBUG or not app_settings.PRODUCTION:
+        _allowed_hosts = ["*"]
+
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=_allowed_hosts,
