@@ -96,6 +96,9 @@ services:
       NEXT_PUBLIC_API_URL: /api/v1
       NEXT_PUBLIC_WS_URL: ws://backend:8000
       NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: 69fe3d3efadad88eaf45cfba5028fa30e15a96c4f79ab7122a54e2522fd78ebb
+      BETTER_AUTH_URL: http://localhost:3000
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
     ports:
       - "3000:3000"
     depends_on:
