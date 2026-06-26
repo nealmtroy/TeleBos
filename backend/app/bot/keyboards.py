@@ -22,8 +22,8 @@ def back_to_main_keyboard():
     ]
 
 
-def accounts_list_keyboard(accounts: List[TelegramAccount]):
-    """InlineKeyboardMarkup listing accounts with status indicator and action buttons."""
+def accounts_list_keyboard(accounts: List[TelegramAccount], page: int = 1, total_pages: int = 1):
+    """InlineKeyboardMarkup listing accounts with status indicator, pagination, and action buttons."""
     buttons = []
     for acc in accounts:
         status_indicator = "🟢" if acc.is_active else "🔴"
@@ -36,36 +36,49 @@ def accounts_list_keyboard(accounts: List[TelegramAccount]):
             name_str = "No Username"
         
         btn_label = f"{status_indicator} {acc.phone} ({name_str})"
-        buttons.append([Button.inline(btn_label, data=f"acc_detail:{acc.id}")])
+        buttons.append([Button.inline(btn_label, data=f"acc_detail:{acc.id}:{page}")])
     
+    # Pagination Row
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(Button.inline("⬅️ Prev", data=f"acc_list_page:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(Button.inline("Next ➡️", data=f"acc_list_page:{page+1}"))
+    
+    if nav_buttons:
+        buttons.append(nav_buttons)
+        
     # Bottom actions
-    buttons.append([Button.inline("🔄 Refresh List", data="acc_refresh")])
+    buttons.append([Button.inline("🔄 Refresh List", data=f"acc_refresh:{page}")])
     return buttons
 
 
-def account_detail_keyboard(account_id: str, is_active: bool):
+def account_detail_keyboard(account_id: str, is_active: bool, page: int = 1):
     """InlineKeyboardMarkup for a specific Telegram account's details."""
     toggle_label = "🔴 Nonaktifkan" if is_active else "🟢 Aktifkan"
     return [
         [
-            Button.inline("🔄 Cek Spam (@SpamBot)", data=f"acc_spam:{account_id}"),
-            Button.inline(toggle_label, data=f"acc_toggle:{account_id}")
+            Button.inline("🔄 Cek Spam (@SpamBot)", data=f"acc_spam:{account_id}:{page}"),
+            Button.inline(toggle_label, data=f"acc_toggle:{account_id}:{page}")
         ],
         [
-            Button.inline("🗑️ Hapus Akun", data=f"acc_delete_confirm:{account_id}")
+            Button.inline("💻 Connected Devices", data=f"acc_devices:{account_id}:{page}")
         ],
         [
-            Button.inline("🔙 Kembali ke Daftar Akun", data="acc_list_back")
+            Button.inline("🗑️ Hapus Akun", data=f"acc_delete_confirm:{account_id}:{page}")
+        ],
+        [
+            Button.inline("🔙 Kembali ke Daftar Akun", data=f"acc_list_back:{page}")
         ]
     ]
 
 
-def account_delete_confirm_keyboard(account_id: str):
+def account_delete_confirm_keyboard(account_id: str, page: int = 1):
     """InlineKeyboardMarkup to confirm deletion of a Telegram Account."""
     return [
         [
-            Button.inline("⚠️ YA, HAPUS AKUN", data=f"acc_delete_yes:{account_id}"),
-            Button.inline("TIDAK", data=f"acc_detail:{account_id}")
+            Button.inline("⚠️ YA, HAPUS AKUN", data=f"acc_delete_yes:{account_id}:{page}"),
+            Button.inline("TIDAK", data=f"acc_detail:{account_id}:{page}")
         ]
     ]
 

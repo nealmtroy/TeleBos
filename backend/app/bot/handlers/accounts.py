@@ -2,7 +2,7 @@
 
 import uuid
 import logging
-from telethon import events
+from telethon import events, Button
 from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
 from app.services.account_service import check_spam_status, remove_account
@@ -57,59 +57,127 @@ def register_accounts_handlers(client):
             )
             return
 
-        keyboard = accounts_list_keyboard(accounts)
+        page = 1
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+
+        keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
         await event.respond(
-            "👥 **Daftar Akun Telegram Anda**\n"
-            "Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
+            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
+            f"Total: {total_accounts} akun\n\n"
+            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
             buttons=keyboard
         )
 
     # ── Callback Handlers ──
 
-    @client.on(events.CallbackQuery(pattern=b'acc_list_back'))
+    @client.on(events.CallbackQuery(pattern=r'acc_list_page:(\d+)'))
     @auth_required
-    async def acc_list_back_handler(event):
+    async def acc_list_page_handler(event):
+        page = int(decode_param(event.pattern_match.group(1)))
         accounts = await get_user_accounts(event.user.id)
-        keyboard = accounts_list_keyboard(accounts)
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
         await event.edit(
-            "👥 **Daftar Akun Telegram Anda**\n"
-            "Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
+            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
+            f"Total: {total_accounts} akun\n\n"
+            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
             buttons=keyboard
         )
 
-    @client.on(events.CallbackQuery(pattern=b'acc_refresh'))
+    @client.on(events.CallbackQuery(pattern=r'acc_list_back(?::(\d+))?'))
+    @auth_required
+    async def acc_list_back_handler(event):
+        match = event.pattern_match.group(1)
+        page = int(decode_param(match)) if match is not None else 1
+        accounts = await get_user_accounts(event.user.id)
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
+        await event.edit(
+            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
+            f"Total: {total_accounts} akun\n\n"
+            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
+            buttons=keyboard
+        )
+
+    @client.on(events.CallbackQuery(pattern=r'acc_refresh(?::(\d+))?'))
     @auth_required
     async def acc_refresh_handler(event):
+        match = event.pattern_match.group(1)
+        page = int(decode_param(match)) if match is not None else 1
         accounts = await get_user_accounts(event.user.id)
-        keyboard = accounts_list_keyboard(accounts)
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
         try:
             await event.edit(
-                "👥 **Daftar Akun Telegram Anda** (Dinkini)\n"
-                "Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
+                f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages}) [Sinkron]\n"
+                f"Total: {total_accounts} akun\n\n"
+                f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
                 buttons=keyboard
             )
         except Exception:
-            # Edit throws error if content is exactly the same, which is fine
             await event.answer("Daftar sudah terbaru.")
 
-    @client.on(events.CallbackQuery(pattern=r'acc_detail:(.+)'))
+    @client.on(events.CallbackQuery(pattern=r'acc_detail:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
     async def acc_detail_handler(event):
         account_id = decode_param(event.pattern_match.group(1))
-        acc = await get_account_by_id(account_id, event.user.id)
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
         
+        acc = await get_account_by_id(account_id, event.user.id)
         if not acc:
             await event.answer("Akun tidak ditemukan.", alert=True)
             return
 
         detail_text = format_account_detail(acc)
-        keyboard = account_detail_keyboard(acc.id, acc.is_active)
+        keyboard = account_detail_keyboard(acc.id, acc.is_active, page)
         await event.edit(detail_text, buttons=keyboard)
 
-    @client.on(events.CallbackQuery(pattern=r'acc_toggle:(.+)'))
+    @client.on(events.CallbackQuery(pattern=r'acc_toggle:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
     async def acc_toggle_handler(event):
         account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
@@ -134,13 +202,15 @@ def register_accounts_handlers(client):
         
         # Redraw detail
         detail_text = format_account_detail(acc)
-        keyboard = account_detail_keyboard(acc.id, acc.is_active)
+        keyboard = account_detail_keyboard(acc.id, acc.is_active, page)
         await event.edit(detail_text, buttons=keyboard)
 
-    @client.on(events.CallbackQuery(pattern=r'acc_spam:(.+)'))
+    @client.on(events.CallbackQuery(pattern=r'acc_spam:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
     async def acc_spam_handler(event):
         account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
@@ -177,20 +247,22 @@ def register_accounts_handlers(client):
 
         # Redraw detail
         detail_text = format_account_detail(acc)
-        keyboard = account_detail_keyboard(acc.id, acc.is_active)
+        keyboard = account_detail_keyboard(acc.id, acc.is_active, page)
         await event.edit(detail_text, buttons=keyboard)
 
-    @client.on(events.CallbackQuery(pattern=r'acc_delete_confirm:(.+)'))
+    @client.on(events.CallbackQuery(pattern=r'acc_delete_confirm:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
     async def acc_delete_confirm_handler(event):
         account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
             await event.answer("Akun tidak ditemukan.", alert=True)
             return
 
-        keyboard = account_delete_confirm_keyboard(acc.id)
+        keyboard = account_delete_confirm_keyboard(acc.id, page)
         await event.edit(
             f"⚠️ **Peringatan Penghapusan Akun!**\n\n"
             f"Apakah Anda yakin ingin menghapus akun Telegram `{acc.phone}`?\n"
@@ -198,10 +270,12 @@ def register_accounts_handlers(client):
             buttons=keyboard
         )
 
-    @client.on(events.CallbackQuery(pattern=r'acc_delete_yes:(.+)'))
+    @client.on(events.CallbackQuery(pattern=r'acc_delete_yes:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
     async def acc_delete_yes_handler(event):
         account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
         
         async with async_session_factory() as session:
             result = await session.execute(
@@ -226,9 +300,149 @@ def register_accounts_handlers(client):
 
         # Go back to account list
         accounts = await get_user_accounts(event.user.id)
-        keyboard = accounts_list_keyboard(accounts)
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
         await event.edit(
-            "👥 **Daftar Akun Telegram Anda**\n"
-            "Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
+            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
+            f"Total: {total_accounts} akun\n\n"
+            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
             buttons=keyboard
         )
+
+    @client.on(events.CallbackQuery(pattern=r'acc_devices:([a-fA-F0-9-]{36})(?::(\d+))?'))
+    @auth_required
+    async def acc_devices_handler(event):
+        account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
+        
+        acc = await get_account_by_id(account_id, event.user.id)
+        if not acc:
+            await event.answer("Akun tidak ditemukan.", alert=True)
+            return
+
+        await event.answer("Mengambil data session/device dari Telegram...", alert=False)
+        
+        # Display temporary loading text
+        await event.edit(
+            f"⏳ **Mengambil daftar device terhubung untuk `{acc.phone}`...**\n"
+            f"Harap tunggu sebentar."
+        )
+
+        try:
+            from app.services.device_service import get_devices
+            devices = await get_devices(acc)
+            
+            if not devices:
+                device_text = (
+                    f"💻 **Connected Devices - `{acc.phone}`**\n"
+                    f"━━━━━━━━━━━━━━━━━━\n"
+                    f"Tidak ada device terhubung eksternal yang ditemukan (hanya session aktif saat ini)."
+                )
+                keyboard = [
+                    [Button.inline("🔙 Kembali ke Detail Akun", data=f"acc_detail:{acc.id}:{page}")]
+                ]
+            else:
+                device_text = (
+                    f"💻 **Connected Devices ({len(devices)}) - `{acc.phone}`**\n"
+                    f"━━━━━━━━━━━━━━━━━━\n\n"
+                )
+                for idx, dev in enumerate(devices, 1):
+                    # Format each device info
+                    app_info = f"{dev['app_name']} {dev['app_version']}".strip() or "Unknown App"
+                    dev_model = dev['device_model'] or "Unknown Model"
+                    platform_info = f"{dev['platform']} {dev['system_version']}".strip() or "Unknown Platform"
+                    location = f"{dev['city'] or ''}, {dev['region'] or ''}, {dev['country'] or ''}".strip(", ")
+                    location_str = f" ({location})" if location else ""
+                    ip_str = f"{dev['ip']}{location_str}"
+                    
+                    device_text += (
+                        f"**{idx}. {dev_model}**\n"
+                        f"• App: `{app_info}`\n"
+                        f"• OS: `{platform_info}`\n"
+                        f"• IP: `{ip_str}`\n"
+                        f"• Login pada: `{dev['created'] or 'N/A'}`\n"
+                        f"━━━━━━━━━━━━━━━━━━\n\n"
+                    )
+                keyboard = [
+                    [Button.inline("❌ Terminate Sesi Lain", data=f"acc_term_others:{acc.id}:{page}")],
+                    [Button.inline("🔙 Kembali ke Detail Akun", data=f"acc_detail:{acc.id}:{page}")]
+                ]
+            
+            await event.edit(device_text, buttons=keyboard)
+            
+        except Exception as e:
+            logger.error("Failed to fetch devices in bot handler: %s", e)
+            keyboard = [
+                [Button.inline("🔙 Kembali ke Detail Akun", data=f"acc_detail:{acc.id}:{page}")]
+            ]
+            await event.edit(
+                f"❌ **Gagal Mengambil Connected Devices**\n\n"
+                f"**Error:** `{str(e)}`\n\n"
+                f"Pastikan status akun aktif dan tidak terblokir.",
+                buttons=keyboard
+            )
+
+    @client.on(events.CallbackQuery(pattern=r'acc_term_others:([a-fA-F0-9-]{36})(?::(\d+))?'))
+    @auth_required
+    async def acc_term_others_handler(event):
+        account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
+        acc = await get_account_by_id(account_id, event.user.id)
+        
+        if not acc:
+            await event.answer("Akun tidak ditemukan.", alert=True)
+            return
+
+        keyboard = [
+            [
+                Button.inline("⚠️ YA, KELUARKAN LAINNYA", data=f"acc_term_others_yes:{acc.id}:{page}"),
+                Button.inline("TIDAK", data=f"acc_devices:{acc.id}:{page}")
+            ]
+        ]
+        await event.edit(
+            f"⚠️ **Peringatan Terminate Sesi!**\n\n"
+            f"Apakah Anda yakin ingin mengeluarkan semua device/sesi lain kecuali sesi ini untuk akun `{acc.phone}`?\n"
+            f"Tindakan ini akan memutus koneksi semua aplikasi Telegram lainnya yang masuk menggunakan nomor ini.",
+            buttons=keyboard
+        )
+
+    @client.on(events.CallbackQuery(pattern=r'acc_term_others_yes:([a-fA-F0-9-]{36})(?::(\d+))?'))
+    @auth_required
+    async def acc_term_others_yes_handler(event):
+        account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
+        
+        acc = await get_account_by_id(account_id, event.user.id)
+        if not acc:
+            await event.answer("Akun tidak ditemukan.", alert=True)
+            return
+
+        await event.answer("Memproses pemutusan sesi lain...", alert=False)
+        
+        try:
+            from app.services.device_service import terminate_all_other_sessions
+            await terminate_all_other_sessions(acc)
+            await event.answer("Semua sesi lain berhasil dikeluarkan!", alert=True)
+        except Exception as e:
+            logger.error("Failed to terminate other sessions in bot: %s", e)
+            await event.answer(f"Gagal mengeluarkan sesi lain: {str(e)}", alert=True)
+
+        # Return to details view
+        detail_text = format_account_detail(acc)
+        keyboard = account_detail_keyboard(acc.id, acc.is_active, page)
+        await event.edit(detail_text, buttons=keyboard)

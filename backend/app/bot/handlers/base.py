@@ -19,6 +19,7 @@ from app.bot.utils import auth_required, format_dashboard_message
 from app.services.uptimerobot_status import uptimerobot_service
 import json
 from app.utils.redis import redis_client
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -258,13 +259,44 @@ def register_base_handlers(client):
     @auth_required
     async def status_btn_handler(event):
         try:
-            status_data = await uptimerobot_service.get_status()
+            # 1. Check Database connection
+            db_status = "🔴 OFFLINE"
+            try:
+                async with async_session_factory() as session:
+                    await session.execute(select(1))
+                    db_status = "🟢 ONLINE"
+            except Exception as e:
+                logger.error(f"DB health check failed: {e}")
+
+            # 2. Check Redis connection
+            redis_status = "🔴 OFFLINE"
+            try:
+                await redis_client.ping()
+                redis_status = "🟢 ONLINE"
+            except Exception as e:
+                logger.error(f"Redis health check failed: {e}")
+
+            # 3. Check UptimeRobot Status
+            settings = get_settings()
+            if settings.UPTIMEROBOT_API_KEY:
+                status_data = await uptimerobot_service.get_status()
+                uptime_robot_status = status_data.overall.upper()
+                gateway_status = '🟢 ONLINE' if status_data.overall == 'up' else '🔴 OFFLINE'
+                latency = status_data.debug_info.get('latency', 'N/A') if hasattr(status_data, 'debug_info') else 'N/A'
+            else:
+                uptime_robot_status = "⚪ NOT CONFIGURED"
+                gateway_status = "🟢 ONLINE"  # The bot is currently responding, so gateway works
+                latency = "N/A"
+
             status_msg = (
                 f"⚙️ **System & Connection Status**\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
-                f"• **Telegram Gateway:** {'🟢 ONLINE' if status_data.overall == 'up' else '🔴 OFFLINE'}\n"
-                f"• **Latency:** {status_data.debug_info.get('latency', 'N/A') if hasattr(status_data, 'debug_info') else 'N/A'}\n"
-                f"• **Monitor Status:** {status_data.overall.upper()}\n\n"
+                f"• **Telegram Bot (this):** 🟢 ONLINE\n"
+                f"• **Database (Postgres):** {db_status}\n"
+                f"• **Cache & Queue (Redis):** {redis_status}\n"
+                f"• **Telegram Gateway:** {gateway_status}\n"
+                f"• **Latency:** {latency}\n"
+                f"• **Monitor Status:** {uptime_robot_status}\n\n"
                 f"Semua sistem backend berjalan dengan normal."
             )
         except Exception as e:
