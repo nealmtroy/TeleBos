@@ -60,6 +60,9 @@ def account_detail_keyboard(account_id: str, is_active: bool, page: int = 1):
     toggle_label = "🔴 Nonaktifkan" if is_active else "🟢 Aktifkan"
     return [
         [
+            Button.inline("🔑 Ambil OTP", data=f"acc_otp:{account_id}:{page}")
+        ],
+        [
             Button.inline("🔄 Cek Spam (@SpamBot)", data=f"acc_spam:{account_id}:{page}"),
             Button.inline(toggle_label, data=f"acc_toggle:{account_id}:{page}")
         ],
@@ -71,6 +74,16 @@ def account_detail_keyboard(account_id: str, is_active: bool, page: int = 1):
         ],
         [
             Button.inline("🔙 Kembali ke Daftar Akun", data=f"acc_list_back:{page}")
+        ]
+    ]
+
+
+def account_otp_keyboard(account_id: str, page: int = 1):
+    """InlineKeyboardMarkup for OTP display screen."""
+    return [
+        [
+            Button.inline("🔄 Ambil OTP Ulang", data=f"acc_otp:{account_id}:{page}"),
+            Button.inline("🔙 Kembali", data=f"acc_detail:{account_id}:{page}")
         ]
     ]
 
