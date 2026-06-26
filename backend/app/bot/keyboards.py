@@ -309,35 +309,45 @@ def list_add_cancel_keyboard(callback_prefix: str):
     ]
 
 
-def job_accounts_select_keyboard(accounts: List[TelegramAccount], selected_ids: List[str]):
-    """InlineKeyboardMarkup to select accounts for a new broadcast job."""
+def job_accounts_select_keyboard_paginated(accounts: List[TelegramAccount], selected_ids: List[str], page: int = 1, total_pages: int = 1):
+    """InlineKeyboardMarkup with numbered buttons for toggling accounts, plus pagination and job control."""
     buttons = []
     
-    # Account buttons
-    for acc in accounts:
-        acc_id = str(acc.id)
-        status_icon = "✅" if acc_id in selected_ids else "⬜"
-        name = f"{acc.first_name or ''} {acc.last_name or ''}".strip()
-        username = f"@{acc.username}" if acc.username else name or acc.phone
-        btn_label = f"{status_icon} {username}"
-        buttons.append([Button.inline(btn_label, data=f"job_add_acc_toggle:{acc_id}")])
+    # Selection buttons (1 to N)
+    num_buttons = []
+    for idx, acc in enumerate(accounts, 1):
+        num_buttons.append(Button.inline(str(idx), data=f"job_add_acc_toggle:{acc.id}:{page}"))
         
-    # All/Lanjutkan buttons
-    nav_row = []
-    all_active_ids = [str(a.id) for a in accounts]
-    is_all_selected = all(aid in selected_ids for aid in all_active_ids)
+    # Group number buttons into rows of up to 5
+    chunk_size = 5
+    for i in range(0, len(num_buttons), chunk_size):
+        buttons.append(num_buttons[i : i + chunk_size])
+        
+    # Pagination Row
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(Button.inline("⬅️ Prev", data=f"job_add_acc_page:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(Button.inline("Next ➡️", data=f"job_add_acc_page:{page+1}"))
+        
+    if nav_buttons:
+        buttons.append(nav_buttons)
+        
+    # Selection helpers (Pilih Semua / Kosongkan)
+    control_row = []
+    control_row.append(Button.inline("📱 Pilih Semua", data=f"job_add_acc_all:{page}"))
+    control_row.append(Button.inline("📱 Kosongkan", data=f"job_add_acc_none:{page}"))
+    buttons.append(control_row)
     
-    if not is_all_selected:
-        nav_row.append(Button.inline("📱 Pilih Semua", data="job_add_acc_all"))
-    else:
-        nav_row.append(Button.inline("📱 Kosongkan", data="job_add_acc_none"))
-        
+    # Lanjutkan & Batal row
+    action_row = []
     if selected_ids:
-        nav_row.append(Button.inline("Lanjutkan ➡️", data="job_add_acc_next"))
-        
-    buttons.append(nav_row)
-    buttons.append([Button.inline("❌ Batal", data="job_add_cancel")])
+        action_row.append(Button.inline("Lanjutkan ➡️", data="job_add_acc_next"))
+    action_row.append(Button.inline("❌ Batal", data="job_add_cancel"))
+    buttons.append(action_row)
+    
     return buttons
+
 
 
 def job_gl_select_keyboard(group_lists: List[GroupList]):

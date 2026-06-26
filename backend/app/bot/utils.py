@@ -328,4 +328,40 @@ def format_text_list_detail(tl) -> str:
     )
 
 
+def format_job_accounts_select_message(accounts: list, selected_ids: list, page: int, total_pages: int) -> str:
+    """Format a list of Telegram accounts for broadcast selection according to the user's design."""
+    lines = []
+    for idx, acc in enumerate(accounts, 1):
+        emoji = get_account_status_emoji(acc)
+        telegram_id = f"`{acc.telegram_id}`" if acc.telegram_id else "-"
+        username = f"@{acc.username}" if acc.username else "-"
+        phone = f"`{acc.phone}`" if acc.phone else "-"
+        twofa = get_twofa_display_value(acc)
+        twofa_str = f"`{twofa}`" if twofa and twofa not in ["-", "Enabled"] else twofa
+        email = f"`{acc.recovery_email}`" if acc.recovery_email else "-"
+        
+        status_check = "✅" if str(acc.id) in selected_ids else "⬜"
+        
+        lines.append(
+            f"{idx}. [{status_check}] {emoji} {telegram_id}\n"
+            f"**Username**: {username}\n"
+            f"**Nomor HP**: {phone}\n"
+            f"**Twofa**: {twofa_str}\n"
+            f"**Email**: {email}"
+        )
+    
+    if not lines:
+        return "Belum ada akun Telegram aktif terdaftar."
+        
+    text_content = "📢 **Buat Broadcast Baru (Langkah 1/4)**\n"
+    text_content += "━━━━━━━━━━━━━━━━━━\n"
+    text_content += "Pilih akun Telegram yang akan digunakan untuk broadcast.\n"
+    text_content += "Klik tombol angka di bawah untuk memilih/membatalkan (toggle) akun.\n\n"
+    text_content += "\n\n".join(lines)
+    text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
+    text_content += f"Akun terpilih: **{len(selected_ids)}** akun"
+    return text_content
+
+
+
 

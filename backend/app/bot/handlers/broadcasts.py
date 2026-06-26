@@ -24,13 +24,18 @@ from app.utils.redis import redis_client
 from app.bot.keyboards import (
     broadcasts_list_keyboard,
     broadcast_detail_keyboard,
-    job_accounts_select_keyboard,
+    job_accounts_select_keyboard_paginated,
     job_gl_select_keyboard,
     job_mode_select_keyboard,
     job_tl_select_keyboard,
     job_confirm_keyboard
 )
-from app.bot.utils import auth_required, format_job_detail, decode_param
+from app.bot.utils import (
+    auth_required,
+    format_job_detail,
+    decode_param,
+    format_job_accounts_select_message
+)
 
 logger = logging.getLogger(__name__)
 
@@ -354,19 +359,22 @@ def register_broadcasts_handlers(client):
         state = {"step": "select_accounts", "selected_account_ids": []}
         await redis_client.setex(f"{REDIS_KEY}:{sender_id}", 600, json.dumps(state))
 
-        keyboard = job_accounts_select_keyboard(accounts, [])
-        await event.edit(
-            "📢 **Buat Broadcast Baru (Langkah 1/4)**\n\n"
-            "Pilih akun Telegram yang akan digunakan untuk broadcast.\n"
-            "Klik akun untuk memilih/membatalkan, lalu klik **Lanjutkan**:",
-            buttons=keyboard
-        )
+        page = 1
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
 
-    @client.on(events.CallbackQuery(pattern=r'job_add_acc_toggle:(.+)'))
+        msg_text = format_job_accounts_select_message(paginated_accounts, [], page, total_pages)
+        keyboard = job_accounts_select_keyboard_paginated(paginated_accounts, [], page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
+
+    @client.on(events.CallbackQuery(pattern=r'job_add_acc_toggle:([a-fA-F0-9-]{36}):(\d+)'))
     @auth_required
     async def job_add_acc_toggle_callback(event):
         sender_id = event.sender_id
         acc_id = decode_param(event.pattern_match.group(1))
+        page = int(decode_param(event.pattern_match.group(2)))
 
         raw = await redis_client.get(f"{REDIS_KEY}:{sender_id}")
         if not raw:
@@ -383,21 +391,54 @@ def register_broadcasts_handlers(client):
         await redis_client.setex(f"{REDIS_KEY}:{sender_id}", 600, json.dumps(state))
 
         accounts = await get_user_active_accounts(event.user.id)
-        keyboard = job_accounts_select_keyboard(accounts, selected)
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        msg_text = format_job_accounts_select_message(paginated_accounts, selected, page, total_pages)
+        keyboard = job_accounts_select_keyboard_paginated(paginated_accounts, selected, page, total_pages)
         try:
-            await event.edit(
-                "📢 **Buat Broadcast Baru (Langkah 1/4)**\n\n"
-                f"Akun terpilih: **{len(selected)}** akun\n"
-                "Klik akun untuk memilih/membatalkan, lalu klik **Lanjutkan**:",
-                buttons=keyboard
-            )
+            await event.edit(msg_text, buttons=keyboard)
         except Exception:
             await event.answer()
 
-    @client.on(events.CallbackQuery(pattern=b'job_add_acc_all'))
+    @client.on(events.CallbackQuery(pattern=r'job_add_acc_page:(\d+)'))
+    @auth_required
+    async def job_add_acc_page_callback(event):
+        sender_id = event.sender_id
+        page = int(decode_param(event.pattern_match.group(1)))
+
+        raw = await redis_client.get(f"{REDIS_KEY}:{sender_id}")
+        if not raw:
+            await event.answer("Sesi kadaluarsa, silakan mulai ulang.", alert=True)
+            return
+        state = json.loads(raw)
+        selected = state.get("selected_account_ids", [])
+
+        accounts = await get_user_active_accounts(event.user.id)
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        msg_text = format_job_accounts_select_message(paginated_accounts, selected, page, total_pages)
+        keyboard = job_accounts_select_keyboard_paginated(paginated_accounts, selected, page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
+
+    @client.on(events.CallbackQuery(pattern=r'job_add_acc_all:(\d+)'))
     @auth_required
     async def job_add_acc_all_callback(event):
         sender_id = event.sender_id
+        page = int(decode_param(event.pattern_match.group(1)))
         raw = await redis_client.get(f"{REDIS_KEY}:{sender_id}")
         if not raw:
             await event.answer("Sesi kadaluarsa.", alert=True)
@@ -409,21 +450,27 @@ def register_broadcasts_handlers(client):
         state["selected_account_ids"] = selected
         await redis_client.setex(f"{REDIS_KEY}:{sender_id}", 600, json.dumps(state))
 
-        keyboard = job_accounts_select_keyboard(accounts, selected)
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        msg_text = format_job_accounts_select_message(paginated_accounts, selected, page, total_pages)
+        keyboard = job_accounts_select_keyboard_paginated(paginated_accounts, selected, page, total_pages)
         try:
-            await event.edit(
-                "📢 **Buat Broadcast Baru (Langkah 1/4)**\n\n"
-                f"Akun terpilih: **{len(selected)}** akun (Semua)\n"
-                "Klik akun untuk memilih/membatalkan, lalu klik **Lanjutkan**:",
-                buttons=keyboard
-            )
+            await event.edit(msg_text, buttons=keyboard)
         except Exception:
             await event.answer()
 
-    @client.on(events.CallbackQuery(pattern=b'job_add_acc_none'))
+    @client.on(events.CallbackQuery(pattern=r'job_add_acc_none:(\d+)'))
     @auth_required
     async def job_add_acc_none_callback(event):
         sender_id = event.sender_id
+        page = int(decode_param(event.pattern_match.group(1)))
         raw = await redis_client.get(f"{REDIS_KEY}:{sender_id}")
         if not raw:
             await event.answer("Sesi kadaluarsa.", alert=True)
@@ -433,14 +480,19 @@ def register_broadcasts_handlers(client):
         await redis_client.setex(f"{REDIS_KEY}:{sender_id}", 600, json.dumps(state))
 
         accounts = await get_user_active_accounts(event.user.id)
-        keyboard = job_accounts_select_keyboard(accounts, [])
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        msg_text = format_job_accounts_select_message(paginated_accounts, [], page, total_pages)
+        keyboard = job_accounts_select_keyboard_paginated(paginated_accounts, [], page, total_pages)
         try:
-            await event.edit(
-                "📢 **Buat Broadcast Baru (Langkah 1/4)**\n\n"
-                "Akun terpilih: **0** akun\n"
-                "Klik akun untuk memilih/membatalkan, lalu klik **Lanjutkan**:",
-                buttons=keyboard
-            )
+            await event.edit(msg_text, buttons=keyboard)
         except Exception:
             await event.answer()
 
