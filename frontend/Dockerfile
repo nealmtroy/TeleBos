@@ -3,6 +3,10 @@ FROM node:20-alpine AS base
 # ── Dependencies ─────────────────────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
+
+# Install build tools needed for native modules (better-sqlite3, etc.)
+RUN apk add --no-cache python3 make g++
+
 COPY package.json ./
 RUN npm install
 
