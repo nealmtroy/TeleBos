@@ -204,7 +204,10 @@ def group_lists_keyboard(group_lists: List[GroupList], page: int = 1, total_page
         buttons.append(nav_buttons)
         
     # Bottom actions
-    buttons.append([Button.inline("🔄 Refresh List", data=f"gl_refresh:{page}")])
+    buttons.append([
+        Button.inline("➕ Tambah List", data="gl_add_start"),
+        Button.inline("🔄 Refresh List", data=f"gl_refresh:{page}")
+    ])
     return buttons
 
 
@@ -254,7 +257,10 @@ def text_lists_keyboard(text_lists: List[TextList], page: int = 1, total_pages: 
         buttons.append(nav_buttons)
         
     # Bottom actions
-    buttons.append([Button.inline("🔄 Refresh List", data=f"tl_refresh:{page}")])
+    buttons.append([
+        Button.inline("➕ Tambah Template", data="tl_add_start"),
+        Button.inline("🔄 Refresh List", data=f"tl_refresh:{page}")
+    ])
     return buttons
 
 
@@ -278,4 +284,12 @@ def text_list_delete_confirm_keyboard(text_list_id: str, page: int = 1):
             Button.inline("TIDAK", data=f"tl_detail:{text_list_id}:{page}")
         ]
     ]
+
+
+def list_add_cancel_keyboard(callback_prefix: str):
+    """InlineKeyboardMarkup to cancel adding list or template."""
+    return [
+        [Button.inline("❌ Batal", data=f"{callback_prefix}_add_cancel")]
+    ]
+
 
