@@ -97,7 +97,10 @@ def broadcasts_list_keyboard(jobs: List[BroadcastJob]):
         btn_label = f"{status_icon} #{str(job.id)[:8]} ({group_lists} -> {text_lists})"
         buttons.append([Button.inline(btn_label, data=f"job_detail:{job.id}")])
     
-    buttons.append([Button.inline("🔄 Refresh List", data="job_refresh")])
+    buttons.append([
+        Button.inline("➕ Buat Broadcast Baru", data="job_add_start"),
+        Button.inline("🔄 Refresh List", data="job_refresh")
+    ])
     return buttons
 
 
@@ -290,6 +293,85 @@ def list_add_cancel_keyboard(callback_prefix: str):
     """InlineKeyboardMarkup to cancel adding list or template."""
     return [
         [Button.inline("❌ Batal", data=f"{callback_prefix}_add_cancel")]
+    ]
+
+
+def job_accounts_select_keyboard(accounts: List[TelegramAccount], selected_ids: List[str]):
+    """InlineKeyboardMarkup to select accounts for a new broadcast job."""
+    buttons = []
+    
+    # Account buttons
+    for acc in accounts:
+        acc_id = str(acc.id)
+        status_icon = "✅" if acc_id in selected_ids else "⬜"
+        name = f"{acc.first_name or ''} {acc.last_name or ''}".strip()
+        username = f"@{acc.username}" if acc.username else name or acc.phone
+        btn_label = f"{status_icon} {username}"
+        buttons.append([Button.inline(btn_label, data=f"job_add_acc_toggle:{acc_id}")])
+        
+    # All/Lanjutkan buttons
+    nav_row = []
+    all_active_ids = [str(a.id) for a in accounts]
+    is_all_selected = all(aid in selected_ids for aid in all_active_ids)
+    
+    if not is_all_selected:
+        nav_row.append(Button.inline("📱 Pilih Semua", data="job_add_acc_all"))
+    else:
+        nav_row.append(Button.inline("📱 Kosongkan", data="job_add_acc_none"))
+        
+    if selected_ids:
+        nav_row.append(Button.inline("Lanjutkan ➡️", data="job_add_acc_next"))
+        
+    buttons.append(nav_row)
+    buttons.append([Button.inline("❌ Batal", data="job_add_cancel")])
+    return buttons
+
+
+def job_gl_select_keyboard(group_lists: List[GroupList]):
+    """InlineKeyboardMarkup to select a group list for a new job."""
+    buttons = []
+    for gl in group_lists:
+        num_targets = len(gl.items) if gl.items else 0
+        buttons.append([Button.inline(f"📁 {gl.name} ({num_targets} target)", data=f"job_add_gl_select:{gl.id}")])
+    buttons.append([Button.inline("❌ Batal", data="job_add_cancel")])
+    return buttons
+
+
+def job_mode_select_keyboard():
+    """InlineKeyboardMarkup to select text mode."""
+    return [
+        [
+            Button.inline("📄 Gunakan Teks Template", data="job_add_mode_select:template"),
+            Button.inline("✍️ Ketik Teks Custom", data="job_add_mode_select:custom")
+        ],
+        [Button.inline("❌ Batal", data="job_add_cancel")]
+    ]
+
+
+def job_tl_select_keyboard(text_lists: List[TextList]):
+    """InlineKeyboardMarkup to select a text template for a new job."""
+    buttons = []
+    for tl in text_lists:
+        num_texts = len(tl.texts) if tl.texts else 0
+        buttons.append([Button.inline(f"📄 {tl.name} ({num_texts} template)", data=f"job_add_tl_select:{tl.id}")])
+    buttons.append([Button.inline("🔙 Kembali ke Mode Teks", data="job_add_back_mode")])
+    buttons.append([Button.inline("❌ Batal", data="job_add_cancel")])
+    return buttons
+
+
+def job_confirm_keyboard(loop_enabled: bool):
+    """InlineKeyboardMarkup to confirm new job settings."""
+    loop_label = "🟢 Looping: AKTIF" if loop_enabled else "🔴 Looping: NONAKTIF"
+    return [
+        [
+            Button.inline(loop_label, data=f"job_add_confirm_toggle_loop:{'0' if loop_enabled else '1'}"),
+        ],
+        [
+            Button.inline("▶️ MULAI BROADCAST", data="job_add_confirm_yes")
+        ],
+        [
+            Button.inline("❌ Batal", data="job_add_cancel")
+        ]
     ]
 
 

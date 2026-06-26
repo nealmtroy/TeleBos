@@ -284,7 +284,12 @@ def register_base_handlers(client):
             if settings.UPTIMEROBOT_API_KEY:
                 status_data = await uptimerobot_service.get_status()
                 uptime_robot_status = status_data.overall.upper()
-                gateway_status = '🟢 ONLINE' if status_data.overall == 'up' else '🔴 OFFLINE'
+                if status_data.overall == 'down':
+                    gateway_status = '🔴 OFFLINE'
+                elif status_data.overall == 'degraded':
+                    gateway_status = '🟡 DEGRADED'
+                else:
+                    gateway_status = '🟢 ONLINE'
                 latency = status_data.debug_info.get('latency', 'N/A') if hasattr(status_data, 'debug_info') else 'N/A'
             else:
                 uptime_robot_status = "⚪ NOT CONFIGURED"

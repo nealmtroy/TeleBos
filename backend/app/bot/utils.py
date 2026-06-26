@@ -189,24 +189,26 @@ def format_accounts_list_message(accounts: list, page: int, total_pages: int) ->
     lines = []
     for idx, acc in enumerate(accounts, 1):
         emoji = get_account_status_emoji(acc)
-        telegram_id = acc.telegram_id if acc.telegram_id else "-"
+        telegram_id = f"`{acc.telegram_id}`" if acc.telegram_id else "-"
         username = f"@{acc.username}" if acc.username else "-"
-        phone = acc.phone
+        phone = f"`{acc.phone}`" if acc.phone else "-"
         twofa = get_twofa_display_value(acc)
-        email = acc.recovery_email if acc.recovery_email else "-"
+        twofa_str = f"`{twofa}`" if twofa and twofa not in ["-", "Enabled"] else twofa
+        email = f"`{acc.recovery_email}`" if acc.recovery_email else "-"
         
         lines.append(
             f"{idx}. {emoji} {telegram_id}\n"
-            f"Username: {username}\n"
-            f"Nomor HP: {phone}\n"
-            f"Twofa: {twofa}\n"
-            f"Email: {email}"
+            f"**Username**: {username}\n"
+            f"**Nomor HP**: {phone}\n"
+            f"**Twofa**: {twofa_str}\n"
+            f"**Email**: {email}"
         )
     
     if not lines:
         return "Belum ada akun Telegram terdaftar."
         
-    text_content = "\n\n".join(lines)
+    text_content = "**Account Connected to TeleBos**\n\n"
+    text_content += "\n\n".join(lines)
     text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
     text_content += "📄Klik tombol angka untuk pilih akun sesuai list"
     return text_content
@@ -217,26 +219,27 @@ def format_autoreply_list_message(accounts: list, page: int, total_pages: int) -
     lines = []
     for idx, acc in enumerate(accounts, 1):
         emoji = get_account_status_emoji(acc)
-        telegram_id = acc.telegram_id if acc.telegram_id else "-"
+        telegram_id = f"`{acc.telegram_id}`" if acc.telegram_id else "-"
         username = f"@{acc.username}" if acc.username else "-"
-        phone = acc.phone
+        phone = f"`{acc.phone}`" if acc.phone else "-"
         twofa = get_twofa_display_value(acc)
-        email = acc.recovery_email if acc.recovery_email else "-"
+        twofa_str = f"`{twofa}`" if twofa and twofa not in ["-", "Enabled"] else twofa
+        email = f"`{acc.recovery_email}`" if acc.recovery_email else "-"
         ar_status = "🤖 🟢 ON" if acc.auto_reply_enabled else "🤖 🔴 OFF"
         
         lines.append(
             f"{idx}. {emoji} {telegram_id}\n"
-            f"Username: {username}\n"
-            f"Nomor HP: {phone}\n"
-            f"Auto-Reply: {ar_status}\n"
-            f"Twofa: {twofa}\n"
-            f"Email: {email}"
+            f"**Username**: {username}\n"
+            f"**Nomor HP**: {phone}\n"
+            f"**Auto-Reply**: {ar_status}\n"
+            f"**Twofa**: {twofa_str}\n"
+            f"**Email**: {email}"
         )
     
     if not lines:
         return "Belum ada akun Telegram terdaftar."
         
-    text_content = "🤖 **Pengaturan Auto-Reply Akun**\n\n"
+    text_content = "**Account Connected to TeleBos**\n\n"
     text_content += "\n\n".join(lines)
     text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
     text_content += "📄Klik tombol angka untuk mengaktifkan/menonaktifkan Auto-Reply:"
