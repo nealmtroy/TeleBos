@@ -7,6 +7,12 @@ from sqlalchemy import Boolean, DateTime, String, Integer, Text, func, ForeignKe
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.group_list import GroupList
+    from app.models.text_list import TextList
+    from app.models.broadcast_log import BroadcastLog
+
 from app.database import Base
 
 
@@ -60,3 +66,5 @@ class BroadcastJob(Base):
     logs: Mapped[list["BroadcastLog"]] = relationship(
         "BroadcastLog", back_populates="job", cascade="all, delete-orphan"
     )
+    group_list: Mapped["GroupList"] = relationship("GroupList")
+    text_list: Mapped["TextList | None"] = relationship("TextList")

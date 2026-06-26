@@ -14,6 +14,7 @@ from app.services.broadcast_service import (
     retry_job
 )
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from app.bot.keyboards import broadcasts_list_keyboard, broadcast_detail_keyboard
 from app.bot.utils import auth_required, format_job_detail
 
@@ -26,12 +27,29 @@ def register_broadcasts_handlers(client):
     async def get_user_jobs(user_id):
         """Helper to fetch recent jobs belonging to a user."""
         async with async_session_factory() as session:
-            return await get_jobs_for_user(session, str(user_id), limit=15)
+            result = await session.execute(
+                select(BroadcastJob)
+                .where(BroadcastJob.user_id == user_id)
+                .options(selectinload(BroadcastJob.group_list), selectinload(BroadcastJob.text_list))
+                .order_by(BroadcastJob.created_at.desc())
+                .limit(15)
+            )
+            return result.scalars().all()
 
     async def get_job_by_id(job_id, user_id):
         """Helper to fetch a specific job by ID and check user authorization."""
+        try:
+            job_uuid = uuid.UUID(job_id)
+        except ValueError:
+            return None
         async with async_session_factory() as session:
-            return await get_job(session, job_id, str(user_id))
+            result = await session.execute(
+                select(BroadcastJob)
+                .where(BroadcastJob.id == job_uuid)
+                .where(BroadcastJob.user_id == user_id)
+                .options(selectinload(BroadcastJob.group_list), selectinload(BroadcastJob.text_list))
+            )
+            return result.scalar_one_or_none()
 
     # ── ReplyKeyboard Handler ──
     @client.on(events.NewMessage(pattern='📢 Broadcasts'))
