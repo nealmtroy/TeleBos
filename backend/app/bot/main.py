@@ -8,6 +8,7 @@ from app.bot.handlers.base import register_base_handlers
 from app.bot.handlers.accounts import register_accounts_handlers
 from app.bot.handlers.broadcasts import register_broadcasts_handlers
 from app.bot.handlers.autoreply import register_autoreply_handlers
+from app.bot.handlers.lists import register_lists_handlers
 
 # Configure logging
 logging.basicConfig(
@@ -47,6 +48,7 @@ async def main():
     register_accounts_handlers(client)
     register_broadcasts_handlers(client)
     register_autoreply_handlers(client)
+    register_lists_handlers(client)
 
     logger.info("Starting Telegram Bot (Polling)...")
     await client.start(bot_token=settings.TELEGRAM_BOT_TOKEN)

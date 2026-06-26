@@ -3,6 +3,8 @@
 from telethon import Button
 from app.models.telegram_account import TelegramAccount
 from app.models.broadcast_job import BroadcastJob
+from app.models.group_list import GroupList
+from app.models.text_list import TextList
 from typing import List
 
 
@@ -11,6 +13,7 @@ def main_menu_keyboard():
     return [
         [Button.text("📊 Dashboard", resize=True), Button.text("👥 Accounts", resize=True)],
         [Button.text("📢 Broadcasts", resize=True), Button.text("🤖 Auto-Reply", resize=True)],
+        [Button.text("📁 Group Lists", resize=True), Button.text("📄 Text Lists", resize=True)],
         [Button.text("⚙️ System Status", resize=True)]
     ]
 
@@ -23,20 +26,18 @@ def back_to_main_keyboard():
 
 
 def accounts_list_keyboard(accounts: List[TelegramAccount], page: int = 1, total_pages: int = 1):
-    """InlineKeyboardMarkup listing accounts with status indicator, pagination, and action buttons."""
+    """InlineKeyboardMarkup with numbered buttons (1-10) for page items, plus navigation."""
     buttons = []
-    for acc in accounts:
-        status_indicator = "🟢" if acc.is_active else "🔴"
-        name_str = acc.first_name if acc.first_name else ""
-        if acc.username:
-            name_str = f"@{acc.username}"
-        elif acc.first_name:
-            name_str = f"{acc.first_name}"
-        else:
-            name_str = "No Username"
-        
-        btn_label = f"{status_indicator} {acc.phone} ({name_str})"
-        buttons.append([Button.inline(btn_label, data=f"acc_detail:{acc.id}:{page}")])
+    
+    # Selection buttons (1 to N)
+    num_buttons = []
+    for idx, acc in enumerate(accounts, 1):
+        num_buttons.append(Button.inline(str(idx), data=f"acc_detail:{acc.id}:{page}"))
+    
+    # Group number buttons into rows of up to 5
+    chunk_size = 5
+    for i in range(0, len(num_buttons), chunk_size):
+        buttons.append(num_buttons[i : i + chunk_size])
     
     # Pagination Row
     nav_buttons = []
@@ -51,6 +52,7 @@ def accounts_list_keyboard(accounts: List[TelegramAccount], page: int = 1, total
     # Bottom actions
     buttons.append([Button.inline("🔄 Refresh List", data=f"acc_refresh:{page}")])
     return buttons
+
 
 
 def account_detail_keyboard(account_id: str, is_active: bool, page: int = 1):
@@ -133,17 +135,34 @@ def broadcast_detail_keyboard(job_id: str, status: str):
     return buttons
 
 
-def autoreply_menu_keyboard(accounts: List[TelegramAccount]):
-    """InlineKeyboardMarkup listing accounts and their auto-reply status."""
+def autoreply_menu_keyboard(accounts: List[TelegramAccount], page: int = 1, total_pages: int = 1):
+    """InlineKeyboardMarkup with numbered buttons (1-10) to toggle auto-reply for page items, plus navigation."""
     buttons = []
-    for acc in accounts:
-        status_indicator = "🤖 🟢 ON" if acc.auto_reply_enabled else "🤖 🔴 OFF"
-        name_str = f"@{acc.username}" if acc.username else acc.phone
-        btn_label = f"{status_indicator} | {name_str}"
-        buttons.append([Button.inline(btn_label, data=f"auto_reply_toggle:{acc.id}")])
+    
+    # Selection buttons (1 to N)
+    num_buttons = []
+    for idx, acc in enumerate(accounts, 1):
+        num_buttons.append(Button.inline(str(idx), data=f"auto_reply_toggle:{acc.id}:{page}"))
+    
+    # Group number buttons into rows of up to 5
+    chunk_size = 5
+    for i in range(0, len(num_buttons), chunk_size):
+        buttons.append(num_buttons[i : i + chunk_size])
+    
+    # Pagination Row
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(Button.inline("⬅️ Prev", data=f"auto_reply_page:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(Button.inline("Next ➡️", data=f"auto_reply_page:{page+1}"))
+    
+    if nav_buttons:
+        buttons.append(nav_buttons)
         
-    buttons.append([Button.inline("🔄 Refresh List", data="auto_reply_refresh")])
+    # Bottom actions
+    buttons.append([Button.inline("🔄 Refresh List", data=f"auto_reply_refresh:{page}")])
     return buttons
+
 
 
 def login_start_keyboard():
@@ -158,3 +177,104 @@ def login_cancel_keyboard():
     return [
         [Button.inline("❌ Batal", data="login_cancel")]
     ]
+
+
+def group_lists_keyboard(group_lists: List[GroupList], page: int = 1, total_pages: int = 1):
+    """InlineKeyboardMarkup with numbered buttons (1-10) for page items, plus navigation."""
+    buttons = []
+    
+    # Selection buttons (1 to N)
+    num_buttons = []
+    for idx, gl in enumerate(group_lists, 1):
+        num_buttons.append(Button.inline(str(idx), data=f"gl_detail:{gl.id}:{page}"))
+        
+    chunk_size = 5
+    for i in range(0, len(num_buttons), chunk_size):
+        buttons.append(num_buttons[i : i + chunk_size])
+        
+    # Pagination Row
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(Button.inline("⬅️ Prev", data=f"gl_list_page:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(Button.inline("Next ➡️", data=f"gl_list_page:{page+1}"))
+        
+    if nav_buttons:
+        buttons.append(nav_buttons)
+        
+    # Bottom actions
+    buttons.append([Button.inline("🔄 Refresh List", data=f"gl_refresh:{page}")])
+    return buttons
+
+
+def group_list_detail_keyboard(group_list_id: str, page: int = 1):
+    """InlineKeyboardMarkup for a specific GroupList's details."""
+    return [
+        [
+            Button.inline("🗑️ Hapus List", data=f"gl_delete_confirm:{group_list_id}:{page}")
+        ],
+        [
+            Button.inline("🔙 Kembali ke Daftar List", data=f"gl_list_back:{page}")
+        ]
+    ]
+
+
+def group_list_delete_confirm_keyboard(group_list_id: str, page: int = 1):
+    """InlineKeyboardMarkup to confirm deletion of a GroupList."""
+    return [
+        [
+            Button.inline("⚠️ YA, HAPUS LIST", data=f"gl_delete_yes:{group_list_id}:{page}"),
+            Button.inline("TIDAK", data=f"gl_detail:{group_list_id}:{page}")
+        ]
+    ]
+
+
+def text_lists_keyboard(text_lists: List[TextList], page: int = 1, total_pages: int = 1):
+    """InlineKeyboardMarkup with numbered buttons (1-10) for page items, plus navigation."""
+    buttons = []
+    
+    # Selection buttons (1 to N)
+    num_buttons = []
+    for idx, tl in enumerate(text_lists, 1):
+        num_buttons.append(Button.inline(str(idx), data=f"tl_detail:{tl.id}:{page}"))
+        
+    chunk_size = 5
+    for i in range(0, len(num_buttons), chunk_size):
+        buttons.append(num_buttons[i : i + chunk_size])
+        
+    # Pagination Row
+    nav_buttons = []
+    if page > 1:
+        nav_buttons.append(Button.inline("⬅️ Prev", data=f"tl_list_page:{page-1}"))
+    if page < total_pages:
+        nav_buttons.append(Button.inline("Next ➡️", data=f"tl_list_page:{page+1}"))
+        
+    if nav_buttons:
+        buttons.append(nav_buttons)
+        
+    # Bottom actions
+    buttons.append([Button.inline("🔄 Refresh List", data=f"tl_refresh:{page}")])
+    return buttons
+
+
+def text_list_detail_keyboard(text_list_id: str, page: int = 1):
+    """InlineKeyboardMarkup for a specific TextList's details."""
+    return [
+        [
+            Button.inline("🗑️ Hapus Template", data=f"tl_delete_confirm:{text_list_id}:{page}")
+        ],
+        [
+            Button.inline("🔙 Kembali ke Daftar Template", data=f"tl_list_back:{page}")
+        ]
+    ]
+
+
+def text_list_delete_confirm_keyboard(text_list_id: str, page: int = 1):
+    """InlineKeyboardMarkup to confirm deletion of a TextList."""
+    return [
+        [
+            Button.inline("⚠️ YA, HAPUS TEMPLATE", data=f"tl_delete_yes:{text_list_id}:{page}"),
+            Button.inline("TIDAK", data=f"tl_detail:{text_list_id}:{page}")
+        ]
+    ]
+

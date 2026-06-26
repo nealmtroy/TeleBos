@@ -6,8 +6,13 @@ from telethon import events
 from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from app.bot.keyboards import autoreply_menu_keyboard
-from app.bot.utils import auth_required, decode_param
+from app.bot.utils import (
+    auth_required,
+    decode_param,
+    format_autoreply_list_message
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +26,7 @@ def register_autoreply_handlers(client):
             result = await session.execute(
                 select(TelegramAccount)
                 .where(TelegramAccount.user_id == user_id)
+                .options(selectinload(TelegramAccount.folders))
                 .order_by(TelegramAccount.created_at.desc())
             )
             return result.scalars().all()
@@ -37,35 +43,72 @@ def register_autoreply_handlers(client):
             )
             return
 
-        keyboard = autoreply_menu_keyboard(accounts)
-        await event.respond(
-            "🤖 **Pengaturan Auto-Reply Akun**\n"
-            "Klik salah satu akun di bawah untuk mengaktifkan atau menonaktifkan fitur Auto-Reply:\n\n"
-            "__Catatan: Template Auto-Reply default dapat disesuaikan melalui website TeleBos.__",
-            buttons=keyboard
-        )
+        page = 1
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+
+        keyboard = autoreply_menu_keyboard(paginated_accounts, page, total_pages)
+        msg_text = format_autoreply_list_message(paginated_accounts, page, total_pages)
+        await event.respond(msg_text, buttons=keyboard)
 
     # ── Callback Handlers ──
 
-    @client.on(events.CallbackQuery(pattern=b'auto_reply_refresh'))
+    @client.on(events.CallbackQuery(pattern=r'auto_reply_page:(\d+)'))
+    @auth_required
+    async def auto_reply_page_handler(event):
+        page = int(decode_param(event.pattern_match.group(1)))
+        accounts = await get_user_accounts(event.user.id)
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = autoreply_menu_keyboard(paginated_accounts, page, total_pages)
+        msg_text = format_autoreply_list_message(paginated_accounts, page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
+
+    @client.on(events.CallbackQuery(pattern=r'auto_reply_refresh(?::(\d+))?'))
     @auth_required
     async def auto_reply_refresh_handler(event):
+        match = event.pattern_match.group(1)
+        page = int(decode_param(match)) if match is not None else 1
         accounts = await get_user_accounts(event.user.id)
-        keyboard = autoreply_menu_keyboard(accounts)
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = autoreply_menu_keyboard(paginated_accounts, page, total_pages)
+        msg_text = format_autoreply_list_message(paginated_accounts, page, total_pages)
         try:
-            await event.edit(
-                "🤖 **Pengaturan Auto-Reply Akun** (Dinkini)\n"
-                "Klik salah satu akun di bawah untuk mengaktifkan atau menonaktifkan fitur Auto-Reply:\n\n"
-                "__Catatan: Template Auto-Reply default dapat disesuaikan melalui website TeleBos.__",
-                buttons=keyboard
-            )
+            await event.edit(msg_text, buttons=keyboard)
         except Exception:
             await event.answer("Daftar sudah terbaru.")
 
-    @client.on(events.CallbackQuery(pattern=r'auto_reply_toggle:(.+)'))
+    @client.on(events.CallbackQuery(pattern=r'auto_reply_toggle:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
     async def auto_reply_toggle_handler(event):
         account_id = decode_param(event.pattern_match.group(1))
+        match_page = event.pattern_match.group(2)
+        page = int(decode_param(match_page)) if match_page is not None else 1
         
         try:
             acc_uuid = uuid.UUID(account_id)
@@ -97,10 +140,20 @@ def register_autoreply_handlers(client):
 
         # Redraw lists
         accounts = await get_user_accounts(event.user.id)
-        keyboard = autoreply_menu_keyboard(accounts)
-        await event.edit(
-            "🤖 **Pengaturan Auto-Reply Akun**\n"
-            "Klik salah satu akun di bawah untuk mengaktifkan atau menonaktifkan fitur Auto-Reply:\n\n"
-            "__Catatan: Template Auto-Reply default dapat disesuaikan melalui website TeleBos.__",
-            buttons=keyboard
-        )
+        if not accounts:
+            await event.edit("Belum ada akun Telegram terdaftar.")
+            return
+
+        limit = 10
+        total_accounts = len(accounts)
+        total_pages = (total_accounts + limit - 1) // limit
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+
+        paginated_accounts = accounts[(page - 1) * limit : page * limit]
+        keyboard = autoreply_menu_keyboard(paginated_accounts, page, total_pages)
+        msg_text = format_autoreply_list_message(paginated_accounts, page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
+

@@ -2,6 +2,7 @@
 
 import functools
 import logging
+import unicodedata
 from app.database import async_session_factory
 from app.models.user import User
 from sqlalchemy.future import select
@@ -63,10 +64,18 @@ def auth_required(func):
 
 def format_dashboard_message(user: User, accounts_count: int, running_jobs: int, completed_jobs: int) -> str:
     """Format dashboard metrics into a clean markdown message."""
+    role_name = user.role.upper() if user.role else "BASIC"
+    if user.subscription_expires_at:
+        expired_str = user.subscription_expires_at.strftime('%Y-%m-%d %H:%M')
+    else:
+        expired_str = "Permanen" if user.role == "owner" else "-"
+
     return (
         f"📊 **Dashboard TeleBos**\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"👤 **User:** {user.full_name or user.email}\n"
+        f"💳 **Plan:** {role_name}\n"
+        f"⏳ **Expired:** {expired_str}\n"
         f"💰 **Saldo:** Rp {user.balance:,}\n"
         f"👥 **Total Akun:** {accounts_count} akun\n"
         f"🏃 **Broadcast Berjalan:** {running_jobs} job\n"
@@ -133,9 +142,173 @@ def format_job_detail(job, sent_count: int, failed_count: int, total_targets: in
         f"• **Status:** {status_str}\n"
         f"• **Target Grup:** {group_name}\n"
         f"• **Template Pesan:** {text_name}\n"
-        f"• **Delay:** {job.delay_seconds} detik\n"
+        f"• **Delay:** {job.delay_per_group} detik\n"
         f"• **Looping:** {'🟢 Ya' if job.loop_enabled else '🔴 Tidak'}\n"
         f"• **Progress:** {sent_count} / {total_targets} terkirim{progress_bar}\n"
         f"• **Gagal:** {failed_count} pesan\n"
         f"• **Dibuat Pada:** {job.created_at.strftime('%Y-%m-%d %H:%M')}"
     )
+
+
+def extract_emoji(text: str) -> str:
+    """Extract the first emoji or special symbol from a string if it starts with one."""
+    if not text:
+        return ""
+    first_char = text[0]
+    if unicodedata.category(first_char) == 'So' or ord(first_char) > 0x2000:
+        return first_char
+    return ""
+
+
+def get_account_status_emoji(acc) -> str:
+    """Get status emoji from account's folders or default to active/inactive status."""
+    if hasattr(acc, "folders") and acc.folders:
+        for folder in acc.folders:
+            emoji = extract_emoji(folder.name)
+            if emoji:
+                return emoji
+    return "🟢" if acc.is_active else "🔴"
+
+
+def format_accounts_list_message(accounts: list, page: int, total_pages: int) -> str:
+    """Format a list of Telegram accounts according to the user's design."""
+    lines = []
+    for idx, acc in enumerate(accounts, 1):
+        emoji = get_account_status_emoji(acc)
+        telegram_id = acc.telegram_id if acc.telegram_id else "-"
+        username = f"@{acc.username}" if acc.username else "-"
+        phone = acc.phone
+        twofa = acc.twofa_password if acc.twofa_password else ("Enabled" if acc.twofa_enabled else "-")
+        email = acc.recovery_email if acc.recovery_email else "-"
+        
+        lines.append(
+            f"{idx}. {emoji} {telegram_id}\n"
+            f"Username: {username}\n"
+            f"Nomor HP: {phone}\n"
+            f"Twofa: {twofa}\n"
+            f"Email: {email}"
+        )
+    
+    if not lines:
+        return "Belum ada akun Telegram terdaftar."
+        
+    text_content = "\n\n".join(lines)
+    text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
+    text_content += "📄Klik tombol angka untuk pilih akun sesuai list"
+    return text_content
+
+
+def format_autoreply_list_message(accounts: list, page: int, total_pages: int) -> str:
+    """Format a list of Telegram accounts for auto-reply menu according to the user's design."""
+    lines = []
+    for idx, acc in enumerate(accounts, 1):
+        emoji = get_account_status_emoji(acc)
+        telegram_id = acc.telegram_id if acc.telegram_id else "-"
+        username = f"@{acc.username}" if acc.username else "-"
+        phone = acc.phone
+        twofa = acc.twofa_password if acc.twofa_password else ("Enabled" if acc.twofa_enabled else "-")
+        email = acc.recovery_email if acc.recovery_email else "-"
+        ar_status = "🤖 🟢 ON" if acc.auto_reply_enabled else "🤖 🔴 OFF"
+        
+        lines.append(
+            f"{idx}. {emoji} {telegram_id}\n"
+            f"Username: {username}\n"
+            f"Nomor HP: {phone}\n"
+            f"Auto-Reply: {ar_status}\n"
+            f"Twofa: {twofa}\n"
+            f"Email: {email}"
+        )
+    
+    if not lines:
+        return "Belum ada akun Telegram terdaftar."
+        
+    text_content = "🤖 **Pengaturan Auto-Reply Akun**\n\n"
+    text_content += "\n\n".join(lines)
+    text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
+    text_content += "📄Klik tombol angka untuk mengaktifkan/menonaktifkan Auto-Reply:"
+    return text_content
+
+
+def format_group_lists_message(group_lists: list, page: int, total_pages: int) -> str:
+    """Format a list of GroupLists according to the user's design."""
+    lines = []
+    for idx, gl in enumerate(group_lists, 1):
+        num_targets = len(gl.items) if gl.items else 0
+        lines.append(f"{idx}. 📁 **{gl.name}** ({num_targets} target)")
+        
+    if not lines:
+        return "Belum ada target grup terdaftar. Silakan buat di website TeleBos."
+        
+    text_content = "📁 **Daftar Target Grup Anda**\n\n"
+    text_content += "\n".join(lines)
+    text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
+    text_content += "📄Klik tombol angka untuk melihat detail atau menghapus list."
+    return text_content
+
+
+def format_group_list_detail(gl) -> str:
+    """Format a specific GroupList's details into a markdown message."""
+    items = gl.items or []
+    targets_str = ""
+    limit = 15
+    for item in items[:limit]:
+        targets_str += f"  - `{item.get('value', '')}` ({item.get('type', 'unknown')})\n"
+        
+    if len(items) > limit:
+        targets_str += f"  - ... dan {len(items) - limit} target lainnya.\n"
+        
+    if not targets_str:
+        targets_str = "  (Tidak ada target dalam list ini)\n"
+        
+    return (
+        f"📁 **Detail Target Grup**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"• **Nama:** {gl.name}\n"
+        f"• **ID List:** `{str(gl.id)}`\n"
+        f"• **Jumlah Target:** {len(items)}\n"
+        f"• **Target:**\n{targets_str}"
+    )
+
+
+def format_text_lists_message(text_lists: list, page: int, total_pages: int) -> str:
+    """Format a list of TextLists according to the user's design."""
+    lines = []
+    for idx, tl in enumerate(text_lists, 1):
+        num_texts = len(tl.texts) if tl.texts else 0
+        lines.append(f"{idx}. 📄 **{tl.name}** ({num_texts} template)")
+        
+    if not lines:
+        return "Belum ada template pesan terdaftar. Silakan buat di website TeleBos."
+        
+    text_content = "📄 **Daftar Template Pesan Anda**\n\n"
+    text_content += "\n".join(lines)
+    text_content += f"\n\n🛫Halaman {page}/{total_pages}\n\n"
+    text_content += "📄Klik tombol angka untuk melihat detail atau menghapus template."
+    return text_content
+
+
+def format_text_list_detail(tl) -> str:
+    """Format a specific TextList's details into a markdown message."""
+    texts = tl.texts or []
+    texts_str = ""
+    for idx, text in enumerate(texts[:5], 1):
+        truncated = text if len(text) <= 150 else text[:147] + "..."
+        texts_str += f"**Variasi {idx}:**\n> {truncated}\n\n"
+        
+    if len(texts) > 5:
+        texts_str += f"  - ... dan {len(texts) - 5} variasi lainnya.\n"
+        
+    if not texts_str:
+        texts_str = "  (Tidak ada teks dalam template ini)\n"
+        
+    return (
+        f"📄 **Detail Template Pesan**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"• **Nama:** {tl.name}\n"
+        f"• **ID Template:** `{str(tl.id)}`\n"
+        f"• **Jumlah Variasi:** {len(texts)}\n\n"
+        f"{texts_str}"
+    )
+
+
+

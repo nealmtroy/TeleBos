@@ -7,12 +7,18 @@ from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
 from app.services.account_service import check_spam_status, remove_account
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from app.bot.keyboards import (
     accounts_list_keyboard,
     account_detail_keyboard,
     account_delete_confirm_keyboard
 )
-from app.bot.utils import auth_required, format_account_detail, decode_param
+from app.bot.utils import (
+    auth_required,
+    format_account_detail,
+    format_accounts_list_message,
+    decode_param
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +32,7 @@ def register_accounts_handlers(client):
             result = await session.execute(
                 select(TelegramAccount)
                 .where(TelegramAccount.user_id == user_id)
+                .options(selectinload(TelegramAccount.folders))
                 .order_by(TelegramAccount.created_at.desc())
             )
             return result.scalars().all()
@@ -64,12 +71,8 @@ def register_accounts_handlers(client):
         paginated_accounts = accounts[(page - 1) * limit : page * limit]
 
         keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
-        await event.respond(
-            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
-            f"Total: {total_accounts} akun\n\n"
-            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
-            buttons=keyboard
-        )
+        msg_text = format_accounts_list_message(paginated_accounts, page, total_pages)
+        await event.respond(msg_text, buttons=keyboard)
 
     # ── Callback Handlers ──
 
@@ -92,12 +95,8 @@ def register_accounts_handlers(client):
 
         paginated_accounts = accounts[(page - 1) * limit : page * limit]
         keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
-        await event.edit(
-            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
-            f"Total: {total_accounts} akun\n\n"
-            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
-            buttons=keyboard
-        )
+        msg_text = format_accounts_list_message(paginated_accounts, page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
 
     @client.on(events.CallbackQuery(pattern=r'acc_list_back(?::(\d+))?'))
     @auth_required
@@ -119,12 +118,8 @@ def register_accounts_handlers(client):
 
         paginated_accounts = accounts[(page - 1) * limit : page * limit]
         keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
-        await event.edit(
-            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
-            f"Total: {total_accounts} akun\n\n"
-            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
-            buttons=keyboard
-        )
+        msg_text = format_accounts_list_message(paginated_accounts, page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
 
     @client.on(events.CallbackQuery(pattern=r'acc_refresh(?::(\d+))?'))
     @auth_required
@@ -146,13 +141,9 @@ def register_accounts_handlers(client):
 
         paginated_accounts = accounts[(page - 1) * limit : page * limit]
         keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
+        msg_text = format_accounts_list_message(paginated_accounts, page, total_pages)
         try:
-            await event.edit(
-                f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages}) [Sinkron]\n"
-                f"Total: {total_accounts} akun\n\n"
-                f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
-                buttons=keyboard
-            )
+            await event.edit(msg_text, buttons=keyboard)
         except Exception:
             await event.answer("Daftar sudah terbaru.")
 
@@ -314,12 +305,8 @@ def register_accounts_handlers(client):
 
         paginated_accounts = accounts[(page - 1) * limit : page * limit]
         keyboard = accounts_list_keyboard(paginated_accounts, page, total_pages)
-        await event.edit(
-            f"👥 **Daftar Akun Telegram Anda** (Hal {page}/{total_pages})\n"
-            f"Total: {total_accounts} akun\n\n"
-            f"Pilih salah satu akun di bawah untuk melihat detail atau mengelola:",
-            buttons=keyboard
-        )
+        msg_text = format_accounts_list_message(paginated_accounts, page, total_pages)
+        await event.edit(msg_text, buttons=keyboard)
 
     @client.on(events.CallbackQuery(pattern=r'acc_devices:([a-fA-F0-9-]{36})(?::(\d+))?'))
     @auth_required
