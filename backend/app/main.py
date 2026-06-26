@@ -419,13 +419,55 @@ def _run_migrations(connection):
         connection.execute(
             text("""
                 INSERT INTO users (id, email, full_name, is_active, role, balance, created_at, updated_at)
-                SELECT u.id, u.email, u.name, true, 'basic', 0, COALESCE(u.created_at, NOW()), NOW()
+                SELECT u.id::uuid, u.email, u.name, true, 'basic', 0, COALESCE(u."createdAt", NOW()), NOW()
                 FROM "user" u
-                WHERE NOT EXISTS (SELECT 1 FROM users us WHERE us.id = u.id)
+                WHERE NOT EXISTS (SELECT 1 FROM users us WHERE us.id = u.id::uuid)
                 ON CONFLICT (id) DO NOTHING
             """)
         )
         logger.info("Synced existing Better Auth users into legacy users table")
+
+    # ── Better Auth: sync legacy users into BA "user" + "account" tables ──
+    # This handles the reverse direction: users who were registered before the
+    # Better Auth migration.  BA and passlib both use bcrypt, so existing
+    # password hashes are compatible.
+    if "users" in tables and "user" in tables and "account" in tables:
+        # Migrate legacy users into BA "user" table
+        connection.execute(
+            text("""
+                INSERT INTO "user" (id, name, email, "emailVerified", "twoFactorEnabled", "createdAt", "updatedAt")
+                SELECT us.id::text, COALESCE(us.full_name, ''), us.email, true, false, us.created_at, us.updated_at
+                FROM users us
+                WHERE NOT EXISTS (SELECT 1 FROM "user" u WHERE u.id = us.id::text)
+            """)
+        )
+        rows = connection.rowcount
+        if rows:
+            logger.info("Synced %d legacy users into Better Auth user table", rows)
+
+        # Migrate passwords into BA "account" table
+        connection.execute(
+            text("""
+                INSERT INTO "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+                SELECT
+                  gen_random_uuid()::text,
+                  us.email,
+                  'email',
+                  us.id::text,
+                  us.password_hash,
+                  us.created_at,
+                  us.updated_at
+                FROM users us
+                WHERE us.password_hash IS NOT NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM "account" a
+                    WHERE a."userId" = us.id::text AND a."providerId" = 'email'
+                  )
+            """)
+        )
+        acct_rows = connection.rowcount
+        if acct_rows:
+            logger.info("Synced accounts/passwords for %d users into Better Auth account table", acct_rows)
 
     # ── Performance Indexes ───────────────────────────────────────────
     connection.execute(

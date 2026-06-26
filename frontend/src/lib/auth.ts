@@ -9,6 +9,11 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  advanced: {
+    database: {
+      generateId: "uuid",
+    },
+  },
   trustedOrigins: (() => {
     try {
       return JSON.parse(process.env.CORS_ORIGINS || "[]");
@@ -40,7 +45,7 @@ export const auth = betterAuth({
           try {
             await pool.query(
               `INSERT INTO users (id, email, full_name, is_active, role, balance, created_at, updated_at)
-               VALUES ($1, $2, $3, true, 'basic', 0, NOW(), NOW())
+               VALUES ($1::uuid, $2, $3, true, 'basic', 0, NOW(), NOW())
                ON CONFLICT (id) DO NOTHING`,
               [user.id, user.email, user.name || null]
             );

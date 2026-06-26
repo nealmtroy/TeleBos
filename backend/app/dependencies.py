@@ -60,12 +60,11 @@ async def get_current_user(
             detail="Session expired",
         )
 
-    # Map the Better Auth user to our User model
-    # Better Auth's "user" table has: id, name, email, etc.
-    # Our custom "users" table has role, balance, etc.
-    # For now we fetch the User model separately to preserve app-specific fields.
+    # Map the Better Auth user to our User model via email (unique in both tables).
+    # BA uses UUID strings; our legacy "users" table uses PostgreSQL UUID type.
+    # Email is the stable cross-reference between them.
     user_result = await db.execute(
-        select(User).where(User.id == row.user_id)
+        select(User).where(User.email == row.email)
     )
     user = user_result.scalar_one_or_none()
 
@@ -97,8 +96,9 @@ async def get_current_user_from_token_or_header(
 
     result = await db.execute(
         text("""
-            SELECT s.user_id, s.expires_at
+            SELECT s.user_id, s.expires_at, u.email
             FROM session s
+            JOIN "user" u ON u.id = s.user_id
             WHERE s.token = :token
             LIMIT 1
         """),
@@ -119,8 +119,9 @@ async def get_current_user_from_token_or_header(
             detail="Session expired",
         )
 
+    # Map via email (see comment in get_current_user above)
     user_result = await db.execute(
-        select(User).where(User.id == row.user_id)
+        select(User).where(User.email == row.email)
     )
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
