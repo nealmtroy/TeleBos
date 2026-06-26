@@ -96,8 +96,7 @@ services:
       API_PROXY_TARGET: http://backend:8000
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       NEXT_PUBLIC_API_URL: /api/v1
-      NEXT_PUBLIC_WS_URL: ws://backend:8000
-      NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_WS_URL: wss://backend:8000
     ports:
       - "3000:3000"
     depends_on:
