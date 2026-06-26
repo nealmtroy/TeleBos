@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import api, { setTokens, clearTokens } from "@/lib/api";
+import api, { setTokens, clearTokens, getAccessToken } from "@/lib/api";
+import axios from "axios";
 
 interface User {
   id: string;
@@ -60,6 +61,24 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 
   fetchMe: async () => {
+    // If no in-memory access token, try refreshing from the httpOnly cookie first.
+    // This handles page reloads — the refresh cookie persists but the in-memory
+    // access token is lost on every page navigation.
+    if (!getAccessToken()) {
+      try {
+        const { data } = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+        setTokens(data.access_token, data.refresh_token);
+      } catch {
+        // No valid refresh cookie either — user is genuinely unauthenticated.
+        clearTokens();
+        set({ isLoading: false });
+        return;
+      }
+    }
     try {
       const { data } = await api.get("/auth/me");
       set({ user: data, isAuthenticated: true, isLoading: false });
