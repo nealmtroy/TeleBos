@@ -140,13 +140,18 @@ async def reset_password(email: str, new_password: str):
         new_hash = pwd_context.hash(new_password)
 
         # Update the account record (or create if missing)
-        result = await conn.execute(
+        # Note: BA account table has no unique constraint on (providerId, userId),
+        # so we use DELETE + INSERT instead of ON CONFLICT.
+        await conn.execute(
+            text('''DELETE FROM "account" WHERE "userId" = :uid AND "providerId" = 'email' '''),
+            {"uid": brow.id},
+        )
+        await conn.execute(
             text('''
                 INSERT INTO "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
                 VALUES (gen_random_uuid()::text, :email, 'email', :uid, :pwd, NOW(), NOW())
-                ON CONFLICT ("providerId", "userId") DO UPDATE SET password = :pwd2, "updatedAt" = NOW()
             '''),
-            {"email": email, "uid": brow.id, "pwd": new_hash, "pwd2": new_hash},
+            {"email": email, "uid": brow.id, "pwd": new_hash},
         )
         logger.info("Password reset for %s — hash written to account table", email)
 
