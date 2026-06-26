@@ -12,7 +12,7 @@ from app.bot.keyboards import (
     account_detail_keyboard,
     account_delete_confirm_keyboard
 )
-from app.bot.utils import auth_required, format_account_detail
+from app.bot.utils import auth_required, format_account_detail, decode_param
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def register_accounts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'acc_detail:(.+)'))
     @auth_required
     async def acc_detail_handler(event):
-        account_id = event.pattern_match.group(1).decode('utf-8')
+        account_id = decode_param(event.pattern_match.group(1))
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
@@ -109,7 +109,7 @@ def register_accounts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'acc_toggle:(.+)'))
     @auth_required
     async def acc_toggle_handler(event):
-        account_id = event.pattern_match.group(1).decode('utf-8')
+        account_id = decode_param(event.pattern_match.group(1))
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
@@ -140,7 +140,7 @@ def register_accounts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'acc_spam:(.+)'))
     @auth_required
     async def acc_spam_handler(event):
-        account_id = event.pattern_match.group(1).decode('utf-8')
+        account_id = decode_param(event.pattern_match.group(1))
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
@@ -183,7 +183,7 @@ def register_accounts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'acc_delete_confirm:(.+)'))
     @auth_required
     async def acc_delete_confirm_handler(event):
-        account_id = event.pattern_match.group(1).decode('utf-8')
+        account_id = decode_param(event.pattern_match.group(1))
         acc = await get_account_by_id(account_id, event.user.id)
         
         if not acc:
@@ -201,7 +201,7 @@ def register_accounts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'acc_delete_yes:(.+)'))
     @auth_required
     async def acc_delete_yes_handler(event):
-        account_id = event.pattern_match.group(1).decode('utf-8')
+        account_id = decode_param(event.pattern_match.group(1))
         
         async with async_session_factory() as session:
             result = await session.execute(

@@ -16,7 +16,7 @@ from app.services.broadcast_service import (
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from app.bot.keyboards import broadcasts_list_keyboard, broadcast_detail_keyboard
-from app.bot.utils import auth_required, format_job_detail
+from app.bot.utils import auth_required, format_job_detail, decode_param
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_detail:(.+)'))
     @auth_required
     async def job_detail_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         job = await get_job_by_id(job_id, event.user.id)
         
         if not job:
@@ -116,7 +116,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_pause:(.+)'))
     @auth_required
     async def job_pause_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         
         async with async_session_factory() as session:
             db_job = await get_job(session, job_id, str(event.user.id))
@@ -144,7 +144,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_resume:(.+)'))
     @auth_required
     async def job_resume_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         
         async with async_session_factory() as session:
             db_job = await get_job(session, job_id, str(event.user.id))
@@ -172,7 +172,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_cancel:(.+)'))
     @auth_required
     async def job_cancel_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         
         async with async_session_factory() as session:
             db_job = await get_job(session, job_id, str(event.user.id))
@@ -200,7 +200,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_retry:(.+)'))
     @auth_required
     async def job_retry_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         
         async with async_session_factory() as session:
             try:
@@ -222,7 +222,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_delete:(.+)'))
     @auth_required
     async def job_delete_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         
         async with async_session_factory() as session:
             try:
@@ -246,7 +246,7 @@ def register_broadcasts_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'job_logs:(.+)'))
     @auth_required
     async def job_logs_handler(event):
-        job_id = event.pattern_match.group(1).decode('utf-8')
+        job_id = decode_param(event.pattern_match.group(1))
         job = await get_job_by_id(job_id, event.user.id)
         
         if not job:

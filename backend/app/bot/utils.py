@@ -9,6 +9,13 @@ from sqlalchemy.future import select
 logger = logging.getLogger(__name__)
 
 
+def decode_param(param) -> str:
+    """Helper to decode regex matched groups safely whether they are bytes or string."""
+    if isinstance(param, bytes):
+        return param.decode('utf-8')
+    return str(param) if param is not None else ""
+
+
 def auth_required(func):
     """Decorator to ensure the Telegram user has linked their TeleBos web account."""
     @functools.wraps(func)

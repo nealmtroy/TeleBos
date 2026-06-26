@@ -7,7 +7,7 @@ from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
 from sqlalchemy.future import select
 from app.bot.keyboards import autoreply_menu_keyboard
-from app.bot.utils import auth_required
+from app.bot.utils import auth_required, decode_param
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ def register_autoreply_handlers(client):
     @client.on(events.CallbackQuery(pattern=r'auto_reply_toggle:(.+)'))
     @auth_required
     async def auto_reply_toggle_handler(event):
-        account_id = event.pattern_match.group(1).decode('utf-8')
+        account_id = decode_param(event.pattern_match.group(1))
         
         try:
             acc_uuid = uuid.UUID(account_id)
