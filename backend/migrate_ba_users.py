@@ -79,14 +79,14 @@ async def check_user(email: str):
 
         # 3. Check BA account table
         ba_acct = await conn.execute(
-            text('SELECT id, "accountId", "providerId", password IS NOT NULL AND password != \'\' as has_pwd FROM "account" WHERE "userId" = :uid AND "providerId" = \'email\''),
+            text('SELECT id, "accountId", "providerId", password IS NOT NULL AND password != \'\' as has_pwd FROM "account" WHERE "userId" = :uid AND "providerId" = \'credential\''),
             {"uid": user_id_text},
         )
         arow = ba_acct.one_or_none()
         if not arow:
             # Try looking up by userId as-is without the text cast
             ba_acct2 = await conn.execute(
-                text('SELECT id, "accountId", "providerId", password IS NOT NULL AND password != \'\' as has_pwd FROM "account" WHERE "userId" = :uid2 AND "providerId" = \'email\''),
+                text('SELECT id, "accountId", "providerId", password IS NOT NULL AND password != \'\' as has_pwd FROM "account" WHERE "userId" = :uid2 AND "providerId" = \'credential\''),
                 {"uid2": brow.id if brow else user_id_text},
             )
             arow2 = ba_acct2.one_or_none()
@@ -143,13 +143,13 @@ async def reset_password(email: str, new_password: str):
         # Note: BA account table has no unique constraint on (providerId, userId),
         # so we use DELETE + INSERT instead of ON CONFLICT.
         await conn.execute(
-            text('''DELETE FROM "account" WHERE "userId" = :uid AND "providerId" = 'email' '''),
+            text('''DELETE FROM "account" WHERE "userId" = :uid AND "providerId" = 'credential' '''),
             {"uid": brow.id},
         )
         await conn.execute(
             text('''
                 INSERT INTO "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-                VALUES (gen_random_uuid()::text, :email, 'email', :uid, :pwd, NOW(), NOW())
+                VALUES (gen_random_uuid()::text, :email, 'credential', :uid, :pwd, NOW(), NOW())
             '''),
             {"email": email, "uid": brow.id, "pwd": new_hash},
         )
@@ -200,18 +200,18 @@ async def main():
             r2 = await conn.execute(
                 text('''
                     INSERT INTO "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-                    SELECT gen_random_uuid()::text, us.email, 'email', us.id::text, us.password_hash, us.created_at, us.updated_at
+                    SELECT gen_random_uuid()::text, us.email, 'credential', us.id::text, us.password_hash, us.created_at, us.updated_at
                     FROM users us
                     WHERE us.password_hash IS NOT NULL AND us.password_hash != ''
                       AND NOT EXISTS (
-                        SELECT 1 FROM "account" a WHERE a."userId" = us.id::text AND a."providerId" = 'email'
+                        SELECT 1 FROM "account" a WHERE a."userId" = us.id::text AND a."providerId" = 'credential'
                       )
                 ''')
             )
             logger.info("Synced %d passwords → BA account table", r2.rowcount)
 
             verify = await conn.execute(
-                text('''SELECT COUNT(*) FROM "account" a JOIN "user" u ON u.id = a."userId" WHERE a."providerId" = 'email' ''')
+                text('''SELECT COUNT(*) FROM "account" a JOIN "user" u ON u.id = a."userId" WHERE a."providerId" = 'credential' ''')
             )
             logger.info("Total BA email accounts ready: %d", verify.scalar())
 

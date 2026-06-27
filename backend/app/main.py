@@ -456,7 +456,7 @@ def _run_migrations(connection):
                     SELECT
                       gen_random_uuid()::text,
                       us.email,
-                      'email',
+                      'credential',
                       us.id::text,
                       us.password_hash,
                       us.created_at,
@@ -465,7 +465,7 @@ def _run_migrations(connection):
                     WHERE us.password_hash IS NOT NULL AND us.password_hash != ''
                       AND NOT EXISTS (
                         SELECT 1 FROM "account" a
-                        WHERE a."userId" = us.id::text AND a."providerId" = 'email'
+                        WHERE a."userId" = us.id::text AND a."providerId" = 'credential'
                       )
                 """)
             )

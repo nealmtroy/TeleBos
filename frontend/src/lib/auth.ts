@@ -68,7 +68,7 @@ export const auth = betterAuth({
     account: {
       create: {
         after: async (account) => {
-          if (account.providerId === "email" && account.password) {
+          if (account.providerId === "credential" && account.password) {
             try {
               await pool.query(
                 `UPDATE users SET password_hash = $1 WHERE id = $2::uuid`,
@@ -82,7 +82,7 @@ export const auth = betterAuth({
       },
       update: {
         after: async (account) => {
-          if (account.providerId === "email" && account.password) {
+          if (account.providerId === "credential" && account.password) {
             try {
               await pool.query(
                 `UPDATE users SET password_hash = $1 WHERE id = $2::uuid`,
