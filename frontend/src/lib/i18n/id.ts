@@ -613,6 +613,7 @@ const id: Dict = {
     newPassword: "Password baru",
     confirmPassword: "Konfirmasi password",
     changePassword: "Ubah Password",
+    forgotPassword: "Lupa password?",
     requestRecovery: "Kirim Kode Pemulihan",
     recoveryCode: "Kode pemulihan dari email",
     recover: "Pulihkan Akun",

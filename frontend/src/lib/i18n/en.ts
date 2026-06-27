@@ -613,6 +613,7 @@ const en: Dict = {
     newPassword: "New password",
     confirmPassword: "Confirm password",
     changePassword: "Change Password",
+    forgotPassword: "Forgot password?",
     requestRecovery: "Send Recovery Code",
     recoveryCode: "Recovery code from email",
     recover: "Recover Account",
