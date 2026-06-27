@@ -33,12 +33,12 @@ async def get_current_user(
 
     # Validate the Better Auth session token by querying the session table
     # Better Auth stores sessions in a "session" table with columns:
-    #   id, expires_at, token, created_at, updated_at, ip_address, user_agent, user_id
+    #   id, expiresAt, token, createdAt, updatedAt, ipAddress, userAgent, userId
     result = await db.execute(
         text("""
-            SELECT s.user_id, s.expires_at, u.email, u.name
+            SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email, u.name
             FROM session s
-            JOIN "user" u ON u.id = s.user_id
+            JOIN "user" u ON u.id = s."userId"
             WHERE s.token = :token
             LIMIT 1
         """),
@@ -54,7 +54,10 @@ async def get_current_user(
 
     # Check expiration
     from datetime import datetime, timezone
-    if row.expires_at < datetime.now(timezone.utc):
+    expires_at = row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired",
@@ -96,9 +99,9 @@ async def get_current_user_from_token_or_header(
 
     result = await db.execute(
         text("""
-            SELECT s.user_id, s.expires_at, u.email
+            SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email
             FROM session s
-            JOIN "user" u ON u.id = s.user_id
+            JOIN "user" u ON u.id = s."userId"
             WHERE s.token = :token
             LIMIT 1
         """),
@@ -113,7 +116,10 @@ async def get_current_user_from_token_or_header(
         )
 
     from datetime import datetime, timezone
-    if row.expires_at < datetime.now(timezone.utc):
+    expires_at = row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired",

@@ -122,9 +122,9 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
     async with async_session_factory() as db:
         result = await db.execute(
             text("""
-                SELECT s.user_id, s.expires_at, u.email
+                SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email
                 FROM session s
-                JOIN "user" u ON u.id = s.user_id
+                JOIN "user" u ON u.id = s."userId"
                 WHERE s.token = :token
                 LIMIT 1
             """),
@@ -137,7 +137,10 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
             return None
 
         from datetime import datetime, timezone
-        if row.expires_at < datetime.now(timezone.utc):
+        expires_at = row.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Session expired")
             return None
 
