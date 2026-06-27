@@ -48,8 +48,15 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(email, password, name);
-      setSuccess(_("register.accountCreated"));
-      setTimeout(() => router.push("/dashboard"), 1500);
+      // If email verification is required, they won't be automatically logged in
+      const isAuthed = useAuthStore.getState().isAuthenticated;
+      if (isAuthed) {
+        setSuccess(_("register.accountCreated"));
+        setTimeout(() => router.push("/dashboard"), 1500);
+      } else {
+        setSuccess("Registrasi berhasil! Silakan periksa email Anda untuk memverifikasi akun sebelum masuk.");
+        setTimeout(() => router.push("/login"), 4000);
+      }
     } catch (err: any) {
       setError(
         err?.message || _("register.registrationFailed")

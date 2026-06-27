@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Smartphone, MessageSquare, Send, Activity } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const verified = searchParams.get("verified") === "true";
+
   const login = useAuthStore((s) => s.login);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -18,6 +22,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -28,16 +34,42 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setVerificationSent(false);
     setLoading(true);
     try {
       await login(email, password);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(
-        err?.message || _("login.loginFailed")
-      );
+      if (err?.code === "EMAIL_NOT_VERIFIED" || err?.message?.toLowerCase().includes("verify")) {
+        setError("Email Anda belum diverifikasi. Silakan periksa kotak masuk email Anda atau kirim ulang verifikasi di bawah.");
+      } else {
+        setError(
+          err?.message || _("login.loginFailed")
+        );
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (!email) {
+      setError("Silakan masukkan email Anda terlebih dahulu untuk mengirim ulang verifikasi.");
+      return;
+    }
+    setResendLoading(true);
+    setError("");
+    try {
+      const { error: err } = await authClient.sendVerificationEmail({
+        email,
+        callbackURL: `${window.location.origin}/login?verified=true`,
+      });
+      if (err) throw new Error(err.message || "Failed to send verification email");
+      setVerificationSent(true);
+    } catch (err: any) {
+      setError(err?.message || "Gagal mengirim ulang email verifikasi. Silakan coba lagi.");
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -121,9 +153,31 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {verified && !error && !verificationSent && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
+                Email berhasil diverifikasi! Silakan masuk ke akun Anda.
+              </div>
+            )}
+
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm space-y-2">
+                <div>{error}</div>
+                {(error.includes("verifikasi") || error.includes("verification") || error.includes("verify") || error.includes("belum diverifikasi")) && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 underline block"
+                  >
+                    {resendLoading ? "Mengirim ulang..." : "Kirim ulang email verifikasi"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {verificationSent && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                Email verifikasi telah dikirim ulang! Silakan periksa kotak masuk email Anda.
               </div>
             )}
 
@@ -200,5 +254,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

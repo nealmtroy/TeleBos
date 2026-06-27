@@ -64,7 +64,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (email: string, password: string) => {
     const { error } = await authClient.signIn.email({ email, password });
-    if (error) throw new Error(error.message || "Login failed");
+    if (error) {
+      const err = new Error(error.message || "Login failed");
+      (err as any).code = error.code;
+      throw err;
+    }
 
     // Fetch session once — sync token for axios + socket interceptors
     const { data: session } = await authClient.getSession();

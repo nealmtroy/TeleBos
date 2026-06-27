@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import bcrypt from "bcryptjs";
+import { sendEmail, getVerificationEmailHtml, getResetPasswordEmailHtml } from "./email";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL_SYNC || process.env.DATABASE_URL,
@@ -25,9 +26,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
+    requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      // TODO: Replace with real email sending (Resend, SendGrid, etc.)
-      console.log(`[Better Auth] Password reset link for ${user.email}: ${url}`);
+      const html = getResetPasswordEmailHtml(user.name, url);
+      await sendEmail({
+        to: user.email,
+        subject: "Atur Ulang Kata Sandi - TeleBos",
+        html,
+      });
     },
     password: {
       // Use bcryptjs for hashing/verifying to match the FastAPI backend and support migrated legacy users
@@ -40,9 +46,16 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendVerificationEmail: async ({ user, url }) => {
-      // TODO: Replace with real email sending
-      console.log(`[Better Auth] Email verification for ${user.email}: ${url}`);
+    sendVerificationEmail: async ({ user, token }) => {
+      const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+      const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${token}&callbackURL=${baseUrl}/login?verified=true`;
+      
+      const html = getVerificationEmailHtml(user.name, verificationUrl);
+      await sendEmail({
+        to: user.email,
+        subject: "Verifikasi Alamat Email Anda - TeleBos",
+        html,
+      });
     },
   },
   databaseHooks: {
