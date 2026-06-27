@@ -88,6 +88,7 @@ const en: Dict = {
     noAccount: "Don't have an account?",
     register: "Register",
     rememberMe: "Remember me",
+    forgotPassword: "Forgot password?",
   },
 
   // ── Register ────────────────────────────────────────────────────────────
@@ -612,7 +613,6 @@ const en: Dict = {
     newPassword: "New password",
     confirmPassword: "Confirm password",
     changePassword: "Change Password",
-    forgotPassword: "Forgot password?",
     requestRecovery: "Send Recovery Code",
     recoveryCode: "Recovery code from email",
     recover: "Recover Account",
