@@ -26,6 +26,9 @@ async def get_current_user(
     """
     token = request.headers.get("x-better-auth-token")
     if not token:
+        # Fallback to Better Auth cookies
+        token = request.cookies.get("better-auth.session_token") or request.cookies.get("__Secure-better-auth.session_token")
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authentication token",
@@ -91,6 +94,9 @@ async def get_current_user_from_token_or_header(
 ) -> User:
     """Validate Better Auth session from header or query param, returning authenticated user."""
     auth_token = token or request.headers.get("x-better-auth-token")
+    if not auth_token:
+        # Fallback to Better Auth cookies
+        auth_token = request.cookies.get("better-auth.session_token") or request.cookies.get("__Secure-better-auth.session_token")
     if not auth_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

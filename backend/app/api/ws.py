@@ -109,6 +109,9 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
 
     token = msg.get("token")
     if not token:
+        # Fallback to cookies
+        token = websocket.cookies.get("better-auth.session_token") or websocket.cookies.get("__Secure-better-auth.session_token")
+    if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Token missing")
         return None
 
