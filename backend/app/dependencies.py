@@ -36,7 +36,7 @@ async def get_current_user(
     #   id, expires_at, token, created_at, updated_at, ip_address, user_agent, user_id
     result = await db.execute(
         text("""
-            SELECT s.user_id, s.expires_at, u.email, u.name, u.is_active, u.role, u.balance
+            SELECT s.user_id, s.expires_at, u.email, u.name
             FROM session s
             JOIN "user" u ON u.id = s.user_id
             WHERE s.token = :token
