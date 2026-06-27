@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import bcrypt from "bcryptjs";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL_SYNC || process.env.DATABASE_URL,
@@ -28,6 +29,15 @@ export const auth = betterAuth({
       // TODO: Replace with real email sending (Resend, SendGrid, etc.)
       console.log(`[Better Auth] Password reset link for ${user.email}: ${url}`);
     },
+    password: {
+      // Use bcryptjs for hashing/verifying to match the FastAPI backend and support migrated legacy users
+      hash: async (password) => {
+        return await bcrypt.hash(password, 10);
+      },
+      verify: async ({ password, hash }) => {
+        return await bcrypt.compare(password, hash);
+      },
+    },
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
@@ -51,6 +61,36 @@ export const auth = betterAuth({
             );
           } catch (err) {
             console.error("[Better Auth] Failed to sync user to legacy users table:", err);
+          }
+        },
+      },
+    },
+    account: {
+      create: {
+        after: async (account) => {
+          if (account.providerId === "email" && account.password) {
+            try {
+              await pool.query(
+                `UPDATE users SET password_hash = $1 WHERE id = $2::uuid`,
+                [account.password, account.userId]
+              );
+            } catch (err) {
+              console.error("[Better Auth] Failed to sync password_hash on account create:", err);
+            }
+          }
+        },
+      },
+      update: {
+        after: async (account) => {
+          if (account.providerId === "email" && account.password) {
+            try {
+              await pool.query(
+                `UPDATE users SET password_hash = $1 WHERE id = $2::uuid`,
+                [account.password, account.userId]
+              );
+            } catch (err) {
+              console.error("[Better Auth] Failed to sync password_hash on account update:", err);
+            }
           }
         },
       },
