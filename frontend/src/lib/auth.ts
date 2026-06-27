@@ -12,7 +12,7 @@ export const auth = betterAuth({
   database: pool,
   advanced: {
     database: {
-      generateId: "uuid",
+      generateId: () => crypto.randomUUID(),
     },
   },
   trustedOrigins: (() => {
