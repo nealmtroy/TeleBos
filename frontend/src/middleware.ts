@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
 
 // ── Paths that don't require authentication ─────────────────────────────────
 const PUBLIC_PATHS = [
@@ -39,13 +38,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check Better Auth session via the session cookie
-  // getSessionCookie() takes the request and returns the cookie name
-  // based on the current environment (handles __Secure- prefix on HTTPS)
-  const sessionCookieName = getSessionCookie(request);
-  const sessionCookie = sessionCookieName
-    ? request.cookies.get(sessionCookieName)?.value
-    : undefined;
+  // Check Better Auth session via the session cookie.
+  // We check both the standard cookie name and the secure-prefixed name (used in HTTPS/production).
+  // This avoids issues in reverse proxy / Cloudflare environments where the proxy communicates with
+  // Next.js via HTTP internally (causing getSessionCookie to incorrectly expect the non-secure cookie name).
+  const sessionCookie =
+    request.cookies.get("better-auth.session_token")?.value ||
+    request.cookies.get("__Secure-better-auth.session_token")?.value;
 
   if (!sessionCookie) {
     // Not authenticated — redirect to login
