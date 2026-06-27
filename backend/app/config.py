@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT_WINDOW: int = 60
     RATE_LIMIT_2FA_MAX: int = 5
     RATE_LIMIT_2FA_WINDOW: int = 300  # 5 min
+    RATE_LIMIT_PHOTO_MAX: int = 300
+    RATE_LIMIT_PHOTO_WINDOW: int = 60
+    RATE_LIMIT_WS_MAX: int = 150
+    RATE_LIMIT_WS_WINDOW: int = 60
     RATE_LIMIT_FAILS_OPEN: bool = True
 
     # Telethon

@@ -368,8 +368,8 @@ async def upload_profile_photo(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    ip = request.client.host
-    if not await rate_limiter.check(f"photo:ip:{ip}"):
+    ip = request.client.host if request.client else "unknown"
+    if not await rate_limiter.check(f"photo_upload:ip:{ip}", max_requests=10, window_seconds=60):
         raise HTTPException(status_code=429, detail="Too many photo requests. Try later.")
     account = await account_service.get_account(db, account_id, str(user.id))
     if account is None:
@@ -404,13 +404,19 @@ async def get_profile_photo(
     """Get the account's profile photo.
 
     Public endpoint — Telegram profile photos are public data.
-    Protected by per-IP rate limiting (30 req/min) and browser
+    Protected by per-IP rate limiting and browser
     caching (Cache-Control: 1 hour, ETag based on photo_version)
     to prevent abuse.
     """
     # Per-IP rate limiting
+    from app.config import get_settings
+    s = get_settings()
     ip = request.client.host if request.client else "unknown"
-    if not await rate_limiter.check(f"photo:ip:{ip}"):
+    if not await rate_limiter.check(
+        f"photo_get:ip:{ip}",
+        max_requests=s.RATE_LIMIT_PHOTO_MAX,
+        window_seconds=s.RATE_LIMIT_PHOTO_WINDOW
+    ):
         raise HTTPException(status_code=429, detail="Too many requests")
 
     from app.models.telegram_account import TelegramAccount

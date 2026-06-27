@@ -1,6 +1,22 @@
 // Auto-detect secure WS protocol — wss:// when running over HTTPS, ws:// otherwise
 const PROTOCOL = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
-const DEFAULT_WS = `${PROTOCOL}//localhost:8000`;
+
+function getDefaultWsAddress(): string {
+  if (typeof window === "undefined") return "ws://localhost:8000";
+  
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const hostname = window.location.hostname;
+  
+  // If running locally, connect directly to the FastAPI dev server on port 8000
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.")) {
+    return `${protocol}//${hostname}:8000`;
+  }
+  
+  // In production, route WebSocket connections through the reverse proxy on the same host/port
+  return `${protocol}//${window.location.host}`;
+}
+
+const DEFAULT_WS = getDefaultWsAddress();
 const BASE_WS = process.env.NEXT_PUBLIC_WS_URL || DEFAULT_WS;
 
 // Session token is written here by the auth store — we can't read httpOnly cookies from JS.

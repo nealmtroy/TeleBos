@@ -57,11 +57,13 @@ class RedisRateLimiter:
         from app.utils.redis import redis_client
         return redis_client
 
-    async def check(self, key: str) -> bool:
+    async def check(self, key: str, max_requests: int = None, window_seconds: int = None) -> bool:
         """Return True if the request is allowed, False if rate-limited."""
         r = await self._redis()
         now = time.time()
-        window_start = now - self.window_seconds
+        max_req = max_requests if max_requests is not None else self.max_requests
+        win_sec = window_seconds if window_seconds is not None else self.window_seconds
+        window_start = now - win_sec
         redis_key = f"ratelimit:{key}"
 
         try:
@@ -69,13 +71,13 @@ class RedisRateLimiter:
             await r.zremrangebyscore(redis_key, "-inf", window_start)
             # Count remaining entries
             count = await r.zcard(redis_key)
-            if count >= self.max_requests:
+            if count >= max_req:
                 return False
             # Add current request
             unique_id = f"{now}:{id(now)}"
             await r.zadd(redis_key, {unique_id: now})
             # Set TTL so the key auto-expires (extend on each access)
-            await r.expire(redis_key, self.window_seconds)
+            await r.expire(redis_key, win_sec)
             return True
         except Exception as exc:
             logger.error("Rate limiter Redis error for key %s: %s", key, exc)
@@ -85,22 +87,24 @@ class RedisRateLimiter:
             # Fail closed — reject the request when Redis is down
             return False
 
-    async def wait_time(self, key: str) -> float:
+    async def wait_time(self, key: str, max_requests: int = None, window_seconds: int = None) -> float:
         """Return seconds until the next request is allowed."""
         r = await self._redis()
         now = time.time()
-        window_start = now - self.window_seconds
+        max_req = max_requests if max_requests is not None else self.max_requests
+        win_sec = window_seconds if window_seconds is not None else self.window_seconds
+        window_start = now - win_sec
         redis_key = f"ratelimit:{key}"
 
         try:
             await r.zremrangebyscore(redis_key, "-inf", window_start)
             count = await r.zcard(redis_key)
-            if count < self.max_requests:
+            if count < max_req:
                 return 0.0
             # Get the oldest timestamp still in the window
             oldest = await r.zrange(redis_key, 0, 0, withscores=True)
             if oldest:
-                return max(0.0, self.window_seconds - (now - oldest[0][1]))
+                return max(0.0, win_sec - (now - oldest[0][1]))
             return 0.0
         except Exception as exc:
             logger.error("Rate limiter wait_time error for key %s: %s", key, exc)

@@ -76,7 +76,13 @@ async def _ws_rate_limit(websocket: WebSocket, key: str) -> bool:
     The WebSocket must already be accepted before calling this.
     Returns True if allowed, False if rate-limited (websocket already closed).
     """
-    if not await rate_limiter.check(f"ws:{key}"):
+    from app.config import get_settings
+    s = get_settings()
+    if not await rate_limiter.check(
+        f"ws:{key}",
+        max_requests=s.RATE_LIMIT_WS_MAX,
+        window_seconds=s.RATE_LIMIT_WS_WINDOW
+    ):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Too many connection attempts. Try later.")
         return False
     return True
@@ -158,7 +164,13 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
             return None
 
         # Per-user rate limit
-        if not await rate_limiter.check(f"ws:user:{user.id}"):
+        from app.config import get_settings
+        s = get_settings()
+        if not await rate_limiter.check(
+            f"ws:user:{user.id}",
+            max_requests=s.RATE_LIMIT_WS_MAX,
+            window_seconds=s.RATE_LIMIT_WS_WINDOW
+        ):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Too many connection attempts. Try later.")
             return None
 
