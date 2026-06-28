@@ -15,33 +15,43 @@ interface SpamAppealDialogProps {
 
 const APPEAL_PRESETS = [
   {
+    id: "ai_english",
+    name: "✨ AI Generated - English",
+    text: "Generating unique message using Groq AI..."
+  },
+  {
+    id: "ai_indonesian",
+    name: "✨ AI Generated - Bahasa Indonesia",
+    text: "Membuat pesan unik menggunakan Groq AI..."
+  },
+  {
     id: "en_default",
-    name: "English (Default)",
+    name: "English (Default preset)",
     text: "Hello moderator, my account was restricted by mistake. I have never sent any spam, advertising, or annoying messages to anyone. Please review my account and lift the restriction. Thank you."
   },
   {
     id: "id_default",
-    name: "Bahasa Indonesia",
+    name: "Bahasa Indonesia (preset)",
     text: "Halo moderator, akun saya terkena restricted secara tidak sengaja. Saya tidak pernah mengirim spam, iklan, atau pesan yang mengganggu kepada siapapun. Mohon periksa kembali akun saya dan bebaskan dari pembatasan ini. Terima kasih."
   },
   {
     id: "en_short",
-    name: "Short & Simple (English)",
+    name: "Short & Simple (English preset)",
     text: "Dear Telegram team, I believe my account was restricted by mistake. I always follow the rules and have never engaged in spam behavior. Please kindly review and unrestrict my account. Thank you."
   },
   {
     id: "en_formal",
-    name: "Professional & Formal",
+    name: "Professional & Formal (preset)",
     text: "Dear Telegram Support Team, I am writing to respectfully request a review of my account restriction. I have been a long-time user of Telegram and have always adhered to the Terms of Service. I believe my account was flagged in error as I have never engaged in any spam or abusive activities on the platform. I kindly ask you to lift the restriction so I can continue using Telegram as usual. Thank you for your time and consideration."
   },
   {
     id: "en_deep",
-    name: "Deep Explanation (English)",
+    name: "Deep Explanation (English preset)",
     text: "Hello Telegram Moderator, I sincerely apologize if any of my actions violated Telegram's policies, though I believe it was unintentional. I have thoroughly reviewed the guidelines and fully understand the importance of keeping Telegram safe from spam and abuse. I am confident my account was flagged by mistake because I have always been a responsible user who respects the community rules. I kindly request you to review my case and lift the restriction. I will continue to be a valuable and law-abiding member of the Telegram community. Thank you for your understanding."
   },
   {
     id: "id_short",
-    name: "Simple Bahasa Indonesia",
+    name: "Simple Bahasa Indonesia (preset)",
     text: "Halo Tim Telegram, saya yakin akun saya kena restrict tidak sengaja. Saya selalu patuh aturan dan tidak pernah spam. Mohon diperiksa dan dibebaskan ya. Terima kasih."
   },
   {
@@ -61,7 +71,7 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
   const resumeAppealMutation = useResumeSpamAppeal();
 
   // Dialog flow state
-  const [selectedPreset, setSelectedPreset] = useState("en_default");
+  const [selectedPreset, setSelectedPreset] = useState("ai_english");
   const [reason, setReason] = useState(APPEAL_PRESETS[0].text);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
@@ -72,7 +82,7 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
   // Sync state with open/close
   useEffect(() => {
     if (open) {
-      setSelectedPreset("en_default");
+      setSelectedPreset("ai_english");
       setReason(APPEAL_PRESETS[0].text);
       setErrorMsg(null);
       setCaptchaUrl(null);
@@ -121,8 +131,13 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
       const res = await startAppealMutation.mutateAsync({
         accountId,
         reason,
+        presetId: selectedPreset,
         force,
       });
+
+      if (res.generated_reason) {
+        setReason(res.generated_reason);
+      }
 
       if (res.status === "completed") {
         setStatus("success");
@@ -334,8 +349,9 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
                   setReason(e.target.value);
                   setSelectedPreset("custom");
                 }}
+                disabled={selectedPreset.startsWith("ai_")}
                 rows={5}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-slate-900 transition-all font-sans resize-none"
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-slate-900 transition-all font-sans resize-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
                 placeholder={_("accountDetail.appealCustomReasonPlaceholder")}
               />
             </div>

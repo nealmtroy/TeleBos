@@ -624,7 +624,7 @@ async def start_appeal(
         raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")
 
     try:
-        res = await start_spam_appeal(client, payload.reason, payload.force)
+        res = await start_spam_appeal(client, payload.reason, payload.preset_id, payload.force)
         if res["status"] == "completed":
             text_lower = res["message"].lower()
             clean_keywords = [

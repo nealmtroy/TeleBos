@@ -154,6 +154,7 @@ class AccountHintResponse(BaseModel):
 
 class SpamAppealStartRequest(BaseModel):
     reason: str
+    preset_id: str | None = None
     force: bool = False
 
 
@@ -161,4 +162,5 @@ class SpamAppealResponse(BaseModel):
     status: str  # "completed", "captcha_required", "already_submitted", "failed"
     message: str
     captcha_url: str | None = None
+    generated_reason: str | None = None
 

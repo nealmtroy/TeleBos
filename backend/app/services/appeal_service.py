@@ -237,17 +237,97 @@ def submit_turnstile_token_sync(captcha_url: str, token: str) -> bool:
         return False
 
 
-async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = False) -> dict:
+async def generate_ai_appeal_reason(preset_id: str) -> str:
+    """Generate a unique appeal message using Groq Llama 3.1 8b model, rotating through up to 3 API keys."""
+    settings = get_settings()
+    
+    # Collect configured keys in order
+    api_keys = []
+    for key_attr in ("GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3"):
+        val = getattr(settings, key_attr, "")
+        if val:
+            api_keys.append((key_attr, val))
+            
+    is_indo = preset_id == "ai_indonesian"
+    
+    if not api_keys:
+        logger.warning("No GROQ_API_KEY_1/2/3 configured in environment settings. Falling back to default preset.")
+        if is_indo:
+            return "Halo moderator, akun saya terkena restricted secara tidak sengaja. Saya tidak pernah mengirim spam atau iklan kepada siapapun. Mohon periksa kembali akun saya. Terima kasih."
+        return "Hello moderator, my account was restricted by mistake. I have never sent any spam or advertising to anyone. Please review my account. Thank you."
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    prompt = (
+        "Tulis pesan unik dan terdengar alami kepada moderator bantuan untuk membebaskan pembatasan akun Telegram.\n"
+        "Pesan harus menyatakan bahwa akun dibatasi secara tidak sengaja, dan tidak ada spam, iklan, atau penyalahgunaan yang dikirim.\n"
+        "Buat agar terdengar seperti ditulis oleh orang sungguhan dengan gaya tiket bantuan yang kasual, santun, atau ramah.\n"
+        "Variasikan struktur dan kata-katanya secara acak agar unik.\n"
+        "Jangan sertakan placeholder (seperti [Nama], [Telepon], [Nama Anda]), salam pembuka/penutup formal, atau tanda kutip.\n"
+        "Hanya keluarkan teks pesan saja tanpa tambahan format markdown atau penjelasan lain."
+    ) if is_indo else (
+        "Write a unique, natural-sounding message to a support moderator requesting to unrestrict a Telegram account.\n"
+        "The message must state that the account was restricted by mistake, and that no spam, ads, or abuse were sent.\n"
+        "Make it sound like it was written by a real person in a casual, conversational, or polite support ticket style.\n"
+        "Vary the structure and wording completely.\n"
+        "Do not include any placeholders (like [Name], [Phone], [Your Name]), salutations, or greetings unless they are generic.\n"
+        "Output ONLY the message text. Do not add quotes, markdown formatting, or introductory phrases."
+    )
+
+    import httpx
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant writing a support ticket appeal."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.85,
+        "max_tokens": 150
+    }
+
+    # Try each API key in order
+    for name, api_key in api_keys:
+        logger.info("Attempting AI generation using Groq API key from %s", name)
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(url, json=payload, headers=headers, timeout=15)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data["choices"][0]["message"]["content"].strip()
+                    text = text.strip('"\'')
+                    logger.info("Successfully generated AI appeal reason via Groq using %s (%d chars)", name, len(text))
+                    return text
+                else:
+                    logger.warning("Groq API (%s) returned error status %d: %s", name, resp.status_code, resp.text)
+        except Exception as exc:
+            logger.warning("Failed to call Groq API with %s: %s", name, exc)
+
+    logger.error("All configured Groq API keys failed to generate a reason. Falling back to default preset.")
+    if is_indo:
+        return "Halo moderator, akun saya terkena restricted secara tidak sengaja. Saya tidak pernah mengirim spam atau iklan kepada siapapun. Mohon periksa kembali akun saya dan bebaskan dari pembatasan ini. Terima kasih."
+    return "Hello moderator, my account was restricted by mistake. I have never sent any spam or advertising to anyone. Please review my account and lift the restriction. Thank you."
+
+
+async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str | None = None, force: bool = False) -> dict:
     """
     Start the multi-step appeal flow with @spambot.
     Returns a dict with 'status', 'message', and optionally 'captcha_url'.
     """
+    generated = None
+    if preset_id in ("ai_english", "ai_indonesian"):
+        generated = await generate_ai_appeal_reason(preset_id)
+        reason = generated
+
     if not force:
         already_appealed = await check_appeal_history(client)
         if already_appealed:
             return {
                 "status": "already_submitted",
                 "message": "Banding sudah pernah diajukan sebelumnya.",
+                "generated_reason": generated
             }
 
     async with client.conversation("spambot") as conv:
@@ -260,6 +340,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
             return {
                 "status": "completed",
                 "message": response.text,
+                "generated_reason": generated
             }
 
         # Step 2: Click "This is a mistake" button
@@ -268,6 +349,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
             return {
                 "status": "failed",
                 "message": "Tombol 'kesalahan/mistake' tidak ditemukan pada respon pertama.",
+                "generated_reason": generated
             }
 
         await btn.click()
@@ -286,6 +368,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
             return {
                 "status": "failed",
                 "message": "Tombol 'Ya/Yes' tidak ditemukan.",
+                "generated_reason": generated
             }
 
         await btn_yes.click()
@@ -297,6 +380,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
             return {
                 "status": "failed",
                 "message": "Tombol konfirmasi tidak pernah melakukan spam tidak ditemukan.",
+                "generated_reason": generated
             }
 
         await btn_no.click()
@@ -335,6 +419,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
                                 return {
                                     "status": "completed",
                                     "message": final_resp.text,
+                                    "generated_reason": generated
                                 }
                 except Exception as ex:
                     logger.error("Exception in 2captcha automated solve block: %s", ex)
@@ -343,6 +428,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
                 "status": "captcha_required",
                 "message": "Cloudflare Turnstile Captcha verification required.",
                 "captcha_url": captcha_url,
+                "generated_reason": generated
             }
 
         # Step 6: Click "Done" / "Selesai" (just in case captcha was skipped)
@@ -357,6 +443,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, force: bool = F
         return {
             "status": "completed",
             "message": final_resp.text,
+            "generated_reason": generated
         }
 
 

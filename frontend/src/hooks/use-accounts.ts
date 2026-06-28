@@ -218,6 +218,7 @@ export function useProfileSync(accountId: string | undefined) {
 export interface SpamAppealStartPayload {
   accountId: string;
   reason: string;
+  presetId?: string;
   force?: boolean;
 }
 
@@ -230,14 +231,16 @@ export interface SpamAppealResponse {
   status: "completed" | "captcha_required" | "already_submitted" | "failed";
   message: string;
   captcha_url?: string;
+  generated_reason?: string;
 }
 
 export function useStartSpamAppeal() {
   const queryClient = useQueryClient();
   return useMutation<SpamAppealResponse, Error, SpamAppealStartPayload>({
-    mutationFn: async ({ accountId, reason, force = false }) => {
+    mutationFn: async ({ accountId, reason, presetId, force = false }) => {
       const { data } = await api.post(`/accounts/${accountId}/appeal/start`, {
         reason,
+        preset_id: presetId,
         force,
       });
       return data;

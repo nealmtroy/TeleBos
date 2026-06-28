@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # 2Captcha (automated Turnstile solver)
     TWOCAPTCHA_API_KEY: str = ""
 
+    # Groq AI
+    GROQ_API_KEY_1: str = ""
+    GROQ_API_KEY_2: str = ""
+    GROQ_API_KEY_3: str = ""
+
     # UptimeRobot
     UPTIMEROBOT_API_KEY: str = ""
     UPTIMEROBOT_MONITOR_IDS: str = ""
