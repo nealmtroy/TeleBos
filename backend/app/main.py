@@ -401,7 +401,7 @@ def _run_migrations(connection):
     # "users" table's password_hash is unused but still NOT NULL.
     user_cols_for_migration = [c["name"] for c in inspector.get_columns("users")]
     if "password_hash" in user_cols_for_migration and any(
-        col["name"] == "password_hash" and getattr(col.get("type"), "nullable", True) is False
+        col["name"] == "password_hash" and col.get("nullable", True) is False
         for col in inspector.get_columns("users")
     ):
         try:
