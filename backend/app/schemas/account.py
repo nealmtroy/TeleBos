@@ -150,3 +150,15 @@ class AccountHintResponse(BaseModel):
     phone_exists: bool
     flood_wait_sec: int | None = None
     error: str | None = None
+
+
+class SpamAppealStartRequest(BaseModel):
+    reason: str
+    force: bool = False
+
+
+class SpamAppealResponse(BaseModel):
+    status: str  # "completed", "captcha_required", "already_submitted", "failed"
+    message: str
+    captcha_url: str | None = None
+

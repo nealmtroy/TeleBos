@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SpamAppealDialog } from "@/components/accounts/spam-appeal-dialog";
 
 function ProfilePhoto({ account }: { account: { id: string; first_name: string | null; phone: string; photo_version?: number } }) {
   const [error, setError] = useState(false);
@@ -45,6 +46,7 @@ export default function AccountDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
@@ -231,12 +233,22 @@ export default function AccountDetailPage() {
       </div>
 
       {/* Spam detail alert */}
-      {account.spam_detail && account.spam_status === "limited" && (
+      {account.spam_status === "limited" && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex gap-3 text-red-800">
           <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-600" />
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <h4 className="font-semibold text-sm">{_("accountDetail.spamLimitActive")}</h4>
-            <p className="text-xs mt-1 whitespace-pre-line text-red-700 leading-relaxed font-mono bg-white/50 p-2.5 rounded-lg border border-red-100">{account.spam_detail}</p>
+            {account.spam_detail && (
+              <p className="text-xs mt-1 whitespace-pre-line text-red-700 leading-relaxed font-mono bg-white/50 p-2.5 rounded-lg border border-red-100">{account.spam_detail}</p>
+            )}
+            <div className="pt-2">
+              <button
+                onClick={() => setAppealOpen(true)}
+                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm active:scale-95 inline-flex items-center gap-1.5"
+              >
+                {_("accountDetail.appealBtn")}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -285,6 +297,12 @@ export default function AccountDetailPage() {
         cancelText={_("navbar.cancel")}
         variant="danger"
         loading={deleting}
+      />
+
+      <SpamAppealDialog
+        open={appealOpen}
+        onOpenChange={setAppealOpen}
+        accountId={id}
       />
     </div>
   );

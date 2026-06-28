@@ -213,3 +213,54 @@ export function useProfileSync(accountId: string | undefined) {
     };
   }, [accountId, queryClient]);
 }
+
+
+export interface SpamAppealStartPayload {
+  accountId: string;
+  reason: string;
+  force?: boolean;
+}
+
+export interface SpamAppealResumePayload {
+  accountId: string;
+  reason: string;
+}
+
+export interface SpamAppealResponse {
+  status: "completed" | "captcha_required" | "already_submitted" | "failed";
+  message: string;
+  captcha_url?: string;
+}
+
+export function useStartSpamAppeal() {
+  const queryClient = useQueryClient();
+  return useMutation<SpamAppealResponse, Error, SpamAppealStartPayload>({
+    mutationFn: async ({ accountId, reason, force = false }) => {
+      const { data } = await api.post(`/accounts/${accountId}/appeal/start`, {
+        reason,
+        force,
+      });
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["accounts", variables.accountId] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+}
+
+export function useResumeSpamAppeal() {
+  const queryClient = useQueryClient();
+  return useMutation<SpamAppealResponse, Error, SpamAppealResumePayload>({
+    mutationFn: async ({ accountId, reason }) => {
+      const { data } = await api.post(`/accounts/${accountId}/appeal/resume`, {
+        reason,
+      });
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["accounts", variables.accountId] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+}

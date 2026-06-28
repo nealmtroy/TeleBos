@@ -23,6 +23,8 @@ from app.schemas.account import (
     BulkAutoReplyUpdateRequest,
     AccountHintRequest,
     AccountHintResponse,
+    SpamAppealStartRequest,
+    SpamAppealResponse,
 )
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service
@@ -598,3 +600,90 @@ async def delete_account(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     await account_service.remove_account(db, account)
+
+
+@router.post("/{account_id}/appeal/start", response_model=SpamAppealResponse)
+async def start_appeal(
+    account_id: str,
+    payload: SpamAppealStartRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    from app.utils.encryption import decrypt
+    from app.services.telegram_client import client_pool
+    from app.services.appeal_service import start_spam_appeal
+    from datetime import datetime, timezone
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")
+
+    try:
+        res = await start_spam_appeal(client, payload.reason, payload.force)
+        if res["status"] == "completed":
+            text_lower = res["message"].lower()
+            clean_keywords = [
+                "good news", "no limits", "free as a bird",
+                "kabar baik", "tidak ada batasan", "bebas terbang"
+            ]
+            is_limited = True
+            for kw in clean_keywords:
+                if kw in text_lower:
+                    is_limited = False
+                    break
+            account.spam_status = "limited" if is_limited else "normal"
+            account.spam_detail = res["message"]
+            account.spam_last_checked_at = datetime.now(timezone.utc)
+            await db.commit()
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/{account_id}/appeal/resume", response_model=SpamAppealResponse)
+async def resume_appeal(
+    account_id: str,
+    payload: SpamAppealStartRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    from app.utils.encryption import decrypt
+    from app.services.telegram_client import client_pool
+    from app.services.appeal_service import resume_spam_appeal
+    from datetime import datetime, timezone
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")
+
+    try:
+        res = await resume_spam_appeal(client, payload.reason)
+        if res["status"] == "completed":
+            text_lower = res["message"].lower()
+            clean_keywords = [
+                "good news", "no limits", "free as a bird",
+                "kabar baik", "tidak ada batasan", "bebas terbang"
+            ]
+            is_limited = True
+            for kw in clean_keywords:
+                if kw in text_lower:
+                    is_limited = False
+                    break
+            account.spam_status = "limited" if is_limited else "normal"
+            account.spam_detail = res["message"]
+            account.spam_last_checked_at = datetime.now(timezone.utc)
+            await db.commit()
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+

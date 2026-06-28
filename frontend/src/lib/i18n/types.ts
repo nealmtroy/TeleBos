@@ -258,6 +258,26 @@ export interface Dict {
     contactsLinkDesc: string;
     groupsChannels: string;
     groupsChannelsDesc: string;
+    appealBtn: string;
+    appealTitle: string;
+    appealReasonLabel: string;
+    appealCustomReasonLabel: string;
+    appealCustomReasonPlaceholder: string;
+    appealSubmit: string;
+    appealSubmitting: string;
+    appealForceWarningTitle: string;
+    appealForceWarningDesc: string;
+    appealForceSubmit: string;
+    appealCancel: string;
+    appealSuccessTitle: string;
+    appealSuccessDesc: string;
+    appealCaptchaTitle: string;
+    appealCaptchaDesc: string;
+    appealCaptchaOpenBtn: string;
+    appealCaptchaDoneBtn: string;
+    appealCaptchaResuming: string;
+    appealFailedTitle: string;
+    appealFailedDesc: string;
   };
 
   // Broadcast Dashboard

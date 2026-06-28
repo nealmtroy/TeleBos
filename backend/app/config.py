@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     TELEGRAM_API_HASH: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
 
+    # 2Captcha (automated Turnstile solver)
+    TWOCAPTCHA_API_KEY: str = ""
+
     # UptimeRobot
     UPTIMEROBOT_API_KEY: str = ""
     UPTIMEROBOT_MONITOR_IDS: str = ""
