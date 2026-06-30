@@ -27,17 +27,33 @@ export const metadata: Metadata = {
   creator: "TeleBos",
   publisher: "TeleBos",
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: [
+      { url: "/website_icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    other: [
+      {
+        rel: "alternate icon",
+        url: "/favicon.ico",
+        type: "image/x-icon",
+      },
+    ],
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     siteName: "TeleBos",
     title: "TeleBos — Multi-Account Telegram Manager",
-    description:
-      "Manage unlimited Telegram accounts, broadcast messages, auto-reply, and monitor chats in real time.",
+    description: "Fast. Secure. Powerful.",
     url: siteUrl,
     images: [
       {
-        url: "/og-image.png",
+        url: "/t_logo_2x.png",
         width: 1200,
         height: 630,
         alt: "TeleBos — Multi-Account Telegram Manager",
@@ -47,9 +63,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "TeleBos — Multi-Account Telegram Manager",
-    description:
-      "Manage unlimited Telegram accounts, broadcast messages, auto-reply, and monitor chats in real time.",
-    images: ["/og-image.png"],
+    description: "Fast. Secure. Powerful.",
+    images: ["/t_logo_2x.png"],
     creator: "@telebos",
   },
   robots: {
