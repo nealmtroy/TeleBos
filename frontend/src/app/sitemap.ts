@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+export const dynamic = "force-dynamic";
+
 const siteUrl = process.env.NEXT_PUBLIC_URL || "https://telebos.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
