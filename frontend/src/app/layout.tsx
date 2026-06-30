@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://telebos.app";
+const siteUrl = process.env.NEXT_PUBLIC_URL || "https://telebos.app";
 
 export const metadata: Metadata = {
   title: {
