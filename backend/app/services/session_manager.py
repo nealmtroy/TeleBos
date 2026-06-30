@@ -19,9 +19,11 @@ _sync_semaphore = asyncio.Semaphore(3)  # Limit concurrent full syncs on startup
 
 
 async def _background_chat_sync(account_id: str) -> None:
-    """Run chat synchronization in the background using a fresh DB session."""
+    """Run profile, chat, and folder synchronization in the background using a fresh DB session."""
     from app.database import async_session_factory
-    from app.services.chat_service import sync_chats_to_db
+    from app.services.chat_service import sync_chats_to_db, sync_folders_from_telegram
+    from app.services.profile_sync_service import sync_account_profile
+    from app.api.ws import manager
 
     async with _sync_semaphore:
         try:
@@ -31,9 +33,42 @@ async def _background_chat_sync(account_id: str) -> None:
                 )
                 account = result.scalar_one_or_none()
                 if account:
+                    # 1. Sync profile info (e.g. name, username, bio, photo)
+                    try:
+                        await sync_account_profile(db, account)
+                    except Exception as profile_exc:
+                        logger.error("Error in background profile sync for account %s: %s", account_id, profile_exc)
+
+                    # 2. Sync chats (e.g. users/dialogs)
                     await sync_chats_to_db(account, db)
+
+                    # 3. Sync folders (e.g. folder categories)
+                    try:
+                        await sync_folders_from_telegram(account, db)
+                    except Exception as folders_exc:
+                        logger.warning("Error in background folders sync for account %s: %s", account_id, folders_exc)
+
+                    # Explicitly commit all synced data
+                    await db.commit()
+
+                    # Broadcast WS notifications to invalidate frontend query caches
+                    try:
+                        await manager.broadcast(
+                            f"chats:{account_id}",
+                            {"type": "chats_synced", "account_id": account_id}
+                        )
+                        await manager.broadcast(
+                            f"chats:{account_id}",
+                            {"type": "folders_synced", "account_id": account_id}
+                        )
+                        await manager.broadcast(
+                            f"chats:{account_id}",
+                            {"type": "profile_sync", "account_id": account_id}
+                        )
+                    except Exception as ws_exc:
+                        logger.warning("WS sync status push failed for %s: %s", account_id, ws_exc)
         except Exception as exc:
-            logger.error("Error in background chat sync for account %s: %s", account_id, exc)
+            logger.error("Error in background chat/profile sync for account %s: %s", account_id, exc)
 
 
 class SessionManager:

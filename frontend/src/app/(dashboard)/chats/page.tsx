@@ -243,6 +243,7 @@ function ChatsContent() {
     (data: any) => {
       if (!data || !data.type) return;
       queryClient.invalidateQueries({ queryKey: ["chats", selectedAccount] });
+      queryClient.invalidateQueries({ queryKey: ["folders", selectedAccount] });
       if (selectedChatId) {
         queryClient.invalidateQueries({
           queryKey: ["messages", selectedAccount, selectedChatId],
