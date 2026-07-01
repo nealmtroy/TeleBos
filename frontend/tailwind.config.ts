@@ -14,6 +14,9 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        "fd-secondary": "hsl(var(--secondary))",
+        "fd-background": "hsl(var(--background))",
+        "fd-muted-foreground": "hsl(var(--muted-foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

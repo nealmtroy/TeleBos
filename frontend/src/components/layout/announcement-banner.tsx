@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, AlertTriangle, CheckCircle, HelpCircle, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle, HelpCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import api from "@/lib/api";
+import { Banner } from "@/components/ui/banner";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,6 @@ interface SystemStatus {
 
 export default function AnnouncementBanner() {
   const _ = useT();
-  const [dismissed, setDismissed] = useState(false);
   const [persistedOverall, setPersistedOverall] = useState<StatusOverall | null>(null);
 
   // Poll system status from the globally-cached backend endpoint
@@ -44,8 +44,7 @@ export default function AnnouncementBanner() {
     retry: 2,
   });
 
-  // Reset dismissed state when status changes from down/degraded → up
-  // and when status changes from up → down/degraded
+  // Reset overall state change tracking
   const overall = data?.overall ?? null;
   useEffect(() => {
     if (!overall) return;
@@ -57,115 +56,119 @@ export default function AnnouncementBanner() {
 
     if (overall !== persistedOverall) {
       setPersistedOverall(overall);
-      // Only auto-reveal when things get worse (up → down/degraded)
-      const wasFine = persistedOverall === "up" || persistedOverall === "unknown";
-      const nowNotFine = overall === "down" || overall === "degraded";
-      if (wasFine && nowNotFine) {
-        setDismissed(false);
-      }
     }
   }, [overall, persistedOverall]);
 
   // Don't hide when loading/error — preserve the last known state
   // Only hide when we definitively know things are fine
   const knownUp = overall === "up";
-  const isBad = overall === "down" || overall === "degraded";
   const isUnknown = overall === "unknown";
 
   // Hide when things are perfectly fine or unknown with no data
   if (knownUp && !isFetching) return null;
   if (isUnknown && !isFetching && !data?.monitors?.length) return null;
-  if (dismissed) return null;
 
   // Loading state when we have no previous data
   if (isFetching && !data) {
     return (
-      <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-sm text-blue-700 flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-        <span className="flex-1">{_("announcement.loading")}</span>
-      </div>
+      <Banner
+        variant="normal"
+        changeLayout={false}
+        className="bg-blue-50/90 border-b border-blue-200 text-blue-800"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin shrink-0 text-blue-600" />
+          <span>{_("announcement.loading")}</span>
+        </div>
+      </Banner>
     );
   }
 
   // Error / unknown state
   if (isError || isUnknown) {
     return (
-      <DismissibleBanner
-        variant="muted"
-        icon={<HelpCircle className="h-4 w-4 shrink-0" />}
-        message={_("announcement.unknown")}
-        onDismiss={() => setDismissed(true)}
-      />
+      <Banner
+        id="telegram-status-unknown"
+        variant="normal"
+        changeLayout={false}
+        className="bg-gray-50/90 border-b border-gray-200 text-gray-700"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <HelpCircle className="h-4 w-4 shrink-0 text-gray-500" />
+          <span>{_("announcement.unknown")}</span>
+        </div>
+      </Banner>
     );
   }
 
-  // Down state
+  // Down state - Rainbow warning
   if (overall === "down") {
     return (
-      <DismissibleBanner
-        variant="error"
-        icon={<AlertTriangle className="h-4 w-4 shrink-0" />}
-        message={_("announcement.telegramDown")}
-        onDismiss={() => setDismissed(true)}
-      />
+      <Banner
+        id="telegram-status-down"
+        variant="rainbow"
+        changeLayout={false}
+        className="border-b border-red-200 text-red-900 font-semibold"
+        rainbowColors={[
+          "rgba(255, 0, 0, 0.15)",
+          "rgba(239, 68, 68, 0.25)",
+          "transparent",
+          "rgba(220, 38, 38, 0.2)",
+          "transparent",
+          "rgba(239, 68, 68, 0.25)",
+          "transparent",
+        ]}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 animate-pulse" />
+          <span>{_("announcement.telegramDown")}</span>
+        </div>
+      </Banner>
     );
   }
 
-  // Degraded state
+  // Degraded state - Rainbow degraded warning
   if (overall === "degraded") {
     return (
-      <DismissibleBanner
-        variant="warning"
-        icon={<AlertTriangle className="h-4 w-4 shrink-0" />}
-        message={_("announcement.telegramDegraded")}
-        onDismiss={() => setDismissed(true)}
-      />
+      <Banner
+        id="telegram-status-degraded"
+        variant="rainbow"
+        changeLayout={false}
+        className="border-b border-amber-200 text-amber-900 font-semibold"
+        rainbowColors={[
+          "rgba(245, 158, 11, 0.15)",
+          "rgba(251, 191, 36, 0.25)",
+          "transparent",
+          "rgba(217, 119, 6, 0.2)",
+          "transparent",
+          "rgba(251, 191, 36, 0.25)",
+          "transparent",
+        ]}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+          <span>{_("announcement.telegramDegraded")}</span>
+        </div>
+      </Banner>
     );
   }
 
   // Up but still fetching (show brief "all good" then transition out)
   if (overall === "up") {
     return (
-      <DismissibleBanner
-        variant="success"
-        icon={<CheckCircle className="h-4 w-4 shrink-0" />}
-        message={_("announcement.telegramUp")}
-        onDismiss={() => setDismissed(true)}
-      />
+      <Banner
+        id="telegram-status-up"
+        variant="normal"
+        changeLayout={false}
+        className="bg-green-50/90 border-b border-green-200 text-green-800"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <CheckCircle className="h-4 w-4 shrink-0 text-green-600" />
+          <span>{_("announcement.telegramUp")}</span>
+        </div>
+      </Banner>
     );
   }
 
   return null;
-}
-
-// ── Variant sub-component ─────────────────────────────────────────────────────
-
-interface DismissibleBannerProps {
-  variant: "error" | "warning" | "success" | "muted";
-  icon: React.ReactNode;
-  message: string;
-  onDismiss: () => void;
-}
-
-function DismissibleBanner({ variant, icon, message, onDismiss }: DismissibleBannerProps) {
-  const variants = {
-    error: "bg-red-50 border-red-200 text-red-800",
-    warning: "bg-amber-50 border-amber-200 text-amber-800",
-    success: "bg-green-50 border-green-200 text-green-800",
-    muted: "bg-gray-50 border-gray-200 text-gray-600",
-  };
-
-  return (
-    <div className={cn("border-b px-4 py-2 text-sm flex items-center gap-2", variants[variant])}>
-      {icon}
-      <span className="flex-1">{message}</span>
-      <button
-        onClick={onDismiss}
-        className="shrink-0 rounded p-0.5 transition-colors hover:bg-black/5 active:bg-black/10"
-        aria-label="Dismiss"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
-  );
 }
