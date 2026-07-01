@@ -123,3 +123,25 @@ export function useCancelSellAccount() {
   });
 }
 
+export interface AccountAuditLog {
+  id: string;
+  user_id: string;
+  account_id: string | null;
+  action: "buy" | "sell" | "list_for_sale" | "cancel_sale";
+  price: number;
+  phone: string | null;
+  telegram_id: number | null;
+  created_at: string;
+}
+
+export function useMarketplaceHistory() {
+  return useQuery<AccountAuditLog[]>({
+    queryKey: ["marketplace", "history"],
+    queryFn: async () => {
+      const { data } = await api.get("/marketplace/history");
+      return data || [];
+    },
+  });
+}
+
+

@@ -42,3 +42,17 @@ class MarketplaceBuyResponse(BaseModel):
 class MarketplacePricingResponse(BaseModel):
     buy_price: int = Field(..., description="Default purchase price per account in IDR")
     sell_price: int = Field(..., description="Default sale credit received per account in IDR")
+
+
+class AccountAuditLogResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    account_id: UUID | None = None
+    action: str
+    price: int
+    phone: str | None = None
+    telegram_id: int | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+

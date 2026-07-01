@@ -18,6 +18,10 @@ const en: Dict = {
     help: "Help",
     orders: "Orders",
     marketplace: "Marketplace",
+    telegramMembers: "Telegram Members",
+    telegramReactions: "Telegram Reactions",
+    telegramAutoReactions: "Telegram Auto Reactions",
+    telegramPostViews: "Telegram Post Views",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────
@@ -1030,6 +1034,8 @@ const en: Dict = {
     cancelSellSuccess: "Account sale cancelled successfully!",
     forSaleAlertTitle: "Account listed for sale",
     forSaleAlertDesc: "This account is currently listed on the marketplace. You cannot manage or use this account unless you cancel the sale.",
+    accountHistory: "Account Transactions",
+    smmHistory: "SMM Orders",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

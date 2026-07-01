@@ -58,6 +58,7 @@ celerybeat-schedule
 .claude/skills/
 .claude/settings.local.json
 .impeccable/
+skills-lock.json
 
 # Local tsconfig build info
 tsconfig.tsbuildinfo

@@ -36,6 +36,8 @@ import {
   Wallet,
   Star,
   User,
+  Eye,
+  Sparkles,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
@@ -51,6 +53,10 @@ const broadcastSubItems = [
 ];
 
 const ordersSubItems = [
+  { href: "/orders/members", labelKey: "nav.telegramMembers", icon: Users },
+  { href: "/orders/reactions", labelKey: "nav.telegramReactions", icon: Sparkles },
+  { href: "/orders/auto-reactions", labelKey: "nav.telegramAutoReactions", icon: Clock },
+  { href: "/orders/post-views", labelKey: "nav.telegramPostViews", icon: Eye },
   { href: "/orders/buy-accounts", labelKey: "orders.buyAccounts", icon: ShoppingCart },
   { href: "/orders/sell-accounts", labelKey: "orders.sellAccounts", icon: DollarSign },
   { href: "/orders", labelKey: "orders.history", icon: ClipboardList },

@@ -17,6 +17,7 @@ from app.schemas.marketplace import (
     MarketplaceAccountSummary,
     MarketplaceBuyResponse,
     MarketplacePricingResponse,
+    AccountAuditLogResponse,
 )
 from app.services import marketplace_service
 
@@ -141,4 +142,23 @@ async def cancel_sell_account(
         await db.rollback()
         logger.exception("Failed to cancel account sale %s: %s", account_id, exc)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/history", response_model=list[AccountAuditLogResponse])
+async def get_marketplace_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve history of listed, bought, sold, and cancelled Telegram accounts for the current user."""
+    from sqlalchemy import select, desc
+    from app.models.account_audit_log import AccountAuditLog
+
+    result = await db.execute(
+        select(AccountAuditLog)
+        .where(AccountAuditLog.user_id == current_user.id)
+        .order_by(desc(AccountAuditLog.created_at))
+    )
+    logs = list(result.scalars().all())
+    return logs
+
 

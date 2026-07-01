@@ -18,6 +18,10 @@ const id: Dict = {
     help: "Bantuan",
     orders: "Pesanan",
     marketplace: "Marketplace",
+    telegramMembers: "Telegram Members",
+    telegramReactions: "Telegram Reactions",
+    telegramAutoReactions: "Telegram Auto Reactions",
+    telegramPostViews: "Telegram Post Views",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────
@@ -1030,6 +1034,8 @@ const id: Dict = {
     cancelSellSuccess: "Penjualan akun berhasil dibatalkan!",
     forSaleAlertTitle: "Akun dalam antrean penjualan",
     forSaleAlertDesc: "Akun ini saat ini terdaftar di marketplace. Anda tidak dapat mengelola atau menggunakan akun ini kecuali Anda membatalkan penjualan.",
+    accountHistory: "Transaksi Akun",
+    smmHistory: "Pesanan SMM",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

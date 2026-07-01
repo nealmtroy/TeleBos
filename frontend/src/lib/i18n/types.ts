@@ -18,6 +18,10 @@ export interface Dict {
     help: string;
     orders: string;
     marketplace: string;
+    telegramMembers: string;
+    telegramReactions: string;
+    telegramAutoReactions: string;
+    telegramPostViews: string;
   };
 
   // Account Folders
@@ -1029,6 +1033,8 @@ export interface Dict {
     cancelSellSuccess: string;
     forSaleAlertTitle: string;
     forSaleAlertDesc: string;
+    accountHistory: string;
+    smmHistory: string;
   };
 
   // Admin SMM
