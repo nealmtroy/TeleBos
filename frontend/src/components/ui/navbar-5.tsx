@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MenuIcon } from "lucide-react";
+import { MenuIcon, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -83,10 +84,7 @@ export const Navbar5 = () => {
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-600 to-primary-900 flex items-center justify-center text-white font-bold text-sm">
-              TB
-            </div>
+          <Link href="/" className="flex items-center">
             <span className="text-xl font-bold tracking-tight text-gray-900">
               TeleBos
             </span>
@@ -156,33 +154,39 @@ export const Navbar5 = () => {
 
           <Sheet>
             <SheetTrigger asChild className="lg:hidden">
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="h-8 w-8">
                 <MenuIcon className="h-4 w-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="top" className="max-h-screen overflow-auto">
-              <SheetHeader>
-                <SheetTitle>
-                  <Link href="/" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-600 to-primary-900 flex items-center justify-center text-white font-bold text-sm">
-                      TB
-                    </div>
+            <SheetContent side="right" className="w-full sm:max-w-full h-full border-none px-4 pt-2 pb-4 max-h-screen overflow-auto [&>button]:hidden">
+              <SheetHeader className="text-left flex flex-row items-center justify-between pb-0">
+                <SheetTitle asChild>
+                  <Link href="/" className="flex items-center">
                     <span className="text-xl font-bold tracking-tight text-gray-900">
                       TeleBos
                     </span>
                   </Link>
                 </SheetTitle>
+                <SheetClose asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </SheetClose>
               </SheetHeader>
-              <div className="flex flex-col p-4">
-                <Accordion type="single" collapsible className="mt-4 mb-2">
+              <div className="flex flex-col py-2">
+                <Accordion type="single" collapsible className="w-full mt-4">
                   <AccordionItem value="solutions" className="border-none">
-                    <AccordionTrigger className="text-base hover:no-underline">
+                    <AccordionTrigger className="text-base font-medium text-gray-700 hover:text-primary py-3 hover:no-underline transition-colors">
                       {_("landing.navFeatures")}
                     </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid md:grid-cols-2">
+                    <AccordionContent className="pb-2">
+                      <div className="grid gap-1 pl-4 pt-1">
                         {features.map((feature, index) => (
-                          <Link href={feature.href} key={index} className="block rounded-md p-3 transition-colors hover:bg-muted/70">
+                          <Link
+                            href={feature.href}
+                            key={index}
+                            className="block rounded-lg p-2.5 transition-colors hover:bg-muted/70"
+                          >
                             <div>
                               <p className="mb-1 font-semibold text-foreground text-sm">
                                 {feature.title}
@@ -197,28 +201,49 @@ export const Navbar5 = () => {
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <div className="flex flex-col gap-6">
-                  <Link href="#how-it-works" className="font-medium text-sm text-gray-700 hover:text-gray-900">
+                <div className="flex flex-col">
+                  <Link
+                    href="#how-it-works"
+                    className="text-base font-medium text-gray-700 hover:text-primary py-3 transition-colors"
+                  >
                     {_("landing.howItWorks")}
                   </Link>
-                  <Link href="/help" className="font-medium text-sm text-gray-700 hover:text-gray-900">
+                  <Link
+                    href="/help"
+                    className="text-base font-medium text-gray-700 hover:text-primary py-3 transition-colors"
+                  >
                     {_("nav.help")}
                   </Link>
-                  <Link href="/privacy" className="font-medium text-sm text-gray-700 hover:text-gray-900">
+                  <Link
+                    href="/privacy"
+                    className="text-base font-medium text-gray-700 hover:text-primary py-3 transition-colors"
+                  >
                     {_("landing.navPrivacy")}
                   </Link>
-                  <Link href="/tos" className="font-medium text-sm text-gray-700 hover:text-gray-900">
+                  <Link
+                    href="/tos"
+                    className="text-base font-medium text-gray-700 hover:text-primary py-3 transition-colors"
+                  >
                     {_("landing.navTos")}
                   </Link>
                 </div>
-                <div className="mt-8 flex items-center justify-between gap-3 border-t pt-6">
-                  <LanguageSwitcher />
-                  <div className="flex items-center gap-2">
-                    <Link href="/login">
-                      <Button variant="outline" size="sm">{_("landing.signIn")}</Button>
+                <div className="mt-6 flex flex-col gap-4 border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-500">
+                      {_("common.language")}
+                    </span>
+                    <LanguageSwitcher />
+                  </div>
+                  <div className="flex flex-col gap-2 mt-2">
+                    <Link href="/login" className="w-full">
+                      <Button variant="outline" className="w-full">
+                        {_("landing.signIn")}
+                      </Button>
                     </Link>
-                    <Link href="/register">
-                      <Button size="sm">{_("landing.getStarted")}</Button>
+                    <Link href="/register" className="w-full">
+                      <Button className="w-full">
+                        {_("landing.getStarted")}
+                      </Button>
                     </Link>
                   </div>
                 </div>

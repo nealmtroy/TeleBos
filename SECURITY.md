@@ -10,11 +10,12 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 |-------|----------|---------------------|
 | Telegram session strings | `telegram_accounts.session_string` (encrypted) | Full Telegram account access — messages, contacts, groups |
 | 2FA passwords | `telegram_accounts.twofa_password` (encrypted) | Telegram account takeover, 2FA lockout |
-| JWT secret key | `JWT_SECRET_KEY` env var | Forged auth tokens, full web app access |
+| Better Auth Session Secret | `BETTER_AUTH_SECRET` env var (frontend) | Forging session tokens, web app takeover |
+| App Secret Key | `APP_SECRET_KEY` env var (backend) | Forging HMAC signatures / photo URLs |
 | Encryption key | `ENCRYPTION_KEY` env var | Decrypt all stored session strings and 2FA passwords |
-| User passwords | `users.password_hash` (bcrypt) | Web account takeover |
-| Access tokens | Frontend localStorage (memory + storage) | Session hijacking (short-lived: 60 min) |
-| Refresh tokens | Frontend localStorage | Persistent session hijacking (7-day window) |
+| Groq API keys | `GROQ_API_KEY_1/2/3` env vars | Unauthorised usage, quota consumption |
+| User passwords | PostgreSQL `account` table (hashed) | Web account takeover |
+| Session tokens | Cookie / Header `x-better-auth-token` | Session hijacking (expires based on Better Auth configuration) |
 
 ### Trust Boundaries
 
@@ -25,16 +26,16 @@ Security documentation for TeleBos — a multi-account Telegram manager.
                               └── [Redis] (Celery broker, ephemeral only)
 ```
 
-- **Between browser and backend**: The primary trust boundary. JWT auth enforced on all endpoints except `/auth/register` and `/auth/login`.
+- **Between browser and backend**: The primary trust boundary. Better Auth session token validation (via `x-better-auth-token` header or cookies) is enforced on all protected endpoints.
 - **Between backend and Telegram**: Telethon MTProto is encrypted. Session strings are the credential — treat them as such.
 - **Between services**: PostgreSQL and Redis run on internal Docker network, no TLS between services.
 
 ## Current Security Controls
 
 ### Authentication & Authorization
-- **JWT-based auth**: Access tokens (60 min) + refresh tokens (7 days) with HS256 signing
-- **`get_current_user` dependency**: Decodes JWT, validates `sub` matches an active user — applied to all protected routes
-- **Password hashing**: bcrypt via passlib (`CryptContext(schemes=["bcrypt"])`)
+- **Better Auth Integration**: Registration, login, logout, and token refresh are handled via Better Auth in the Next.js frontend.
+- **`get_current_user` dependency**: Validates the Better Auth session token against the database's `session` table directly in FastAPI backend, verifying expiration and linking to an active user.
+- **Password hashing**: Password hashes are managed securely by Better Auth in the PostgreSQL database.
 - **Account ownership check**: Every account/device/chat endpoint verifies `user_id` matches the authenticated user before returning data
 - **Role system**: `User.role` field (default `"operator"`) — currently stored but not enforced in route guards
 
@@ -56,28 +57,26 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 - **Per-group logging**: Every delivery attempt logged with status, error type, duration, and text preview
 
 ### WebSocket Security
-- **No auth on WS endpoints**: `/ws/broadcast/{job_id}` and `/ws/chats/{account_id}` currently have no JWT verification
-- **Mitigation**: Channel IDs are UUIDs (unguessable); broadcast channels require knowing the `job_id`
+- **WebSocket Authentication**: Connections to `/ws/broadcast/{job_id}`, `/ws/chats/{account_id}`, and `/ws/invite/{job_id}` must authenticate by sending a Better Auth session token as the first WS message or via cookies (`better-auth.session_token`).
+- **Ownership Verification**: After authenticating, the backend enforces an ownership check verifying that the authenticated user owns the respective job or account.
+- **Connection Limits**: Limits the number of concurrent connections per channel to prevent socket exhaustion.
+- **Mitigation**: Channel IDs are UUIDs (unguessable).
 
 ## Security Gaps & Recommendations
 
 ### High Priority
 
-1. **WebSocket authentication** — Add JWT token verification as a query parameter or during the WebSocket handshake. Without it, anyone who discovers a job_id or account_id can listen to real-time events. Suggested approach: validate a `?token=` query parameter in the WebSocket endpoint before accepting the connection.
+1. **Rate limiting on auth endpoints** — `/send-code` and login/registration routes have no brute-force protection. Add IP-based or account-based rate limiting.
 
-2. **Rate limiting on auth endpoints** — `/auth/login` and `/send-code` have no brute-force protection. Add IP-based or account-based rate limiting (the existing `InMemoryRateLimiter` can be extended, or use a Redis-based sliding window for production).
-
-3. **Encryption key backup** — The fallback auto-generation of a new encryption key silently corrupts existing data. Document that `ENCRYPTION_KEY` must be backed up. Consider validating it at startup and refusing to start if DB contains encrypted data that the current key cannot decrypt.
+2. **Encryption key backup** — The fallback auto-generation of a new encryption key silently corrupts existing data. Document that `ENCRYPTION_KEY` must be backed up. Consider validating it at startup and refusing to start if DB contains encrypted data that the current key cannot decrypt.
 
 ### Medium Priority
 
-4. **Session invalidation on logout** — There is no token blacklist. A logged-out user's JWT remains valid until expiry. Implement a denylist (Redis) for revoked tokens.
+3. **Audit logging** — No logging of sensitive actions (account login, 2FA changes, profile edits, broadcast starts). Add structured audit events to a dedicated table for compliance and incident response.
 
-5. **Audit logging** — No logging of sensitive actions (account login, 2FA changes, profile edits, broadcast starts). Add structured audit events to a dedicated table for compliance and incident response.
+4. **Input validation on file uploads** — Profile photo upload checks `content_type.startswith("image/")` but doesn't validate file size, dimensions, or re-encode the image. Malicious images (e.g., SVG with JS, zip bombs) could be uploaded.
 
-6. **Input validation on file uploads** — Profile photo upload checks `content_type.startswith("image/")` but doesn't validate file size, dimensions, or re-encode the image. Malicious images (e.g., SVG with JS, zip bombs) could be uploaded.
-
-7. **Celery task authentication** — Broadcast jobs are accepted from any authenticated user. Ensure task parameters are validated server-side (currently done in `start_broadcast` service).
+5. **Celery task authentication** — Broadcast/invite jobs are accepted from any authenticated user. Ensure task parameters are validated server-side (currently done in services).
 
 ### Low Priority
 
@@ -104,7 +103,7 @@ User enters code → POST /verify-code → Backend signs in, encrypts session st
                                     Session string encrypted at rest in PostgreSQL
 ```
 
-**Risks**: The in-memory `_pending_logins` dict has no TTL — abandoned OTP flows leak memory. Mitigation: add a background cleanup task for flows older than 5 minutes.
+**Risks**: Abandoned OTP flows could leak memory if kept indefinitely. Mitigation: A background cleanup task (`clean_pending_logins_task`) runs every 60 seconds and disconnects/clears pending login clients older than 5 minutes.
 
 ### Broadcast Execution
 
@@ -123,7 +122,7 @@ User → POST /broadcast/start → Creates BroadcastJob → Celery task queued
 
 If a security incident is detected:
 
-1. **Revoke all JWT tokens** — Change `JWT_SECRET_KEY` in `.env` and restart the backend. All users will be forced to re-login.
+1. **Revoke all Better Auth sessions** — Clear the `session` table in the PostgreSQL database, or change `BETTER_AUTH_SECRET` in the frontend env and restart the services.
 2. **Rotate encryption key** — Change `ENCRYPTION_KEY` and re-encrypt all session strings. This invalidates all stored Telegram sessions; users must re-add their accounts.
 3. **Terminate active Telegram sessions** — Use the device management endpoints or Telethon directly to terminate all unauthorized sessions.
 4. **Audit broadcast logs** — Check `broadcast_logs` for anomalous activity (messages sent to unexpected groups, unusual volumes).
@@ -132,24 +131,26 @@ If a security incident is detected:
 
 | Variable | Sensitivity | Notes |
 |----------|-------------|-------|
-| `JWT_SECRET_KEY` | Critical | Must be random, >32 chars. Rotate on compromise. |
+| `BETTER_AUTH_SECRET` | Critical | Better Auth secret key (configured on frontend/Next.js). |
+| `APP_SECRET_KEY` | Critical | Backend application secret (used for HMAC / signed URLs). |
 | `ENCRYPTION_KEY` | Critical | 32-byte base64-encoded Fernet key. BACK THIS UP. |
-| `TELEGRAM_API_ID` | Medium | Public app identifier (not secret, but paired with hash) |
+| `GROQ_API_KEY_1/2/3`| Medium | Groq Cloud API keys. Rotated for AI appeals. |
+| `TELEGRAM_API_ID` | Medium | Public app identifier (not secret, but paired with hash). |
 | `TELEGRAM_API_HASH` | High | Telegram API secret. Do not share or commit. |
-| `DATABASE_URL` | Medium | Contains credentials in plaintext |
-| `REDIS_URL` | Low | Local Redis, no auth by default |
-| `CORS_ORIGINS` | Low | Frontend origin whitelist |
+| `DATABASE_URL` | Medium | Contains credentials in plaintext. |
+| `REDIS_URL` | Low | Local Redis, no auth by default. |
+| `CORS_ORIGINS` | Low | Frontend origin whitelist. |
 
 ## Secure Deployment Checklist
 
 - [ ] Generate a strong `ENCRYPTION_KEY` and back it up securely
-- [ ] Generate a strong `JWT_SECRET_KEY` (not the default)
+- [ ] Generate a strong `BETTER_AUTH_SECRET` and `APP_SECRET_KEY` (do not use defaults)
 - [ ] Set `DEBUG=False` in production
 - [ ] Terminate TLS at the reverse proxy (nginx/Caddy/Traefik in front of the stack)
 - [ ] Restrict `CORS_ORIGINS` to the actual frontend domain
 - [ ] Set `POSTGRES_PASSWORD` to a strong value in `docker-compose.yml`
 - [ ] Enable Redis password authentication in production
 - [ ] Use environment-specific `.env` files — never commit real secrets
-- [ ] Set up database backups (includes encrypted session strings)
+- [ ] Set up database backups (includes encrypted session strings and user tables)
 - [ ] Configure log rotation to prevent disk exhaustion
 - [ ] Run `docker-compose` services as non-root users where possible

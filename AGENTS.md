@@ -87,6 +87,28 @@ Auto-reply configuration is stored on the `TelegramAccount` model (per-account f
 4. Service: `backend/app/services/settings_service.py` — read/write config
 5. Logging: `backend/app/models/auto_reply_log.py` — tracks which users have been replied to (dedup key)
 
+### Working with Spam Appeals
+
+1. Backend Service: `backend/app/services/appeal_service.py` handles reason generation.
+2. It uses Groq API keys `GROQ_API_KEY_1`, `GROQ_API_KEY_2`, and `GROQ_API_KEY_3` in a rotating sequence for resilience/rate limit dodging, falling back gracefully if any key is missing or fails.
+3. Default presets include "AI Generated" presets in both English and Indonesian. Custom reasons are allowed.
+4. Route handler: `POST /api/v1/accounts/{id}/appeal` in `backend/app/api/accounts.py`.
+5. Frontend component: `frontend/src/components/accounts/spam-appeal-dialog.tsx`.
+
+### Working with SMM & Marketplace
+
+1. Backend Service: `backend/app/services/smm_service.py` and `admin_smm_service.py` for service and pricing administration.
+2. Orders are placed via `order_service.py` and logs/vouchers are handled in `redeem_service.py`.
+3. Database Models: `Order`, `RedeemCode`, `RedeemLog`, `SmmService`, `SmmSetting`.
+4. Admins can refresh all pending orders with `refresh_all_pending()` which connects to the external SMM APIs.
+
+### Working with the Bulk Invite System
+
+1. Backend Service: `backend/app/services/invite_service.py` manages invitation loops and member imports.
+2. Celery-backed worker starts invite jobs asynchronously.
+3. Database Models: `InviteJob` (state machine tracking progress and status) and `InviteLog` (tracks outcomes of individual invitation attempts).
+4. Route handler: `POST /api/v1/invite/start`.
+
 ### Working with Telethon clients
 
 - `TelegramClientPool` (`backend/app/services/telegram_client.py`) manages an in-memory dict of connected clients
@@ -129,14 +151,14 @@ This project does not currently have automated tests. When adding tests:
 - **Frontend WS URL** — Set `NEXT_PUBLIC_WS_URL` (default `ws://localhost:8000`). The WebSocket client connects directly to the backend, not through the Next.js rewrite.
 - **Encryption key rotation** — Changing `ENCRYPTION_KEY` will break existing session strings. Keys are auto-generated if invalid, which would corrupt data. Always back up the key.
 - **Datetime freshness** — Python `datetime.now()` calls across different services (backend, Celery worker) may skew if system time isn't synced. Consider using `datetime.utcnow()` consistently.
-- **OTP flow memory** — `_pending_logins` dict in `account_service.py` has no TTL — abandoned OTP flows leak memory.
+- **OTP flow memory** — Pending OTP login flows are cached in `_pending_logins` within `backend/app/api/accounts.py` and are cleaned up after 5 minutes by the background task `clean_pending_logins_task`. When creating other temporary flows, always ensure a similar TTL mechanism is in place to prevent memory leaks.
 
 ## Security Considerations
 
-- JWT tokens expire (access: 60 min, refresh: 7 days). Token refresh is automatic via Axios interceptor.
+- Better Auth sessions manage user tokens and lifetimes. Token management is automatic via the Better Auth client.
 - Fernet encryption keys must be kept secret and backed up. Loss = all Telegram sessions invalidated.
 - Session strings grant full Telegram access — treat them like passwords.
-- User passwords are bcrypt-hashed (72-byte truncation applied internally).
+- User passwords are managed and hashed securely by Better Auth.
 - The `is_active` flag on both User and TelegramAccount models controls access across the app.
-- WebSocket endpoints (`/ws/broadcast/{job_id}`, `/ws/chats/{account_id}`) currently have no JWT verification — channel IDs are UUIDs as mitigation.
+- WebSocket endpoints (`/ws/broadcast/{job_id}`, `/ws/chats/{account_id}`, `/ws/invite/{job_id}`) require token-based authentication and ownership validation.
 - The `User.role` field (default `"operator"`) is stored but not enforced in route guards.

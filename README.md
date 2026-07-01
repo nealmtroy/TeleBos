@@ -12,7 +12,7 @@ Broadcast messages, manage chats, sync folders, and control security settings �
 - **Privacy & Security**: Set visibility rules (phone, photo, status, last seen, forwards, voice messages), enable/disable 2FA, manage recovery email
 - **Device Management**: View and terminate active Telegram sessions
 - **Chat Viewer**: Real-time chat list with type indicators, unread counts, and pagination
-- **Chat Folders**: View, sync, create, edit, and delete Telegram folders
+- **Chat Folders & Groups**: View, sync, create, edit, and delete Telegram folders. Organize Telegram accounts into custom folders.
 - **Broadcast System**:
   - Manage group lists (username, invite link, or group ID targets) with bulk import
   - Manage text lists (message template collections)
@@ -21,9 +21,12 @@ Broadcast messages, manage chats, sync folders, and control security settings �
   - Looping mode with configurable cycle delay
   - Real-time progress tracking with pause/resume/stop
 - **Auto-Reply**: Per-account and global auto-reply rules with deduplication logging
+- **Spam Appeal System**: Appeal spam restrictions on Telegram accounts using AI-generated reasons powered by Groq (rotating key support) or default presets.
+- **SMM & Marketplace**: Buy/sell Telegram accounts, manage SMM panel configurations, order logs, and voucher codes.
+- **Bulk Invite System**: Bulk invite members to target groups/channels asynchronously using client sessions.
 - **Detailed Logging**: Per-group delivery results with error classification (flood, banned, admin-only, slowmode, invalid username, etc.), cycle tracking
 - **Export**: Broadcast logs to CSV or JSON
-- **JWT Authentication**: Secure web login with access/refresh tokens
+- **Authentication**: Secure web login powered by session tokens (via Better Auth)
 - **Session Encryption**: Fernet-encrypted session strings in the database
 - **Adaptive Flood Control**: Automatically adjusts delays when Telegram rate limits are hit
 - **i18n**: English and Indonesian language support
@@ -118,16 +121,13 @@ TeleBos/
 ├── docker-compose.yml        # 5 services: postgres, redis, backend, celery-worker, frontend
 ├── backend/
 │   ├── app/
-│   │   ├── api/              # FastAPI route handlers (auth, accounts, chats, broadcast, settings, ws)
-│   │   ├── models/           # SQLAlchemy ORM models (user, telegram_account, broadcast_job, broadcast_log, 
-│   │   │                     #   group_list, text_list, chat_folder, auto_reply_log)
+│   │   ├── api/              # FastAPI route handlers (auth, accounts, chats, broadcast, settings, ws, invite, orders, redeem, marketplace, admin, etc.)
+│   │   ├── models/           # SQLAlchemy ORM models (user, telegram_account, broadcast_job, broadcast_log, group_list, text_list, chat_folder, auto_reply_log, invite_job, invite_log, order, redeem_code, redeem_log, smm_service, smm_setting, etc.)
 │   │   ├── schemas/          # Pydantic v2 request/response schemas
-│   │   ├── services/         # Business logic layer (auth, account, broadcast, chat, device, settings,
-│   │   │                     #   telegram_client, session_manager, event_relay)
+│   │   ├── services/         # Business logic layer (auth, account, broadcast, chat, device, settings, telegram_client, session_manager, event_relay, appeal, invite, smm, redeem, order, contact, etc.)
 │   │   ├── workers/          # Celery tasks (broadcast_worker)
-│   │   ├── utils/            # Encryption (Fernet), rate limiter, flood control, error classification,
-│   │   │                     #   session format converter
-│   │   ├── main.py           # App entrypoint with lifespan (DB init, reconnect accounts)
+│   │   ├── utils/            # Encryption (Fernet), rate limiter, flood control, error classification, session format converter
+│   │   ├── main.py           # App entrypoint with lifespan (DB init, reconnect accounts, pending logins task)
 │   │   ├── config.py         # Pydantic Settings via environment variables
 │   │   └── database.py       # Async SQLAlchemy engine + session factory
 │   ├── alembic/              # DB migrations
@@ -135,7 +135,7 @@ TeleBos/
 │   └── Dockerfile
 └── frontend/
     ├── src/
-    │   ├── app/              # Next.js App Router pages (login, register, dashboard/*)
+    │   ├── app/              # Next.js App Router pages (login, register, forgot-password, dashboard/*, subscriptions, settings, admin, invite, orders, redeem)
     │   ├── components/       # shadcn/ui primitives + custom (sidebar, navbar, account-card, broadcast-progress)
     │   ├── hooks/            # React Query hooks + WebSocket hooks
     │   ├── lib/              # Axios client, WebSocket client, i18n (en/id), utilities
@@ -162,11 +162,20 @@ See detailed docs at `/docs` when the backend is running.
 | `GET/DELETE /api/v1/accounts/{id}/devices` | Active device sessions     |
 | `GET /api/v1/accounts/{id}/chats` | Chat list (paginated)          |
 | `GET/POST /api/v1/accounts/{id}/folders` | Chat folder management     |
+| `CRUD /api/v1/account-folders/*`  | Folder groupings for Telegram accounts |
+| `POST /api/v1/accounts/{id}/appeal` | Submit spam appeal using AI generated reasons |
 | `GET/PUT /api/v1/accounts/{id}/auto-reply` | Auto-reply configuration   |
 | `CRUD /api/v1/group-lists`        | Broadcast group lists          |
 | `CRUD /api/v1/text-lists`         | Broadcast text templates       |
-| `POST /api/v1/broadcast/start`    | Start a broadcast job          |
+| `POST /api/v1/broadcast/*`        | Start, pause, resume, cancel, or retry broadcast jobs |
 | `GET /api/v1/broadcast/*/logs`    | View & export delivery logs    |
+| `POST /api/v1/invite/start`       | Start bulk invitation jobs     |
+| `GET /api/v1/invite/*/logs`       | View bulk invitation logs      |
+| `CRUD /api/v1/orders/*`           | SMM services order management  |
+| `POST /api/v1/redeem`             | Redeem voucher codes           |
+| `GET /api/v1/marketplace/*`       | SMM services and user pricing  |
+| `GET/POST /api/v1/contacts/*`     | Telegram contacts sync/retrieval |
+| `GET/POST /api/v1/admin/*`         | Admin panel management (SMM, prices, logs) |
 | `WS /ws/broadcast/{job_id}`       | Real-time broadcast progress   |
 | `WS /ws/chats/{account_id}`       | Real-time chat updates         |
 

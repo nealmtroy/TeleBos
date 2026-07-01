@@ -242,9 +242,18 @@ async def sync_folders_from_telegram(account: TelegramAccount, db: AsyncSession)
         raise RuntimeError("Account is disconnected.")
 
     try:
-        folders = await client(telethon.tl.functions.messages.GetDialogFiltersRequest())
+        dialog_filters = await client(telethon.tl.functions.messages.GetDialogFiltersRequest())
     except Exception as exc:
         logger.warning("Cannot fetch folders for %s: %s", account.id, exc)
+        return
+
+    # Handle messages.DialogFilters vs list of DialogFilter
+    if hasattr(dialog_filters, "filters"):
+        folders = dialog_filters.filters
+    elif isinstance(dialog_filters, list):
+        folders = dialog_filters
+    else:
+        logger.warning("Unexpected dialog filters type for %s: %s", account.id, type(dialog_filters))
         return
 
     # Delete existing folders

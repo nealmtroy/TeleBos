@@ -86,3 +86,66 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* Sheet / Dialog Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes slideInFromTop {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+@keyframes slideOutToTop {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+
+[data-state="open"].data-\[state\=open\]\:animate-in {
+  animation-duration: 250ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+[data-state="closed"].data-\[state\=closed\]\:animate-out {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+[data-state="open"].data-\[state\=open\]\:fade-in-0 {
+  animation-name: fadeIn;
+}
+[data-state="closed"].data-\[state\=closed\]\:fade-out-0 {
+  animation-name: fadeOut;
+}
+
+[data-state="open"].data-\[state\=open\]\:slide-in-from-top {
+  animation-name: slideInFromTop;
+  animation-duration: 300ms;
+}
+[data-state="closed"].data-\[state\=closed\]\:slide-out-to-top {
+  animation-name: slideOutToTop;
+  animation-duration: 250ms;
+}
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slideOutToRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+[data-state="open"].data-\[state\=open\]\:slide-in-from-right {
+  animation-name: slideInFromRight;
+  animation-duration: 300ms;
+}
+[data-state="closed"].data-\[state\=closed\]\:slide-out-to-right {
+  animation-name: slideOutToRight;
+  animation-duration: 250ms;
+}

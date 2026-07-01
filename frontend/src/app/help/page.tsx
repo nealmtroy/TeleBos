@@ -50,12 +50,9 @@ export default function HelpPage() {
           <div className="flex items-center justify-between h-16">
             <Link
               href="/"
-              className="flex items-center gap-2 text-gray-900 font-bold"
+              className="flex items-center text-gray-900 font-bold"
             >
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary-600 to-primary-900 flex items-center justify-center text-white font-bold text-xs">
-                TB
-              </div>
-              <span className="hidden sm:inline">{_("help.title")}</span>
+              <span>{_("help.title")}</span>
             </Link>
             <div className="flex items-center gap-3">
               <LanguageSwitcher />

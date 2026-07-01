@@ -13,7 +13,7 @@ TeleBos is a multi-account Telegram manager web app. It lets users add unlimited
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 14 (App Router), Tailwind CSS 3, shadcn/ui, React Query, Zustand, Recharts |
-| Backend | FastAPI (Python 3.12), Telethon, SQLAlchemy 2.0 (async) |
+| Backend | FastAPI (Python 3.12), Telethon, SQLAlchemy 2.0 (async), Groq Cloud API (Llama 3.1) |
 | Workers | Celery (Redis broker) |
 | Database | PostgreSQL 16 (async via asyncpg) |
 | Cache/Queue | Redis 7 |
@@ -26,20 +26,19 @@ TeleBos is a multi-account Telegram manager web app. It lets users add unlimited
 Layered architecture following FastAPI conventions:
 
 - **`app/api/`** — Route handlers (thin controllers that validate via Pydantic, delegate to services)
-- **`app/services/`** — Business logic layer (account_service, auth_service, broadcast_service, chat_service, device_service, settings_service, telegram_client, session_manager, event_relay)
-- **`app/models/`** — SQLAlchemy ORM models (User, TelegramAccount, BroadcastJob, BroadcastLog, GroupList, TextList, ChatFolder, AutoReplyLog)
+- **`app/services/`** — Business logic layer (account_service, auth_service, broadcast_service, chat_service, device_service, settings_service, telegram_client, session_manager, event_relay, appeal_service, invite_service, smm_service, admin_smm_service, redeem_service, order_service, contact_service, profile_sync_service, user_account_price_service)
+- **`app/models/`** — SQLAlchemy ORM models (User, TelegramAccount, BroadcastJob, BroadcastLog, GroupList, TextList, ChatFolder, AutoReplyLog, InviteJob, InviteLog, Order, RedeemCode, RedeemLog, SmmService, SmmSetting, TelegramChat, UserAccountPrice, AccountFolder, AccountFolderMember)
 - **`app/schemas/`** — Pydantic v2 request/response schemas
 - **`app/workers/`** — Celery task definitions (broadcast_worker runs broadcast jobs asynchronously)
 - **`app/utils/`** — Encryption (Fernet), rate limiter, flood control, Telegram error classification, session converter
-- **`app/main.py`** — FastAPI app creation, lifespan (DB migrations, auto-reconnect accounts), CORS, router registration
+- **`app/main.py`** — FastAPI app creation, lifespan (DB migrations, auto-reconnect accounts, pending logins background cleanup), CORS, router registration
 - **`app/database.py`** — Async SQLAlchemy engine + session factory
 - **`app/dependencies.py`** — JWT auth dependency (`get_current_user`)
-- **`app/config.py`** — Pydantic Settings (env-based config)
+- **`app/config.py`** — Pydantic Settings (env-based config, including Groq keys rotation)
 
 ### Frontend (`frontend/`)
 
-- **`src/app/`** — Next.js App Router pages (login, register, dashboard, accounts, chats, broadcast, auto-reply)
-- **`src/app/(dashboard)/`** — Authenticated pages wrapped in DashboardLayout (sidebar + navbar)
+- **`src/app/`** — Next.js App Router pages (login, register, forgot-password, reset-password, dashboard, accounts, chats, broadcast, auto-reply, invite, orders, redeem, subscriptions, settings, admin)
 - **`src/components/`** — shadcn/ui primitives (button, card, badge, avatar, skeleton, toast) + custom components (account-card, broadcast-progress, sidebar, navbar, account-switcher, language-switcher)
 - **`src/hooks/`** — React Query hooks (use-accounts, use-chats, use-broadcast, use-auth) + WebSocket hooks (use-socket)
 - **`src/lib/`** — Axios client with JWT interceptor (api.ts), native WebSocket client (socket.ts), utilities, i18n (en.ts, id.ts)
@@ -48,13 +47,13 @@ Layered architecture following FastAPI conventions:
 ### Key Data Flow
 
 #### Authentication
-1. User registers/logs in via `POST /api/v1/auth/*` → JWT access + refresh tokens
-2. Frontend stores tokens in localStorage, Axios interceptor injects `Authorization: Bearer` header
-3. 401 responses trigger automatic token refresh via `/auth/refresh`; failure redirects to login
-4. Access tokens expire in 60 min, refresh tokens in 7 days
+1. User registers/logs in via Better Auth endpoints on frontend Next.js (e.g. `/api/auth/*`) → session token created
+2. Frontend stores/reads token via cookies, Axios interceptor injects `x-better-auth-token` header
+3. FastAPI backend validates the token by querying PostgreSQL `session` table directly
+4. Expiration is verified against the database session's `expiresAt` timestamp
 
 #### Telegram Account Login (OTP flow)
-1. `POST /send-code` creates an unauth Telethon client, sends OTP, stores client in-memory map (phone → client, no TTL — abandoned flows leak memory)
+1. `POST /send-code` creates an unauth Telethon client, sends OTP, and stores it in the in-memory map `_pending_logins` (user_id -> phone -> (client, created_at)) in `backend/app/api/accounts.py`. Expired flows (older than 5 minutes) are disconnected and cleaned up by `clean_pending_logins_task` to prevent memory leaks.
 2. `POST /verify-code` signs in with OTP (and optional 2FA), saves encrypted session string to DB
 3. After verification, `event_relay.attach()` registers Telethon event handlers for real-time updates
 4. On server startup, `session_manager.reconnect_all()` reconnects all active accounts
@@ -85,6 +84,20 @@ Layered architecture following FastAPI conventions:
 - `settings_service.py` handles read/write of auto-reply configuration
 - Frontend UI at `frontend/src/app/(dashboard)/auto-reply/page.tsx`
 
+#### Spam Appeal System
+- Integrated Groq API using rotated API keys (`GROQ_API_KEY_1`/`2`/`3`) to generate reasons with Llama 3.1
+- Supports custom appeal reason writing or pre-configured "AI-Generated" default presets
+- Frontend handles status check (e.g. "limited" accounts) and appeals via dialog box at `frontend/src/components/accounts/spam-appeal-dialog.tsx`
+
+#### SMM & Marketplace System
+- Multi-tier pricing structure for SMM services and buying/selling accounts
+- Order logging and verification (`Order`, `RedeemCode`, `RedeemLog` models)
+- Admin interface for adding services, modifying price structures, and viewing redemption logs
+
+#### Bulk Invite System
+- Celery-backed execution loop for bulk inviting Telegram users to groups/channels
+- Handles task status tracking (`InviteJob`) and individual invite status logging (`InviteLog`)
+
 #### Database Encryption
 - Telegram session strings and 2FA passwords stored encrypted (Fernet, `cryptography` library)
 - `ENCRYPTION_KEY` in env — auto-generates a new one if invalid/missing (logs a warning; will corrupt existing encrypted data)
@@ -95,7 +108,7 @@ Layered architecture following FastAPI conventions:
 | Prefix | Purpose |
 |--------|---------|
 | `POST /api/v1/auth/*` | Register, login, token refresh, change password |
-| `GET/POST /api/v1/accounts/*` | Telegram account management |
+| `GET/POST /api/v1/accounts/*` | Telegram account management (supports page/search/status filters) |
 | `PUT /api/v1/accounts/{id}/profile` | Update Telegram profile (name, username, bio) |
 | `POST /api/v1/accounts/{id}/photo` | Upload profile photo |
 | `GET/PUT /api/v1/accounts/{id}/privacy` | Privacy visibility settings |
@@ -103,10 +116,19 @@ Layered architecture following FastAPI conventions:
 | `GET/DELETE /api/v1/accounts/{id}/devices` | Device session management |
 | `GET /api/v1/accounts/{id}/chats` | Chat list (paginated) |
 | `GET/POST /api/v1/accounts/{id}/folders` | Chat folder management |
+| `CRUD /api/v1/account-folders/*` | Folder groupings for Telegram accounts |
+| `POST /api/v1/accounts/{id}/appeal` | Submit spam appeal using AI generated reasons |
 | `CRUD /api/v1/group-lists` | Broadcast group lists |
 | `CRUD /api/v1/text-lists` | Broadcast text templates |
-| `POST /api/v1/broadcast/start` | Start a broadcast job |
+| `POST /api/v1/broadcast/*` | Start, pause, resume, cancel, or retry broadcast jobs |
 | `GET /api/v1/broadcast/*/logs` | View & export delivery logs |
+| `POST /api/v1/invite/start` | Start bulk invitation jobs |
+| `GET /api/v1/invite/*/logs` | View bulk invitation logs |
+| `CRUD /api/v1/orders/*` | SMM services order management |
+| `POST /api/v1/redeem` | Redeem voucher codes |
+| `GET /api/v1/marketplace/*` | SMM services and user pricing |
+| `GET/POST /api/v1/contacts/*` | Telegram contacts sync/retrieval |
+| `GET/POST /api/v1/admin/*` | Admin panel management (SMM, prices, logs) |
 | `WS /ws/broadcast/{job_id}` | Real-time broadcast progress |
 | `WS /ws/chats/{account_id}` | Real-time chat updates |
 

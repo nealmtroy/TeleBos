@@ -697,14 +697,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             {/* Brand */}
             <motion.div className="md:col-span-1" variants={fadeUp}>
-              <div className="flex items-center gap-2 mb-4">
-                <motion.div
-                  className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  TB
-                </motion.div>
+              <div className="flex items-center mb-4">
                 <span className="text-lg font-bold text-white">TeleBos</span>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
