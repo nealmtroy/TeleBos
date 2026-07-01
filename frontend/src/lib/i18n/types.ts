@@ -1023,6 +1023,12 @@ export interface Dict {
     unavailable: string;
     sellPrice: string;
     buyPrice: string;
+    cancelSell: string;
+    confirmCancelSellTitle: string;
+    confirmCancelSellMsg: string;
+    cancelSellSuccess: string;
+    forSaleAlertTitle: string;
+    forSaleAlertDesc: string;
   };
 
   // Admin SMM

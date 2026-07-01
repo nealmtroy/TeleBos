@@ -5,13 +5,15 @@ import { useAccount, getPhotoUrl, useDeleteAccount, useCheckSpam, useProfileSync
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { Smartphone, Shield, Monitor, Settings, Trash2, ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react";
+import { Smartphone, Shield, Monitor, Settings, Trash2, ArrowLeft, RefreshCw, AlertTriangle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SpamAppealDialog } from "@/components/accounts/spam-appeal-dialog";
+import { useCancelSellAccount } from "@/hooks/use-marketplace";
+import { useAuthStore } from "@/store/auth-store";
 
 function ProfilePhoto({ account }: { account: { id: string; first_name: string | null; phone: string; photo_version?: number } }) {
   const [error, setError] = useState(false);
@@ -41,6 +43,7 @@ export default function AccountDetailPage() {
   const id = params.id as string;
   useProfileSync(id);
   const { data: account, isLoading, error } = useAccount(id);
+  const isRestricted = account ? (!account.is_active || account.for_sale) : false;
   const isExpired = account ? (!account.is_active && !account.for_sale) : false;
   const deleteMutation = useDeleteAccount();
   const checkSpamMutation = useCheckSpam();
@@ -49,6 +52,11 @@ export default function AccountDetailPage() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [appealOpen, setAppealOpen] = useState(false);
 
+  const [cancelSellOpen, setCancelSellOpen] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const cancelSellMutation = useCancelSellAccount();
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+
   async function handleDelete() {
     setDeleting(true);
     try {
@@ -56,6 +64,19 @@ export default function AccountDetailPage() {
       router.push("/accounts");
     } catch {
       setDeleting(false);
+    }
+  }
+
+  async function handleCancelSell() {
+    setCanceling(true);
+    try {
+      await cancelSellMutation.mutateAsync(id);
+      await fetchMe();
+      setCancelSellOpen(false);
+    } catch {
+      // Ignore
+    } finally {
+      setCanceling(false);
     }
   }
 
@@ -217,7 +238,7 @@ export default function AccountDetailPage() {
                   </span>
                   <button
                     onClick={() => checkSpamMutation.mutate(account.id)}
-                    disabled={checkSpamMutation.isPending || isExpired}
+                    disabled={checkSpamMutation.isPending || isRestricted}
                     className="p-1 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-50 transition"
                     title={_("accountDetail.checkSpamBtn")}
                   >
@@ -236,6 +257,28 @@ export default function AccountDetailPage() {
         </div>
       </div>
 
+      {/* Marketplace for sale warning banner */}
+      {account.for_sale && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex gap-3 text-amber-800">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-600" />
+          <div className="space-y-1 flex-1">
+            <h4 className="font-semibold text-sm">{_("orders.forSaleAlertTitle")}</h4>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              {_("orders.forSaleAlertDesc")}
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={() => setCancelSellOpen(true)}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition shadow-sm active:scale-95 inline-flex items-center gap-1.5"
+              >
+                <X className="h-3.5 w-3.5" />
+                {_("orders.cancelSell")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Spam detail alert */}
       {account.spam_status === "limited" && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex gap-3 text-red-800">
@@ -248,7 +291,7 @@ export default function AccountDetailPage() {
             <div className="pt-2">
               <button
                 onClick={() => setAppealOpen(true)}
-                disabled={isExpired}
+                disabled={isRestricted}
                 className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {_("accountDetail.appealBtn")}
@@ -261,7 +304,7 @@ export default function AccountDetailPage() {
       {/* Action links grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {links.map((link) => {
-          return isExpired ? (
+          return isRestricted ? (
             <div
               key={link.label}
               className="flex items-start gap-4 bg-white rounded-xl border border-gray-200 p-5 filter blur-[1.5px] opacity-40 cursor-not-allowed select-none"
@@ -323,6 +366,18 @@ export default function AccountDetailPage() {
         open={appealOpen}
         onOpenChange={setAppealOpen}
         accountId={id}
+      />
+
+      <ConfirmDialog
+        open={cancelSellOpen}
+        onOpenChange={setCancelSellOpen}
+        onConfirm={handleCancelSell}
+        title={_("orders.confirmCancelSellTitle")}
+        message={_("orders.confirmCancelSellMsg")}
+        confirmText={_("orders.cancelSell")}
+        cancelText={_("navbar.cancel")}
+        variant="danger"
+        loading={canceling}
       />
     </div>
   );

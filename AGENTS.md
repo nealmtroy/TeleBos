@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents (Claude Code, etc.) working on TeleBos.
 
-This file complements `CLAUDE.md` — read that first for project architecture and commands, then use this for agent-specific operational guidance.
+This file complements `CLAUDE.md` and `PRD.md` — read `PRD.md` for detailed product requirements and feature specifications, `CLAUDE.md` for project architecture and commands, then use this file for agent-specific operational guidance.
 
 ## Agent Principles
 

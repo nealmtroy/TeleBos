@@ -62,3 +62,8 @@ celerybeat-schedule
 # Local tsconfig build info
 tsconfig.tsbuildinfo
 
+# Product Requirement Document (PRD)
+PRD.md
+
+# Temporary/Local services config
+buzzerpanel_services.txt

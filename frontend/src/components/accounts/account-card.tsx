@@ -1,7 +1,7 @@
 import { useProfileSync, type Account } from "@/hooks/use-accounts";
 import { useAccountStats } from "@/hooks/use-account-stats";
 import { cn } from "@/lib/utils";
-import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign } from "lucide-react";
+import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useState, useCallback } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import api from "@/lib/api";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
-import { useSellAccounts, useMarketplacePricing } from "@/hooks/use-marketplace";
+import { useSellAccounts, useMarketplacePricing, useCancelSellAccount } from "@/hooks/use-marketplace";
 import { useAuthStore } from "@/store/auth-store";
 
 
@@ -64,6 +64,10 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const [selling, setSelling] = useState(false);
 
+  const [cancelSellOpen, setCancelSellOpen] = useState(false);
+  const cancelSellMutation = useCancelSellAccount();
+  const [canceling, setCanceling] = useState(false);
+
   const handleSellConfirm = async () => {
     setSelling(true);
     try {
@@ -74,6 +78,19 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
       console.error(err);
     } finally {
       setSelling(false);
+    }
+  };
+
+  const handleCancelSellConfirm = async () => {
+    setCanceling(true);
+    try {
+      await cancelSellMutation.mutateAsync(account.id);
+      await fetchMe();
+      setCancelSellOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -111,6 +128,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
     }
   };
 
+  const isRestricted = !account.is_active || account.for_sale;
   const isExpired = !account.is_active && !account.for_sale;
 
   return (
@@ -175,7 +193,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               <span>Updated {timeAgo(stats.stats_updated_at)}</span>
               <button
                 onClick={handleRefresh}
-                disabled={refreshing || isExpired}
+                disabled={refreshing || isRestricted}
                 className="ml-auto hover:text-primary-600 transition disabled:opacity-50"
                 title="Refresh stats now"
               >
@@ -224,9 +242,9 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             href={`/chats?account=${account.id}`}
             className={cn(
               "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
-              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+              isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
-            tabIndex={isExpired ? -1 : undefined}
+            tabIndex={isRestricted ? -1 : undefined}
           >
             <MessageCircle className="h-3.5 w-3.5" />
             Chat
@@ -237,9 +255,9 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             href={`/contacts?account=${account.id}`}
             className={cn(
               "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
-              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+              isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
-            tabIndex={isExpired ? -1 : undefined}
+            tabIndex={isRestricted ? -1 : undefined}
           >
             <Users className="h-3.5 w-3.5" />
             {_("accountDetail.contactsLink")}
@@ -248,9 +266,9 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             href={`/accounts/${account.id}/groups-channels`}
             className={cn(
               "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
-              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+              isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
-            tabIndex={isExpired ? -1 : undefined}
+            tabIndex={isRestricted ? -1 : undefined}
           >
             <MessageCircle className="h-3.5 w-3.5" />
             {_("accountDetail.groupsChannels")}
@@ -267,17 +285,27 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             <Trash2 className="h-3.5 w-3.5" />
             {_("accountCard.delete")}
           </button>
-          <button
-            onClick={() => setSellOpen(true)}
-            disabled={isExpired}
-            className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition",
-              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
-            )}
-          >
-            <DollarSign className="h-3.5 w-3.5" />
-            {_("orders.sellAccount")}
-          </button>
+          {account.for_sale ? (
+            <button
+              onClick={() => setCancelSellOpen(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition"
+            >
+              <X className="h-3.5 w-3.5" />
+              {_("orders.cancelSell")}
+            </button>
+          ) : (
+            <button
+              onClick={() => setSellOpen(true)}
+              disabled={isRestricted}
+              className={cn(
+                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition",
+                isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
+              )}
+            >
+              <DollarSign className="h-3.5 w-3.5" />
+              {_("orders.sellAccount")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -326,7 +354,18 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         variant="warning"
         loading={selling}
       />
+
+      <ConfirmDialog
+        open={cancelSellOpen}
+        onOpenChange={setCancelSellOpen}
+        onConfirm={handleCancelSellConfirm}
+        title={_("orders.confirmCancelSellTitle")}
+        message={_("orders.confirmCancelSellMsg")}
+        confirmText={_("orders.cancelSell")}
+        cancelText={_("navbar.cancel")}
+        variant="danger"
+        loading={canceling}
+      />
     </div>
   );
 }
-

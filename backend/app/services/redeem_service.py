@@ -35,7 +35,6 @@ async def create_redeem_code(
             raise ValueError("amount is required for balance codes")
         data.plan = None
         data.duration_days = None
-        data.max_uses = 1  # Balance codes are always single-use
     elif data.code_type == "subscription":
         if not data.plan or not data.duration_days:
             raise ValueError("plan and duration_days are required for subscription codes")
@@ -100,6 +99,16 @@ async def redeem_code(
         raise ValueError("This code has expired.")
     if redeem.used_count >= redeem.max_uses:
         raise ValueError("This code has reached its maximum usage limit.")
+
+    # Check if this user has already redeemed this code
+    log_check = await db.execute(
+        select(RedeemLog).where(
+            RedeemLog.code_id == redeem.id,
+            RedeemLog.user_id == user.id
+        )
+    )
+    if log_check.scalar_one_or_none():
+        raise ValueError("You have already redeemed this code.")
 
     now = datetime.now(timezone.utc)
     detail_parts = {}

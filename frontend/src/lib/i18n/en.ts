@@ -1024,6 +1024,12 @@ const en: Dict = {
     unavailable: "Unavailable",
     sellPrice: "Sell Price",
     buyPrice: "Buy Price",
+    cancelSell: "Cancel Sale",
+    confirmCancelSellTitle: "Confirm Cancel Sale",
+    confirmCancelSellMsg: "Are you sure you want to cancel the sale of this account? The account will be returned to your active accounts list and you will be able to manage it again.",
+    cancelSellSuccess: "Account sale cancelled successfully!",
+    forSaleAlertTitle: "Account listed for sale",
+    forSaleAlertDesc: "This account is currently listed on the marketplace. You cannot manage or use this account unless you cancel the sale.",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

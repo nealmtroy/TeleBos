@@ -1024,6 +1024,12 @@ const id: Dict = {
     unavailable: "Tidak Tersedia",
     sellPrice: "Harga Jual",
     buyPrice: "Harga Beli",
+    cancelSell: "Batal Jual",
+    confirmCancelSellTitle: "Konfirmasi Batal Jual",
+    confirmCancelSellMsg: "Apakah Anda yakin ingin membatalkan penjualan akun ini? Akun akan dikembalikan ke daftar akun aktif Anda, dan Anda dapat mengelolanya kembali.",
+    cancelSellSuccess: "Penjualan akun berhasil dibatalkan!",
+    forSaleAlertTitle: "Akun dalam antrean penjualan",
+    forSaleAlertDesc: "Akun ini saat ini terdaftar di marketplace. Anda tidak dapat mengelola atau menggunakan akun ini kecuali Anda membatalkan penjualan.",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

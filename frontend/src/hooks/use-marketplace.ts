@@ -108,3 +108,18 @@ export function useBuyAccount() {
     },
   });
 }
+
+export function useCancelSellAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (accountId: string) => {
+      const { data } = await api.post(`/marketplace/cancel/${accountId}`);
+      return data as Account;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["marketplace", "sell-eligible"] });
+    },
+  });
+}
+

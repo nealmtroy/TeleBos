@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TeleBos is a multi-account Telegram manager web app. It lets users add unlimited Telegram accounts via OTP or session string upload, manage profiles/privacy, view chats in real time, manage chat folders, and broadcast messages to groups/channels with configurable delays and looping.
 
-**Companion guides:** Read `AGENTS.md` for agent-specific operational guidance (patterns for adding endpoints, modifying the broadcast system, working with Telethon clients, common gotchas). Read `SECURITY.md` for the threat model and security controls.
+**Companion guides:** Read `PRD.md` for detailed product requirements and feature specifications. Read `AGENTS.md` for agent-specific operational guidance (patterns for adding endpoints, modifying the broadcast system, working with Telethon clients, common gotchas). Read `SECURITY.md` for the threat model and security controls.
 
 ## Tech Stack
 

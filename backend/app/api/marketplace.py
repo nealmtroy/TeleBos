@@ -121,3 +121,24 @@ async def buy_account(
         await db.rollback()
         logger.exception("Failed to buy account %s: %s", account_id, exc)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/cancel/{account_id}", response_model=AccountResponse)
+async def cancel_sell_account(
+    account_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cancel listed Telegram account from the marketplace pool."""
+    try:
+        account = await marketplace_service.cancel_sell_account(db, current_user, account_id)
+        await db.commit()
+        return account
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("Failed to cancel account sale %s: %s", account_id, exc)
+        raise HTTPException(status_code=500, detail="Internal server error")
+

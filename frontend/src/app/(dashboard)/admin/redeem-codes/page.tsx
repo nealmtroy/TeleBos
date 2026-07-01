@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -9,8 +11,7 @@ import {
   useAdminDeleteRedeemCode,
 } from "@/hooks/use-admin-redeem";
 import {
-  Search, Shield, Plus, Trash2, AlertCircle, Loader2,
-  CheckCircle, Ticket,
+  Search, Shield, Plus, Trash2, Loader2, Ticket, X, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +43,7 @@ function RedeemCodesContent() {
   const deleteCode = useAdminDeleteRedeemCode();
 
   const [showForm, setShowForm] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState({
     code_type: "subscription",
     plan: "pro",
@@ -52,15 +54,26 @@ function RedeemCodesContent() {
     code_prefix: "",
     custom_code: "",
   });
-  const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<any>(null);
 
   useEffect(() => {
-    if (actionMsg) {
-      const timer = setTimeout(() => setActionMsg(null), 3000);
-      return () => clearTimeout(timer);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (showForm) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
-  }, [actionMsg]);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showForm]);
+
+  const openCreateModal = () => {
+    setShowForm(true);
+  };
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -75,21 +88,21 @@ function RedeemCodesContent() {
         code_prefix: formData.code_prefix || undefined,
         custom_code: formData.custom_code || undefined,
       });
-      setActionMsg({ type: "success", text: _("adminRedeem.codeCreated") });
+      toast.success(_("adminRedeem.codeCreated"));
       setShowForm(false);
       setFormData({ code_type: "subscription", plan: "pro", amount: "", max_uses: "1", duration_days: "30", expires_at: "", code_prefix: "", custom_code: "" });
     } catch (err: any) {
-      setActionMsg({ type: "error", text: err?.response?.data?.detail || "Failed" });
+      toast.error(err?.response?.data?.detail || "Failed to create redeem code");
     }
   }
 
   async function handleDelete(code: any) {
     try {
       await deleteCode.mutateAsync(code.id);
-      setActionMsg({ type: "success", text: "Code deactivated" });
+      toast.success("Code deactivated successfully");
       setDeleteConfirm(null);
     } catch (err: any) {
-      setActionMsg({ type: "error", text: err?.response?.data?.detail || "Failed" });
+      toast.error(err?.response?.data?.detail || "Failed to deactivate redeem code");
     }
   }
 
@@ -102,35 +115,54 @@ function RedeemCodesContent() {
 
       {/* Header & Create Button */}
       <div className="flex items-center justify-between">
-        <Button onClick={() => setShowForm(!showForm)}>
+        <Button onClick={openCreateModal}>
           <Plus className="h-4 w-4 mr-2" />
           {_("adminRedeem.createCode")}
         </Button>
       </div>
 
-      {/* Action Message */}
-      {actionMsg && (
-        <div className={cn(
-          "flex items-center gap-2 p-3 rounded-xl text-sm",
-          actionMsg.type === "success" ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"
-        )}>
-          {actionMsg.type === "success" ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-          {actionMsg.text}
-        </div>
-      )}
+      {/* Create Code Form Modal */}
+      {mounted && showForm && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          onClick={() => setShowForm(false)}
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+            style={{ animation: "fadeIn 0.2s ease-out" }}
+          />
 
-      {/* Create Code Form */}
-      {showForm && (
-        <Card>
-          <CardContent className="p-5">
+          {/* Modal Content */}
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg p-6 flex flex-col max-h-[90vh] overflow-y-auto"
+            style={{
+              animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0">
+              <h3 className="text-lg font-bold text-gray-900">
+                {_("adminRedeem.createCode")}
+              </h3>
+              <button
+                onClick={() => setShowForm(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Form */}
             <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.codeType")}</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.codeType")}</label>
                   <select
                     value={formData.code_type}
                     onChange={(e) => setFormData({ ...formData, code_type: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition font-medium"
                   >
                     <option value="subscription">{_("adminRedeem.typeSubscription")}</option>
                     <option value="balance">{_("adminRedeem.typeBalance")}</option>
@@ -140,23 +172,23 @@ function RedeemCodesContent() {
                 {formData.code_type === "subscription" && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.plan")}</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.plan")}</label>
                       <select
                         value={formData.plan}
                         onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                       >
                         <option value="pro">Pro</option>
                         <option value="premium">Premium</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.durationDays")}</label>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.durationDays")}</label>
                       <input
                         type="number"
                         value={formData.duration_days}
                         onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                         min={1}
                       />
                     </div>
@@ -164,73 +196,93 @@ function RedeemCodesContent() {
                 )}
 
                 {formData.code_type === "balance" && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.amount")}</label>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.amount")}</label>
                     <input
                       type="number"
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                       min={1}
+                      placeholder="e.g. 10000"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.maxUses")}</label>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.maxUses")}</label>
                   <input
                     type="number"
                     value={formData.max_uses}
                     onChange={(e) => setFormData({ ...formData, max_uses: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                     min={1}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.expiresAt")}</label>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.expiresAt")}</label>
                   <input
                     type="datetime-local"
                     value={formData.expires_at}
                     onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition text-gray-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">{_("adminRedeem.prefix")}</label>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.prefix")}</label>
                   <input
                     type="text"
                     value={formData.code_prefix}
                     onChange={(e) => setFormData({ ...formData, code_prefix: e.target.value })}
                     placeholder="e.g. PROMO"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                     maxLength={20}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Custom Code <span className="text-gray-400">(opsional)</span></label>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Custom Code <span className="text-gray-400 font-normal lowercase">(opsional)</span></label>
                   <input
                     type="text"
                     value={formData.custom_code}
                     onChange={(e) => setFormData({ ...formData, custom_code: e.target.value })}
                     placeholder="e.g. free-trial-1-month"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                     maxLength={50}
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={createCode.isPending}>
+              <div className="flex gap-3 pt-4 border-t border-gray-100 shrink-0">
+                <Button type="submit" disabled={createCode.isPending} className="flex-1 py-2.5">
                   {createCode.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                   {_("adminRedeem.createCode")}
                 </Button>
-                <Button variant="outline" type="button" onClick={() => setShowForm(false)}>Cancel</Button>
+                <Button variant="outline" type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5">Cancel</Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Animations keyframes */}
+          <style jsx global>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes scaleIn {
+              from {
+                opacity: 0;
+                transform: scale(0.95) translateY(8px);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+              }
+            }
+          `}</style>
+        </div>,
+        document.body
       )}
 
       {/* Search */}

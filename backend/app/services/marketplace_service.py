@@ -404,3 +404,64 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
         )
 
     return account
+
+
+async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> TelegramAccount:
+    """Cancel listing a Telegram account for sale.
+
+    Resets for_sale, is_active, sell_price, and seller_id. Reconnects Telethon client.
+    """
+    try:
+        acc_uuid = UUID(account_id)
+    except ValueError:
+        raise ValueError("Invalid account ID format.")
+
+    # Select the account with a write lock
+    stmt = select(TelegramAccount).where(
+        and_(
+            TelegramAccount.id == acc_uuid,
+            TelegramAccount.for_sale == True,
+            TelegramAccount.is_sold == False,
+        )
+    ).with_for_update()
+
+    result = await db.execute(stmt)
+    account = result.scalar_one_or_none()
+
+    if not account:
+        raise ValueError("Account is not listed for sale or already sold.")
+
+    if account.seller_id != user.id and account.user_id != user.id:
+        raise ValueError("You do not own this account listing.")
+
+    # Revert marketplace settings & make account active again
+    account.for_sale = False
+    account.is_active = True
+    account.sell_price = None
+    account.seller_id = None
+
+    # Write audit log
+    audit = AccountAuditLog(
+        user_id=user.id,
+        account_id=account.id,
+        action="cancel_sale",
+        phone=account.phone,
+        telegram_id=account.telegram_id,
+    )
+    db.add(audit)
+
+    await db.flush()
+
+    # Reconnect and attach event handlers immediately
+    from app.services.session_manager import session_manager
+    try:
+        await session_manager.attach_and_reconnect(db, account)
+    except Exception as exc:
+        logger.error(
+            "Failed to auto-reconnect cancelled sale account %s (%s): %s",
+            account.id,
+            account.phone,
+            exc,
+        )
+
+    return account
