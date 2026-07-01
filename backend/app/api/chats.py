@@ -424,7 +424,12 @@ async def get_chat_photo(
     import io
 
     # Just need any account that has this ID to get its session string
-    result = await db.execute(select(TelegramAccount).where(TelegramAccount.id == account_id))
+    result = await db.execute(
+        select(TelegramAccount).where(
+            TelegramAccount.id == account_id,
+            TelegramAccount.for_sale == False,
+        )
+    )
     account = result.scalar_one_or_none()
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")

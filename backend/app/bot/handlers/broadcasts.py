@@ -319,6 +319,7 @@ def register_broadcasts_handlers(client):
                 select(TelegramAccount)
                 .where(TelegramAccount.user_id == user_id)
                 .where(TelegramAccount.is_active == True)
+                .where(TelegramAccount.for_sale == False)
                 .options(selectinload(TelegramAccount.folders))
                 .order_by(TelegramAccount.created_at.desc())
             )

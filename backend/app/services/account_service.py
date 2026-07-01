@@ -284,6 +284,10 @@ async def verify_code(
         )
         existing_acc = existing.scalar_one_or_none()
         if existing_acc:
+            if existing_acc.for_sale:
+                raise DuplicateAccountError(
+                    "Akun Telegram ini sedang dalam proses penjualan di marketplace."
+                )
             if user is None or existing_acc.user_id != user.id:
                 raise DuplicateAccountError(
                     f"Akun Telegram (ID: {me.id}) sudah terdaftar di TeleBos oleh pengguna lain."
@@ -435,7 +439,10 @@ async def get_accounts_for_user(
     result = await db.execute(
         select(TelegramAccount)
         .options(selectinload(TelegramAccount.folders))
-        .where(TelegramAccount.user_id == user.id)
+        .where(
+            TelegramAccount.user_id == user.id,
+            TelegramAccount.for_sale == False,
+        )
         .order_by(TelegramAccount.created_at.desc())
     )
     return list(result.scalars().all())
@@ -458,7 +465,10 @@ async def get_accounts_paginated(
     query = (
         select(TelegramAccount)
         .options(selectinload(TelegramAccount.folders))
-        .where(TelegramAccount.user_id == user.id)
+        .where(
+            TelegramAccount.user_id == user.id,
+            TelegramAccount.for_sale == False,
+        )
     )
 
     # Filter by folder
@@ -545,6 +555,7 @@ async def get_accounts_in_folder(
         .where(
             AccountFolderMember.folder_id == folder_id,
             TelegramAccount.user_id == user.id,
+            TelegramAccount.for_sale == False,
         )
         .order_by(TelegramAccount.created_at.desc())
     )
@@ -558,6 +569,7 @@ async def get_account(db: AsyncSession, account_id: str, user_id: str) -> Telegr
         .where(
             TelegramAccount.id == account_id,
             TelegramAccount.user_id == user_id,
+            TelegramAccount.for_sale == False,
         )
     )
     return result.scalar_one_or_none()

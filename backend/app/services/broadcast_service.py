@@ -676,8 +676,8 @@ async def execute_broadcast(job_id: str):
                     select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
                 )
                 account = acc_result.scalar_one_or_none()
-                if not account:
-                    logger.warning("Account %s not found, skipping", acc_id_str)
+                if not account or account.for_sale or not account.is_active:
+                    logger.warning("Account %s is not active or listed for sale, skipping", acc_id_str)
                     continue
 
                 try:

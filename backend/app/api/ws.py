@@ -237,7 +237,7 @@ async def ws_chats(websocket: WebSocket, account_id: str):
     async with async_session_factory() as db:
         result = await db.execute(select(TelegramAccount).where(TelegramAccount.id == account_uuid))
         account = result.scalar_one_or_none()
-        if account is None or account.user_id != user.id:
+        if account is None or account.user_id != user.id or account.for_sale:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized or account not found")
             return
 

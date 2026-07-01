@@ -32,7 +32,10 @@ def register_accounts_handlers(client):
         async with async_session_factory() as session:
             result = await session.execute(
                 select(TelegramAccount)
-                .where(TelegramAccount.user_id == user_id)
+                .where(
+                    TelegramAccount.user_id == user_id,
+                    TelegramAccount.for_sale == False,
+                )
                 .options(selectinload(TelegramAccount.folders))
                 .order_by(TelegramAccount.created_at.desc())
             )
@@ -50,6 +53,7 @@ def register_accounts_handlers(client):
                 select(TelegramAccount)
                 .where(TelegramAccount.id == acc_uuid)
                 .where(TelegramAccount.user_id == user_id)
+                .where(TelegramAccount.for_sale == False)
             )
             return result.scalar_one_or_none()
 

@@ -25,7 +25,10 @@ def register_autoreply_handlers(client):
         async with async_session_factory() as session:
             result = await session.execute(
                 select(TelegramAccount)
-                .where(TelegramAccount.user_id == user_id)
+                .where(
+                    TelegramAccount.user_id == user_id,
+                    TelegramAccount.for_sale == False,
+                )
                 .options(selectinload(TelegramAccount.folders))
                 .order_by(TelegramAccount.created_at.desc())
             )

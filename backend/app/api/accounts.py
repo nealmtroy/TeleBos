@@ -345,6 +345,7 @@ async def bulk_update_auto_reply(
         select(TelegramAccount).where(
             TelegramAccount.id.in_(payload.account_ids),
             TelegramAccount.user_id == user.id,
+            TelegramAccount.for_sale == False,
         )
     )
     accounts = result.scalars().all()
@@ -422,7 +423,12 @@ async def get_profile_photo(
 
     from app.models.telegram_account import TelegramAccount
     from sqlalchemy import select
-    result = await db.execute(select(TelegramAccount).where(TelegramAccount.id == account_id))
+    result = await db.execute(
+        select(TelegramAccount).where(
+            TelegramAccount.id == account_id,
+            TelegramAccount.for_sale == False,
+        )
+    )
     account = result.scalar_one_or_none()
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
