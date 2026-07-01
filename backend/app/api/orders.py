@@ -18,6 +18,51 @@ from app.schemas.order import (
 from app.services import order_service, smm_service
 from app.utils.rate_limiter import rate_limiter
 
+import logging
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import select, func
+from app.services import admin_smm_service
+
+logger = logging.getLogger(__name__)
+
+ALLOWED_SMM_SERVICE_IDS = {
+    # Telegram Members/Subscribers
+    34794, 55678, 34795, 34519, 65572, 65497, 50131, 67394, 57127, 34134,
+    67393, 33857, 34048, 34291, 34329, 34213, 34214, 34327, 34328, 55679,
+    34049, 34050, 55680, 33689, 34216, 67392, 36222, 67391, 24568, 24569,
+    24570,
+    # Telegram Auto Reactions
+    48899, 48900, 48901, 48903, 48907,
+    # Telegram Reactions
+    36431, 36432, 36433, 36439, 36441, 36442, 36445, 36447, 36453, 36459,
+    47285, 47287, 47288, 47291, 47292, 47295, 47300, 47302, 47319, 47320,
+    47327, 47328, 47329, 47331, 32321, 35034,
+    # Telegram Post Views
+    7836, 7837, 7838, 7839, 7840, 7841, 7842
+}
+
+async def ensure_services_synced(db: AsyncSession):
+    """Ensure SMM services are synced from API to DB if cache is empty or older than 12 hours."""
+    try:
+        result = await db.execute(select(func.max(SmmService.updated_at)))
+        last_sync = result.scalar()
+
+        should_sync = False
+        if last_sync is None:
+            should_sync = True
+        else:
+            if last_sync.tzinfo is not None:
+                last_sync = last_sync.astimezone(timezone.utc).replace(tzinfo=None)
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            should_sync = (now_utc - last_sync) > timedelta(hours=12)
+
+        if should_sync:
+            logger.info("SMM services local cache is empty or older than 12 hours. Auto-syncing from panel API...")
+            await admin_smm_service.sync_services(db)
+            await db.flush()
+    except Exception as e:
+        logger.error("Failed to auto-sync SMM services: %s", e)
+
 router = APIRouter(tags=["orders"])
 
 
@@ -26,15 +71,15 @@ async def list_telegram_services(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """List only Telegram and Telegram Reactions services from local cache."""
-    from sqlalchemy import select
+    """List only allowed Telegram and Telegram Reactions services from local cache (auto-synced)."""
+    await ensure_services_synced(db)
 
-    # Get active + visible services from local table
+    # Get active + visible + allowed services from local table
     result = await db.execute(
         select(SmmService).where(
             SmmService.is_active.is_(True),
             SmmService.is_visible.is_(True),
-            SmmService.category.ilike("Telegram%"),
+            SmmService.id.in_(list(ALLOWED_SMM_SERVICE_IDS)),
         ).order_by(SmmService.id)
     )
     services = list(result.scalars().all())
@@ -71,7 +116,12 @@ async def list_telegram_services(
     # Fallback to SMM API if no local data
     if not formatted:
         services_api = await smm_service.get_telegram_services()
-        return {"services": services_api}
+        # Filter fallback services
+        formatted = [
+            s for s in services_api
+            if int(s.get("id", 0)) in ALLOWED_SMM_SERVICE_IDS
+        ]
+        return {"services": formatted}
 
     return {"services": formatted}
 
@@ -81,13 +131,14 @@ async def list_all_services(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """List all SMM panel services from local cache."""
-    from sqlalchemy import select
+    """List all allowed SMM panel services from local cache (auto-synced)."""
+    await ensure_services_synced(db)
 
     result = await db.execute(
         select(SmmService).where(
             SmmService.is_active.is_(True),
             SmmService.is_visible.is_(True),
+            SmmService.id.in_(list(ALLOWED_SMM_SERVICE_IDS)),
         ).order_by(SmmService.id)
     )
     services = list(result.scalars().all())
@@ -121,9 +172,15 @@ async def list_all_services(
 
     if not formatted:
         services_api = await smm_service.get_services()
-        return {"services": services_api}
+        # Filter fallback services
+        formatted = [
+            s for s in services_api
+            if int(s.get("id", 0)) in ALLOWED_SMM_SERVICE_IDS
+        ]
+        return {"services": formatted}
 
     return {"services": formatted}
+
 
 
 @router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)

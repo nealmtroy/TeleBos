@@ -61,7 +61,7 @@ export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOr
   const [selectedServiceId, setSelectedServiceId] = useState<number | "">("");
 
   const filteredServices = useMemo(() => {
-    return services?.filter((s) => allowedServiceIds.includes(s.id)) ?? [];
+    return services?.filter((s) => allowedServiceIds.includes(Number(s.id))) ?? [];
   }, [services, allowedServiceIds]);
 
   const tabs = [
@@ -328,7 +328,7 @@ function NewOrderForm({ services, initialServiceId, onServiceChange }: NewOrderF
   const [quantity, setQuantity] = useState(100);
   const [comments, setComments] = useState("");
 
-  const selectedService = services.find((s) => s.id === initialServiceId);
+  const selectedService = services.find((s) => Number(s.id) === Number(initialServiceId));
 
   useEffect(() => {
     if (selectedService) {
@@ -528,7 +528,7 @@ function MassOrderForm({ services }: MassOrderFormProps) {
   };
 
   const totalCost = items.reduce((sum, item) => {
-    const svc = services.find((s) => s.id === item.service_id);
+    const svc = services.find((s) => Number(s.id) === Number(item.service_id));
     if (!svc || !item.service_id) return sum;
     return sum + Math.max(1, (svc.price * item.quantity) / 1000);
   }, 0);

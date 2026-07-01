@@ -56,7 +56,14 @@ export function useTelegramServices() {
     queryKey: ["smm-services", "telegram"],
     queryFn: async () => {
       const { data } = await api.get("/orders/services");
-      return data.services || [];
+      const svcs = data.services || [];
+      return svcs.map((s: any) => ({
+        ...s,
+        id: Number(s.id),
+        price: Number(s.price),
+        min: Number(s.min),
+        max: Number(s.max),
+      }));
     },
     staleTime: 5 * 60 * 1000, // 5 min cache
   });
@@ -67,7 +74,14 @@ export function useAllServices() {
     queryKey: ["smm-services", "all"],
     queryFn: async () => {
       const { data } = await api.get("/orders/services/all");
-      return data.services || [];
+      const svcs = data.services || [];
+      return svcs.map((s: any) => ({
+        ...s,
+        id: Number(s.id),
+        price: Number(s.price),
+        min: Number(s.min),
+        max: Number(s.max),
+      }));
     },
     staleTime: 5 * 60 * 1000,
   });
