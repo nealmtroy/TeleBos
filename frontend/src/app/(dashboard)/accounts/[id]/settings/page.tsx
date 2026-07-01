@@ -181,6 +181,14 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
   const [bio, setBio] = useState(account?.bio || "");
   const [msg, setMsg] = useState("");
 
+  // Sync state when account data loads/changes
+  useEffect(() => {
+    setFirstName(account?.first_name || "");
+    setLastName(account?.last_name || "");
+    setUsername(account?.username || "");
+    setBio(account?.bio || "");
+  }, [account?.first_name, account?.last_name, account?.username, account?.bio]);
+
   const mutation = useMutation({
     mutationFn: async () => {
       await api.put(`/accounts/${accountId}/profile`, {
