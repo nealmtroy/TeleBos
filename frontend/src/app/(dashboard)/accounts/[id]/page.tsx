@@ -41,6 +41,7 @@ export default function AccountDetailPage() {
   const id = params.id as string;
   useProfileSync(id);
   const { data: account, isLoading, error } = useAccount(id);
+  const isExpired = account ? (!account.is_active && !account.for_sale) : false;
   const deleteMutation = useDeleteAccount();
   const checkSpamMutation = useCheckSpam();
   const [deleting, setDeleting] = useState(false);
@@ -216,7 +217,7 @@ export default function AccountDetailPage() {
                   </span>
                   <button
                     onClick={() => checkSpamMutation.mutate(account.id)}
-                    disabled={checkSpamMutation.isPending}
+                    disabled={checkSpamMutation.isPending || isExpired}
                     className="p-1 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-50 transition"
                     title={_("accountDetail.checkSpamBtn")}
                   >
@@ -247,7 +248,8 @@ export default function AccountDetailPage() {
             <div className="pt-2">
               <button
                 onClick={() => setAppealOpen(true)}
-                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm active:scale-95 inline-flex items-center gap-1.5"
+                disabled={isExpired}
+                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {_("accountDetail.appealBtn")}
               </button>
@@ -258,21 +260,36 @@ export default function AccountDetailPage() {
 
       {/* Action links grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {links.map((link) => (
-          <Link
-            key={link.label}
-            href={link.href}
-            className="flex items-start gap-4 bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition"
-          >
-            <div className="p-3 bg-primary-50 rounded-lg">
-              <link.icon className="h-5 w-5 text-primary-600" />
+        {links.map((link) => {
+          return isExpired ? (
+            <div
+              key={link.label}
+              className="flex items-start gap-4 bg-white rounded-xl border border-gray-200 p-5 filter blur-[1.5px] opacity-40 cursor-not-allowed select-none"
+            >
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <link.icon className="h-5 w-5 text-gray-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-400">{link.label}</h3>
+                <p className="text-sm text-gray-400 mt-0.5">{link.desc}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">{link.label}</h3>
-              <p className="text-sm text-gray-500 mt-0.5">{link.desc}</p>
-            </div>
-          </Link>
-        ))}
+          ) : (
+            <Link
+              key={link.label}
+              href={link.href}
+              className="flex items-start gap-4 bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition"
+            >
+              <div className="p-3 bg-primary-50 rounded-lg">
+                <link.icon className="h-5 w-5 text-primary-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">{link.label}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{link.desc}</p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Delete */}

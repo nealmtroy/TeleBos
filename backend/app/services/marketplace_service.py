@@ -174,6 +174,51 @@ async def sell_accounts(
                 if task:
                     task.cancel()
 
+        # Update profile branding & delete profile photos on Telegram
+        from app.utils.encryption import decrypt
+        try:
+            session_str = decrypt(account.session_string)
+            client = await client_pool.get(str(account.id), session_str)
+            if client:
+                # 1. Delete all profile photos on Telegram
+                from telethon.tl.functions.photos import GetUserPhotosRequest, DeletePhotosRequest
+                try:
+                    photos_res = await client(GetUserPhotosRequest(user_id=await client.get_me(), offset=0, max_id=0, limit=100))
+                    if photos_res.photos:
+                        await client(DeletePhotosRequest(id=photos_res.photos))
+                except Exception as photo_err:
+                    logger.error("Failed to delete profile photos on Telegram for account %s: %s", account.phone, photo_err)
+
+                # 2. Update name and bio on Telegram
+                from telethon.tl.functions.account import UpdateProfileRequest
+                await client(UpdateProfileRequest(
+                    first_name=account.first_name or "User",
+                    last_name="by Telebos",
+                    about="https://t.me/telebos_official",
+                ))
+
+                # 3. Delete local cached profile photo
+                from app.services.account_service import _photo_path
+                import os
+                photo_path = _photo_path(str(account.id))
+                if os.path.exists(photo_path):
+                    try:
+                        os.remove(photo_path)
+                    except Exception as err:
+                        logger.warning("Failed to remove local cached photo for account %s: %s", account.phone, err)
+
+                # 4. Update DB cache
+                account.last_name = "by Telebos"
+                account.bio = "https://t.me/telebos_official"
+                account.profile_photo_path = None
+                account.photo_version += 1
+
+                logger.info("Successfully updated profile branding and deleted photos for account %s", account.phone)
+            else:
+                logger.warning("Could not connect to Telegram client to update profile for account %s", account.phone)
+        except Exception as e:
+            logger.error("Failed to update profile on Telegram during marketplace listing for account %s: %s", account.phone, e)
+
         # 2. Mark account as for_sale with owner-configured price
         account.for_sale = True
         account.is_sold = False

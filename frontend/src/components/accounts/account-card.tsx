@@ -111,6 +111,8 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
     }
   };
 
+  const isExpired = !account.is_active && !account.for_sale;
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 hover:shadow-md transition h-full flex flex-col justify-between">
       {/* Profile section */}
@@ -124,9 +126,9 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             size="xl"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-900 truncate">
+            <h3 className="font-semibold text-gray-900 truncate">
               {account.first_name || _("accountCard.unnamed")} {account.last_name || ""}
-            </p>
+            </h3>
             {account.username && (
               <p className="text-xs text-gray-500 truncate">@{account.username}</p>
             )}
@@ -173,7 +175,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               <span>Updated {timeAgo(stats.stats_updated_at)}</span>
               <button
                 onClick={handleRefresh}
-                disabled={refreshing}
+                disabled={refreshing || isExpired}
                 className="ml-auto hover:text-primary-600 transition disabled:opacity-50"
                 title="Refresh stats now"
               >
@@ -220,7 +222,11 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
           </button>
           <Link
             href={`/chats?account=${account.id}`}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+            className={cn(
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
+              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+            )}
+            tabIndex={isExpired ? -1 : undefined}
           >
             <MessageCircle className="h-3.5 w-3.5" />
             Chat
@@ -229,14 +235,22 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         <div className="grid grid-cols-2 gap-1.5">
           <Link
             href={`/contacts?account=${account.id}`}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+            className={cn(
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
+              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+            )}
+            tabIndex={isExpired ? -1 : undefined}
           >
             <Users className="h-3.5 w-3.5" />
             {_("accountDetail.contactsLink")}
           </Link>
           <Link
             href={`/accounts/${account.id}/groups-channels`}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+            className={cn(
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
+              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+            )}
+            tabIndex={isExpired ? -1 : undefined}
           >
             <MessageCircle className="h-3.5 w-3.5" />
             {_("accountDetail.groupsChannels")}
@@ -255,7 +269,11 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
           </button>
           <button
             onClick={() => setSellOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition"
+            disabled={isExpired}
+            className={cn(
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition",
+              isExpired && "filter blur-[1.5px] opacity-40 pointer-events-none"
+            )}
           >
             <DollarSign className="h-3.5 w-3.5" />
             {_("orders.sellAccount")}

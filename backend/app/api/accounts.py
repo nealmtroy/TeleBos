@@ -268,7 +268,7 @@ async def get_account(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    account = await account_service.get_account(db, account_id, str(user.id))
+    account = await account_service.get_account(db, account_id, str(user.id), allow_for_sale=True)
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     from app.services.user_account_price_service import resolve_telegram_id_price
@@ -543,7 +543,7 @@ async def get_account_stats(
     Returns cached values from the database, refreshed daily by a background
     task.  Force a manual refresh via ``POST …/stats/refresh``.
     """
-    account = await account_service.get_account(db, account_id, str(user.id))
+    account = await account_service.get_account(db, account_id, str(user.id), allow_for_sale=True)
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 

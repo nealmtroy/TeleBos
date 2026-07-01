@@ -29,7 +29,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 export default function NewBroadcastPage() {
   const _ = useT();
   const router = useRouter();
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { data: rawAccounts, isLoading: accountsLoading } = useAccounts();
+  const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
   const { data: folders } = useAccountFolders();
   const { data: groupLists, isLoading: groupListsLoading } = useGroupLists();
   const { data: textLists, isLoading: textListsLoading } = useTextLists();

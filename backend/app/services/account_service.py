@@ -568,8 +568,10 @@ async def get_accounts_in_folder(
     return list(result.scalars().all())
 
 
-async def get_account(db: AsyncSession, account_id: str, user_id: str) -> TelegramAccount | None:
-    result = await db.execute(
+async def get_account(
+    db: AsyncSession, account_id: str, user_id: str, allow_for_sale: bool = False
+) -> TelegramAccount | None:
+    query = (
         select(TelegramAccount)
         .options(selectinload(TelegramAccount.folders))
         .where(
@@ -577,6 +579,10 @@ async def get_account(db: AsyncSession, account_id: str, user_id: str) -> Telegr
             TelegramAccount.user_id == user_id,
         )
     )
+    if not allow_for_sale:
+        query = query.where(TelegramAccount.for_sale == False)
+
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 

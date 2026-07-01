@@ -170,8 +170,10 @@ function ChatsContent() {
 
   // Auto-select first account
   useEffect(() => {
-    if (Array.isArray(accounts) && accounts.length > 0 && !selectedAccount) {
-      setSelectedAccount(accounts[0].id);
+    const activeAccs = Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : [];
+    const isSelectedActive = activeAccs.some(acc => acc.id === selectedAccount);
+    if (activeAccs.length > 0 && (!selectedAccount || !isSelectedActive)) {
+      setSelectedAccount(activeAccs[0].id);
     }
   }, [accounts, selectedAccount]);
 
@@ -465,7 +467,7 @@ function ChatsContent() {
             className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-150 ease-in-out bg-slate-50 text-slate-700 font-medium cursor-pointer"
           >
             <option value="">{_("chats.selectAccount")}</option>
-            {(Array.isArray(accounts) ? accounts : []).map((acc) => (
+            {(Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : []).map((acc) => (
               <option key={acc.id} value={acc.id}>
                 {acc.first_name || acc.phone}
               </option>

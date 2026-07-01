@@ -105,7 +105,8 @@ export default function InvitePage() {
 function NewInviteTab() {
   const _ = useT();
   const queryClient = useQueryClient();
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { data: rawAccounts, isLoading: accountsLoading } = useAccounts();
+  const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
   const { data: folders } = useAccountFolders();
   const startMutation = useStartInvite();
 

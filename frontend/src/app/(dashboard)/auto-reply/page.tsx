@@ -26,7 +26,8 @@ export default function AutoReplyPage() {
   const _ = useT();
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
-  const { data: accounts, isLoading, error, refetch } = useAccounts();
+  const { data: rawAccounts, isLoading, error, refetch } = useAccounts();
+  const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
 
   // Role check: basic users cannot access auto-reply
   if (user?.role === "basic") {

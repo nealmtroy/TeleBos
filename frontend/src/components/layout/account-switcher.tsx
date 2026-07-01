@@ -29,7 +29,7 @@ export function AccountSwitcher() {
   const setSelectedAccount = useAppStore((s) => s.setSelectedAccount);
   const [open, setOpen] = useState(false);
 
-  const accountsList = Array.isArray(accounts) ? accounts : [];
+  const accountsList = Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : [];
   const selected = accountsList.find((a) => a.id === selectedAccountId);
 
   if (accountsList.length === 0) return null;
