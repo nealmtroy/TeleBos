@@ -164,6 +164,17 @@ export default function AccountsListPage() {
               {_("accountsList.statusInactive")}
             </button>
             <button
+              onClick={() => handleSelectStatus("expired")}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                statusFilter === "expired"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              {_("accountsList.statusExpired")}
+            </button>
+            <button
               onClick={() => handleSelectStatus("all")}
               className={cn(
                 "px-4 py-1.5 rounded-lg text-sm font-medium transition",

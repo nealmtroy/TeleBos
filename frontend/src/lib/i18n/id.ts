@@ -160,6 +160,7 @@ const id: Dict = {
     statusActive: "Aktif",
     statusLimited: "Dibatasi",
     statusInactive: "Nonaktif",
+    statusExpired: "Kedaluwarsa",
     statusAll: "Semua",
   },
 
@@ -170,6 +171,7 @@ const id: Dict = {
     delete: "Hapus",
     active: "Aktif",
     inactive: "Nonaktif",
+    expired: "Kedaluwarsa",
     verified: "Terverifikasi",
     deleteConfirm: "Hapus akun ini?",
   },
@@ -230,6 +232,7 @@ const id: Dict = {
     added: "Ditambahkan",
     active: "Aktif",
     inactive: "Nonaktif",
+    expired: "Kedaluwarsa",
     on: "Nyala",
     off: "Mati",
     notFound: "Akun tidak ditemukan.",

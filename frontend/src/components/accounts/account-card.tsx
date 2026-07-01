@@ -188,18 +188,21 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
 
       {/* Badges */}
       <div className="px-5 py-2.5 flex items-center gap-1.5">
-        <span
-          className={cn(
-            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium",
-            account.is_active
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-500"
-          )}
-        >
-          {account.is_active ? _("accountCard.active") : _("accountCard.inactive")}
-        </span>
+        {account.for_sale ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
+            {_("accountCard.inactive")}
+          </span>
+        ) : account.is_active ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">
+            {_("accountCard.active")}
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">
+            {_("accountCard.expired")}
+          </span>
+        )}
         {account.spam_status === "limited" && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800 animate-pulse">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-yellow-100 text-yellow-800 animate-pulse">
             Limited
           </span>
         )}

@@ -326,7 +326,7 @@ function NewInviteTab() {
                           "h-2 w-2 rounded-full",
                           acc.is_active ? "bg-green-500" : "bg-red-500"
                         )}
-                        title={acc.is_active ? "Active" : "Inactive"}
+                        title={acc.is_active ? "Active" : "Expired"}
                       />
                     </div>
                   );

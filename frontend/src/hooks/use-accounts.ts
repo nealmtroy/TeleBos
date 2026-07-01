@@ -24,6 +24,7 @@ export interface Account {
   spam_detail: string | null;
   spam_last_checked_at: string | null;
   sell_price: number | null;
+  for_sale: boolean;
   folder_ids: string[];
 }
 

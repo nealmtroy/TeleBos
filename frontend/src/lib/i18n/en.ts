@@ -160,6 +160,7 @@ const en: Dict = {
     statusActive: "Active",
     statusLimited: "Limited",
     statusInactive: "Inactive",
+    statusExpired: "Expired",
     statusAll: "All",
   },
 
@@ -170,6 +171,7 @@ const en: Dict = {
     delete: "Delete",
     active: "Active",
     inactive: "Inactive",
+    expired: "Expired",
     verified: "Verified",
     deleteConfirm: "Delete this account?",
   },
@@ -230,6 +232,7 @@ const en: Dict = {
     added: "Added",
     active: "Active",
     inactive: "Inactive",
+    expired: "Expired",
     on: "On",
     off: "Off",
     notFound: "Account not found.",

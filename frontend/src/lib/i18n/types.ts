@@ -160,6 +160,7 @@ export interface Dict {
     statusActive: string;
     statusLimited: string;
     statusInactive: string;
+    statusExpired: string;
     statusAll: string;
   };
 
@@ -170,6 +171,7 @@ export interface Dict {
     delete: string;
     active: string;
     inactive: string;
+    expired: string;
     verified: string;
     deleteConfirm: string;
   };
@@ -230,6 +232,7 @@ export interface Dict {
     added: string;
     active: string;
     inactive: string;
+    expired: string;
     on: string;
     off: string;
     notFound: string;

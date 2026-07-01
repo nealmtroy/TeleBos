@@ -162,16 +162,19 @@ export default function AccountDetailPage() {
               </div>
               <div>
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.status")}</span>
-                <span
-                  className={cn(
-                    "inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                    account.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-500"
-                  )}
-                >
-                  {account.is_active ? _("accountDetail.active") : _("accountDetail.inactive")}
-                </span>
+                {account.for_sale ? (
+                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {_("accountDetail.inactive")}
+                  </span>
+                ) : account.is_active ? (
+                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {_("accountDetail.active")}
+                  </span>
+                ) : (
+                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    {_("accountDetail.expired")}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.twoFa")}</span>

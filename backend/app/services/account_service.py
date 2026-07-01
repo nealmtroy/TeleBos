@@ -467,7 +467,6 @@ async def get_accounts_paginated(
         .options(selectinload(TelegramAccount.folders))
         .where(
             TelegramAccount.user_id == user.id,
-            TelegramAccount.for_sale == False,
         )
     )
 
@@ -500,6 +499,7 @@ async def get_accounts_paginated(
         if status == "active":
             query = query.where(
                 TelegramAccount.is_active == True,
+                TelegramAccount.for_sale == False,
                 or_(
                     TelegramAccount.spam_status != "limited",
                     TelegramAccount.spam_status.is_(None)
@@ -508,10 +508,16 @@ async def get_accounts_paginated(
         elif status == "limited":
             query = query.where(
                 TelegramAccount.is_active == True,
+                TelegramAccount.for_sale == False,
                 TelegramAccount.spam_status == "limited"
             )
         elif status == "inactive":
-            query = query.where(TelegramAccount.is_active == False)
+            query = query.where(TelegramAccount.for_sale == True)
+        elif status == "expired":
+            query = query.where(
+                TelegramAccount.is_active == False,
+                TelegramAccount.for_sale == False
+            )
 
     # Get total count (before pagination limit/offset)
     count_query = select(func.count()).select_from(query.subquery())
@@ -569,7 +575,6 @@ async def get_account(db: AsyncSession, account_id: str, user_id: str) -> Telegr
         .where(
             TelegramAccount.id == account_id,
             TelegramAccount.user_id == user_id,
-            TelegramAccount.for_sale == False,
         )
     )
     return result.scalar_one_or_none()

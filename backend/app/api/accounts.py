@@ -426,7 +426,6 @@ async def get_profile_photo(
     result = await db.execute(
         select(TelegramAccount).where(
             TelegramAccount.id == account_id,
-            TelegramAccount.for_sale == False,
         )
     )
     account = result.scalar_one_or_none()

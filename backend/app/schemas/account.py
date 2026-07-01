@@ -63,6 +63,7 @@ class AccountResponse(BaseModel):
     last_sync_at: datetime | None
     created_at: datetime
     sell_price: int | None = None
+    for_sale: bool = False
 
     spam_status: str | None = "unknown"
     spam_detail: str | None = None
