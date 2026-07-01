@@ -33,6 +33,7 @@ async def get_devices(account: TelegramAccount) -> list[dict]:
                 "country": auth.country or "",
                 "region": auth.region or "",
                 "city": None,
+                "current": bool(getattr(auth, "current", False)),
                 "created": str(auth.date_created) if hasattr(auth, "date_created") and auth.date_created else None,
             })
         return devices

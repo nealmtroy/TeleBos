@@ -448,8 +448,9 @@ async def get_accounts_paginated(
     limit: int = 10,
     search: str | None = None,
     folder_id: str | None = None,
+    status: str | None = None,
 ) -> tuple[list[TelegramAccount], int]:
-    """Get paginated accounts for a user with optional search and folder filter."""
+    """Get paginated accounts for a user with optional search, folder and status filters."""
     from sqlalchemy import or_, cast, String, func
     from app.models.account_folder_member import AccountFolderMember
 
@@ -483,6 +484,24 @@ async def get_accounts_paginated(
             conditions.append(cast(TelegramAccount.telegram_id, String).ilike(search_term))
             
         query = query.where(or_(*conditions))
+
+    # Apply status filter
+    if status:
+        if status == "active":
+            query = query.where(
+                TelegramAccount.is_active == True,
+                or_(
+                    TelegramAccount.spam_status != "limited",
+                    TelegramAccount.spam_status.is_(None)
+                )
+            )
+        elif status == "limited":
+            query = query.where(
+                TelegramAccount.is_active == True,
+                TelegramAccount.spam_status == "limited"
+            )
+        elif status == "inactive":
+            query = query.where(TelegramAccount.is_active == False)
 
     # Get total count (before pagination limit/offset)
     count_query = select(func.count()).select_from(query.subquery())

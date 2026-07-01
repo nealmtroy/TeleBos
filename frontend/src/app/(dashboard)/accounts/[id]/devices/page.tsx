@@ -22,6 +22,7 @@ interface Device {
   ip: string;
   country: string;
   created: string;
+  current: boolean;
 }
 
 export default function DevicesPage() {
@@ -69,7 +70,11 @@ export default function DevicesPage() {
 
   const [terminateAllOpen, setTerminateAllOpen] = useState(false);
 
-  const devices = devicesData?.devices || [];
+  const devices = [...(devicesData?.devices || [])].sort((a, b) => {
+    if (a.current && !b.current) return -1;
+    if (!a.current && b.current) return 1;
+    return 0;
+  });
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -104,17 +109,34 @@ export default function DevicesPage() {
             {devices.map((device) => (
               <div
                 key={device.hash}
-                className="bg-white rounded-xl border border-gray-200 p-5"
+                className={cn(
+                  "rounded-xl border p-5 transition-all",
+                  device.current
+                    ? "bg-emerald-50/30 border-emerald-200 ring-1 ring-emerald-100/50"
+                    : "bg-white border-gray-200 hover:border-gray-300"
+                )}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 bg-gray-100 rounded-lg">
-                      <Monitor className="h-5 w-5 text-gray-600" />
+                    <div className={cn(
+                      "p-2.5 rounded-lg",
+                      device.current
+                        ? "bg-emerald-100 text-emerald-600"
+                        : "bg-gray-100 text-gray-600"
+                    )}>
+                      <Monitor className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 text-sm">
-                        {device.app_name || _("devices.unknownApp")}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-gray-900 text-sm">
+                          {device.app_name || _("devices.unknownApp")}
+                        </h3>
+                        {device.current && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
+                            {_("devices.thisDevice")}
+                          </span>
+                        )}
+                      </div>
                       <div className="mt-1 space-y-1">
                         <p className="text-xs text-gray-500">
                           {[
@@ -142,14 +164,20 @@ export default function DevicesPage() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => terminateMutation.mutate(device.hash)}
-                    disabled={terminateMutation.isPending}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
-                    title={_("devices.terminate")}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {!device.current ? (
+                    <button
+                      onClick={() => terminateMutation.mutate(device.hash)}
+                      disabled={terminateMutation.isPending}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                      title={_("devices.terminate")}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <div className="p-2 text-emerald-600" title={_("devices.thisDevice")}>
+                      <Shield className="h-4.5 w-4.5" />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

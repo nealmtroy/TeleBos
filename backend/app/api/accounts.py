@@ -221,16 +221,17 @@ async def list_accounts(
     page: int | None = Query(None),
     limit: int | None = Query(None),
     search: str | None = Query(None),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     from app.services.user_account_price_service import resolve_prices_for_accounts
 
-    if page is not None or limit is not None or search is not None:
+    if page is not None or limit is not None or search is not None or status is not None:
         p = page or 1
         lim = limit or 10
         accounts, total = await account_service.get_accounts_paginated(
-            db, user, page=p, limit=lim, search=search, folder_id=folder_id
+            db, user, page=p, limit=lim, search=search, folder_id=folder_id, status=status
         )
         import math
         pages = math.ceil(total / lim) if lim > 0 else 0

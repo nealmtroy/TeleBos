@@ -157,6 +157,10 @@ const en: Dict = {
     showingAccounts: "Showing {start}-{end} of {total} accounts",
     prev: "Previous",
     next: "Next",
+    statusActive: "Active",
+    statusLimited: "Limited",
+    statusInactive: "Inactive",
+    statusAll: "All",
   },
 
   // ── Account Card ────────────────────────────────────────────────────────
@@ -688,6 +692,7 @@ const en: Dict = {
     terminateAllConfirm: "Terminate all other sessions? This device will stay connected.",
     unknownApp: "Unknown App",
     since: "Since {date}",
+    thisDevice: "This Device",
   },
 
   // ── Utils ───────────────────────────────────────────────────────────────
@@ -1076,6 +1081,8 @@ const en: Dict = {
     planBasic: "Basic",
     planPro: "Pro",
     planPremium: "Premium",
+    planOwner: "Owner",
+    lifetime: "Lifetime",
     noSubscription: "No Active Subscription",
     active: "Active",
     expired: "Expired",

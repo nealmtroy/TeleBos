@@ -53,7 +53,7 @@ async def get_my_subscription(
         remaining = (user.subscription_expires_at - datetime.now(timezone.utc)).days
         days_remaining = max(0, remaining)
 
-    is_active = user.role in ("pro", "premium") and (
+    is_active = user.role in ("pro", "premium", "owner") and (
         user.subscription_expires_at is None or user.subscription_expires_at > datetime.now(timezone.utc)
     )
 

@@ -25,9 +25,10 @@ import { cn } from "@/lib/utils";
 
 const PLAN_KEYS = ["basic", "pro", "premium"] as const;
 type PlanKey = (typeof PLAN_KEYS)[number];
+type CurrentPlanKey = PlanKey | "owner";
 
 const PLAN_META: Record<
-  PlanKey,
+  CurrentPlanKey,
   {
     icon: typeof Zap;
     statusBg: string;
@@ -61,6 +62,14 @@ const PLAN_META: Record<
     iconColor: "text-amber-600",
     iconBg: "bg-amber-50",
   },
+  owner: {
+    icon: Crown,
+    statusBg: "bg-indigo-50",
+    statusText: "text-indigo-700",
+    cardRing: "ring-indigo-200",
+    iconColor: "text-indigo-600",
+    iconBg: "bg-indigo-50",
+  },
 };
 
 // Features matrix: which features are included in which plans
@@ -87,7 +96,7 @@ export default function SubscriptionPage() {
   const user = useAuthStore((s) => s.user);
   const { data: subscription, isLoading, error } = useMySubscription();
 
-  const currentPlan = (subscription?.plan || user?.role || "basic") as PlanKey;
+  const currentPlan = (subscription?.plan || user?.role || "basic") as CurrentPlanKey;
   const isActive = subscription?.is_active ?? false;
   const expiresAt = subscription?.expires_at ?? null;
   const daysRemaining = subscription?.days_remaining ?? null;
@@ -146,7 +155,7 @@ export default function SubscriptionPage() {
               </div>
 
               {/* Status & Expiry */}
-              <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-end">
+              <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-end w-full">
                 {currentPlan !== "basic" ? (
                   <>
                     {/* Active / Expired badge */}
@@ -167,7 +176,17 @@ export default function SubscriptionPage() {
                     </div>
 
                     {/* Expiry info */}
-                    {expiresAt && (
+                    {currentPlan === "owner" ? (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>
+                          {_("subscription.expiresAt")}:{" "}
+                          <span className="font-medium text-foreground">
+                            {_("subscription.lifetime")}
+                          </span>
+                        </span>
+                      </div>
+                    ) : expiresAt ? (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock className="h-3.5 w-3.5" />
                         <span>
@@ -181,7 +200,7 @@ export default function SubscriptionPage() {
                           </span>
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Days remaining */}
                     {daysRemaining !== null && isActive && (
@@ -191,14 +210,14 @@ export default function SubscriptionPage() {
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
                     <p className="text-sm text-muted-foreground">{_("subscription.noSubscription")}</p>
                     <Link
                       href="/redeem"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors flex-wrap"
                     >
                       {_("subscription.upgradePrompt")}
-                      <ArrowRight className="h-3 w-3" />
+                      <ArrowRight className="h-3 w-3 shrink-0" />
                     </Link>
                   </div>
                 )}
@@ -206,7 +225,7 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Progress bar — only for active non-basic plans */}
-            {currentPlan !== "basic" && isActive && daysRemaining !== null && (
+            {currentPlan !== "basic" && currentPlan !== "owner" && isActive && daysRemaining !== null && (
               <div className="px-6 pb-5 pt-3">
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
                   <span>{_("subscription.daysRemaining")}</span>
@@ -230,7 +249,7 @@ export default function SubscriptionPage() {
       {/* Plan Comparison Cards */}
       <div>
         <h2 className="text-base font-semibold text-foreground mb-4">{_("subscription.upgradePlans")}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {PLAN_KEYS.map((planKey) => {
             const isCurrent = currentPlan === planKey;
             const isRecommended = nextTier === planKey;
@@ -290,7 +309,7 @@ export default function SubscriptionPage() {
                   </ul>
 
                   {/* CTA for upgrade */}
-                  {!isCurrent && (
+                  {!isCurrent && currentPlan !== "owner" && (
                     <Link
                       href="/redeem"
                       className={cn(
@@ -321,9 +340,9 @@ export default function SubscriptionPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-t border-b border-border">
-                  <th className="text-left py-3 px-5 text-xs font-medium text-muted-foreground">{_("subscription.feature")}</th>
+                  <th className="text-left py-3 px-5 text-xs font-medium text-muted-foreground whitespace-nowrap">{_("subscription.feature")}</th>
                   {PLAN_KEYS.map((pk) => (
-                    <th key={pk} className="text-center py-3 px-4 text-xs font-medium text-muted-foreground capitalize">
+                    <th key={pk} className="text-center py-3 px-4 text-xs font-medium text-muted-foreground capitalize whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
                         {React.createElement(PLAN_META[pk].icon, {
                           className: cn("h-3.5 w-3.5", PLAN_META[pk].iconColor),
@@ -337,7 +356,7 @@ export default function SubscriptionPage() {
               <tbody>
                 {FEATURE_MATRIX.map((row, i) => (
                   <tr key={row.key} className={cn("border-b border-border last:border-0", i % 2 === 0 && "bg-muted/30")}>
-                    <td className="py-2.5 px-5 text-foreground/80">{_(`subscription.${row.key}` as any)}</td>
+                    <td className="py-2.5 px-5 text-foreground/80 whitespace-nowrap">{_(`subscription.${row.key}` as any)}</td>
                     {PLAN_KEYS.map((pk) => {
                       const included = row[pk];
                       return (

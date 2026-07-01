@@ -69,6 +69,7 @@ export function useAccountsPaginated(params: {
   limit: number;
   search?: string;
   folder_id?: string | null;
+  status?: string | null;
 }) {
   return useQuery<AccountsResponse>({
     queryKey: ["accounts", "paginated", params],
@@ -78,6 +79,7 @@ export function useAccountsPaginated(params: {
       queryParams.append("limit", params.limit.toString());
       if (params.search) queryParams.append("search", params.search);
       if (params.folder_id) queryParams.append("folder_id", params.folder_id);
+      if (params.status) queryParams.append("status", params.status);
 
       const { data } = await api.get(`/accounts?${queryParams.toString()}`);
       return data;

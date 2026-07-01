@@ -92,6 +92,7 @@ class DeviceInfo(BaseModel):
     country: str | None
     region: str | None
     city: str | None
+    current: bool = False
     created: str | None  # ISO datetime string
 
 

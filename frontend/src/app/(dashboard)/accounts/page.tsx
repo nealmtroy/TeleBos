@@ -31,6 +31,7 @@ export default function AccountsListPage() {
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [folderManagerOpen, setFolderManagerOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("active");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -50,12 +51,18 @@ export default function AccountsListPage() {
     setPage(1);
   };
 
+  const handleSelectStatus = (status: string) => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
   const { data: accountsData } = useAccounts(); // For limit checks and offline calculations
   const { data: paginatedData, isLoading, error } = useAccountsPaginated({
     page,
     limit: 10,
     search: debouncedSearch,
     folder_id: selectedFolderId,
+    status: statusFilter === "all" ? null : statusFilter,
   });
   const { data: foldersData } = useAccountFolders();
 
@@ -119,24 +126,78 @@ export default function AccountsListPage() {
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <FolderFilterBar
-            folders={folders}
-            selectedFolderId={selectedFolderId}
-            onSelect={handleSelectFolder}
-          />
+      <div className="flex flex-col gap-4">
+        {/* Status filters & Search bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+            <button
+              onClick={() => handleSelectStatus("active")}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                statusFilter === "active"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              {_("accountsList.statusActive")}
+            </button>
+            <button
+              onClick={() => handleSelectStatus("limited")}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                statusFilter === "limited"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              {_("accountsList.statusLimited")}
+            </button>
+            <button
+              onClick={() => handleSelectStatus("inactive")}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                statusFilter === "inactive"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              {_("accountsList.statusInactive")}
+            </button>
+            <button
+              onClick={() => handleSelectStatus("all")}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                statusFilter === "all"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              )}
+            >
+              {_("accountsList.statusAll")}
+            </button>
+          </div>
+
+          <div className="relative w-full md:w-72 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder={_("accountsList.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
+            />
+          </div>
         </div>
-        <div className="relative w-full sm:w-72 shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder={_("accountsList.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
-          />
-        </div>
+
+        {/* Folder filter bar */}
+        {folders.length > 0 && (
+          <div className="border-t border-gray-100 pt-3">
+            <FolderFilterBar
+              folders={folders}
+              selectedFolderId={selectedFolderId}
+              onSelect={handleSelectFolder}
+            />
+          </div>
+        )}
       </div>
 
       {/* List */}

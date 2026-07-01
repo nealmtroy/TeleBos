@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -155,7 +156,7 @@ async def list_redeem_codes(
     limit: int = 50,
 ) -> tuple[list[RedeemCode], int]:
     """List redeem codes with optional search and pagination."""
-    query = select(RedeemCode)
+    query = select(RedeemCode).options(selectinload(RedeemCode.creator))
     count_query = select(func.count(RedeemCode.id))
 
     if search:
@@ -186,6 +187,7 @@ async def list_redeem_logs(
 
     query = (
         select(RedeemLog)
+        .options(selectinload(RedeemLog.redeem_code), selectinload(RedeemLog.user))
         .order_by(RedeemLog.redeemed_at.desc())
         .offset((page - 1) * limit)
         .limit(limit)

@@ -157,6 +157,10 @@ const id: Dict = {
     showingAccounts: "Menampilkan {start}-{end} dari {total} akun",
     prev: "Sebelumnya",
     next: "Berikutnya",
+    statusActive: "Aktif",
+    statusLimited: "Dibatasi",
+    statusInactive: "Nonaktif",
+    statusAll: "Semua",
   },
 
   // ── Kartu Akun ──────────────────────────────────────────────────────────
@@ -688,6 +692,7 @@ const id: Dict = {
     terminateAllConfirm: "Akhiri semua sesi lain? Perangkat ini akan tetap terhubung.",
     unknownApp: "Aplikasi Tidak Diketahui",
     since: "Sejak {date}",
+    thisDevice: "Perangkat Ini",
   },
 
   // ── Utilitas ────────────────────────────────────────────────────────────
@@ -1076,6 +1081,8 @@ const id: Dict = {
     planBasic: "Basic",
     planPro: "Pro",
     planPremium: "Premium",
+    planOwner: "Owner",
+    lifetime: "Permanen",
     noSubscription: "Tidak Ada Langganan Aktif",
     active: "Aktif",
     expired: "Kedaluwarsa",

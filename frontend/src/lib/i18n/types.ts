@@ -157,6 +157,10 @@ export interface Dict {
     showingAccounts: string;
     prev: string;
     next: string;
+    statusActive: string;
+    statusLimited: string;
+    statusInactive: string;
+    statusAll: string;
   };
 
   // Account Card
@@ -649,6 +653,7 @@ export interface Dict {
     terminateAllConfirm: string;
     unknownApp: string;
     since: string;
+    thisDevice: string;
   };
 
   // Utils
@@ -1075,6 +1080,8 @@ export interface Dict {
     planBasic: string;
     planPro: string;
     planPremium: string;
+    planOwner: string;
+    lifetime: string;
     noSubscription: string;
     active: string;
     expired: string;
