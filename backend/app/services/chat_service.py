@@ -271,12 +271,39 @@ async def sync_folders_from_telegram(account: TelegramAccount, db: AsyncSession)
             excluded = [c.id for c in folder.exclude_peers if hasattr(c, "id")]
             pinned = [c.id for c in folder.pinned_peers if hasattr(c, "id")]
 
+            # Ensure title is a string and handle TextWithEntities or None
+            title = ""
+            if folder.title:
+                if hasattr(folder.title, "text"):
+                    title = folder.title.text
+                else:
+                    title = str(folder.title)
+            if not title:
+                title = f"Folder {folder.id}"
+            title = title[:255]
+
+            # Try to extract emoji and color if present
+            emoji = getattr(folder, "emoticon", None)
+            if emoji:
+                if hasattr(emoji, "text"):
+                    emoji = emoji.text
+                else:
+                    emoji = str(emoji)
+                emoji = emoji[:10]
+
+            color = getattr(folder, "color", None)
+            if color is not None:
+                try:
+                    color = int(color)
+                except (ValueError, TypeError):
+                    color = None
+
             cf = ChatFolder(
                 account_id=account.id,
                 folder_id=folder.id,
-                title=folder.title,
-                emoji=None,
-                color=None,
+                title=title,
+                emoji=emoji,
+                color=color,
                 included_chat_ids=included,
                 excluded_chat_ids=excluded,
                 pinned_chat_ids=pinned,
