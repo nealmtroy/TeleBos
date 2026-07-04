@@ -270,7 +270,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed lg:relative inset-y-0 left-0 z-50 bg-slate-950 border-r border-slate-900 flex flex-col transition-all duration-300 ease-in-out text-slate-300 group/sidebar shrink-0",
+          "fixed lg:relative inset-y-0 left-0 z-50 bg-slate-950 border-r border-slate-900 flex flex-col transition-[width,transform] duration-300 ease-in-out text-slate-300 group/sidebar shrink-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           sidebarOpen ? "w-64" : "w-64 lg:w-[72px]"
         )}
@@ -389,10 +389,10 @@ export function Sidebar() {
                           <AnimatePresence initial={false}>
                             {isOpen && (
                               <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={{ duration: 0.15, ease: "easeOut" }}
                                 className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden"
                               >
                                 {item.subItems.map((sub) => {

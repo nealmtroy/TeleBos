@@ -243,7 +243,7 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
                 className="w-full flex items-center justify-between px-5 py-4 bg-gray-50/75 border-b border-gray-150 text-left transition hover:bg-gray-100/50"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-900">{cat}</span>
+                  <h2 className="text-sm font-bold text-gray-900">{cat}</h2>
                   <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200 font-semibold px-2 py-0.5">
                     {items.length}/{totalCount} {_("orders.services")}
                   </Badge>
@@ -261,40 +261,39 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
                           <Badge variant="outline" className="text-[10px] font-mono font-bold bg-gray-50 text-gray-500 border-gray-200 px-1.5 py-0.5 shrink-0 mt-0.5">
                             ID: {service.id}
                           </Badge>
-                          <h4 className="text-sm font-bold text-gray-900 leading-snug">
+                          <h3 className="text-sm font-bold text-gray-900 leading-snug">
                             {service.name}
-                          </h4>
+                          </h3>
                         </div>
 
-                        {/* Separate Visual Panels for Speed & Min/Max */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {/* Min Order */}
-                          <div className="bg-gray-50 border border-gray-100 p-2.5 rounded-xl text-center">
-                            <span className="text-[10px] text-gray-450 font-bold block uppercase tracking-wider mb-0.5">Min Order</span>
-                            <span className="text-xs font-bold text-gray-800">{service.min.toLocaleString()}</span>
+                        {/* Flat service limits and speed (no nested cards) */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs border-b border-gray-100/50 pb-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-400 font-medium">Min:</span>
+                            <span className="font-bold text-gray-800">{service.min.toLocaleString()}</span>
                           </div>
-
-                          {/* Max Order */}
-                          <div className="bg-gray-50 border border-gray-100 p-2.5 rounded-xl text-center">
-                            <span className="text-[10px] text-gray-450 font-bold block uppercase tracking-wider mb-0.5">Max Order</span>
-                            <span className="text-xs font-bold text-gray-800">{service.max.toLocaleString()}</span>
+                          <div className="h-3 w-px bg-gray-200" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-400 font-medium">Max:</span>
+                            <span className="font-bold text-gray-800">{service.max.toLocaleString()}</span>
                           </div>
-
-                          {/* Speed */}
                           {service.speed && (
-                            <div className="bg-blue-50/40 border border-blue-100/50 p-2.5 rounded-xl text-center flex items-center justify-center gap-1">
-                              <Zap className="h-3 w-3 text-blue-500 shrink-0" />
-                              <div className="text-left sm:text-center min-w-0">
-                                <span className="text-[10px] text-blue-600 font-bold block uppercase tracking-wider mb-0.5">Speed</span>
-                                <span className="text-xs font-bold text-blue-800 truncate block" title={service.speed}>{service.speed}</span>
+                            <>
+                              <div className="h-3 w-px bg-gray-200" />
+                              <div className="flex items-center gap-1.5">
+                                <Zap className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                <span className="text-gray-400 font-medium">Speed:</span>
+                                <span className="font-bold text-blue-800 truncate max-w-[200px]" title={service.speed}>
+                                  {service.speed}
+                                </span>
                               </div>
-                            </div>
+                            </>
                           )}
                         </div>
 
-                        {/* Note Description Box */}
+                        {/* Note Description (no nested cards) */}
                         {service.note && (
-                          <div className="text-xs text-gray-550 bg-gray-50 border border-gray-100 p-3 rounded-xl leading-relaxed whitespace-pre-wrap">
+                          <div className="text-xs text-gray-500 pl-3 border-l border-gray-200 leading-relaxed whitespace-pre-wrap">
                             {service.note}
                           </div>
                         )}
