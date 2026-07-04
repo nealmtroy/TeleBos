@@ -18,6 +18,20 @@ logger = logging.getLogger(__name__)
 SETTING_GLOBAL_MARKUP = "global_markup_percent"
 
 
+def _parse_int_or_none(value: object, default: int | None = None) -> int | None:
+    """Parse an SMM API value to int or return default, allowing None."""
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        pass
+    try:
+        return int(float(str(value)))
+    except (ValueError, TypeError):
+        return default
+
+
 async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, str, str, int, int, str | None, str | None]:
     """Get service info with effective price from local smm_services table.
 
@@ -277,8 +291,8 @@ async def refresh_order_status(db: AsyncSession, order: Order) -> Order:
         data = result.get("data", {})
         new_status = data.get("status", order.status)
         order.status = new_status
-        order.start_count = data.get("start_count", order.start_count)
-        order.remains = data.get("remains", order.remains)
+        order.start_count = _parse_int_or_none(data.get("start_count"), order.start_count)
+        order.remains = _parse_int_or_none(data.get("remains"), order.remains)
 
     await db.flush()
     return order
