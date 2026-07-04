@@ -64,6 +64,10 @@ async def sync_services(db: AsyncSession) -> int:
     if not services:
         return 0
 
+    # Fetch all existing services from DB in a single query
+    result = await db.execute(select(SmmService))
+    existing_map = {s.id: s for s in result.scalars().all()}
+
     count = 0
     for svc in services:
         raw_sid = svc.get("id")
@@ -76,25 +80,41 @@ async def sync_services(db: AsyncSession) -> int:
         note = svc.get("note") or None
         speed = svc.get("speed") or None
 
+        original_price = _parse_int(svc.get("price"), 0)
+        min_qty = _parse_int(svc.get("min"), 1)
+        max_qty = _parse_int(svc.get("max"), 999999)
+        name = svc.get("name", "")
+        category = svc.get("category", "")
+
         # Check if service already exists
-        existing = await db.get(SmmService, sid)
+        existing = existing_map.get(sid)
         if existing:
-            existing.service_name = svc.get("name", existing.service_name)
-            existing.category = svc.get("category", existing.category)
-            existing.original_price = _parse_int(svc.get("price"), existing.original_price)
-            existing.min_qty = _parse_int(svc.get("min"), existing.min_qty)
-            existing.max_qty = _parse_int(svc.get("max"), existing.max_qty)
-            existing.note = note
-            existing.speed = speed
+            # Check if any fields changed before updating to prevent dirtying the SQLAlchemy session needlessly
+            if (
+                existing.service_name != name
+                or existing.category != category
+                or existing.original_price != original_price
+                or existing.min_qty != min_qty
+                or existing.max_qty != max_qty
+                or existing.note != note
+                or existing.speed != speed
+            ):
+                existing.service_name = name
+                existing.category = category
+                existing.original_price = original_price
+                existing.min_qty = min_qty
+                existing.max_qty = max_qty
+                existing.note = note
+                existing.speed = speed
         else:
             service = SmmService(
                 id=sid,
                 service_id=sid,
-                service_name=svc.get("name", ""),
-                category=svc.get("category", ""),
-                original_price=_parse_int(svc.get("price"), 0),
-                min_qty=_parse_int(svc.get("min"), 1),
-                max_qty=_parse_int(svc.get("max"), 999999),
+                service_name=name,
+                category=category,
+                original_price=original_price,
+                min_qty=min_qty,
+                max_qty=max_qty,
                 note=note,
                 speed=speed,
                 is_active=True,
@@ -106,6 +126,7 @@ async def sync_services(db: AsyncSession) -> int:
 
     await db.flush()
     return count
+
 
 
 async def get_services(

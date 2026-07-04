@@ -710,6 +710,28 @@ async def lifespan(app: FastAPI):
     profile_sync_task = asyncio.create_task(_profile_sync_loop())
     logger.info("Profile sync background task started (5-min interval)")
 
+    # 5. Spawn SMM services sync background loop (checks every 12 hours)
+    from app.services.admin_smm_service import sync_services
+
+    async def _smm_services_sync_loop():
+        """Periodically sync SMM services from the panel API."""
+        # Wait a little bit after startup to avoid database contention on initialization
+        await asyncio.sleep(10)
+        while True:
+            try:
+                async with async_session_factory() as db:
+                    logger.info("Background task: Syncing SMM services...")
+                    count = await sync_services(db)
+                    await db.commit()
+                    logger.info("Background task: Synced %d SMM services.", count)
+            except Exception as exc:
+                logger.warning("Background SMM services sync loop error: %s", exc)
+            # Sync every 12 hours (43200 seconds)
+            await asyncio.sleep(43200)
+
+    smm_sync_task = asyncio.create_task(_smm_services_sync_loop())
+    logger.info("SMM services background sync task started (12-hour interval)")
+
     yield
     # Shutdown
     logger.info("Shutting down TeleBos API...")
@@ -730,6 +752,12 @@ async def lifespan(app: FastAPI):
     profile_sync_task.cancel()
     try:
         await profile_sync_task
+    except asyncio.CancelledError:
+        pass
+
+    smm_sync_task.cancel()
+    try:
+        await smm_sync_task
     except asyncio.CancelledError:
         pass
 

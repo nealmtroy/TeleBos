@@ -41,28 +41,6 @@ ALLOWED_SMM_SERVICE_IDS = {
     7836, 7837, 7838, 7839, 7840, 7841, 7842
 }
 
-async def ensure_services_synced(db: AsyncSession):
-    """Ensure SMM services are synced from API to DB if cache is empty or older than 12 hours."""
-    try:
-        result = await db.execute(select(func.max(SmmService.updated_at)))
-        last_sync = result.scalar()
-
-        should_sync = False
-        if last_sync is None:
-            should_sync = True
-        else:
-            if last_sync.tzinfo is not None:
-                last_sync = last_sync.astimezone(timezone.utc).replace(tzinfo=None)
-            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-            should_sync = (now_utc - last_sync) > timedelta(hours=12)
-
-        if should_sync:
-            logger.info("SMM services local cache is empty or older than 12 hours. Auto-syncing from panel API...")
-            await admin_smm_service.sync_services(db)
-            await db.flush()
-    except Exception as e:
-        logger.error("Failed to auto-sync SMM services: %s", e)
-
 router = APIRouter(tags=["orders"])
 
 
@@ -72,8 +50,6 @@ async def list_telegram_services(
     user: User = Depends(get_current_user),
 ):
     """List only allowed Telegram and Telegram Reactions services from local cache (auto-synced)."""
-    await ensure_services_synced(db)
-
     # Get active + visible + allowed services from local table
     result = await db.execute(
         select(SmmService).where(
@@ -113,16 +89,6 @@ async def list_telegram_services(
             "speed": svc.speed,
         })
 
-    # Fallback to SMM API if no local data
-    if not formatted:
-        services_api = await smm_service.get_telegram_services()
-        # Filter fallback services
-        formatted = [
-            s for s in services_api
-            if int(s.get("id", 0)) in ALLOWED_SMM_SERVICE_IDS
-        ]
-        return {"services": formatted}
-
     return {"services": formatted}
 
 
@@ -132,8 +98,6 @@ async def list_all_services(
     user: User = Depends(get_current_user),
 ):
     """List all allowed SMM panel services from local cache (auto-synced)."""
-    await ensure_services_synced(db)
-
     result = await db.execute(
         select(SmmService).where(
             SmmService.is_active.is_(True),
@@ -170,16 +134,8 @@ async def list_all_services(
             "speed": svc.speed,
         })
 
-    if not formatted:
-        services_api = await smm_service.get_services()
-        # Filter fallback services
-        formatted = [
-            s for s in services_api
-            if int(s.get("id", 0)) in ALLOWED_SMM_SERVICE_IDS
-        ]
-        return {"services": formatted}
-
     return {"services": formatted}
+
 
 
 
