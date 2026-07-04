@@ -75,25 +75,23 @@ export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOr
         )}
       </div>
 
-      {/* Tab Navigation (Underline style) */}
-      <div className="border-b border-gray-200 w-full">
-        <div className="flex gap-6 -mb-px overflow-x-auto no-scrollbar">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "flex items-center gap-2 pb-3.5 px-1 text-sm font-semibold transition-all border-b-2 whitespace-nowrap focus:outline-none",
-                tab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              )}
-            >
-              <t.icon className="h-4 w-4" />
-              {t.label}
-            </button>
-          ))}
-        </div>
+      {/* Tab Navigation (Pill style) */}
+      <div className="bg-gray-100/50 p-1 rounded-xl flex gap-1 self-start border border-gray-200/60 shadow-sm max-w-fit">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap focus:outline-none",
+              tab === t.id
+                ? "bg-white text-gray-900 shadow-sm border border-gray-200/20"
+                : "text-gray-500 hover:text-gray-800"
+            )}
+          >
+            <t.icon className="h-3.5 w-3.5" />
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab Views */}
@@ -236,11 +234,11 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
           const totalCount = totalInCategory.get(cat) || 0;
 
           return (
-            <div key={cat} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div key={cat} className="space-y-3">
               {/* Category Header */}
               <button
                 onClick={() => toggleCategory(cat)}
-                className="w-full flex items-center justify-between px-5 py-4 bg-gray-50/75 border-b border-gray-150 text-left transition hover:bg-gray-100/50"
+                className="w-full flex items-center justify-between py-2 text-left transition-colors focus:outline-none"
               >
                 <div className="flex items-center gap-3">
                   <h2 className="text-sm font-bold text-gray-900">{cat}</h2>
@@ -248,13 +246,13 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
                     {items.length}/{totalCount} {_("orders.services")}
                   </Badge>
                 </div>
-                <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", !isExpanded && "rotate-180")} />
+                <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform duration-200", !isExpanded && "rotate-180")} />
               </button>
 
               {isExpanded && (
-                <div className="divide-y divide-gray-150">
+                <div className="grid grid-cols-1 gap-4">
                   {items.map((service) => (
-                    <div key={service.id} className="p-5 flex flex-col md:flex-row md:items-start justify-between gap-5 border-b last:border-b-0 border-gray-100 hover:bg-gray-50/30 transition">
+                    <div key={service.id} className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col md:flex-row md:items-start justify-between gap-5 shadow-sm hover:border-gray-300 transition-all duration-200">
                       <div className="space-y-3 flex-1 min-w-0">
                         {/* Title and ID */}
                         <div className="flex items-start gap-2">
