@@ -732,6 +732,26 @@ async def lifespan(app: FastAPI):
     smm_sync_task = asyncio.create_task(_smm_services_sync_loop())
     logger.info("SMM services background sync task started (12-hour interval)")
 
+    # 6. Spawn SMM pending orders status sync background loop (checks every 60 seconds)
+    from app.services.admin_smm_service import refresh_all_pending_smart
+
+    async def _smm_orders_poll_loop():
+        """Periodically auto-refresh active SMM order statuses."""
+        await asyncio.sleep(15)  # Wait 15s after startup
+        while True:
+            try:
+                async with async_session_factory() as db:
+                    count = await refresh_all_pending_smart(db)
+                    await db.commit()
+                    if count > 0:
+                        logger.info("Background task: Auto-refreshed %d SMM order statuses.", count)
+            except Exception as exc:
+                logger.warning("Background SMM orders poll loop error: %s", exc)
+            await asyncio.sleep(60)  # Polling interval: every minute
+
+    smm_orders_poll_task = asyncio.create_task(_smm_orders_poll_loop())
+    logger.info("SMM orders background status poll task started (1-min interval)")
+
     yield
     # Shutdown
     logger.info("Shutting down TeleBos API...")
@@ -758,6 +778,12 @@ async def lifespan(app: FastAPI):
     smm_sync_task.cancel()
     try:
         await smm_sync_task
+    except asyncio.CancelledError:
+        pass
+
+    smm_orders_poll_task.cancel()
+    try:
+        await smm_orders_poll_task
     except asyncio.CancelledError:
         pass
 

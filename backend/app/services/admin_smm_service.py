@@ -372,6 +372,62 @@ async def refresh_all_pending(db: AsyncSession) -> int:
     return updated
 
 
+async def refresh_all_pending_smart(db: AsyncSession) -> int:
+    """Refresh pending/processing orders across all users with adaptive polling intervals.
+
+    This avoids flooding the SMM API by only checking orders based on their age:
+    - Age < 15 min: Check every 2 minutes.
+    - Age 15 min to 2 hours: Check every 5 minutes.
+    - Age > 2 hours: Check every 15 minutes.
+    """
+    from datetime import datetime, timezone
+
+    query = select(Order).where(
+        Order.status.in_(["Pending", "Processing", "Partial", "In progress"])
+    )
+    result = await db.execute(query)
+    orders = list(result.scalars().all())
+
+    now = datetime.now(timezone.utc)
+    updated = 0
+
+    for order in orders:
+        created_at = order.created_at
+        if created_at.tzinfo is None:
+            now_comparison = datetime.utcnow()
+            updated_at = order.updated_at
+        else:
+            now_comparison = now
+            updated_at = order.updated_at
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=timezone.utc)
+
+        age_minutes = (now_comparison - created_at).total_seconds() / 60.0
+        last_check_minutes = (now_comparison - updated_at).total_seconds() / 60.0
+
+        should_check = False
+        if age_minutes < 15:
+            if last_check_minutes >= 2.0:
+                should_check = True
+        elif age_minutes < 120:
+            if last_check_minutes >= 5.0:
+                should_check = True
+        else:
+            if last_check_minutes >= 15.0:
+                should_check = True
+
+        if should_check:
+            try:
+                await refresh_order_status(db, order)
+                updated += 1
+            except Exception as e:
+                logger.error("Failed to refresh order %s: %s", order.id, e)
+
+    if updated:
+        await db.flush()
+    return updated
+
+
 # ── Stats ────────────────────────────────────────────────────────────────────
 
 

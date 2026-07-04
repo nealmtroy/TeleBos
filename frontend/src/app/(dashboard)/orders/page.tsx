@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useOrderHistory, useRefreshAllOrders, useRefreshOrderStatus } from "@/hooks/use-orders";
@@ -37,6 +37,8 @@ const ACTION_STYLES: Record<string, { labelId: string; labelEn: string; colorCla
   cancel_sale: { labelId: "Batal Jual", labelEn: "Cancelled Listing", colorClass: "bg-gray-100 text-gray-700 border-gray-200" },
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export default function OrderHistoryPage() {
   const _ = useT();
   const locale = useI18nStore((s) => s.locale);
@@ -54,7 +56,7 @@ export default function OrderHistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-250 pb-5">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("orders.history") || "History"}</h1>
-          <p className="text-gray-500 mt-1 text-sm">
+          <p className="text-gray-550 mt-1 text-sm">
             {locale === "id"
               ? "Kelola riwayat pembelian layanan SMM dan transaksi jual beli akun Telegram Anda."
               : "Manage SMM services purchase history and your Telegram account buy/sell transactions."}
@@ -101,9 +103,19 @@ export default function OrderHistoryPage() {
 
 function SmmOrdersHistoryView() {
   const _ = useT();
+  const locale = useI18nStore((s) => s.locale);
   const { data: orders, isLoading, error } = useOrderHistory();
   const refreshOrder = useRefreshOrderStatus();
   const refreshAll = useRefreshAllOrders();
+  const [page, setPage] = useState(1);
+
+  const totalPages = useMemo(() => {
+    return orders ? Math.ceil(orders.length / ITEMS_PER_PAGE) : 0;
+  }, [orders]);
+
+  const paginatedOrders = useMemo(() => {
+    return orders ? orders.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE) : [];
+  }, [orders, page]);
 
   if (isLoading) {
     return (
@@ -164,7 +176,7 @@ function SmmOrdersHistoryView() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-150">
-            {orders.map((order) => (
+            {paginatedOrders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-50/50 transition-colors text-gray-800 bg-white">
                 <td className="py-3.5 px-4 whitespace-nowrap text-gray-500">
                   {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
@@ -223,7 +235,7 @@ function SmmOrdersHistoryView() {
 
       {/* Mobile Card List */}
       <div className="md:hidden space-y-3">
-        {orders.map((order) => (
+        {paginatedOrders.map((order) => (
           <div key={order.id} className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3 shadow-sm text-gray-950">
             <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
               <div className="flex-1 min-w-0">
@@ -279,6 +291,91 @@ function SmmOrdersHistoryView() {
           </div>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border border-gray-200 bg-white px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded-xl"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="rounded-xl"
+            >
+              Next
+            </Button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs text-gray-550">
+                {locale === "id" ? "Menampilkan" : "Showing"}{" "}
+                <span className="font-bold text-gray-900">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
+                {locale === "id" ? "sampai" : "to"}{" "}
+                <span className="font-bold text-gray-900">{Math.min(page * ITEMS_PER_PAGE, orders.length)}</span>{" "}
+                {locale === "id" ? "dari" : "of"}{" "}
+                <span className="font-bold text-gray-900">{orders.length}</span>{" "}
+                {locale === "id" ? "pesanan" : "orders"}
+              </p>
+            </div>
+            <div>
+              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-xl border-gray-200 px-3"
+                >
+                  Previous
+                </Button>
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const pNum = idx + 1;
+                  if (totalPages > 5 && pNum !== 1 && pNum !== totalPages && Math.abs(pNum - page) > 1) {
+                    if (pNum === 2 && page > 3) {
+                      return <span key={pNum} className="px-2 text-gray-400">...</span>;
+                    }
+                    if (pNum === totalPages - 1 && page < totalPages - 2) {
+                      return <span key={pNum} className="px-2 text-gray-400">...</span>;
+                    }
+                    return null;
+                  }
+                  return (
+                    <Button
+                      key={pNum}
+                      variant={page === pNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pNum)}
+                      className={cn(
+                        "rounded-xl px-3",
+                        page === pNum ? "bg-primary text-white hover:bg-primary/90" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                      )}
+                    >
+                      {pNum}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="rounded-xl border-gray-200 px-3"
+                >
+                  Next
+                </Button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -286,6 +383,15 @@ function SmmOrdersHistoryView() {
 function AccountTransactionsHistoryView() {
   const locale = useI18nStore((s) => s.locale);
   const { data: logs, isLoading, error } = useMarketplaceHistory();
+  const [page, setPage] = useState(1);
+
+  const totalPages = useMemo(() => {
+    return logs ? Math.ceil(logs.length / ITEMS_PER_PAGE) : 0;
+  }, [logs]);
+
+  const paginatedLogs = useMemo(() => {
+    return logs ? logs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE) : [];
+  }, [logs, page]);
 
   if (isLoading) {
     return (
@@ -342,7 +448,7 @@ function AccountTransactionsHistoryView() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-150 bg-white">
-            {logs.map((log) => {
+            {paginatedLogs.map((log) => {
               const style = ACTION_STYLES[log.action] || {
                 labelId: log.action,
                 labelEn: log.action,
@@ -352,7 +458,7 @@ function AccountTransactionsHistoryView() {
 
               return (
                 <tr key={log.id} className="hover:bg-gray-50/50 transition-colors text-gray-800">
-                  <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
+                  <td className="py-3.5 px-4 text-gray-550 whitespace-nowrap">
                     {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                   </td>
                   <td className="py-3.5 px-4 text-center">
@@ -363,13 +469,13 @@ function AccountTransactionsHistoryView() {
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-gray-900">{log.phone || "-"}</div>
                     {log.telegram_id && (
-                      <div className="text-[10px] text-gray-400 font-mono">ID: {log.telegram_id}</div>
+                      <div className="text-[10px] text-gray-450 font-mono">ID: {log.telegram_id}</div>
                     )}
                   </td>
                   <td className="py-3.5 px-4 text-right whitespace-nowrap">
                     <span className={cn(
                       "font-extrabold text-sm",
-                      log.action === "buy" ? "text-red-600" :
+                      log.action === "buy" ? "text-red-650 text-red-600" :
                       log.action === "sell" ? "text-emerald-600" :
                       "text-gray-800 font-semibold"
                     )}>
@@ -386,7 +492,7 @@ function AccountTransactionsHistoryView() {
 
       {/* Mobile Card List */}
       <div className="md:hidden space-y-3">
-        {logs.map((log) => {
+        {paginatedLogs.map((log) => {
           const style = ACTION_STYLES[log.action] || {
             labelId: log.action,
             labelEn: log.action,
@@ -404,7 +510,7 @@ function AccountTransactionsHistoryView() {
                   "text-sm font-extrabold",
                   log.action === "buy" ? "text-red-600" :
                   log.action === "sell" ? "text-emerald-600" :
-                  "text-gray-800 font-semibold"
+                  "text-gray-850 font-semibold"
                 )}>
                   {log.action === "buy" ? "- " : log.action === "sell" ? "+ " : ""}
                   Rp {log.price?.toLocaleString() || 0}
@@ -423,7 +529,7 @@ function AccountTransactionsHistoryView() {
                 )}
 
                 <span className="font-semibold text-gray-500">{locale === "id" ? "Waktu" : "Time"}:</span>
-                <span className="text-gray-600 font-medium text-right">
+                <span className="text-gray-650 font-medium text-right">
                   {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                 </span>
               </div>
@@ -431,6 +537,91 @@ function AccountTransactionsHistoryView() {
           );
         })}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border border-gray-200 bg-white px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded-xl"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="rounded-xl"
+            >
+              Next
+            </Button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs text-gray-550">
+                {locale === "id" ? "Menampilkan" : "Showing"}{" "}
+                <span className="font-bold text-gray-900">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
+                {locale === "id" ? "sampai" : "to"}{" "}
+                <span className="font-bold text-gray-900">{Math.min(page * ITEMS_PER_PAGE, logs.length)}</span>{" "}
+                {locale === "id" ? "dari" : "of"}{" "}
+                <span className="font-bold text-gray-900">{logs.length}</span>{" "}
+                {locale === "id" ? "transaksi" : "transactions"}
+              </p>
+            </div>
+            <div>
+              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-xl border-gray-200 px-3"
+                >
+                  Previous
+                </Button>
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const pNum = idx + 1;
+                  if (totalPages > 5 && pNum !== 1 && pNum !== totalPages && Math.abs(pNum - page) > 1) {
+                    if (pNum === 2 && page > 3) {
+                      return <span key={pNum} className="px-2 text-gray-400">...</span>;
+                    }
+                    if (pNum === totalPages - 1 && page < totalPages - 2) {
+                      return <span key={pNum} className="px-2 text-gray-400">...</span>;
+                    }
+                    return null;
+                  }
+                  return (
+                    <Button
+                      key={pNum}
+                      variant={page === pNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pNum)}
+                      className={cn(
+                        "rounded-xl px-3",
+                        page === pNum ? "bg-primary text-white hover:bg-primary/90" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                      )}
+                    >
+                      {pNum}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="rounded-xl border-gray-200 px-3"
+                >
+                  Next
+                </Button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
