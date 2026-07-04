@@ -17,10 +17,10 @@ import {
   FileText,
   Wallet,
   ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Tab = "services" | "new" | "mass";
@@ -57,42 +57,39 @@ export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOr
   return (
     <div className="space-y-6">
       {/* Header + Balance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-250 pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{title}</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">{description}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h1>
+          <p className="text-gray-500 mt-1 text-sm">{description}</p>
         </div>
         {user && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200/85 dark:border-slate-800 rounded-xl self-start sm:self-auto">
-            <Wallet className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
-              {_("orders.yourBalance")}: <span className="text-sm font-bold text-slate-900 dark:text-slate-100 ml-1">Rp {user.balance?.toLocaleString() || 0}</span>
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-100 rounded-xl self-start sm:self-auto shadow-sm">
+            <Wallet className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs font-semibold text-emerald-800 whitespace-nowrap">
+              {_("orders.yourBalance")}: <span className="text-sm font-bold text-emerald-700 ml-1">Rp {user.balance?.toLocaleString() || 0}</span>
             </span>
           </div>
         )}
       </div>
 
-      {/* Tab Navigation (Pill container) */}
+      {/* Tab Navigation (Pill container matches dashboard tabs) */}
       <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-        <div className="bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl flex gap-1 w-fit border border-slate-200/60 dark:border-slate-800">
-          {tabs.map((t) => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
-                  tab === t.id
-                    ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-slate-700/50"
-                    : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-auto">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                tab === t.id
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              <t.icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -180,11 +177,11 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
     return (
       <div className="space-y-4 animate-pulse">
         {Array.from({ length: 2 }).map((_, gi) => (
-          <div key={gi} className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="h-5 w-40 bg-slate-100 dark:bg-slate-900 rounded" />
+          <div key={gi} className="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
+            <div className="h-5 w-40 bg-gray-100 rounded" />
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-16 bg-slate-50 dark:bg-slate-900/60 rounded-xl" />
+                <div key={i} className="h-16 bg-gray-50 rounded-xl" />
               ))}
             </div>
           </div>
@@ -195,7 +192,7 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-red-50/50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-xl text-red-700 dark:text-red-400">
+      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl text-red-800">
         <AlertCircle className="h-5 w-5 flex-shrink-0" />
         <p className="text-sm font-medium">Failed to load services</p>
       </div>
@@ -204,9 +201,9 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
 
   if (services.length === 0) {
     return (
-      <div className="text-center py-16 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-950/20">
-        <Search className="h-10 w-10 mx-auto mb-3 text-slate-300 dark:text-slate-700" />
-        <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">No services available</p>
+      <div className="text-center py-16 border border-gray-200 bg-white rounded-2xl">
+        <Search className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+        <p className="font-semibold text-gray-900 text-sm">No services available</p>
       </div>
     );
   }
@@ -214,14 +211,14 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
   return (
     <div className="space-y-4">
       {/* Search Input */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      <div className="relative w-full sm:max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={_("orders.searchService") || "Search services..."}
-          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500 transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
+          className="w-full pl-9 pr-4 py-2 border border-gray-200 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 placeholder:text-gray-400"
         />
       </div>
 
@@ -232,71 +229,71 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
           const totalCount = totalInCategory.get(cat) || 0;
 
           return (
-            <div key={cat} className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-950/20">
+            <div key={cat} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               {/* Category Header */}
               <button
                 onClick={() => toggleCategory(cat)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800 text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-900/80"
+                className="w-full flex items-center justify-between px-5 py-4 bg-gray-50/75 border-b border-gray-150 text-left transition hover:bg-gray-100/50"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{cat}</span>
-                  <span className="text-xs text-slate-400 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-sm font-bold text-gray-900">{cat}</span>
+                  <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200 font-semibold px-2 py-0.5">
                     {items.length}/{totalCount} {_("orders.services")}
-                  </span>
+                  </Badge>
                 </div>
-                <div className="text-slate-400">
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </div>
+                <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", !isExpanded && "rotate-180")} />
               </button>
 
               {isExpanded && (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                <div className="divide-y divide-gray-150">
                   {items.map((service) => (
-                    <div key={service.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-mono text-slate-400 dark:text-slate-500 bg-slate-150/60 dark:bg-slate-900 px-1.5 py-0.5 rounded">
+                    <div key={service.id} className="p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b last:border-b-0 border-gray-100 hover:bg-gray-50/30 transition">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex items-start gap-2">
+                          <Badge variant="outline" className="text-[10px] font-mono font-bold bg-gray-50 text-gray-500 border-gray-200 px-1.5 py-0.5">
                             ID: {service.id}
-                          </span>
-                          <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+                          </Badge>
+                          <h4 className="text-sm font-bold text-gray-900 leading-snug">
                             {service.name}
                           </h4>
                         </div>
+
                         {service.note && (
-                          <p className="text-xs text-slate-400 dark:text-slate-450 italic line-clamp-2 max-w-3xl leading-relaxed">
+                          <div className="text-xs text-gray-500 bg-gray-50 border border-gray-100 p-3 rounded-lg leading-relaxed whitespace-pre-wrap">
                             {service.note}
-                          </p>
+                          </div>
                         )}
-                        <div className="flex items-center gap-4 text-xs text-slate-500 pt-1 flex-wrap">
+
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-500 pt-1">
                           {service.speed && (
                             <span className="flex items-center gap-1">
-                              <span className="font-semibold text-slate-400">{_("orders.speed") || "Speed"}:</span>
-                              <span className="text-slate-600 dark:text-slate-350">{service.speed}</span>
+                              <span className="font-semibold text-gray-400">{_("orders.speed") || "Speed"}:</span>
+                              <span className="text-gray-700 font-medium">{service.speed}</span>
                             </span>
                           )}
                           <span className="flex items-center gap-1">
-                            <span className="font-semibold text-slate-400">{_("orders.min") || "Min"}:</span>
-                            <span className="text-slate-600 dark:text-slate-350">{service.min.toLocaleString()}</span>
+                            <span className="font-semibold text-gray-400">{_("orders.min") || "Min"}:</span>
+                            <span className="text-gray-700 font-medium">{service.min.toLocaleString()}</span>
                           </span>
                           <span className="flex items-center gap-1">
-                            <span className="font-semibold text-slate-400">{_("orders.max") || "Max"}:</span>
-                            <span className="text-slate-600 dark:text-slate-350">{service.max.toLocaleString()}</span>
+                            <span className="font-semibold text-gray-400">{_("orders.max") || "Max"}:</span>
+                            <span className="text-gray-700 font-medium">{service.max.toLocaleString()}</span>
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
-                        <div className="text-right">
-                          <span className="text-xs text-slate-400 block">{_("orders.price") || "Price"}</span>
-                          <span className="text-base font-bold text-blue-650 dark:text-blue-400">
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-4 sm:gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                        <div className="sm:text-right">
+                          <span className="text-[10px] text-gray-400 font-semibold block uppercase tracking-wider">{_("orders.price") || "Price"}</span>
+                          <span className="text-base font-extrabold text-primary-600">
                             Rp {service.price.toLocaleString()}
-                            <span className="text-xs font-normal text-slate-400">/1k</span>
+                            <span className="text-xs text-gray-400 font-normal">/1k</span>
                           </span>
                         </div>
                         <Button
                           size="sm"
                           onClick={() => onOrderSelect(service.id)}
-                          className="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs h-9 px-4 shrink-0 transition-colors shadow-sm"
+                          className="bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-semibold h-9 px-4 shadow-sm"
                         >
                           <ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> {_("orders.placeOrder")}
                         </Button>
@@ -371,19 +368,19 @@ function NewOrderForm({ services, initialServiceId, onServiceChange }: NewOrderF
 
   return (
     <div className="max-w-2xl mx-auto">
-      <Card className="border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">{_("orders.newOrder") || "New Order"}</CardTitle>
-          <CardDescription className="text-slate-400 text-xs mt-0.5">{_("orders.desc")}</CardDescription>
+      <Card className="border border-gray-200 bg-white shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="border-b border-gray-100 py-4 px-6 bg-gray-50/50">
+          <CardTitle className="text-base sm:text-lg font-bold text-gray-900">{_("orders.newOrder") || "New Order"}</CardTitle>
+          <CardDescription className="text-xs text-gray-500 mt-0.5">{_("orders.desc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="p-6 space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{_("orders.services")}</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">{_("orders.services")}</label>
               <select
                 value={initialServiceId}
                 onChange={(e) => onServiceChange(e.target.value ? Number(e.target.value) : "")}
-                className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-slate-900 dark:text-slate-100"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-950"
                 required
               >
                 <option value="">{_("orders.selectService")}</option>
@@ -396,38 +393,38 @@ function NewOrderForm({ services, initialServiceId, onServiceChange }: NewOrderF
             </div>
 
             {selectedService && (
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 rounded-xl text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                <p className="font-semibold text-slate-900 dark:text-slate-100">{selectedService.name}</p>
-                {selectedService.note && <p className="text-slate-400 italic leading-relaxed mt-1">{selectedService.note}</p>}
-                <div className="flex gap-4 text-slate-400 pt-1.5">
-                  <span>Min: <span className="font-semibold text-slate-700 dark:text-slate-250">{selectedService.min.toLocaleString()}</span></span>
-                  <span>Max: <span className="font-semibold text-slate-700 dark:text-slate-250">{selectedService.max.toLocaleString()}</span></span>
-                  {selectedService.speed && <span>Speed: <span className="font-semibold text-slate-700 dark:text-slate-250">{selectedService.speed}</span></span>}
+              <div className="p-4 bg-gray-50 border border-gray-150 rounded-xl text-xs text-gray-600 space-y-1.5">
+                <p className="font-bold text-gray-900">{selectedService.name}</p>
+                {selectedService.note && <p className="text-gray-550 leading-relaxed mt-1">{selectedService.note}</p>}
+                <div className="flex gap-4 text-gray-400 pt-1">
+                  <span>Min: <span className="font-semibold text-gray-705">{selectedService.min.toLocaleString()}</span></span>
+                  <span>Max: <span className="font-semibold text-gray-705">{selectedService.max.toLocaleString()}</span></span>
+                  {selectedService.speed && <span>Speed: <span className="font-semibold text-gray-705">{selectedService.speed}</span></span>}
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{_("orders.dataTarget")}</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">{_("orders.dataTarget")}</label>
               <input
                 type="text"
                 value={dataTarget}
                 onChange={(e) => setDataTarget(e.target.value)}
                 placeholder={_("orders.dataTargetPlaceholder") || "Enter target URL or username..."}
-                className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 placeholder:text-gray-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">{_("orders.quantity")}</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">{_("orders.quantity")}</label>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.max(selectedService?.min || 1, quantity - 100))}
-                  className="p-2.5 border border-slate-200 dark:border-slate-850 bg-slate-50 dark:bg-slate-900 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors flex-shrink-0"
+                  className="p-3 border border-gray-200 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors flex-shrink-0"
                 >
-                  <Minus className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  <Minus className="h-4 w-4 text-gray-500" />
                 </button>
                 <input
                   type="number"
@@ -435,57 +432,57 @@ function NewOrderForm({ services, initialServiceId, onServiceChange }: NewOrderF
                   onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                   min={selectedService?.min || 1}
                   max={selectedService?.max || 999999}
-                  className="w-full text-center border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500 transition-all"
+                  className="w-full text-center border border-gray-200 bg-white rounded-xl px-3 py-2.5 text-sm font-bold text-gray-955 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.min(selectedService?.max || 999999, quantity + 100))}
-                  className="p-2.5 border border-slate-200 dark:border-slate-855 bg-slate-50 dark:bg-slate-900 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors flex-shrink-0"
+                  className="p-3 border border-gray-200 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors flex-shrink-0"
                 >
-                  <Plus className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  <Plus className="h-4 w-4 text-gray-500" />
                 </button>
               </div>
             </div>
 
             {selectedService && (
               <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Comments <span className="text-slate-400 font-normal">(optional)</span></label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Comments <span className="text-gray-400 font-normal">(optional)</span></label>
                 <textarea
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
                   rows={3}
                   placeholder="One comment per line for comment services..."
-                  className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 placeholder:text-gray-400"
                 />
               </div>
             )}
 
             {/* Order Summary Panel */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-200/80 dark:border-slate-850 rounded-xl space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Order Summary</h4>
+            <div className="p-4 bg-gray-50 border border-gray-150 rounded-xl space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Order Summary</h4>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{_("orders.price")}:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="text-gray-500">{_("orders.price")}:</span>
+                <span className="font-semibold text-gray-800">
                   {selectedService ? `Rp ${selectedService.price.toLocaleString()}/1k` : "-"}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{_("orders.quantity")}:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{quantity.toLocaleString()}</span>
+                <span className="text-gray-550">{_("orders.quantity")}:</span>
+                <span className="font-semibold text-gray-800">{quantity.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-sm font-bold border-t border-slate-200/60 dark:border-slate-800/80 pt-2.5">
-                <span className="text-slate-900 dark:text-slate-100">{_("orders.totalPrice")}:</span>
-                <span className="text-blue-600 dark:text-blue-400">Rp {estimatedPrice.toLocaleString()}</span>
+              <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-2">
+                <span className="text-gray-900">{_("orders.totalPrice")}:</span>
+                <span className="text-primary font-bold text-primary-600">Rp {estimatedPrice.toLocaleString()}</span>
               </div>
             </div>
 
             {/* Balance Alert Banner */}
             {user && (
               <div className={cn(
-                "p-3 rounded-xl border text-xs font-semibold flex items-center gap-2.5",
+                "p-3 rounded-xl border text-xs font-semibold flex items-center gap-2",
                 hasSufficientBalance
-                  ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-250/30 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400"
-                  : "bg-red-50/50 dark:bg-red-950/20 border-red-250/30 dark:border-red-800/40 text-red-700 dark:text-red-400"
+                  ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                  : "bg-red-50 border-red-100 text-red-800"
               )}>
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <div>
@@ -501,7 +498,7 @@ function NewOrderForm({ services, initialServiceId, onServiceChange }: NewOrderF
             <Button
               type="submit"
               disabled={placeOrder.isPending || !initialServiceId || !dataTarget || !hasSufficientBalance}
-              className="w-full h-11 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl font-semibold shadow-sm transition-colors border-0"
+              className="w-full h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold shadow-sm transition-colors border-0"
             >
               {placeOrder.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {_("orders.placingOrder")}</>
@@ -582,39 +579,39 @@ function MassOrderForm({ services }: MassOrderFormProps) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <Card className="border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">{_("orders.massOrder") || "Mass Order"}</CardTitle>
-          <CardDescription className="text-slate-400 text-xs mt-0.5">{_("orders.massOrderDesc")}</CardDescription>
+      <Card className="border border-gray-200 bg-white shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="border-b border-gray-100 py-4 px-6 bg-gray-50/50">
+          <CardTitle className="text-base sm:text-lg font-bold text-gray-900">{_("orders.massOrder") || "Mass Order"}</CardTitle>
+          <CardDescription className="text-xs text-gray-500 mt-0.5">{_("orders.massOrderDesc")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="p-6 space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-3">
+            <div className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="p-4 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3 relative bg-slate-50/30 dark:bg-slate-900/10">
+                <div key={index} className="p-4 border border-gray-150 rounded-xl space-y-3 relative bg-gray-50/30">
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50/50 dark:hover:bg-red-950/20 rounded-lg transition-colors z-10"
+                      className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                       {_("orders.services")} #{index + 1}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-450 mb-1">{_("orders.services")}</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{_("orders.services")}</label>
                       <select
                         value={item.service_id}
                         onChange={(e) => updateItem(index, "service_id", e.target.value ? Number(e.target.value) : "")}
-                        className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-slate-100"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900"
                         required
                       >
                         <option value="">{_("orders.selectService")}</option>
@@ -626,12 +623,12 @@ function MassOrderForm({ services }: MassOrderFormProps) {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-450 mb-1">{_("orders.quantity")}</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{_("orders.quantity")}</label>
                       <input
                         type="number"
                         value={item.quantity}
                         onChange={(e) => updateItem(index, "quantity", Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-slate-100"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900"
                         required
                         min={1}
                       />
@@ -639,13 +636,13 @@ function MassOrderForm({ services }: MassOrderFormProps) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-450 mb-1">{_("orders.dataTarget")}</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{_("orders.dataTarget")}</label>
                     <input
                       type="text"
                       value={item.data_target}
                       onChange={(e) => updateItem(index, "data_target", e.target.value)}
                       placeholder={_("orders.dataTargetPlaceholder") || "Enter target URL or username..."}
-                      className="w-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 placeholder:text-gray-400"
                       required
                     />
                   </div>
@@ -656,25 +653,25 @@ function MassOrderForm({ services }: MassOrderFormProps) {
             <button
               type="button"
               onClick={addItem}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900/60 rounded-xl transition-all w-full justify-center border border-dashed border-slate-200 dark:border-slate-800 hover:border-slate-300"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-primary hover:bg-gray-50 rounded-xl transition-all w-full justify-center border border-dashed border-gray-200 hover:border-gray-350"
             >
               <Plus className="h-4 w-4" /> {_("orders.addMore")}
             </button>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-2">
+            <div className="p-4 bg-gray-50 border border-gray-150 rounded-xl space-y-2">
               <div className="flex justify-between text-sm font-bold">
-                <span className="text-slate-900 dark:text-slate-100">{_("orders.totalAll")}:</span>
-                <span className="text-blue-600 dark:text-blue-400">Rp {totalCost.toLocaleString()}</span>
+                <span className="text-gray-950">{_("orders.totalAll")}:</span>
+                <span className="text-primary-650 text-primary">Rp {totalCost.toLocaleString()}</span>
               </div>
             </div>
 
             {/* Balance Alert Banner */}
             {user && (
               <div className={cn(
-                "p-3 rounded-xl border text-xs font-semibold flex items-center gap-2.5",
+                "p-3 rounded-xl border text-xs font-semibold flex items-center gap-2",
                 hasSufficientBalance
-                  ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-250/30 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400"
-                  : "bg-red-50/50 dark:bg-red-950/20 border-red-250/30 dark:border-red-800/40 text-red-700 dark:text-red-400"
+                  ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                  : "bg-red-50 border-red-100 text-red-800"
               )}>
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <div>
@@ -690,7 +687,7 @@ function MassOrderForm({ services }: MassOrderFormProps) {
             <Button
               type="submit"
               disabled={placeMassOrder.isPending || items.every((i) => !i.service_id || !i.data_target) || !hasSufficientBalance}
-              className="w-full h-11 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl font-semibold shadow-sm border-0 transition-colors"
+              className="w-full h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold shadow-sm border-0 transition-colors"
             >
               {placeMassOrder.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {_("orders.placingOrder")}</>
