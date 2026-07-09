@@ -70,7 +70,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; "  # Next.js needs these + Cloudflare Web Analytics
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; "
+            "img-src 'self' data: blob: https://api.qrserver.com; "
             "font-src 'self' data:; "
             "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com; "
             "frame-ancestors 'none'; "
