@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAccounts, getPhotoUrl, useUpdateAutoReply } from "@/hooks/use-accounts";
-import api from "@/lib/api";
+import { useState, useEffect, useMemo } from "react";
+import {
+  useAccounts,
+  useUpdateAutoReply,
+  useBulkUpdateAutoReply,
+} from "@/hooks/use-accounts";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -13,14 +16,19 @@ import { AccountAvatar } from "@/components/accounts/account-avatar";
 import {
   MessageCircleReply,
   Shield,
-  Smartphone,
   Loader2,
   CheckCircle2,
-  XCircle,
   AlertCircle,
   RefreshCw,
   Plus,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  X,
 } from "lucide-react";
+
+type Account = NonNullable<ReturnType<typeof useAccounts>["data"]>[number];
 
 export default function AutoReplyPage() {
   const _ = useT();
@@ -29,151 +37,179 @@ export default function AutoReplyPage() {
   const { data: rawAccounts, isLoading, error, refetch } = useAccounts();
   const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
 
-  // Role check: basic users cannot access auto-reply
+  // Role check
   if (user?.role === "basic") {
     return (
       <div className="text-center py-16">
         <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
         <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
-        <p className="text-sm text-gray-500">Auto Reply feature is not available for your plan. Upgrade to Pro or Premium to access this feature.</p>
+        <p className="text-sm text-gray-500">
+          Auto Reply feature is not available for your plan. Upgrade to Pro or
+          Premium to access this feature.
+        </p>
       </div>
     );
   }
 
-  // Global settings
-  const [globalEnabled, setGlobalEnabled] = useState(false);
-  const [globalText, setGlobalText] = useState("");
-  const [globalSaving, setGlobalSaving] = useState(false);
-  const [globalMsg, setGlobalMsg] = useState("");
+  // ── State ──────────────────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Per-account state: accountId -> { enabled, text, changed }
-  const [accountStates, setAccountStates] = useState<Record<string, { enabled: boolean; text: string; changed: boolean }>>({});
-  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
-  const [perAccountMsg, setPerAccountMsg] = useState<Record<string, string>>({});
+  // Global / bulk settings
+  const [bulkText, setBulkText] = useState("");
+  const [bulkEnabled, setBulkEnabled] = useState(true);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Per-account draft edits (only for the expanded row)
+  const [draftText, setDraftText] = useState("");
+  const [draftEnabled, setDraftEnabled] = useState(false);
+  const [draftDirty, setDraftDirty] = useState(false);
 
   const updateMutation = useUpdateAutoReply();
+  const bulkMutation = useBulkUpdateAutoReply();
 
-  // Initialize per-account state from fetched accounts
-  useEffect(() => {
-    if (!accounts) return;
-    const initial: Record<string, { enabled: boolean; text: string; changed: boolean }> = {};
-    for (const acc of accounts) {
-      initial[acc.id] = {
-        enabled: acc.auto_reply_enabled ?? false,
-        text: acc.auto_reply_text ?? "",
-        changed: false,
-      };
+  // Filtered accounts
+  const filtered = useMemo(() => {
+    if (!accounts) return [];
+    if (!search.trim()) return accounts;
+    const q = search.toLowerCase();
+    return accounts.filter(
+      (a) =>
+        (a.first_name || "").toLowerCase().includes(q) ||
+        (a.last_name || "").toLowerCase().includes(q) ||
+        (a.username || "").toLowerCase().includes(q) ||
+        (a.phone || "").includes(q)
+    );
+  }, [accounts, search]);
+
+  // Stats
+  const totalActive = accounts?.filter((a) => a.auto_reply_enabled).length ?? 0;
+  const totalAccounts = accounts?.length ?? 0;
+
+  // ── Expand / collapse row ─────────────────────────────────────
+  function handleExpand(account: Account) {
+    if (expandedId === account.id) {
+      setExpandedId(null);
+      return;
     }
-    setAccountStates(initial);
-    // Clear any stale messages when accounts reload
-    setPerAccountMsg({});
-  }, [accounts]);
-
-  function getAccountState(id: string) {
-    return accountStates[id] || { enabled: false, text: "", changed: false };
+    setExpandedId(account.id);
+    setDraftText(account.auto_reply_text ?? "");
+    setDraftEnabled(account.auto_reply_enabled ?? false);
+    setDraftDirty(false);
   }
 
-  function setAccountField(id: string, field: "enabled" | "text", value: boolean | string) {
-    setAccountStates((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value, changed: true },
-    }));
-    // Clear previous message
-    setPerAccountMsg((prev) => {
-      const next = { ...prev };
-      delete next[id];
+  // ── Per-account save ──────────────────────────────────────────
+  const [perSaving, setPerSaving] = useState(false);
+  const [perMsg, setPerMsg] = useState<string | null>(null);
+
+  async function handleSaveExpanded() {
+    if (!expandedId) return;
+    setPerSaving(true);
+    setPerMsg(null);
+    try {
+      await updateMutation.mutateAsync({
+        accountId: expandedId,
+        auto_reply_enabled: draftEnabled,
+        auto_reply_text: draftText.trim() || null,
+      });
+      setDraftDirty(false);
+      setPerMsg("saved");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    } catch (err: any) {
+      setPerMsg(err?.response?.data?.detail || "Failed");
+    } finally {
+      setPerSaving(false);
+    }
+    setTimeout(() => setPerMsg(null), 3000);
+  }
+
+  // ── Quick toggle (no text change) ─────────────────────────────
+  async function handleQuickToggle(account: Account) {
+    try {
+      await updateMutation.mutateAsync({
+        accountId: account.id,
+        auto_reply_enabled: !account.auto_reply_enabled,
+        auto_reply_text: account.auto_reply_text || null,
+      });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    } catch {
+      // silent
+    }
+  }
+
+  // ── Selection ─────────────────────────────────────────────────
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
 
-  async function handleSavePerAccount(accountId: string) {
-    const state = getAccountState(accountId);
-    setSavingIds((prev) => new Set(prev).add(accountId));
-    setPerAccountMsg((prev) => ({ ...prev, [accountId]: "" }));
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((a) => a.id)));
+    }
+  }
+
+  // ── Bulk apply ────────────────────────────────────────────────
+  async function handleBulkApply() {
+    if (selectedIds.size === 0) return;
+    setBulkSaving(true);
+    setBulkMsg(null);
     try {
-      await updateMutation.mutateAsync({
-        accountId,
-        auto_reply_enabled: state.enabled,
-        auto_reply_text: state.text.trim() || null,
+      const result = await bulkMutation.mutateAsync({
+        accountIds: Array.from(selectedIds),
+        auto_reply_enabled: bulkEnabled,
+        auto_reply_text: bulkText.trim() || null,
       });
-      setAccountStates((prev) => ({
-        ...prev,
-        [accountId]: { ...prev[accountId], changed: false },
-      }));
-      setPerAccountMsg((prev) => ({ ...prev, [accountId]: "saved" }));
-    } catch (err: any) {
-      setPerAccountMsg((prev) => ({
-        ...prev,
-        [accountId]: err?.response?.data?.detail || "Failed",
-      }));
+      setBulkMsg({
+        type: "success",
+        text: `Updated ${result.updated} of ${result.total} accounts`,
+      });
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    } catch {
+      setBulkMsg({ type: "error", text: "Bulk update failed" });
     } finally {
-      setSavingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(accountId);
-        return next;
-      });
+      setBulkSaving(false);
     }
-    setTimeout(() => {
-      setPerAccountMsg((prev) => {
-        const next = { ...prev };
-        delete next[accountId];
-        return next;
-      });
-    }, 3000);
+    setTimeout(() => setBulkMsg(null), 4000);
   }
 
-  async function handleApplyGlobal() {
-    if (!accounts || accounts.length === 0) return;
-    setGlobalSaving(true);
-    setGlobalMsg("");
+  // Clear bulk message on unmount
+  useEffect(() => {
+    return () => setBulkMsg(null);
+  }, []);
 
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const acc of accounts) {
-      try {
-        await updateMutation.mutateAsync({
-          accountId: acc.id,
-          auto_reply_enabled: globalEnabled,
-          auto_reply_text: globalText.trim() || null,
-        });
-        successCount++;
-      } catch {
-        failCount++;
-      }
-    }
-
-    // Refresh account states
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-
-    setGlobalMsg(
-      failCount === 0
-        ? _("autoReply.applied", { count: successCount })
-        : _("autoReply.updated", { success: successCount, failed: failCount })
-    );
-    setGlobalSaving(false);
-    setTimeout(() => setGlobalMsg(""), 4000);
-  }
-
-  // ── Loading state ──────────────────────────────────────────────
+  // ── Loading state ─────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
         </div>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-xl" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-xl" />
         ))}
       </div>
     );
   }
 
-  // ── Error state ────────────────────────────────────────────────
+  // ── Error state ───────────────────────────────────────────────
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-12">
+      <div className="max-w-5xl mx-auto text-center py-12">
         <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
         <p className="text-red-500 mb-4">{_("autoReply.failedToLoad")}</p>
         <button
@@ -187,15 +223,15 @@ export default function AutoReplyPage() {
     );
   }
 
-  // ── Empty state ────────────────────────────────────────────────
+  // ── Empty state ───────────────────────────────────────────────
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-12">
+      <div className="max-w-5xl mx-auto text-center py-12">
         <MessageCircleReply className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">{_("autoReply.noAccounts")}</h1>
-        <p className="text-gray-500 mb-6">
-          {_("autoReply.noAccountsDesc")}
-        </p>
+        <h1 className="text-xl font-semibold text-gray-900 mb-2">
+          {_("autoReply.noAccounts")}
+        </h1>
+        <p className="text-gray-500 mb-6">{_("autoReply.noAccountsDesc")}</p>
         <Link
           href="/accounts/add"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
@@ -207,65 +243,83 @@ export default function AutoReplyPage() {
     );
   }
 
-  // ── Data state ─────────────────────────────────────────────────
+  const allSelected =
+    filtered.length > 0 && selectedIds.size === filtered.length;
+  const someSelected = selectedIds.size > 0;
+
+  // ── Main UI ───────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("autoReply.title")}</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {_("autoReply.desc")}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {_("autoReply.title")}
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {_("autoReply.desc")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+            <CheckCircle2 className="h-3 w-3" />
+            {totalActive}/{totalAccounts} active
+          </span>
+        </div>
       </div>
 
-      {/* Global Settings Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-primary-50 rounded-lg">
-            <MessageCircleReply className="h-5 w-5 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900">{_("autoReply.globalSettings")}</h2>
-            <p className="text-xs text-gray-500">
-              {_("autoReply.globalSettingsDesc")}
+      {/* Bulk Action Panel — visible when items selected */}
+      {someSelected && (
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-sm font-medium text-primary-800">
+              {selectedIds.size} account{selectedIds.size > 1 ? "s" : ""}{" "}
+              selected
             </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+              >
+                Clear
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={globalEnabled}
-                onChange={(e) => setGlobalEnabled(e.target.checked)}
-                className="sr-only peer"
+          {/* Bulk config */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex items-center gap-2">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bulkEnabled}
+                  onChange={(e) => setBulkEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600" />
+              </label>
+              <span className="text-sm text-gray-700">
+                {bulkEnabled ? _("autoReply.enableAll") : _("autoReply.disableAll")}
+              </span>
+            </div>
+            <div className="flex-1">
+              <textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder={_("autoReply.globalMessagePlaceholder")}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none bg-white"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
-            <span className="text-sm text-gray-700">
-              {globalEnabled ? _("autoReply.enableAll") : _("autoReply.disableAll")}
-            </span>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">{_("autoReply.globalMessage")}</label>
-            <textarea
-              value={globalText}
-              onChange={(e) => setGlobalText(e.target.value)}
-              placeholder={_("autoReply.globalMessagePlaceholder")}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none"
-            />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handleApplyGlobal}
-              disabled={globalSaving}
+              onClick={handleBulkApply}
+              disabled={bulkSaving}
               className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 transition"
             >
-              {globalSaving ? (
+              {bulkSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />
                   {_("autoReply.applying")}
@@ -274,131 +328,263 @@ export default function AutoReplyPage() {
                 _("autoReply.applyToAll")
               )}
             </button>
-            {globalMsg && (
+            {bulkMsg && (
               <span
                 className={cn(
                   "text-sm",
-                  globalMsg.includes("failed") ? "text-red-500" : "text-green-600"
+                  bulkMsg.type === "error" ? "text-red-500" : "text-green-600"
                 )}
               >
-                {globalMsg}
+                {bulkMsg.text}
               </span>
             )}
           </div>
         </div>
+      )}
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder={_("accountsList.searchPlaceholder")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition"
+        />
       </div>
 
-      {/* Per-Account List */}
-      <div className="space-y-3">
-        <h2 className="font-semibold text-gray-900 text-lg">{_("autoReply.perAccount")}</h2>
+      {/* Account Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* Table header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50/80 text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <label className="flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+            />
+          </label>
+          <span className="flex-1 min-w-0">Account</span>
+          <span className="hidden sm:block w-48 text-center">Message</span>
+          <span className="w-20 text-center">Status</span>
+          <span className="w-16 text-center">Toggle</span>
+        </div>
 
-        {accounts.map((account) => {
-          const state = getAccountState(account.id);
-          const isSaving = savingIds.has(account.id);
-          const msg = perAccountMsg[account.id];
-          const hasChanged = state.changed;
+        {/* Rows */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-10 text-sm text-gray-400">
+            {search ? "No accounts match your search." : "No active accounts."}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {filtered.map((account) => {
+              const isExpanded = expandedId === account.id;
+              const isSelected = selectedIds.has(account.id);
+              const hasMessage = !!account.auto_reply_text?.trim();
 
-          return (
-            <div
-              key={account.id}
-              className={cn(
-                "bg-white rounded-xl border p-5 transition",
-                state.enabled
-                  ? "border-green-200"
-                  : "border-gray-200"
-              )}
-            >
-              {/* Account header row */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <AccountAvatar
-                    accountId={account.id}
-                    firstName={account.first_name}
-                    phone={account.phone}
-                    photoVersion={account.photo_version}
-                    size="lg"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {account.first_name || _("accountCard.unnamed")}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {account.username ? `@${account.username}` : account.phone}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
+              return (
+                <div key={account.id}>
+                  {/* Compact row */}
+                  <div
                     className={cn(
-                      "px-2 py-0.5 rounded-full text-xs font-medium",
-                      state.enabled
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-500"
+                      "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer select-none",
+                      isExpanded && "bg-primary-50/50",
+                      isSelected && !isExpanded && "bg-blue-50/40",
+                      !isExpanded && !isSelected && "hover:bg-gray-50"
                     )}
                   >
-                    {state.enabled ? _("autoReply.on") : _("autoReply.off")}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={state.enabled}
-                      onChange={(e) => setAccountField(account.id, "enabled", e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Reply message input */}
-              <div className="ml-[52px] space-y-2">
-                <textarea
-                  value={state.text}
-                  onChange={(e) => setAccountField(account.id, "text", e.target.value)}
-                  placeholder={_("autoReply.replyPlaceholder")}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none"
-                />
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleSavePerAccount(account.id)}
-                    disabled={isSaving || !hasChanged}
-                    className={cn(
-                      "px-3 py-1.5 text-sm font-medium rounded-lg transition",
-                      hasChanged
-                        ? "bg-primary-600 text-white hover:bg-primary-700"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    )}
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      _("autoReply.save")
-                    )}
-                  </button>
-                  {msg && (
-                    <span
-                      className={cn(
-                        "text-xs",
-                        msg === "saved" ? "text-green-600" : "text-red-500"
-                      )}
+                    {/* Checkbox */}
+                    <label
+                      className="flex items-center shrink-0 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {msg === "saved" ? _("autoReply.saved") : msg}
-                    </span>
-                  )}
-                  {state.enabled && state.text.trim() && !hasChanged && (
-                    <span className="text-xs text-gray-400">
-                      <CheckCircle2 className="h-3 w-3 inline mr-0.5" />
-                      {_("autoReply.active")}
-                    </span>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(account.id)}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+                      />
+                    </label>
+
+                    {/* Account info */}
+                    <div
+                      className="flex items-center gap-3 flex-1 min-w-0"
+                      onClick={() => handleExpand(account)}
+                    >
+                      <AccountAvatar
+                        accountId={account.id}
+                        firstName={account.first_name}
+                        phone={account.phone}
+                        photoVersion={account.photo_version}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {account.first_name || _("accountCard.unnamed")}{" "}
+                          {account.last_name || ""}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {account.username
+                            ? `@${account.username}`
+                            : account.phone}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Message preview */}
+                    <div
+                      className="hidden sm:block w-48 text-center"
+                      onClick={() => handleExpand(account)}
+                    >
+                      {hasMessage ? (
+                        <span className="text-xs text-gray-500 truncate block max-w-full">
+                          {account.auto_reply_text!.slice(0, 40)}
+                          {account.auto_reply_text!.length > 40 ? "…" : ""}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300 italic">
+                          No message set
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Status badge */}
+                    <div className="w-20 text-center" onClick={() => handleExpand(account)}>
+                      <span
+                        className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium",
+                          account.auto_reply_enabled
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-500"
+                        )}
+                      >
+                        {account.auto_reply_enabled
+                          ? _("autoReply.on")
+                          : _("autoReply.off")}
+                      </span>
+                    </div>
+
+                    {/* Toggle */}
+                    <div
+                      className="w-16 flex justify-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={account.auto_reply_enabled ?? false}
+                          onChange={() => handleQuickToggle(account)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600" />
+                      </label>
+                    </div>
+
+                    {/* Expand indicator */}
+                    <div
+                      className="shrink-0 text-gray-400"
+                      onClick={() => handleExpand(account)}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded editor */}
+                  {isExpanded && (
+                    <div className="px-4 py-4 bg-gray-50/80 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="max-w-2xl ml-8 sm:ml-12 space-y-3">
+                        <div className="flex items-center gap-3 mb-2">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={draftEnabled}
+                              onChange={(e) => {
+                                setDraftEnabled(e.target.checked);
+                                setDraftDirty(true);
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600" />
+                          </label>
+                          <span className="text-sm text-gray-700">
+                            {draftEnabled
+                              ? _("autoReply.on")
+                              : _("autoReply.off")}
+                          </span>
+                        </div>
+
+                        <textarea
+                          value={draftText}
+                          onChange={(e) => {
+                            setDraftText(e.target.value);
+                            setDraftDirty(true);
+                          }}
+                          placeholder={_("autoReply.replyPlaceholder")}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none bg-white"
+                        />
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={handleSaveExpanded}
+                            disabled={perSaving || !draftDirty}
+                            className={cn(
+                              "px-4 py-2 text-sm font-medium rounded-lg transition",
+                              draftDirty
+                                ? "bg-primary-600 text-white hover:bg-primary-700"
+                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            )}
+                          >
+                            {perSaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              _("autoReply.save")
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setExpandedId(null)}
+                            className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                          >
+                            Cancel
+                          </button>
+                          {perMsg && (
+                            <span
+                              className={cn(
+                                "text-xs",
+                                perMsg === "saved"
+                                  ? "text-green-600"
+                                  : "text-red-500"
+                              )}
+                            >
+                              {perMsg === "saved"
+                                ? _("autoReply.saved")
+                                : perMsg}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* Summary */}
+      {accounts.length > 5 && (
+        <p className="text-xs text-gray-400 text-center">
+          Showing {filtered.length} of {accounts.length} accounts
+          {search ? ` matching "${search}"` : ""}
+        </p>
+      )}
     </div>
   );
 }

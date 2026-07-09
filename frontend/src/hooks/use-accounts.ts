@@ -270,3 +270,28 @@ export function useResumeSpamAppeal() {
     },
   });
 }
+
+export function useBulkUpdateAutoReply() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accountIds,
+      auto_reply_enabled,
+      auto_reply_text,
+    }: {
+      accountIds: string[];
+      auto_reply_enabled: boolean;
+      auto_reply_text?: string | null;
+    }) => {
+      const { data } = await api.post(`/accounts/auto-reply/bulk`, {
+        account_ids: accountIds,
+        auto_reply_enabled,
+        auto_reply_text: auto_reply_text || null,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+}
