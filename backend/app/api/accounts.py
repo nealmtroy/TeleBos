@@ -25,6 +25,9 @@ from app.schemas.account import (
     AccountHintResponse,
     SpamAppealStartRequest,
     SpamAppealResponse,
+    QRInitResponse,
+    QRStatusResponse,
+    QR2FALoginRequest,
 )
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service
@@ -38,13 +41,18 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 # Temporary in-memory store for OTP login flows: user_id -> phone -> (client, created_at)
 _pending_logins: dict[str, dict[str, tuple[object, float]]] = {}
 
+# Temporary in-memory store for QR code login flows: qr_id -> details dict
+_pending_qr_logins: dict[str, dict[str, Any]] = {}
+
 
 async def clean_pending_logins_task():
     """Background task to clean up expired pending logins and disconnect their Telethon clients."""
+    from typing import Any
     while True:
         try:
             await asyncio.sleep(60)
             now = time.time()
+            # 1. Clean OTP logins
             for uid, phone_map in list(_pending_logins.items()):
                 for phone, (client, created_at) in list(phone_map.items()):
                     if now - created_at > 300:  # 5 minutes expiration
@@ -56,10 +64,234 @@ async def clean_pending_logins_task():
                             logger.warning("Error disconnecting expired client for %s: %s", phone, e)
                 if not phone_map:
                     del _pending_logins[uid]
+
+            # 2. Clean QR logins
+            for qrid, details in list(_pending_qr_logins.items()):
+                if now - details["created_at"] > 300:  # 5 minutes expiration
+                    _pending_qr_logins.pop(qrid, None)
+                    client = details.get("client")
+                    if client:
+                        try:
+                            await client.disconnect()
+                            logger.info("Disconnected and removed expired QR login %s", qrid)
+                        except Exception as e:
+                            logger.warning("Error disconnecting expired QR client %s: %s", qrid, e)
         except asyncio.CancelledError:
             break
         except Exception as e:
             logger.exception("Error in clean_pending_logins_task: %s", e)
+
+
+from telethon.errors import SessionPasswordNeededError
+from app.services.telegram_client import client_pool
+from app.utils.encryption import encrypt
+from app.services.account_service import check_account_limit, DuplicateAccountError
+from app.models.telegram_account import TelegramAccount
+import uuid
+
+async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
+    """Background task to watch QR code scan state and authorize client."""
+    try:
+        # This blocks until authorized in the Telegram app
+        await qr_login.wait()
+        
+        # Once scanned successfully:
+        from app.database import async_session_factory
+        from sqlalchemy import select
+        
+        async with async_session_factory() as db:
+            # 1. Fetch user to verify active session
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise ValueError("User not found")
+                
+            # 2. Get client info
+            me = await client.get_me()
+            phone = me.phone
+            first_name = me.first_name
+            last_name = me.last_name
+            username = me.username
+            
+            # 3. Check role limits
+            await check_account_limit(db, user)
+            
+            # 4. Check if account already exists
+            acc_result = await db.execute(
+                select(TelegramAccount).where(TelegramAccount.phone == phone)
+            )
+            existing = acc_result.scalar_one_or_none()
+            if existing:
+                if existing.user_id != user.id:
+                    raise DuplicateAccountError("Nomor HP ini sudah digunakan oleh pengguna lain.")
+                account = existing
+                account.is_active = True
+            else:
+                account = TelegramAccount(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    phone=phone,
+                    is_active=True,
+                )
+                db.add(account)
+                
+            account.first_name = first_name
+            account.last_name = last_name
+            account.username = username
+            
+            # Encrypt session
+            session_str = client.session.save()
+            account.session_string = encrypt(session_str)
+            
+            await db.commit()
+            await db.refresh(account)
+            
+            # Attach and reconnect
+            from app.services.session_manager import session_manager
+            await session_manager.attach_and_reconnect(db, account)
+            
+            # Update status to success!
+            if qr_id in _pending_qr_logins:
+                _pending_qr_logins[qr_id]["status"] = "success"
+                _pending_qr_logins[qr_id]["account_id"] = str(account.id)
+                
+    except SessionPasswordNeededError:
+        logger.info("QR Login %s requires 2FA password", qr_id)
+        if qr_id in _pending_qr_logins:
+            _pending_qr_logins[qr_id]["status"] = "requires_2fa"
+    except Exception as exc:
+        logger.error("QR Login %s watching failed: %s", qr_id, exc)
+        if qr_id in _pending_qr_logins:
+            _pending_qr_logins[qr_id]["status"] = "failed"
+            _pending_qr_logins[qr_id]["error"] = str(exc)
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+
+
+@router.post("/qr-login/init", response_model=QRInitResponse)
+async def qr_login_init(user: User = Depends(get_current_user)):
+    """Initialize a Telegram QR login flow."""
+    qr_id = str(uuid.uuid4())
+    try:
+        # Create unauth client
+        client = await client_pool.create_unauth_client()
+        
+        # Initiate QR login
+        qr_login = await client.qr_login()
+        expires_at = time.time() + 300  # 5 minutes TTL
+        
+        _pending_qr_logins[qr_id] = {
+            "client": client,
+            "qr_login": qr_login,
+            "user_id": user.id,
+            "created_at": time.time(),
+            "status": "pending",
+            "account_id": None,
+            "error": None,
+        }
+        
+        # Start background task to watch scan
+        asyncio.create_task(watch_qr_login(qr_id, client, qr_login, user.id))
+        
+        return QRInitResponse(
+            qr_id=qr_id,
+            qr_url=qr_login.url,
+            expires_at=expires_at
+        )
+    except Exception as exc:
+        logger.error("Failed to initialize QR login: %s", exc)
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/qr-login/status/{qr_id}", response_model=QRStatusResponse)
+async def qr_login_status(qr_id: str, user: User = Depends(get_current_user)):
+    """Get the current status of a QR login flow."""
+    details = _pending_qr_logins.get(qr_id)
+    if not details or details["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="QR login session not found or expired")
+        
+    return QRStatusResponse(
+        status=details["status"],
+        account_id=details["account_id"],
+        error=details["error"]
+    )
+
+
+@router.post("/qr-login/2fa", response_model=QRStatusResponse)
+async def qr_login_2fa(
+    payload: QR2FALoginRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Finalize QR login by submitting the 2FA password."""
+    qr_id = payload.qr_id
+    details = _pending_qr_logins.get(qr_id)
+    if not details or details["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="QR login session not found or expired")
+        
+    if details["status"] != "requires_2fa":
+        raise HTTPException(status_code=400, detail="2FA password is not required for this session")
+        
+    client = details["client"]
+    try:
+        # Submit the 2FA password
+        await client.sign_in(password=payload.twofa_password)
+        
+        # Save to database
+        me = await client.get_me()
+        phone = me.phone
+        first_name = me.first_name
+        last_name = me.last_name
+        username = me.username
+        
+        await check_account_limit(db, user)
+        
+        acc_result = await db.execute(
+            select(TelegramAccount).where(TelegramAccount.phone == phone)
+        )
+        existing = acc_result.scalar_one_or_none()
+        if existing:
+            if existing.user_id != user.id:
+                raise DuplicateAccountError("Nomor HP ini sudah digunakan oleh pengguna lain.")
+            account = existing
+            account.is_active = True
+        else:
+            account = TelegramAccount(
+                id=uuid.uuid4(),
+                user_id=user.id,
+                phone=phone,
+                is_active=True,
+            )
+            db.add(account)
+            
+        account.first_name = first_name
+        account.last_name = last_name
+        account.username = username
+        
+        # Encrypt session
+        session_str = client.session.save()
+        account.session_string = encrypt(session_str)
+        
+        await db.commit()
+        await db.refresh(account)
+        
+        # Attach and reconnect
+        from app.services.session_manager import session_manager
+        await session_manager.attach_and_reconnect(db, account)
+        
+        # Update details status
+        details["status"] = "success"
+        details["account_id"] = str(account.id)
+        
+        return QRStatusResponse(
+            status="success",
+            account_id=str(account.id)
+        )
+    except Exception as exc:
+        logger.error("QR 2FA login failed: %s", exc)
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/cancel-login")

@@ -167,3 +167,19 @@ class SpamAppealResponse(BaseModel):
     captcha_url: str | None = None
     generated_reason: str | None = None
 
+
+class QRInitResponse(BaseModel):
+    qr_id: str
+    qr_url: str
+    expires_at: float
+
+
+class QRStatusResponse(BaseModel):
+    status: str  # "pending", "success", "requires_2fa", "failed"
+    account_id: str | None = None
+    error: str | None = None
+
+
+class QR2FALoginRequest(BaseModel):
+    qr_id: str
+    twofa_password: str

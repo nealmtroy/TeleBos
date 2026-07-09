@@ -10,7 +10,7 @@ import { useT } from "@/lib/i18n";
 export default function AddAccountPage() {
   const _ = useT();
   const router = useRouter();
-  const [tab, setTab] = useState<"otp" | "upload">("otp");
+  const [tab, setTab] = useState<"otp" | "upload" | "qr">("otp");
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -26,6 +26,7 @@ export default function AddAccountPage() {
         <div className="flex border-b border-gray-100">
           {[
             { key: "otp", label: _("addAccount.tabOtp") },
+            { key: "qr", label: "QR Code" },
             { key: "upload", label: _("addAccount.tabUpload") },
           ].map((t) => (
             <button
@@ -44,7 +45,13 @@ export default function AddAccountPage() {
         </div>
 
         <div className="p-6">
-          {tab === "otp" ? <OTPLoginForm /> : <UploadSessionForm />}
+          {tab === "otp" ? (
+            <OTPLoginForm />
+          ) : tab === "qr" ? (
+            <QRLoginForm />
+          ) : (
+            <UploadSessionForm />
+          )}
         </div>
       </div>
     </div>
@@ -639,6 +646,217 @@ function UploadSessionForm() {
           _("addAccount.uploadConnect")
         )}
       </button>
+    </div>
+  );
+}
+
+
+function QRLoginForm() {
+  const _ = useT();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [qrId, setQrId] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [expiresAt, setExpiresAt] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [status, setStatus] = useState<"pending" | "success" | "requires_2fa" | "failed">("pending");
+  const [twofaPassword, setTwofaPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Initialize QR Login
+  const initQR = async () => {
+    setError("");
+    setLoading(true);
+    setStatus("pending");
+    setQrId("");
+    setQrUrl("");
+    setTwofaPassword("");
+    try {
+      const { data } = await api.post("/accounts/qr-login/init");
+      setQrId(data.qr_id);
+      setQrUrl(data.qr_url);
+      setExpiresAt(data.expires_at);
+      setTimeLeft(300);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Failed to generate QR Code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    initQR();
+  }, []);
+
+  // Timer Countdown
+  useEffect(() => {
+    if (!qrUrl || timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setStatus("failed");
+          setError("QR Code expired. Silakan refresh.");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [qrUrl, timeLeft]);
+
+  // Status Polling
+  useEffect(() => {
+    if (!qrId || status === "success" || status === "failed" || status === "requires_2fa") return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data } = await api.get(`/accounts/qr-login/status/${qrId}`);
+        if (data.status !== status) {
+          setStatus(data.status);
+          if (data.status === "success" && data.account_id) {
+            router.push(`/accounts/${data.account_id}`);
+          } else if (data.status === "failed") {
+            setError(data.error || "Login gagal. Silakan coba lagi.");
+          }
+        }
+      } catch (err: any) {
+        clearInterval(pollInterval);
+        setError("Koneksi gagal saat melacak status QR.");
+      }
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [qrId, status]);
+
+  // Handle 2FA Password Submission
+  const submit2FA = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const { data } = await api.post("/accounts/qr-login/2fa", {
+        qr_id: qrId,
+        twofa_password: twofaPassword,
+      });
+      if (data.status === "success" && data.account_id) {
+        router.push(`/accounts/${data.account_id}`);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Password 2FA salah. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3.5 rounded-xl text-sm flex items-start gap-2.5 shadow-sm">
+          <ShieldAlert className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5" />
+          <div className="flex-1 font-medium">{error}</div>
+        </div>
+      )}
+
+      {loading && !qrUrl && (
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-primary-600" />
+          <p className="text-sm text-gray-500 font-medium">Generating QR Code...</p>
+        </div>
+      )}
+
+      {qrUrl && status === "pending" && (
+        <div className="flex flex-col items-center gap-5">
+          <div className="text-center bg-gray-50 p-4 rounded-xl border border-gray-100 w-full max-w-md">
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Login via QR Code</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Buka aplikasi Telegram di HP Anda, masuk ke <strong>Settings &gt; Devices &gt; Link Desktop Device</strong>, lalu pindai QR Code di bawah ini.
+            </p>
+          </div>
+
+          <div className="relative bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-sm flex items-center justify-center w-[270px] h-[270px]">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}`}
+              alt="Telegram Login QR Code"
+              className="w-full h-full rounded-lg"
+            />
+          </div>
+
+          {timeLeft > 0 ? (
+            <p className="text-xs text-gray-500">
+              QR Code berlaku untuk{" "}
+              <span className="font-mono font-bold text-primary-600 bg-primary-50 px-2.5 py-1 rounded-full ml-1">
+                {formatTime(timeLeft)}
+              </span>
+            </p>
+          ) : (
+            <button
+              onClick={initQR}
+              disabled={loading}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
+            >
+              {_("addAccount.resendCode")}
+            </button>
+          )}
+        </div>
+      )}
+
+      {status === "requires_2fa" && (
+        <div className="space-y-4 max-w-md mx-auto">
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3.5 rounded-xl text-sm flex items-start gap-2.5 shadow-sm">
+            <Lock className="h-5 w-5 flex-shrink-0 text-yellow-600 mt-0.5" />
+            <div className="flex-1 font-medium leading-relaxed">
+              Akun Anda menggunakan verifikasi 2 Langkah (2FA). Silakan masukkan password 2FA Anda untuk melanjutkan.
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Password 2FA
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={twofaPassword}
+                onChange={(e) => setTwofaPassword(e.target.value)}
+                placeholder="Masukkan password 2FA Anda"
+                className="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-100 focus:border-primary-500 outline-none transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+              >
+                {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={submit2FA}
+              disabled={loading || !twofaPassword}
+              className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition"
+            >
+              {loading ? "Memproses..." : "Konfirmasi Password"}
+            </button>
+            <button
+              onClick={initQR}
+              className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 transition py-1.5 text-center block"
+            >
+              ← Generate QR Code Baru
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
