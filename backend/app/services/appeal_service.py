@@ -34,66 +34,11 @@ async def check_appeal_history(client: TelegramClient) -> bool:
     """
     try:
         entity = await client.get_entity("spambot")
-        history = []
+        from app.utils.spambot_helper import has_recent_appeal_keywords
         async for msg in client.iter_messages(entity, limit=30):
-            if msg.text:
-                history.append(msg.text.lower())
-
-        if not history:
-            return False
-
-        # Keywords indicating appeal has been submitted
-        keyword_banding_terkirim = [
-            "your appeal has been submitted",
-            "appeal has been submitted",
-            "banding anda telah dikirim",
-            "pengajuan banding",
-            "restriction review submitted",
-            "already submitted",
-            "banding sebelumnya",
-            "previously submitted",
-            "kamu sudah pernah",
-            "already appealed",
-            "we have received your appeal",
-            "permohonan banding",
-            "we will review",
-            "akan ditinjau",
-            "sedang diproses",
-            "help us understand",
-        ]
-
-        # Keywords indicating active flow (in the middle of steps)
-        keyword_flow_aktif = [
-            "do you admit",
-            "apakah kamu mengakui",
-            "apa yang terjadi",
-            "tell us more",
-            "jelaskan lebih",
-            "is your account useful",
-            "apakah akun anda bermanfaat",
-            "why did this happen",
-            "mengapa ini terjadi",
-            "kirimkan ke moderators",
-            "send to moderators",
-        ]
-
-        found_submitted = False
-        found_flow = False
-
-        for text in history:
-            for kw in keyword_banding_terkirim:
-                if kw in text:
-                    found_submitted = True
-                    break
-            for kw in keyword_flow_aktif:
-                if kw in text:
-                    found_flow = True
-                    break
-
-        if found_submitted or found_flow:
-            logger.info("Previous appeal detected (submitted: %s, active flow: %s)", found_submitted, found_flow)
-            return True
-
+            if msg.text and has_recent_appeal_keywords(msg.text):
+                logger.info("Previous appeal detected")
+                return True
         return False
     except Exception as e:
         if "cannot find any entity" in str(e).lower():
@@ -336,7 +281,8 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
         response = await conv.get_response()
 
         # Check if already free / no limits
-        if "good news" in response.text.lower() or "kabar baik" in response.text.lower() or "no limits" in response.text.lower():
+        from app.utils.spambot_helper import is_clean_status
+        if is_clean_status(response.text):
             return {
                 "status": "completed",
                 "message": response.text,
@@ -519,3 +465,34 @@ async def resume_spam_appeal(client: TelegramClient, reason: str) -> dict:
             "status": "completed",
             "message": final_resp.text,
         }
+
+
+async def has_submitted_appeal_recently(client: TelegramClient, hours: int = 24) -> bool:
+    """
+    Check chat history with @spambot to see if an appeal was submitted in the last `hours` hours.
+    """
+    from datetime import datetime, timezone, timedelta
+    from app.utils.spambot_helper import has_recent_appeal_keywords
+    try:
+        entity = await client.get_entity("spambot")
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=hours)
+
+        async for msg in client.iter_messages(entity, limit=30):
+            # Check message date
+            msg_date = msg.date
+            if msg_date.tzinfo is None:
+                msg_date = msg_date.replace(tzinfo=timezone.utc)
+
+            # Iteration is newest first. Once we hit older than cutoff, stop
+            if msg_date < cutoff:
+                break
+
+            if msg.text and has_recent_appeal_keywords(msg.text):
+                return True
+        return False
+    except Exception as e:
+        if "cannot find any entity" in str(e).lower():
+            return False
+        logger.warning("Failed to check recent appeal history: %s", e)
+        return False

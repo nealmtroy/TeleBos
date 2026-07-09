@@ -630,17 +630,8 @@ async def start_appeal(
     try:
         res = await start_spam_appeal(client, payload.reason, payload.preset_id, payload.force)
         if res["status"] == "completed":
-            text_lower = res["message"].lower()
-            clean_keywords = [
-                "good news", "no limits", "free as a bird",
-                "kabar baik", "tidak ada batasan", "bebas terbang"
-            ]
-            is_limited = True
-            for kw in clean_keywords:
-                if kw in text_lower:
-                    is_limited = False
-                    break
-            account.spam_status = "limited" if is_limited else "normal"
+            from app.utils.spambot_helper import is_clean_status
+            account.spam_status = "limited" if not is_clean_status(res["message"]) else "normal"
             account.spam_detail = res["message"]
             account.spam_last_checked_at = datetime.now(timezone.utc)
             await db.commit()
@@ -673,17 +664,8 @@ async def resume_appeal(
     try:
         res = await resume_spam_appeal(client, payload.reason)
         if res["status"] == "completed":
-            text_lower = res["message"].lower()
-            clean_keywords = [
-                "good news", "no limits", "free as a bird",
-                "kabar baik", "tidak ada batasan", "bebas terbang"
-            ]
-            is_limited = True
-            for kw in clean_keywords:
-                if kw in text_lower:
-                    is_limited = False
-                    break
-            account.spam_status = "limited" if is_limited else "normal"
+            from app.utils.spambot_helper import is_clean_status
+            account.spam_status = "limited" if not is_clean_status(res["message"]) else "normal"
             account.spam_detail = res["message"]
             account.spam_last_checked_at = datetime.now(timezone.utc)
             await db.commit()

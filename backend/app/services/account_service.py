@@ -866,21 +866,36 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
                     break
 
         if response_msg and response_msg.text:
-            text_lower = response_msg.text.lower()
-            # Common keywords indicating no limits
-            clean_keywords = [
-                "good news", "no limits", "free as a bird",
-                "kabar baik", "tidak ada batasan", "bebas terbang"
-            ]
+            from app.utils.spambot_helper import is_clean_status, is_temporary_limit
 
-            is_limited = True
-            for kw in clean_keywords:
-                if kw in text_lower:
-                    is_limited = False
-                    break
-
+            is_limited = not is_clean_status(response_msg.text)
             account.spam_status = "limited" if is_limited else "normal"
             account.spam_detail = response_msg.text
+
+            # --- AUTO APPEAL LOGIC FOR PERMANENT LIMIT ---
+            if is_limited:
+                from app.services.appeal_service import has_submitted_appeal_recently, start_spam_appeal
+                if not is_temporary_limit(response_msg.text):
+                    logger.info("Account %s has a permanent limit. Checking if we can auto-appeal...", account.phone)
+                    try:
+                        recent_appeal = await has_submitted_appeal_recently(client, hours=24)
+                        if not recent_appeal:
+                            logger.info("No recent appeal in the last 24h for %s. Submitting auto-appeal...", account.phone)
+                            res = await start_spam_appeal(client, reason="", preset_id="ai_indonesian", force=True)
+                            if res["status"] == "completed":
+                                logger.info("Auto-appeal completed successfully for %s", account.phone)
+                                account.spam_detail = res["message"]
+                                # Re-check if new message means normal status
+                                account.spam_status = "limited" if not is_clean_status(res["message"]) else "normal"
+                            elif res["status"] == "captcha_required":
+                                logger.info("Auto-appeal for %s requires captcha. Waiting for manual user action.", account.phone)
+                                account.spam_detail = f"Auto-appeal initiated but requires captcha: {res.get('captcha_url', '')}"
+                            else:
+                                logger.warning("Auto-appeal for %s returned status: %s", account.phone, res["status"])
+                        else:
+                            logger.info("An appeal was already submitted in the last 24h for %s. Skipping auto-appeal.", account.phone)
+                    except Exception as appeal_exc:
+                        logger.error("Failed to execute auto-appeal for %s: %s", account.phone, appeal_exc)
         else:
             account.spam_status = "unknown"
             account.spam_detail = "Failed to receive response from @SpamBot"
