@@ -52,26 +52,35 @@ async def refresh_all_accounts(db: AsyncSession) -> int:
     Returns the number of accounts successfully refreshed.
     """
     from app.models.telegram_account import TelegramAccount
+    from app.database import async_session_factory
 
+    # Phase 1: Get all active account IDs with the caller's DB session
     result = await db.execute(
-        select(TelegramAccount).where(TelegramAccount.is_active == True)
+        select(TelegramAccount.id).where(TelegramAccount.is_active == True)
     )
-    accounts = result.scalars().all()
+    account_ids = [str(row[0]) for row in result.all()]
 
     refreshed = 0
-    for i, account in enumerate(accounts):
+    # Phase 2: Refresh each account with its own short-lived DB session
+    for i, account_id in enumerate(account_ids):
         try:
-            await refresh_account_stats(db, account)
-            refreshed += 1
+            async with async_session_factory() as per_db:
+                result = await per_db.execute(
+                    select(TelegramAccount).where(TelegramAccount.id == account_id)
+                )
+                account = result.scalar_one_or_none()
+                if account:
+                    await refresh_account_stats(per_db, account)
+                    await per_db.commit()
+                    refreshed += 1
         except Exception:
-            logger.exception("Failed to refresh stats for account %s", account.id)
+            logger.exception("Failed to refresh stats for account %s", account_id)
 
-        # Delay between accounts to avoid Telegram flood limits
-        if i < len(accounts) - 1:
+        # Delay between accounts to avoid Telegram flood limits (no DB session held)
+        if i < len(account_ids) - 1:
             await asyncio.sleep(60)
 
-    await db.commit()
-    logger.info("Daily stats refresh complete: %d / %d accounts", refreshed, len(accounts))
+    logger.info("Daily stats refresh complete: %d / %d accounts", refreshed, len(account_ids))
     return refreshed
 
 

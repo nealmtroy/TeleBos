@@ -141,37 +141,49 @@ class SessionManager:
         from app.services.account_service import check_spam_status
 
         logger.info("Starting periodic spam status checks for active accounts...")
-        async with async_session_factory() as db:
-            try:
-                # Get all active accounts
+
+        # Phase 1: Short DB session to get accounts needing spam check
+        accounts_to_check: list[tuple[str, str]] = []  # (account_id, phone)
+        try:
+            async with async_session_factory() as db:
                 result = await db.execute(
-                    select(TelegramAccount).where(TelegramAccount.is_active.is_(True))
+                    select(
+                        TelegramAccount.id,
+                        TelegramAccount.phone,
+                        TelegramAccount.spam_last_checked_at,
+                    ).where(TelegramAccount.is_active.is_(True))
                 )
-                accounts = result.scalars().all()
+                rows = result.all()
 
                 twelve_hours_ago = datetime.now(timezone.utc) - timedelta(hours=12)
-                for account in accounts:
-                    if not self._running:
-                        break
-                    # Check if never checked, or checked more than 12 hours ago
-                    last_checked = account.spam_last_checked_at
+                for row in rows:
+                    account_id, phone, last_checked = str(row[0]), row[1], row[2]
                     if last_checked and last_checked.tzinfo is None:
                         last_checked = last_checked.replace(tzinfo=timezone.utc)
+                    if last_checked is None or last_checked < twelve_hours_ago:
+                        accounts_to_check.append((account_id, phone))
+        except Exception as exc:
+            logger.error("Error fetching accounts for spam check: %s", exc)
+            return
 
-                    if (
-                        last_checked is None
-                        or last_checked < twelve_hours_ago
-                    ):
-                        logger.info("Auto checking spam status for account: %s", account.phone)
-                        try:
-                            await check_spam_status(db, account)
-                            await db.commit()
-                        except Exception as e:
-                            logger.error("Failed to auto-check spam status for %s: %s", account.phone, e)
-                        # Wait between accounts to avoid rate limits
-                        await asyncio.sleep(5.0)
-            except Exception as exc:
-                logger.error("Error in periodic spam check: %s", exc)
+        # Phase 2: Check each account with its own short-lived DB session
+        for account_id, phone in accounts_to_check:
+            if not self._running:
+                break
+            logger.info("Auto checking spam status for account: %s", phone)
+            try:
+                async with async_session_factory() as db:
+                    result = await db.execute(
+                        select(TelegramAccount).where(TelegramAccount.id == account_id)
+                    )
+                    account = result.scalar_one_or_none()
+                    if account:
+                        await check_spam_status(db, account)
+                        await db.commit()
+            except Exception as e:
+                logger.error("Failed to auto-check spam status for %s: %s", phone, e)
+            # Wait between accounts to avoid rate limits (no DB session held)
+            await asyncio.sleep(5.0)
 
     async def is_account_in_active_job(self, db: AsyncSession, account_id: str) -> bool:
         """Check if an account is currently assigned to an active broadcast or invite job."""
@@ -243,77 +255,91 @@ class SessionManager:
 
         # Track which accounts need reconnection
         stale_ids: list[str] = []
-        # Track which accounts can be lazily disconnected
-        lazy_disconnect_ids: list[str] = []
+        healthy_ids: list[str] = []
 
-        async with async_session_factory() as db:
-            for account_id, client in list(clients.items()):
-                try:
-                    # 1. Verify connection health
-                    if not client.is_connected():
-                        logger.warning("Client %s disconnected, will reconnect if needed", account_id)
-                        stale_ids.append(account_id)
-                        continue
-
-                    me = await client.get_me()
-                    if me is None:
-                        logger.warning("Client %s returned no user", account_id)
-                        stale_ids.append(account_id)
-                        continue
-
-                    # 2. Lazy connection cleanup: if client is healthy, check if still needed
-                    result = await db.execute(
-                        select(TelegramAccount).where(
-                            TelegramAccount.id == account_id,
-                            TelegramAccount.is_active.is_(True)
-                        )
-                    )
-                    account = result.scalar_one_or_none()
-                    if account:
-                        has_auto_reply = account.auto_reply_enabled
-                        has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
-                        has_active_job = await self.is_account_in_active_job(db, account_id)
-
-                        if not (has_auto_reply or has_active_ws or has_active_job):
-                            logger.info("Lazy Connection: disconnecting unneeded client for account %s", account_id)
-                            lazy_disconnect_ids.append(account_id)
-
-                except Exception as exc:
-                    logger.warning("Client %s ping failed: %s", account_id, exc)
+        # Phase 1: Ping clients WITHOUT holding a DB session (get_me is a Telegram API call, can be slow)
+        for account_id, client in list(clients.items()):
+            try:
+                if not client.is_connected():
+                    logger.warning("Client %s disconnected, will reconnect if needed", account_id)
                     stale_ids.append(account_id)
+                    continue
 
-            # Clean up stale clients first
-            for account_id in stale_ids:
-                await event_relay.detach(account_id)
-                await client_pool.remove(account_id)
+                me = await client.get_me()
+                if me is None:
+                    logger.warning("Client %s returned no user", account_id)
+                    stale_ids.append(account_id)
+                    continue
 
-            # Disconnect unneeded clients
-            for account_id in lazy_disconnect_ids:
-                await client_pool.remove(account_id)
+                healthy_ids.append(account_id)
 
-            # Reconnect stale accounts only if STILL needed!
-            if stale_ids:
-                for account_id in stale_ids:
-                    try:
-                        result = await db.execute(
-                            select(TelegramAccount).where(
-                                TelegramAccount.id == account_id,
-                                TelegramAccount.is_active.is_(True),
+            except Exception as exc:
+                logger.warning("Client %s ping failed: %s", account_id, exc)
+                stale_ids.append(account_id)
+
+        # Phase 2: Short DB session for lazy disconnect checks on healthy clients
+        lazy_disconnect_ids: list[str] = []
+        if healthy_ids:
+            try:
+                async with async_session_factory() as db:
+                    for account_id in healthy_ids:
+                        try:
+                            result = await db.execute(
+                                select(TelegramAccount).where(
+                                    TelegramAccount.id == account_id,
+                                    TelegramAccount.is_active.is_(True)
+                                )
                             )
-                        )
-                        account = result.scalar_one_or_none()
-                        if account is None:
-                            continue
+                            account = result.scalar_one_or_none()
+                            if account:
+                                has_auto_reply = account.auto_reply_enabled
+                                has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
+                                has_active_job = await self.is_account_in_active_job(db, account_id)
 
-                        # Only reconnect if required
-                        has_auto_reply = account.auto_reply_enabled
-                        has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
-                        has_active_job = await self.is_account_in_active_job(db, account_id)
+                                if not (has_auto_reply or has_active_ws or has_active_job):
+                                    logger.info("Lazy Connection: disconnecting unneeded client for account %s", account_id)
+                                    lazy_disconnect_ids.append(account_id)
+                        except Exception as exc:
+                            logger.warning("Lazy disconnect check failed for %s: %s", account_id, exc)
+            except Exception as exc:
+                logger.warning("DB session error during lazy disconnect check: %s", exc)
 
-                        if has_auto_reply or has_active_ws or has_active_job:
-                            await self.attach_and_reconnect(db, account)
-                    except Exception as exc:
-                        logger.error("Failed to auto-reconnect account %s: %s", account_id, exc)
+        # Clean up stale clients
+        for account_id in stale_ids:
+            await event_relay.detach(account_id)
+            await client_pool.remove(account_id)
+
+        # Disconnect unneeded clients
+        for account_id in lazy_disconnect_ids:
+            await client_pool.remove(account_id)
+
+        # Phase 3: Short DB session for reconnecting stale accounts
+        if stale_ids:
+            try:
+                async with async_session_factory() as db:
+                    for account_id in stale_ids:
+                        try:
+                            result = await db.execute(
+                                select(TelegramAccount).where(
+                                    TelegramAccount.id == account_id,
+                                    TelegramAccount.is_active.is_(True),
+                                )
+                            )
+                            account = result.scalar_one_or_none()
+                            if account is None:
+                                continue
+
+                            # Only reconnect if required
+                            has_auto_reply = account.auto_reply_enabled
+                            has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
+                            has_active_job = await self.is_account_in_active_job(db, account_id)
+
+                            if has_auto_reply or has_active_ws or has_active_job:
+                                await self.attach_and_reconnect(db, account)
+                        except Exception as exc:
+                            logger.error("Failed to auto-reconnect account %s: %s", account_id, exc)
+            except Exception as exc:
+                logger.warning("DB session error during stale reconnect: %s", exc)
 
     async def attach_and_reconnect(
         self, db: AsyncSession, account: TelegramAccount

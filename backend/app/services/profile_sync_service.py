@@ -180,38 +180,42 @@ async def sync_all_profiles() -> int:
     """
     changed_count = 0
 
-    async with async_session_factory() as db:
-        try:
+    # Phase 1: Short DB session to get account IDs
+    account_ids: list[str] = []
+    try:
+        async with async_session_factory() as db:
             result = await db.execute(
-                select(TelegramAccount).where(
+                select(TelegramAccount.id).where(
                     TelegramAccount.is_active.is_(True),
                     TelegramAccount.session_string != "",
                 )
             )
-            accounts = list(result.scalars().all())
-        except Exception as exc:
-            logger.error("Profile sync: failed to fetch accounts: %s", exc)
-            return 0
+            account_ids = [str(row[0]) for row in result.all()]
+    except Exception as exc:
+        logger.error("Profile sync: failed to fetch accounts: %s", exc)
+        return 0
 
-        for account in accounts:
-            try:
-                changes = await sync_account_profile(db, account)
-                if changes:
-                    changed_count += 1
-            except Exception as exc:
-                logger.warning(
-                    "Profile sync: error syncing account %s: %s",
-                    account.id,
-                    exc,
-                )
-            # Rate limit: wait between accounts
-            await asyncio.sleep(_INTER_ACCOUNT_DELAY)
-
-        # Commit all changes in a single transaction
+    # Phase 2: Sync each account with its own short-lived DB session
+    for account_id in account_ids:
         try:
-            await db.commit()
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount).where(TelegramAccount.id == account_id)
+                )
+                account = result.scalar_one_or_none()
+                if account:
+                    changes = await sync_account_profile(db, account)
+                    if changes:
+                        changed_count += 1
+                    await db.commit()
         except Exception as exc:
-            logger.error("Profile sync: commit failed: %s", exc)
+            logger.warning(
+                "Profile sync: error syncing account %s: %s",
+                account_id,
+                exc,
+            )
+        # Rate limit: wait between accounts (no DB session held during sleep)
+        await asyncio.sleep(_INTER_ACCOUNT_DELAY)
 
     if changed_count > 0:
         logger.info("Profile sync: %d account(s) updated", changed_count)
