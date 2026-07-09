@@ -24,9 +24,13 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Check,
   X,
 } from "lucide-react";
+
+const ITEMS_PER_PAGE = 10;
 
 type Account = NonNullable<ReturnType<typeof useAccounts>["data"]>[number];
 
@@ -53,6 +57,7 @@ export default function AutoReplyPage() {
 
   // ── State ──────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -86,6 +91,18 @@ export default function AutoReplyPage() {
         (a.phone || "").includes(q)
     );
   }, [accounts, search]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedFiltered = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, page]);
 
   // Stats
   const totalActive = accounts?.filter((a) => a.auto_reply_enabled).length ?? 0;
@@ -153,10 +170,20 @@ export default function AutoReplyPage() {
   }
 
   function toggleSelectAll() {
-    if (selectedIds.size === filtered.length) {
-      setSelectedIds(new Set());
+    const pageIds = paginatedFiltered.map((a) => a.id);
+    const allPageSelected = pageIds.every((id) => selectedIds.has(id));
+    if (allPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filtered.map((a) => a.id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.add(id));
+        return next;
+      });
     }
   }
 
@@ -243,8 +270,9 @@ export default function AutoReplyPage() {
     );
   }
 
-  const allSelected =
-    filtered.length > 0 && selectedIds.size === filtered.length;
+  const pageIds = paginatedFiltered.map((a) => a.id);
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const someSelected = selectedIds.size > 0;
 
   // ── Main UI ───────────────────────────────────────────────────
@@ -361,7 +389,7 @@ export default function AutoReplyPage() {
           <label className="flex items-center cursor-pointer shrink-0">
             <input
               type="checkbox"
-              checked={allSelected}
+              checked={allPageSelected}
               onChange={toggleSelectAll}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
             />
@@ -379,7 +407,7 @@ export default function AutoReplyPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {filtered.map((account) => {
+            {paginatedFiltered.map((account) => {
               const isExpanded = expandedId === account.id;
               const isSelected = selectedIds.has(account.id);
               const hasMessage = !!account.auto_reply_text?.trim();
@@ -578,12 +606,66 @@ export default function AutoReplyPage() {
         )}
       </div>
 
-      {/* Summary */}
-      {accounts.length > 5 && (
-        <p className="text-xs text-gray-400 text-center">
-          Showing {filtered.length} of {accounts.length} accounts
-          {search ? ` matching "${search}"` : ""}
-        </p>
+      {/* Pagination Controls */}
+      {filtered.length > ITEMS_PER_PAGE && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          <p className="text-sm text-gray-500">
+            Showing {(page - 1) * ITEMS_PER_PAGE + 1}–
+            {Math.min(page * ITEMS_PER_PAGE, filtered.length)} of{" "}
+            {filtered.length} accounts
+            {search ? ` matching "${search}"` : ""}
+          </p>
+          <div className="flex items-center gap-1.5 self-center sm:self-auto">
+            <button
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page === 1}
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNum = idx + 1;
+              // Show max 5 page buttons around current page
+              if (
+                totalPages > 7 &&
+                pageNum !== 1 &&
+                pageNum !== totalPages &&
+                Math.abs(pageNum - page) > 2
+              ) {
+                // Show ellipsis marker
+                if (pageNum === page - 3 || pageNum === page + 3) {
+                  return (
+                    <span key={pageNum} className="px-1 text-gray-400 text-sm">
+                      …
+                    </span>
+                  );
+                }
+                return null;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={cn(
+                    "inline-flex items-center justify-center w-9 h-9 rounded-lg border text-sm font-medium transition",
+                    page === pageNum
+                      ? "bg-primary-600 border-primary-600 text-white shadow-sm"
+                      : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              disabled={page === totalPages}
+              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
