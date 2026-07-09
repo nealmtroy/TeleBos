@@ -89,7 +89,7 @@ export default function AccountsListPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{_("accountsList.title")}</h1>
           <p className="text-gray-500 mt-1">
@@ -100,23 +100,23 @@ export default function AccountsListPage() {
             {user?.role !== "owner" && ` (${user?.role || "basic"} plan)`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <button
             onClick={() => setFolderManagerOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
           >
             <FolderOpen className="h-4 w-4" />
             {_("accountFolders.manageFolders")}
           </button>
           {atLimit ? (
-            <span className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
+            <span className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
               <Info className="h-4 w-4" />
               Limit Reached
             </span>
           ) : (
             <Link
               href="/accounts/add"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
             >
               <Plus className="h-4 w-4" />
               {_("accountsList.addAccount")}
@@ -129,7 +129,7 @@ export default function AccountsListPage() {
       <div className="flex flex-col gap-4">
         {/* Status filters & Search bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar">
             <button
               onClick={() => handleSelectStatus("active")}
               className={cn(

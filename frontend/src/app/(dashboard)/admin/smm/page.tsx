@@ -281,9 +281,9 @@ function StatCard({
     <Card>
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-gray-500 truncate">{label}</p>
-            <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1 truncate">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs sm:text-sm text-gray-500 break-words leading-tight">{label}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 break-all">
               {prefix}
               {typeof value === "number" ? value.toLocaleString() : value}
             </p>
@@ -523,7 +523,7 @@ function ServicesTab() {
                       <div key={svc.id} className="p-3 space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium text-gray-900 text-sm truncate">{svc.service_name}</p>
+                            <p className="font-medium text-gray-900 text-sm break-words">{svc.service_name}</p>
                             <p className="text-xs text-gray-400 font-mono">#{svc.service_id}</p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
@@ -799,7 +799,7 @@ function OrdersTab() {
               <div key={o.id} className="bg-white rounded-xl border border-gray-200 p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm truncate">{o.user_email}</p>
+                    <p className="font-medium text-gray-900 text-sm break-all">{o.user_email}</p>
                     <p className="text-xs text-gray-400 font-mono">{o.id.slice(0, 8)}...</p>
                   </div>
                   <span
@@ -812,7 +812,7 @@ function OrdersTab() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-700">{o.service_name}</p>
-                <p className="text-xs text-gray-500 truncate" title={o.data_target}>
+                <p className="text-xs text-gray-500 break-all" title={o.data_target}>
                   Target: {o.data_target}
                 </p>
                 <div className="flex items-center justify-between text-xs">
