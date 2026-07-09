@@ -760,7 +760,7 @@ async def mark_read(account: TelegramAccount, chat_id: int) -> None:
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    entity = await client.get_entity(chat_id)
+    entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.send_read_acknowledge(entity)
 
 
@@ -774,10 +774,7 @@ async def archive_chat(account: TelegramAccount, chat_id: int) -> None:
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    try:
-        entity = await client.get_input_entity(chat_id)
-    except Exception:
-        entity = await client.get_entity(chat_id)
+    entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.edit_folder(entity, 1)
 
 
@@ -788,10 +785,7 @@ async def unarchive_chat(account: TelegramAccount, chat_id: int) -> None:
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    try:
-        entity = await client.get_input_entity(chat_id)
-    except Exception:
-        entity = await client.get_entity(chat_id)
+    entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.edit_folder(entity, 0)
 
 
@@ -805,7 +799,7 @@ async def delete_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) 
 
     # 1. Try to delete on Telegram
     try:
-        entity = await client.get_input_entity(chat_id)
+        entity = await resolve_chat_entity(client, account.id, chat_id)
         await client.delete_dialog(entity, revoke=True)
         logger.info("Successfully deleted chat %s on Telegram for account %s", chat_id, account.id)
     except Exception as exc:
