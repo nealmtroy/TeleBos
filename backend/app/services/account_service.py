@@ -151,12 +151,12 @@ async def check_account_hint(phone: str) -> dict[str, Any] | None:
             pass
 
 
-async def start_login(phone: str) -> tuple[Any, str, int]:
+async def start_login(phone: str) -> tuple[Any, str, int, str, str | None]:
     """
     Send the OTP code to the given phone number.
 
     Returns:
-        Tuple of (client, phone_code_hash, timeout_seconds).
+        Tuple of (client, phone_code_hash, timeout_seconds, next_action, email_pattern).
 
     The caller must keep the client reference to later call verify_code.
     """
@@ -167,7 +167,25 @@ async def start_login(phone: str) -> tuple[Any, str, int]:
         timeout = getattr(result, "timeout", None)
         if timeout is None:
             timeout = 120
-        return client, phone_code_hash, timeout
+
+        next_action = "enter_code"
+        email_pattern = None
+
+        from telethon.tl.types.auth import (
+            SentCodeTypeEmailCode,
+            SentCodeTypeSetUpEmailRequired,
+        )
+
+        if isinstance(result.type, SentCodeTypeSetUpEmailRequired):
+            raise ValueError(
+                "Akun ini memerlukan pengaturan email verifikasi. Silakan buka aplikasi resmi Telegram di HP/Desktop Anda "
+                "terlebih dahulu untuk menyelesaikan pengaturan email verifikasi yang diminta, lalu ulangi proses login di sini."
+            )
+        elif isinstance(result.type, SentCodeTypeEmailCode):
+            next_action = "enter_email_code"
+            email_pattern = getattr(result.type, "email_pattern", None)
+
+        return client, phone_code_hash, timeout, next_action, email_pattern
     except Exception:
         try:
             await client.disconnect()

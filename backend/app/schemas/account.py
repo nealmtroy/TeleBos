@@ -25,6 +25,8 @@ class VerifyCodeRequest(BaseModel):
 class SendCodeResponse(BaseModel):
     phone_code_hash: str
     timeout: int | None = 120
+    next_action: str = "enter_code"
+    email_pattern: str | None = None
 
 
 class VerifyCodeResponse(BaseModel):

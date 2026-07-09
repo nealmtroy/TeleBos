@@ -65,6 +65,7 @@ function OTPLoginForm() {
   const [loading, setLoading] = useState(false);
   const [v2lHint, setV2lHint] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(120);
+  const [emailPattern, setEmailPattern] = useState<string | null>(null);
 
   const cancelLogin = async (phoneToCancel: string) => {
     if (!phoneToCancel) return;
@@ -98,11 +99,13 @@ function OTPLoginForm() {
     setLoading(true);
     setCodes(["", "", "", "", ""]);
     setTimeLeft(120);
+    setEmailPattern(null);
     try {
       const cleaned = phone.replace(/\s/g, "");
       const { data } = await api.post("/accounts/send-code", { phone: cleaned });
       setPhone(cleaned);
       setPhoneCodeHash(data.phone_code_hash);
+      setEmailPattern(data.email_pattern || null);
       setStep("otp");
     } catch (err: any) {
       setError(err?.response?.data?.detail || _("addAccount.failedSendOtp"));
@@ -188,10 +191,12 @@ function OTPLoginForm() {
     setLoading(true);
     setCodes(["", "", "", "", ""]);
     setTimeLeft(120);
+    setEmailPattern(null);
     try {
       const cleaned = phone.replace(/\s/g, "");
       const { data } = await api.post("/accounts/send-code", { phone: cleaned });
       setPhoneCodeHash(data.phone_code_hash);
+      setEmailPattern(data.email_pattern || null);
       setTimeLeft(120);
     } catch (err: any) {
       setError(err?.response?.data?.detail || "Failed to resend OTP");
@@ -338,9 +343,15 @@ function OTPLoginForm() {
         <div className="space-y-5">
           <div className="text-center bg-gray-50 p-4 rounded-xl border border-gray-100">
             <p className="text-sm text-gray-600">
-              {_("addAccount.otpSentTo")}{" "}
+              {emailPattern ? (
+                <span>Kode verifikasi telah dikirim ke email:</span>
+              ) : (
+                <span>{_("addAccount.otpSentTo")}</span>
+              )}
             </p>
-            <p className="text-lg font-bold text-gray-900 mt-1 font-mono tracking-wide">{phone}</p>
+            <p className="text-lg font-bold text-gray-900 mt-1 font-mono tracking-wide">
+              {emailPattern ? emailPattern : phone}
+            </p>
           </div>
 
           {/* OTP Input Boxes */}

@@ -93,9 +93,14 @@ async def send_code(request: Request, payload: SendCodeRequest, user: User = Dep
             detail="Too many verification attempts. Please try again later.",
         )
     try:
-        client, phone_code_hash, timeout = await account_service.start_login(payload.phone)
+        client, phone_code_hash, timeout, next_action, email_pattern = await account_service.start_login(payload.phone)
         _pending_logins.setdefault(uid, {})[payload.phone] = (client, time.time())
-        return SendCodeResponse(phone_code_hash=phone_code_hash, timeout=timeout)
+        return SendCodeResponse(
+            phone_code_hash=phone_code_hash,
+            timeout=timeout,
+            next_action=next_action,
+            email_pattern=email_pattern
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
