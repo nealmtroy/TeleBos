@@ -29,6 +29,7 @@ from app.schemas.account import (
     QRInitResponse,
     QRStatusResponse,
     QR2FALoginRequest,
+    UpdateProfileColorRequest,
 )
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service
@@ -908,6 +909,45 @@ async def resume_appeal(
             account.spam_last_checked_at = datetime.now(timezone.utc)
             await db.commit()
         return res
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/{account_id}/profile-colors")
+async def get_profile_colors(
+    account_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get the set of accent color palettes available for profile backgrounds."""
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        colors_data = await account_service.get_profile_colors(account)
+        return colors_data
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.put("/{account_id}/profile-color", response_model=AccountResponse)
+async def update_profile_color(
+    account_id: str,
+    payload: UpdateProfileColorRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Update profile accent color palette and background pattern on Telegram."""
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        await account_service.update_profile_color(
+            account, payload.color_id, payload.background_emoji_id
+        )
+        return account
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

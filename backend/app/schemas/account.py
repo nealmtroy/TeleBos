@@ -10,7 +10,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-
 class SendCodeRequest(BaseModel):
     phone: str = Field(description="Phone number with country code, e.g. +6281234567890")
 
@@ -117,7 +116,6 @@ class AccountResponse(BaseModel):
         return data
 
 
-
 class AutoReplyUpdateRequest(BaseModel):
     auto_reply_enabled: bool
     auto_reply_text: str | None = None
@@ -183,3 +181,8 @@ class QRStatusResponse(BaseModel):
 class QR2FALoginRequest(BaseModel):
     qr_id: str
     twofa_password: str
+
+
+class UpdateProfileColorRequest(BaseModel):
+    color_id: int
+    background_emoji_id: int | None = None

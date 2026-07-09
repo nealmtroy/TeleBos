@@ -992,3 +992,55 @@ async def move_to_expired_folder(db: AsyncSession, account_id: Any, user_id: Any
     db.add(AccountFolderMember(folder_id=folder.id, account_id=account_id))
     await db.flush()
     logger.info("Account %s marked as expired and moved to 'Expired' folder", account_id)
+
+
+async def get_profile_colors(account: TelegramAccount) -> dict:
+    """Retrieve the set of accent color palettes available for profile backgrounds."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    from telethon.tl.functions.help import GetPeerProfileColorsRequest
+    from telethon.tl.types.help import PeerColors
+
+    result = await client(GetPeerProfileColorsRequest(hash=0))
+
+    colors_list = []
+    if isinstance(result, PeerColors):
+        for option in result.colors:
+            colors_list.append({
+                "color_id": option.color_id,
+                "hidden": option.hidden or False,
+                "channel_min_level": option.channel_min_level,
+                "group_min_level": option.group_min_level,
+                "colors": getattr(option.colors, "colors", []) if option.colors else [],
+                "dark_colors": getattr(option.dark_colors, "colors", []) if option.dark_colors else [],
+            })
+    return {
+        "hash": getattr(result, "hash", 0),
+        "colors": colors_list
+    }
+
+
+async def update_profile_color(
+    account: TelegramAccount,
+    color_id: int,
+    background_emoji_id: int | None = None
+) -> None:
+    """Update profile accent color palette and background pattern on Telegram."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    from telethon.tl.functions.account import UpdateColorRequest
+    from telethon.tl.types import PeerColor
+
+    await client(UpdateColorRequest(
+        for_profile=True,
+        color=PeerColor(
+            color=color_id,
+            background_emoji_id=background_emoji_id
+        )
+    ))
