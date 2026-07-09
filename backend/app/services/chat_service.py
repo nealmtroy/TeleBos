@@ -627,11 +627,11 @@ async def archive_chat(account: TelegramAccount, chat_id: int) -> None:
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    from telethon.tl.functions.messages import EditFolderRequest
-    from telethon.tl.types import InputFolderPeer
-
-    peer = await client.get_input_entity(chat_id)
-    await client(EditFolderRequest(folder_peers=[InputFolderPeer(peer, folder_id=1)]))
+    try:
+        entity = await client.get_input_entity(chat_id)
+    except Exception:
+        entity = await client.get_entity(chat_id)
+    await client.edit_folder(entity, 1)
 
 
 async def unarchive_chat(account: TelegramAccount, chat_id: int) -> None:
@@ -641,11 +641,11 @@ async def unarchive_chat(account: TelegramAccount, chat_id: int) -> None:
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    from telethon.tl.functions.messages import EditFolderRequest
-    from telethon.tl.types import InputFolderPeer
-
-    peer = await client.get_input_entity(chat_id)
-    await client(EditFolderRequest(folder_peers=[InputFolderPeer(peer, folder_id=0)]))
+    try:
+        entity = await client.get_input_entity(chat_id)
+    except Exception:
+        entity = await client.get_entity(chat_id)
+    await client.edit_folder(entity, 0)
 
 
 async def delete_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) -> None:
