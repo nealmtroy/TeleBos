@@ -89,7 +89,7 @@ async def check_account_hint(phone: str) -> dict[str, Any] | None:
     Returns:
         Dict with hint info or None if no hints available.
     """
-    client = await client_pool.create_unauth_client()
+    client = await client_pool.create_unauth_client(phone)
     try:
         try:
             # Request code - this will work for valid phones but may indicate 2FA issues
@@ -160,7 +160,7 @@ async def start_login(phone: str) -> tuple[Any, str, int]:
 
     The caller must keep the client reference to later call verify_code.
     """
-    client = await client_pool.create_unauth_client()
+    client = await client_pool.create_unauth_client(phone)
     try:
         result = await client.send_code_request(phone)
         phone_code_hash = result.phone_code_hash

@@ -103,6 +103,13 @@ class TelegramClientPool:
                     self._clients[k]["last_accessed"] = now
 
         for acc_id in stale_keys:
+            # Detach event handlers first to prevent memory leak
+            try:
+                from app.services.event_relay import event_relay
+                await event_relay.detach(acc_id)
+            except Exception as e:
+                logger.warning("Error detaching event handlers during cleanup for account %s: %s", acc_id, e)
+
             data = self._clients.pop(acc_id, None)
             if data and data["client"]:
                 logger.info("Disconnecting idle Telegram client for account %s", acc_id)
@@ -133,7 +140,21 @@ class TelegramClientPool:
     
             # Create new client with iOS device spoofing
             try:
-                ios_params = deterministic_ios_device(account_id)
+                phone = None
+                try:
+                    from app.database import async_session_factory
+                    from app.models.telegram_account import TelegramAccount
+                    from sqlalchemy import select
+                    import uuid
+                    async with async_session_factory() as db:
+                        res = await db.execute(
+                            select(TelegramAccount.phone).where(TelegramAccount.id == uuid.UUID(account_id))
+                        )
+                        phone = res.scalar_one_or_none()
+                except Exception as db_exc:
+                    logger.debug("Failed to query phone for spoofing locale: %s", db_exc)
+
+                ios_params = deterministic_ios_device(account_id, phone=phone)
                 client = TelegramClient(
                     StringSession(session_string) if session_string else StringSession(),
                     api_id=settings.TELEGRAM_API_ID,
@@ -196,6 +217,13 @@ class TelegramClientPool:
 
     async def remove(self, account_id: str) -> None:
         """Disconnect and remove a client from the pool."""
+        # Detach event handlers first to prevent memory leak
+        try:
+            from app.services.event_relay import event_relay
+            await event_relay.detach(account_id)
+        except Exception as e:
+            logger.warning("Error detaching event handlers during remove for account %s: %s", account_id, e)
+
         data = self._clients.pop(account_id, None)
         if data is not None and data["client"]:
             try:
@@ -217,11 +245,11 @@ class TelegramClientPool:
             return client.session.save()
         return None
 
-    async def create_unauth_client(self) -> TelegramClient:
+    async def create_unauth_client(self, phone: str | None = None) -> TelegramClient:
         """Create an unauthenticated client for the OTP login flow."""
         if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
             raise ValueError("Telegram API ID or Hash is not configured in the backend .env file.")
-        ios_params = random_ios_device()
+        ios_params = random_ios_device(phone)
         client = TelegramClient(
             StringSession(),
             api_id=settings.TELEGRAM_API_ID,

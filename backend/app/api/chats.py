@@ -305,6 +305,25 @@ async def sync_folders(
     return FolderListResponse(folders=folders)
 
 
+async def resolve_input_peer(client, chat_id: int):
+    """Dynamically resolve chat_id into the correct InputPeer (User/Chat/Channel) using Telethon's internal cache or fetching from Telegram."""
+    import telethon.tl.types as types
+    try:
+        # Check cache and return corresponding InputPeer
+        return await client.get_input_entity(chat_id)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Failed to get input entity from cache for %s: %s. Trying full fetch...", chat_id, e)
+        try:
+            # Full fetch (performs network call to retrieve the entity details)
+            entity = await client.get_entity(chat_id)
+            return await client.get_input_entity(entity)
+        except Exception as ex:
+            logging.getLogger(__name__).error("Failed to resolve entity %s completely: %s", chat_id, ex)
+            # Safe fallback for basic groups
+            return types.InputPeerChat(id=chat_id)
+
+
 @router.post("/accounts/{account_id}/folders", response_model=FolderResponse, status_code=status.HTTP_201_CREATED)
 async def create_folder(
     account_id: str,
@@ -319,25 +338,62 @@ async def create_folder(
     from app.utils.encryption import decrypt
     from app.services.telegram_client import client_pool
     import telethon.tl.types as types
-    from telethon.tl.functions.messages import UpdateDialogFilterRequest
+    from telethon.tl.functions.messages import UpdateDialogFilterRequest, GetDialogFiltersRequest
 
     client = await client_pool.get(str(account.id), decrypt(session_str))
     if client is None:
         raise HTTPException(status_code=400, detail="Account disconnected")
 
-    filter_obj = types.DialogFilter(
-        id=0,
-        title=payload.title,
-        include_peers=[types.InputPeerChat(id=c) for c in payload.included_chat_ids],
-        exclude_peers=[types.InputPeerChat(id=c) for c in payload.excluded_chat_ids],
-        pinned_peers=[types.InputPeerChat(id=c) for c in payload.pinned_chat_ids],
-    )
-    result = await client(UpdateDialogFilterRequest(id=0, filter=filter_obj))
+    # Fetch existing filters to find smallest unused folder ID between 2 and 255
+    try:
+        dialog_filters = await client(GetDialogFiltersRequest())
+        if hasattr(dialog_filters, "filters"):
+            filters = dialog_filters.filters
+        elif isinstance(dialog_filters, list):
+            filters = dialog_filters
+        else:
+            filters = []
+        used_ids = {f.id for f in filters if hasattr(f, "id")}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch existing folders from Telegram: {exc}")
+
+    new_id = 2
+    while new_id in used_ids:
+        new_id += 1
+
+    try:
+        # Resolve peers
+        include_peers = []
+        for cid in payload.included_chat_ids:
+            peer = await resolve_input_peer(client, cid)
+            include_peers.append(peer)
+
+        exclude_peers = []
+        for cid in payload.excluded_chat_ids:
+            peer = await resolve_input_peer(client, cid)
+            exclude_peers.append(peer)
+
+        pinned_peers = []
+        for cid in payload.pinned_chat_ids:
+            peer = await resolve_input_peer(client, cid)
+            pinned_peers.append(peer)
+
+        filter_obj = types.DialogFilter(
+            id=new_id,
+            title=payload.title,
+            include_peers=include_peers,
+            exclude_peers=exclude_peers,
+            pinned_peers=pinned_peers,
+        )
+        await client(UpdateDialogFilterRequest(id=new_id, filter=filter_obj))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to create folder on Telegram: {exc}")
+
     # Save to DB
     from app.models.chat_folder import ChatFolder
     cf = ChatFolder(
         account_id=account.id,
-        folder_id=result.filter.id,
+        folder_id=new_id,
         title=payload.title,
         emoji=payload.emoji,
         color=payload.color,
@@ -373,6 +429,52 @@ async def update_folder(
     if folder is None:
         raise HTTPException(status_code=404, detail="Folder not found")
 
+    # Get updated values or fallback to existing values
+    included_chat_ids = payload.included_chat_ids if payload.included_chat_ids is not None else folder.included_chat_ids
+    excluded_chat_ids = payload.excluded_chat_ids if payload.excluded_chat_ids is not None else folder.excluded_chat_ids
+    pinned_chat_ids = payload.pinned_chat_ids if payload.pinned_chat_ids is not None else folder.pinned_chat_ids
+    title = payload.title if payload.title is not None else folder.title
+
+    # Sync update to Telegram
+    from app.utils.encryption import decrypt
+    from app.services.telegram_client import client_pool
+    from telethon.tl.functions.messages import UpdateDialogFilterRequest
+    import telethon.tl.types as types
+
+    session_str = account.session_string
+    client = await client_pool.get(str(account.id), decrypt(session_str))
+    if client is None:
+        raise HTTPException(status_code=400, detail="Account disconnected")
+
+    try:
+        # Resolve peers
+        include_peers = []
+        for cid in included_chat_ids:
+            peer = await resolve_input_peer(client, cid)
+            include_peers.append(peer)
+
+        exclude_peers = []
+        for cid in excluded_chat_ids:
+            peer = await resolve_input_peer(client, cid)
+            exclude_peers.append(peer)
+
+        pinned_peers = []
+        for cid in pinned_chat_ids:
+            peer = await resolve_input_peer(client, cid)
+            pinned_peers.append(peer)
+
+        filter_obj = types.DialogFilter(
+            id=folder.folder_id,
+            title=title,
+            include_peers=include_peers,
+            exclude_peers=exclude_peers,
+            pinned_peers=pinned_peers,
+        )
+        await client(UpdateDialogFilterRequest(id=folder.folder_id, filter=filter_obj))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to sync folder update to Telegram: {exc}")
+
+    # Save to local DB
     update_data = payload.model_dump(exclude_none=True)
     for key, val in update_data.items():
         setattr(folder, key, val)
@@ -401,7 +503,24 @@ async def delete_folder(
     folder = result.scalar_one_or_none()
     if folder is None:
         raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Sync deletion to Telegram
+    from app.utils.encryption import decrypt
+    from app.services.telegram_client import client_pool
+    from telethon.tl.functions.messages import UpdateDialogFilterRequest
+    
+    session_str = account.session_string
+    client = await client_pool.get(str(account.id), decrypt(session_str))
+    if client is not None:
+        try:
+            await client(UpdateDialogFilterRequest(id=folder.folder_id, filter=None))
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Failed to sync folder deletion to Telegram for account %s: %s", account.id, exc)
+
     await db.delete(folder)
+    await db.flush()
+
 
 
 @router.get("/accounts/{account_id}/chats/{chat_id}/photo")

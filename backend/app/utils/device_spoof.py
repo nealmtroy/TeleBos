@@ -63,7 +63,50 @@ _APP_VERSIONS = [
 ]
 
 
-def random_ios_device() -> dict:
+def get_locale_for_phone(phone: str | None) -> tuple[str, str]:
+    """Determine (lang_code, system_lang_code) based on phone number prefix.
+    Defaults to ('en', 'en-US').
+    """
+    if not phone:
+        return "en", "en"
+    
+    # Strip non-digits
+    digits = "".join(c for c in phone if c.isdigit())
+    
+    # Common marketing phone prefixes mapping
+    if digits.startswith("62"): # Indonesia
+        return "id", "id-ID"
+    elif digits.startswith("7"): # Russia / Kazakhstan
+        return "ru", "ru-RU"
+    elif digits.startswith("60"): # Malaysia
+        return "ms", "ms-MY"
+    elif digits.startswith("380"): # Ukraine
+        return "uk", "uk-UA"
+    elif digits.startswith("98"): # Iran
+        return "fa", "fa-IR"
+    elif digits.startswith("91"): # India
+        return "hi", "hi-IN"
+    elif digits.startswith("55"): # Brazil
+        return "pt", "pt-BR"
+    elif digits.startswith("86"): # China
+        return "zh", "zh-CN"
+    elif digits.startswith("84"): # Vietnam
+        return "vi", "vi-VN"
+    elif digits.startswith("63"): # Philippines
+        return "tl", "tl-PH"
+    elif digits.startswith("33"): # France
+        return "fr", "fr-FR"
+    elif digits.startswith("49"): # Germany
+        return "de", "de-DE"
+    elif digits.startswith("39"): # Italy
+        return "it", "it-IT"
+    elif digits.startswith("34"): # Spain
+        return "es", "es-ES"
+    
+    return "en", "en"
+
+
+def random_ios_device(phone: str | None = None) -> dict:
     """Return random iOS device parameters for Telethon TelegramClient.
 
     Returns a dict suitable for splatting into ``TelegramClient(**params)``::
@@ -75,26 +118,28 @@ def random_ios_device() -> dict:
             **random_ios_device(),
         )
     """
+    lang, sys_lang = get_locale_for_phone(phone)
     return {
         "device_model": random.choice(_IPHONE_MODELS),
         "app_version": random.choice(_APP_VERSIONS),
         "system_version": random.choice(_IOS_VERSIONS),
-        "lang_code": "en",
-        "system_lang_code": "en",
+        "lang_code": lang,
+        "system_lang_code": sys_lang,
     }
 
 
-def deterministic_ios_device(seed: str) -> dict:
+def deterministic_ios_device(seed: str, phone: str | None = None) -> dict:
     """Return an iOS device dict seeded from an account identifier.
 
     Same account always gets the same device fingerprint, making it look
     like a stable iPhone login rather than a new device every reconnect.
     """
     rng = random.Random(seed)
+    lang, sys_lang = get_locale_for_phone(phone)
     return {
         "device_model": rng.choice(_IPHONE_MODELS),
         "app_version": rng.choice(_APP_VERSIONS),
         "system_version": rng.choice(_IOS_VERSIONS),
-        "lang_code": "en",
-        "system_lang_code": "en",
+        "lang_code": lang,
+        "system_lang_code": sys_lang,
     }
