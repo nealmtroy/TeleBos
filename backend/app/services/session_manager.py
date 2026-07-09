@@ -33,6 +33,13 @@ async def _background_chat_sync(account_id: str) -> None:
                 )
                 account = result.scalar_one_or_none()
                 if account:
+                    # Debounce Reconnection Storm: check if last_sync_at is within the last 15 minutes
+                    import datetime
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    if account.last_sync_at and (now - account.last_sync_at).total_seconds() < 900:
+                        logger.info("Skipping background chat/profile sync for account %s: debounced (last sync was %s)", account_id, account.last_sync_at)
+                        return
+
                     # 1. Sync profile info (e.g. name, username, bio, photo)
                     try:
                         await sync_account_profile(db, account)
@@ -166,36 +173,126 @@ class SessionManager:
             except Exception as exc:
                 logger.error("Error in periodic spam check: %s", exc)
 
-    async def _check_connections(self) -> None:
-        """Ping each connected client; reconnect stale ones."""
+    async def is_account_in_active_job(self, db: AsyncSession, account_id: str) -> bool:
+        """Check if an account is currently assigned to an active broadcast or invite job."""
+        from app.models.broadcast_job import BroadcastJob
+        from app.models.invite_job import InviteJob
+        import uuid
+        try:
+            acc_uuid = uuid.UUID(account_id)
+        except ValueError:
+            return False
+
+        # 1. Check active BroadcastJobs
+        try:
+            broadcast_query = await db.execute(
+                select(BroadcastJob.account_ids).where(
+                    BroadcastJob.status.in_(["pending", "running", "paused"])
+                )
+            )
+            for job_accs in broadcast_query.scalars():
+                if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
+                    return True
+        except Exception as e:
+            logger.debug("Failed to check BroadcastJob for account %s: %s", account_id, e)
+
+        # 2. Check active InviteJobs
+        try:
+            invite_query = await db.execute(
+                select(InviteJob.id).where(
+                    InviteJob.account_id == acc_uuid,
+                    InviteJob.status.in_(["pending", "running", "paused"])
+                )
+            )
+            if invite_query.first() is not None:
+                return True
+        except Exception as e:
+            logger.debug("Failed to check InviteJob for account %s: %s", account_id, e)
+
+        return False
+
+    async def ensure_connected_on_demand(self, account_id: str) -> bool:
+        """Ensure an account is connected and its event relay is attached (on-demand)."""
         clients = await client_pool.get_connected_clients()
+        if account_id in clients:
+            return True
+
+        logger.info("Lazy Connection: connecting account %s on-demand", account_id)
+        from app.database import async_session_factory
+        import uuid
+        try:
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount).where(
+                        TelegramAccount.id == uuid.UUID(account_id),
+                        TelegramAccount.is_active.is_(True)
+                    )
+                )
+                account = result.scalar_one_or_none()
+                if account:
+                    return await self.attach_and_reconnect(db, account)
+        except Exception as exc:
+            logger.error("Failed to connect account %s on-demand: %s", account_id, exc)
+        return False
+
+    async def _check_connections(self) -> None:
+        """Ping each connected client; reconnect stale ones, and disconnect unneeded ones (Lazy Connection)."""
+        clients = await client_pool.get_connected_clients()
+        from app.database import async_session_factory
+        from app.api.ws import manager as ws_manager
 
         # Track which accounts need reconnection
         stale_ids: list[str] = []
+        # Track which accounts can be lazily disconnected
+        lazy_disconnect_ids: list[str] = []
 
-        for account_id, client in list(clients.items()):
-            try:
-                if not client.is_connected():
-                    logger.warning("Client %s disconnected, will reconnect", account_id)
-                    stale_ids.append(account_id)
-                else:
+        async with async_session_factory() as db:
+            for account_id, client in list(clients.items()):
+                try:
+                    # 1. Verify connection health
+                    if not client.is_connected():
+                        logger.warning("Client %s disconnected, will reconnect if needed", account_id)
+                        stale_ids.append(account_id)
+                        continue
+
                     me = await client.get_me()
                     if me is None:
                         logger.warning("Client %s returned no user", account_id)
                         stale_ids.append(account_id)
-            except Exception as exc:
-                logger.warning("Client %s ping failed: %s", account_id, exc)
-                stale_ids.append(account_id)
+                        continue
 
-        # Clean up stale clients first
-        for account_id in stale_ids:
-            await event_relay.detach(account_id)
-            await client_pool.remove(account_id)
+                    # 2. Lazy connection cleanup: if client is healthy, check if still needed
+                    result = await db.execute(
+                        select(TelegramAccount).where(
+                            TelegramAccount.id == account_id,
+                            TelegramAccount.is_active.is_(True)
+                        )
+                    )
+                    account = result.scalar_one_or_none()
+                    if account:
+                        has_auto_reply = account.auto_reply_enabled
+                        has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
+                        has_active_job = await self.is_account_in_active_job(db, account_id)
 
-        # Reconnect stale accounts from database
-        if stale_ids:
-            from app.database import async_session_factory
-            async with async_session_factory() as db:
+                        if not (has_auto_reply or has_active_ws or has_active_job):
+                            logger.info("Lazy Connection: disconnecting unneeded client for account %s", account_id)
+                            lazy_disconnect_ids.append(account_id)
+
+                except Exception as exc:
+                    logger.warning("Client %s ping failed: %s", account_id, exc)
+                    stale_ids.append(account_id)
+
+            # Clean up stale clients first
+            for account_id in stale_ids:
+                await event_relay.detach(account_id)
+                await client_pool.remove(account_id)
+
+            # Disconnect unneeded clients
+            for account_id in lazy_disconnect_ids:
+                await client_pool.remove(account_id)
+
+            # Reconnect stale accounts only if STILL needed!
+            if stale_ids:
                 for account_id in stale_ids:
                     try:
                         result = await db.execute(
@@ -207,11 +304,16 @@ class SessionManager:
                         account = result.scalar_one_or_none()
                         if account is None:
                             continue
-                        await self.attach_and_reconnect(db, account)
+
+                        # Only reconnect if required
+                        has_auto_reply = account.auto_reply_enabled
+                        has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
+                        has_active_job = await self.is_account_in_active_job(db, account_id)
+
+                        if has_auto_reply or has_active_ws or has_active_job:
+                            await self.attach_and_reconnect(db, account)
                     except Exception as exc:
-                        logger.error(
-                            "Failed to auto-reconnect account %s: %s", account_id, exc
-                        )
+                        logger.error("Failed to auto-reconnect account %s: %s", account_id, exc)
 
     async def attach_and_reconnect(
         self, db: AsyncSession, account: TelegramAccount
@@ -274,9 +376,12 @@ class SessionManager:
             return False
 
     async def reconnect_all(self, db: AsyncSession) -> int:
-        """Reconnect all active accounts with event handlers attached."""
+        """Reconnect only active accounts with auto-reply enabled on startup (Lazy Connection)."""
         result = await db.execute(
-            select(TelegramAccount).where(TelegramAccount.is_active.is_(True))
+            select(TelegramAccount).where(
+                TelegramAccount.is_active.is_(True),
+                TelegramAccount.auto_reply_enabled.is_(True)
+            )
         )
         accounts = list(result.scalars().all())
         success = 0
@@ -286,7 +391,7 @@ class SessionManager:
                     success += 1
             except Exception as exc:
                 logger.error("Unhandled error reconnecting account %s (%s): %s", account.id, account.phone, exc)
-        logger.info("Reconnected %d/%d accounts", success, len(accounts))
+        logger.info("Lazy reconnect complete. Reconnected %d of %d active accounts (auto-reply enabled)", success, len(accounts))
         return success
 
 

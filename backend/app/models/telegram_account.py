@@ -56,6 +56,9 @@ class TelegramAccount(Base):
     auto_reply_text: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
 
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pts: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
+    qts: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
+    date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     # Cached dialog statistics (refreshed by background daily task)
     contacts_count: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")

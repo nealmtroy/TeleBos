@@ -32,12 +32,13 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
     values = []
 
     try:
-        dialogs = await client.get_dialogs(limit=None)
+        dialogs = await client.get_dialogs(limit=100)
         for d in dialogs:
             chat_type_val = _classify_chat(d.entity)
             if chat_type_val in ("group", "supergroup", "channel"):
                 continue
             is_creator = getattr(d.entity, "creator", False)
+            access_hash = getattr(d.entity, "access_hash", None)
 
             # Save the last message text and date
             last_msg = None
@@ -56,6 +57,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "unread_count": d.unread_count or 0,
                 "last_message": last_msg,
                 "last_message_date": last_time,
+                "access_hash": access_hash,
                 "is_active": True,
                 "is_creator": is_creator,
             })
@@ -83,6 +85,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "unread_count": stmt.excluded.unread_count,
                 "last_message": stmt.excluded.last_message,
                 "last_message_date": stmt.excluded.last_message_date,
+                "access_hash": stmt.excluded.access_hash,
                 "is_active": True,
                 "is_creator": stmt.excluded.is_creator,
                 "updated_at": func.now(),
@@ -143,6 +146,109 @@ async def get_dialogs(
 
     result = await db.execute(stmt)
     chats = result.scalars().all()
+
+    # If the database does not have enough chats to satisfy the requested page,
+    # we can try to fetch more chats from Telegram API using offset parameters
+    if (len(chats) < page_size or total < page * page_size) and page > 0:
+        try:
+            session_str = decrypt(account.session_string)
+            client = await client_pool.get(str(account.id), session_str)
+            if client and client.is_connected():
+                # Find the oldest synced chat in the DB to use its date and peer as offsets
+                oldest_stmt = select(TelegramChat).where(
+                    TelegramChat.account_id == account.id,
+                    TelegramChat.is_active == True,
+                    TelegramChat.type.not_in(["group", "supergroup", "channel"])
+                ).order_by(TelegramChat.last_message_date.asc()).limit(1)
+
+                oldest_res = await db.execute(oldest_stmt)
+                oldest_chat = oldest_res.scalar_one_or_none()
+
+                offset_date = None
+                offset_peer = None
+                if oldest_chat:
+                    offset_date = oldest_chat.last_message_date
+                    offset_peer = await resolve_chat_entity(client, account.id, oldest_chat.chat_id)
+
+                # Fetch more dialogs from Telegram starting after the oldest chat we have
+                logger.info("Loading more dialogs on-demand from Telegram (offset_date=%s) for account %s", offset_date, account.id)
+                dialogs = await client.get_dialogs(
+                    limit=50,
+                    offset_date=offset_date,
+                    offset_peer=offset_peer
+                )
+
+                if dialogs:
+                    # Sync these newly loaded dialogs to DB!
+                    new_values = []
+                    for d in dialogs:
+                        chat_type_val = _classify_chat(d.entity)
+                        if chat_type_val in ("group", "supergroup", "channel"):
+                            continue
+                        is_creator = getattr(d.entity, "creator", False)
+                        access_hash = getattr(d.entity, "access_hash", None)
+
+                        last_msg = None
+                        last_time = None
+                        if d.message:
+                            last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+                            last_time = d.message.date
+
+                        new_values.append({
+                            "id": uuid.uuid4(),
+                            "account_id": account.id,
+                            "chat_id": d.id,
+                            "title": d.name or d.title or "Unknown",
+                            "username": getattr(d.entity, "username", None),
+                            "type": chat_type_val,
+                            "unread_count": d.unread_count or 0,
+                            "last_message": last_msg,
+                            "last_message_date": last_time,
+                            "access_hash": access_hash,
+                            "is_active": True,
+                            "is_creator": is_creator,
+                        })
+
+                    if new_values:
+                        from sqlalchemy.dialects.postgresql import insert
+                        stmt_insert = insert(TelegramChat).values(new_values)
+                        stmt_insert = stmt_insert.on_conflict_do_update(
+                            constraint="uq_telegram_chat_account_chat",
+                            set_={
+                                "title": stmt_insert.excluded.title,
+                                "username": stmt_insert.excluded.username,
+                                "type": stmt_insert.excluded.type,
+                                "unread_count": stmt_insert.excluded.unread_count,
+                                "last_message": stmt_insert.excluded.last_message,
+                                "last_message_date": stmt_insert.excluded.last_message_date,
+                                "access_hash": stmt_insert.excluded.access_hash,
+                                "is_active": True,
+                                "is_creator": stmt_insert.excluded.is_creator,
+                                "updated_at": func.now(),
+                            }
+                        )
+                        await db.execute(stmt_insert)
+                        await db.commit()
+
+                        # Re-calculate total count and fetch page chats
+                        stmt = select(TelegramChat).where(
+                            TelegramChat.account_id == account.id,
+                            TelegramChat.is_active == True,
+                        )
+                        if chat_type:
+                            stmt = stmt.where(TelegramChat.type.in_(allowed_types))
+
+                        count_stmt = select(func.count()).select_from(stmt.subquery())
+                        total = await db.scalar(count_stmt) or 0
+
+                        stmt = stmt.order_by(TelegramChat.last_message_date.desc().nullslast())
+                        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+                        result = await db.execute(stmt)
+                        chats = result.scalars().all()
+
+        except Exception as offset_exc:
+            logger.warning("Failed to load more dialogs using offsets for account %s: %s", account.id, offset_exc)
 
     page_dialogs = []
     for c in chats:
@@ -316,6 +422,47 @@ async def sync_folders_from_telegram(account: TelegramAccount, db: AsyncSession)
 # ── Message operations ───────────────────────────────────────────────────────
 
 
+async def resolve_chat_entity(client, account_id, chat_id: int):
+    """Resolve a chat ID into an entity (InputPeer or actual entity) using cache, DB lookup, or network fallback."""
+    import telethon.tl.types as types
+    import uuid
+    try:
+        # 1. Try to get input entity from cache (fastest)
+        return await client.get_input_entity(chat_id)
+    except Exception:
+        # 2. Look up access_hash from local database
+        from app.database import async_session_factory
+        from app.models.telegram_chat import TelegramChat
+        from sqlalchemy import select
+        
+        access_hash = None
+        chat_type = "user"
+        try:
+            acc_uuid = uuid.UUID(str(account_id))
+            async with async_session_factory() as session:
+                res = await session.execute(
+                    select(TelegramChat.access_hash, TelegramChat.type)
+                    .where(TelegramChat.account_id == acc_uuid)
+                    .where(TelegramChat.chat_id == chat_id)
+                )
+                row = res.first()
+                if row:
+                    access_hash, chat_type = row
+        except Exception as db_err:
+            logger.debug("Failed to query access_hash from DB for entity resolution: %s", db_err)
+
+        if access_hash is not None:
+            if chat_type == "user":
+                return types.InputPeerUser(user_id=chat_id, access_hash=access_hash)
+            elif chat_type in ("channel", "supergroup"):
+                return types.InputPeerChannel(channel_id=chat_id, access_hash=access_hash)
+            else:
+                return types.InputPeerChat(chat_id=chat_id)
+
+        # 3. Fallback to slow network query
+        return await client.get_entity(chat_id)
+
+
 async def get_messages(
     account: TelegramAccount, chat_id: int, *, limit: int = 50, offset_id: int = 0
 ) -> tuple[list[dict], bool]:
@@ -329,7 +476,7 @@ async def get_messages(
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    entity = await client.get_entity(chat_id)
+    entity = await resolve_chat_entity(client, account.id, chat_id)
     me = await client.get_me()
     my_id = me.id
 
@@ -449,7 +596,7 @@ async def send_message(
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    entity = await client.get_entity(chat_id)
+    entity = await resolve_chat_entity(client, account.id, chat_id)
     msg = await client.send_message(entity, text, reply_to=reply_to)
 
     return {
@@ -473,7 +620,7 @@ async def send_media(
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
-    entity = await client.get_entity(chat_id)
+    entity = await resolve_chat_entity(client, account.id, chat_id)
     
     import io
     file_io = io.BytesIO(file_bytes)

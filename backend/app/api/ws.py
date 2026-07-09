@@ -243,6 +243,11 @@ async def ws_chats(websocket: WebSocket, account_id: str):
 
     if not await manager.connect(channel, websocket):
         return
+
+    # Trigger Lazy Connection on-demand
+    from app.services.session_manager import session_manager
+    asyncio.create_task(session_manager.ensure_connected_on_demand(account_id))
+
     try:
         while True:
             data = await websocket.receive_text()

@@ -103,15 +103,35 @@ class TelegramClientPool:
                     self._clients[k]["last_accessed"] = now
 
         for acc_id in stale_keys:
-            # Detach event handlers first to prevent memory leak
-            try:
-                from app.services.event_relay import event_relay
-                await event_relay.detach(acc_id)
-            except Exception as e:
-                logger.warning("Error detaching event handlers during cleanup for account %s: %s", acc_id, e)
-
             data = self._clients.pop(acc_id, None)
             if data and data["client"]:
+                # Save the latest updates state to the DB before disconnecting
+                try:
+                    client = data["client"]
+                    if client.is_connected():
+                        from telethon.tl.functions.updates import GetStateRequest
+                        state = await client(GetStateRequest())
+                        from app.database import async_session_factory
+                        from app.models.telegram_account import TelegramAccount
+                        from sqlalchemy import update
+                        import uuid
+                        async with async_session_factory() as db:
+                            await db.execute(
+                                update(TelegramAccount)
+                                .where(TelegramAccount.id == uuid.UUID(acc_id))
+                                .values(pts=state.pts, qts=state.qts, date=state.date)
+                            )
+                            await db.commit()
+                except Exception as e:
+                    logger.debug("Failed to save update state on idle cleanup for account %s: %s", acc_id, e)
+
+                # Detach event handlers first to prevent memory leak
+                try:
+                    from app.services.event_relay import event_relay
+                    await event_relay.detach(acc_id)
+                except Exception as e:
+                    logger.warning("Error detaching event handlers during cleanup for account %s: %s", acc_id, e)
+
                 logger.info("Disconnecting idle Telegram client for account %s", acc_id)
                 try:
                     await asyncio.wait_for(data["client"].disconnect(), timeout=2.0)
@@ -176,6 +196,56 @@ class TelegramClientPool:
                     self._clients.pop(account_id, None)
                     await self._handle_expired_session(account_id)
                     return None
+
+                # Restore update state from DB to enable catching up missed updates
+                try:
+                    from app.database import async_session_factory
+                    from app.models.telegram_account import TelegramAccount
+                    from sqlalchemy import select, update
+                    import uuid
+                    async with async_session_factory() as db:
+                        res = await db.execute(
+                            select(
+                                TelegramAccount.pts,
+                                TelegramAccount.qts,
+                                TelegramAccount.date
+                            ).where(TelegramAccount.id == uuid.UUID(account_id))
+                        )
+                        row = res.first()
+                        if row and row[0] is not None:
+                            pts, qts, date = row
+                            from telethon.tl.types.updates import State
+                            import datetime
+                            
+                            # Convert date to timezone-aware datetime if needed
+                            date_dt = date
+                            if isinstance(date, (int, float)):
+                                date_dt = datetime.datetime.fromtimestamp(date, tz=datetime.timezone.utc)
+                            elif date is None:
+                                date_dt = datetime.datetime.now(datetime.timezone.utc)
+                                
+                            client.session.set_update_state(0, State(pts=pts, qts=qts, date=date_dt, seq=0, unread_count=0))
+                            logger.info("Restored updates state (pts=%s, qts=%s, date=%s) for account %s", pts, qts, date_dt, account_id)
+                            
+                            # Catch up missed updates asynchronously
+                            asyncio.create_task(client.catch_up())
+                        else:
+                            # First time: query current state and save to DB
+                            try:
+                                from telethon.tl.functions.updates import GetStateRequest
+                                state = await client(GetStateRequest())
+                                await db.execute(
+                                    update(TelegramAccount)
+                                    .where(TelegramAccount.id == uuid.UUID(account_id))
+                                    .values(pts=state.pts, qts=state.qts, date=state.date)
+                                )
+                                await db.commit()
+                                logger.info("Saved initial updates state (pts=%s, qts=%s) for account %s", state.pts, state.qts, account_id)
+                            except Exception as save_state_err:
+                                logger.debug("Failed to save initial update state for account %s: %s", account_id, save_state_err)
+                except Exception as restore_exc:
+                    logger.warning("Failed to restore update state for account %s: %s", account_id, restore_exc)
+
                 self._clients[account_id] = {"client": client, "last_accessed": time.time()}
                 return client
             except (AuthKeyUnregisteredError, AuthKeyDuplicatedError, SessionRevokedError, UserDeactivatedBanError) as exc:
@@ -217,15 +287,35 @@ class TelegramClientPool:
 
     async def remove(self, account_id: str) -> None:
         """Disconnect and remove a client from the pool."""
-        # Detach event handlers first to prevent memory leak
-        try:
-            from app.services.event_relay import event_relay
-            await event_relay.detach(account_id)
-        except Exception as e:
-            logger.warning("Error detaching event handlers during remove for account %s: %s", account_id, e)
-
         data = self._clients.pop(account_id, None)
         if data is not None and data["client"]:
+            # Save the latest updates state to the DB before disconnecting
+            try:
+                client = data["client"]
+                if client.is_connected():
+                    from telethon.tl.functions.updates import GetStateRequest
+                    state = await client(GetStateRequest())
+                    from app.database import async_session_factory
+                    from app.models.telegram_account import TelegramAccount
+                    from sqlalchemy import update
+                    import uuid
+                    async with async_session_factory() as db:
+                        await db.execute(
+                            update(TelegramAccount)
+                            .where(TelegramAccount.id == uuid.UUID(account_id))
+                            .values(pts=state.pts, qts=state.qts, date=state.date)
+                        )
+                        await db.commit()
+            except Exception as e:
+                logger.debug("Failed to save update state on remove for account %s: %s", account_id, e)
+
+            # Detach event handlers first to prevent memory leak
+            try:
+                from app.services.event_relay import event_relay
+                await event_relay.detach(account_id)
+            except Exception as e:
+                logger.warning("Error detaching event handlers during remove for account %s: %s", account_id, e)
+
             try:
                 await asyncio.wait_for(data["client"].disconnect(), timeout=2.0)
             except Exception:

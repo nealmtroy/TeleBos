@@ -29,6 +29,7 @@ class TelegramChat(Base):
     last_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_message_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    access_hash: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     is_creator: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 

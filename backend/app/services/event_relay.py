@@ -459,6 +459,7 @@ class TelegramEventRelay:
         async with self._db_sem:
             async with async_session_factory() as db:
                 try:
+                    access_hash = getattr(chat, "access_hash", None)
                     # Build upsert statement
                     stmt = insert(TelegramChat).values(
                         id=uuid.uuid4(),
@@ -470,11 +471,16 @@ class TelegramEventRelay:
                         unread_count=0 if is_outgoing else 1,
                         last_message=last_msg,
                         last_message_date=last_time,
+                        photo_url=None,
+                        access_hash=access_hash,
                         is_active=True,
                         is_creator=is_creator,
                     )
 
                     set_clause = {
+                        "title": title,
+                        "username": username,
+                        "access_hash": access_hash,
                         "last_message": stmt.excluded.last_message,
                         "last_message_date": stmt.excluded.last_message_date,
                         "is_active": True,
@@ -488,9 +494,26 @@ class TelegramEventRelay:
                         set_=set_clause
                     )
                     await db.execute(stmt)
+
+                    # Update TelegramAccount update state from client memory
+                    client = getattr(msg, "client", None)
+                    state = client.session.get_update_state(0) if client else None
+                    if state:
+                        from app.models.telegram_account import TelegramAccount
+                        from sqlalchemy import update
+                        await db.execute(
+                            update(TelegramAccount)
+                            .where(TelegramAccount.id == uuid.UUID(account_id))
+                            .values(
+                                pts=state.pts,
+                                qts=state.qts,
+                                date=state.date
+                            )
+                        )
+
                     await db.commit()
                 except Exception as exc:
-                    logger.warning("Failed to update chat on message in DB (account %s): %s", account_id, exc)
+                    logger.warning("Failed to update chat/account state on message in DB (account %s): %s", account_id, exc)
 
     async def _update_chat_read(self, account_id: str, event) -> None:
         # If we read it (event.inbox is True)
