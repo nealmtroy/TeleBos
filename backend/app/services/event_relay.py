@@ -397,40 +397,11 @@ class TelegramEventRelay:
             )
 
     async def _on_chat_action(self, account_id: str, event) -> None:
-        """Chat action: someone joined, left, pinned a message, or is typing in group/channel."""
+        """Chat action: someone joined, left, pinned a message, etc."""
         if account_id not in self._handlers:
             return
         channel = f"chats:{account_id}"
 
-        # 1. Handle group/channel typing/recording/uploading indicator
-        if event.typing:
-            action_name = "typing"
-            action = getattr(event, "action", None)
-            if action:
-                from telethon.tl.types import (
-                    SendMessageRecordAudioAction,
-                    SendMessageUploadPhotoAction,
-                    SendMessageRecordVideoAction,
-                )
-                if isinstance(action, SendMessageRecordAudioAction):
-                    action_name = "recording_audio"
-                elif isinstance(action, SendMessageUploadPhotoAction):
-                    action_name = "uploading_photo"
-                elif isinstance(action, SendMessageRecordVideoAction):
-                    action_name = "recording_video"
-                    
-            await manager.broadcast(
-                channel,
-                {
-                    "type": "typing",
-                    "chat_id": event.chat_id,
-                    "user_id": event.user_id,
-                    "action": action_name,
-                },
-            )
-            return
-
-        # 2. Handle original chat action (joined/left/pinned, etc.)
         try:
             user_name = getattr(await event.get_user(), "first_name", None) if event.user_id else None
         except Exception:
