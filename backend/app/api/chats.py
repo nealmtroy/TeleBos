@@ -531,16 +531,32 @@ async def get_chat_photo(
 ):
     """Get a chat's profile photo.
 
-    Public endpoint — chat photos are cached/retrieved from Telegram.
-    The account_id is used to identify which Telethon client to use
-    for downloading (no user auth required).
+    Public endpoint — chat photos are cached locally by chat_id to avoid redundant Telegram API downloads.
+    The account_id is used to identify which Telethon client to use for downloading.
     """
-    from fastapi import Response
+    import os
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+
+    # Define chat photos cache directory
+    chat_photos_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "uploads",
+        "chat_photos",
+    )
+    os.makedirs(chat_photos_dir, exist_ok=True)
+    
+    cached_path = os.path.join(chat_photos_dir, f"{chat_id}.jpg")
+
+    # Serve from cache if it exists
+    if os.path.exists(cached_path):
+        return FileResponse(cached_path, media_type="image/jpeg")
+
+    # If not cached, download using Telethon client
     from app.utils.encryption import decrypt
     from app.services.telegram_client import client_pool
     from app.models.telegram_account import TelegramAccount
     from sqlalchemy import select
-    import io
 
     # Just need any account that has this ID to get its session string
     result = await db.execute(
@@ -560,12 +576,15 @@ async def get_chat_photo(
 
     try:
         entity = await client.get_input_entity(chat_id)
-        bio = io.BytesIO()
-        photo_result = await client.download_profile_photo(entity, file=bio)
-        if not photo_result:
-            raise HTTPException(status_code=404, detail="No photo")
-        bio.seek(0)
-        return Response(content=bio.read(), media_type="image/jpeg")
+        # Use download_big=False to fetch small thumbnail (typically 160x160/80x80)
+        # to save massive bandwidth and storage.
+        photo_result = await client.download_profile_photo(entity, file=cached_path, download_big=False)
+        if not photo_result or not os.path.exists(cached_path):
+            # Write a dummy/empty file or raise 404 to avoid repeatedly downloading non-existent photo
+            raise HTTPException(status_code=404, detail="No photo found on Telegram")
+        
+        return FileResponse(cached_path, media_type="image/jpeg")
     except Exception as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
 
