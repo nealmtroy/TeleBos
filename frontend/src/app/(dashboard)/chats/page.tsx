@@ -383,8 +383,8 @@ function ChatsContent() {
     });
   }
 
-  function handleArchiveClick(e: React.MouseEvent, chat: ChatItem) {
-    e.stopPropagation();
+  function handleArchiveClick(e: React.MouseEvent | null, chat: ChatItem) {
+    if (e) e.stopPropagation();
     if (chat.is_archived) {
       unarchiveMutation.mutate(chat.chat_id);
     } else {
@@ -392,8 +392,8 @@ function ChatsContent() {
     }
   }
 
-  function handleDeleteClick(e: React.MouseEvent, chat: ChatItem) {
-    e.stopPropagation();
+  function handleDeleteClick(e: React.MouseEvent | null, chat: ChatItem) {
+    if (e) e.stopPropagation();
     setDeleteChatTarget(chat);
     setDeleteChatOpen(true);
   }
@@ -655,7 +655,7 @@ function ChatsContent() {
                             >
                               {chat.title || _("chats.unknown")}
                             </h3>
-                            <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">
+                            <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2 group-hover:lg:opacity-0 transition-opacity duration-150">
                               {formatRelative(chat.last_message_time)}
                             </span>
                           </div>
@@ -669,7 +669,7 @@ function ChatsContent() {
                               {chat.last_message || "—"}
                             </p>
                             {chat.unread_count > 0 && (
-                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm">
+                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm group-hover:lg:opacity-0 transition-opacity duration-150">
                                 {chat.unread_count > 99 ? "99+" : chat.unread_count}
                               </span>
                             )}
@@ -678,7 +678,7 @@ function ChatsContent() {
 
                         {/* Hover actions (only when not in selection mode) */}
                         {!selectionMode && (
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex lg:hidden lg:group-hover:flex items-center gap-1 bg-white pl-2">
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden lg:group-hover:flex items-center gap-1 bg-white pl-2">
                             <button
                               onClick={(e) => handleArchiveClick(e, chat)}
                               disabled={isBusy}
@@ -784,6 +784,15 @@ function ChatsContent() {
             chatType={selectedChatType}
             getApiUrl={getApiUrl}
             onBack={handleBackToList}
+            isArchived={chats.find((c) => c.chat_id === selectedChatId)?.is_archived || false}
+            onArchive={() => {
+              const found = chats.find((c) => c.chat_id === selectedChatId);
+              if (found) handleArchiveClick(null, found);
+            }}
+            onDelete={() => {
+              const found = chats.find((c) => c.chat_id === selectedChatId);
+              if (found) handleDeleteClick(null, found);
+            }}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-8 py-12">
@@ -833,6 +842,9 @@ function MessagePane({
   chatType,
   getApiUrl,
   onBack,
+  isArchived,
+  onArchive,
+  onDelete,
 }: {
   accountId: string;
   chatId: number;
@@ -840,6 +852,9 @@ function MessagePane({
   chatType: string;
   getApiUrl: () => string;
   onBack: () => void;
+  isArchived?: boolean;
+  onArchive?: () => void;
+  onDelete?: () => void;
 }) {
   const queryClient = useQueryClient();
   const _ = useT();
@@ -1050,6 +1065,33 @@ function MessagePane({
           <h2 className="text-sm font-bold text-slate-900 truncate">{chatTitle}</h2>
           <p className="text-xs text-slate-400 font-semibold capitalize tracking-wide">{chatType}</p>
         </div>
+
+        {(onArchive || onDelete) && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {onArchive && (
+              <button
+                onClick={onArchive}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition active:scale-95"
+                title={isArchived ? _("chats.unarchive") : _("chats.archive")}
+              >
+                {isArchived ? (
+                  <ArchiveRestore className="h-4.5 w-4.5" />
+                ) : (
+                  <Archive className="h-4.5 w-4.5" />
+                )}
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition active:scale-95"
+                title={_("chats.delete")}
+              >
+                <Trash2 className="h-4.5 w-4.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Messages area */}
