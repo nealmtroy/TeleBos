@@ -155,7 +155,7 @@ async def mark_read(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        await chat_service.mark_read(account, chat_id)
+        await chat_service.mark_read(db, account, chat_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

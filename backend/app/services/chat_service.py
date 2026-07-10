@@ -793,7 +793,7 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
     }
 
 
-async def mark_read(account: TelegramAccount, chat_id: int) -> None:
+async def mark_read(db: AsyncSession, account: TelegramAccount, chat_id: int) -> None:
     """Mark all messages in a chat as read."""
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -802,6 +802,16 @@ async def mark_read(account: TelegramAccount, chat_id: int) -> None:
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.send_read_acknowledge(entity)
+
+    # Update unread count in database
+    stmt = (
+        update(TelegramChat)
+        .where(TelegramChat.account_id == account.id)
+        .where(TelegramChat.chat_id == chat_id)
+        .values(unread_count=0, updated_at=func.now())
+    )
+    await db.execute(stmt)
+    await db.commit()
 
 
 # ── Archive / Unarchive / Delete ───────────────────────────────────────────────
