@@ -67,6 +67,7 @@ class TelegramAccount(Base):
     total_channels: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     owned_channels: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     stats_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
+    groups_channels_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
 
     # Spam limit checking fields
     spam_status: Mapped[str | None] = mapped_column(String(50), default="unknown", server_default="unknown")

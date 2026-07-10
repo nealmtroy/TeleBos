@@ -197,6 +197,10 @@ def _run_migrations(connection):
         connection.execute(
             text("ALTER TABLE telegram_accounts ADD COLUMN stats_updated_at TIMESTAMPTZ DEFAULT NULL")
         )
+    if "groups_channels_synced_at" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN groups_channels_synced_at TIMESTAMPTZ DEFAULT NULL")
+        )
 
     # ── Spam limit columns on telegram_accounts ──────────────────────────
     if "spam_status" not in acct_cols:

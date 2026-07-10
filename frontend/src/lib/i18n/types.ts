@@ -706,6 +706,13 @@ export interface Dict {
     joinFailed: string;
     alreadyMember: string;
     identifier: string;
+    sync: string;
+    syncing: string;
+    syncSuccess: string;
+    syncFailed: string;
+    lastSynced: string;
+    neverSynced: string;
+    syncRequiredDesc: string;
   };
 
   // 404 Not Found

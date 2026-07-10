@@ -62,6 +62,7 @@ class AccountResponse(BaseModel):
     auto_reply_enabled: bool = False
     auto_reply_text: str | None = None
     last_sync_at: datetime | None
+    groups_channels_synced_at: datetime | None = None
     created_at: datetime
     sell_price: int | None = None
     for_sale: bool = False

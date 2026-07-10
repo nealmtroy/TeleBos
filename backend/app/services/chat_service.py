@@ -133,20 +133,22 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
         )
         await db.execute(stmt)
 
-    # Delete any existing group/channel chats from the DB
-    await db.execute(
-        delete(TelegramChat)
-        .where(TelegramChat.account_id == account.id)
-        .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
-    )
-
-    # Mark other chats no longer present in sync as inactive
-    await db.execute(
-        update(TelegramChat)
-        .where(TelegramChat.account_id == account.id)
-        .where(TelegramChat.chat_id.not_in(list(synced_chat_ids)))
-        .values(is_active=False, updated_at=func.now())
-    )
+    # Mark other chats no longer present in sync as inactive (excluding groups/channels)
+    if synced_chat_ids:
+        await db.execute(
+            update(TelegramChat)
+            .where(TelegramChat.account_id == account.id)
+            .where(TelegramChat.type.not_in(["group", "supergroup", "channel"]))
+            .where(TelegramChat.chat_id.not_in(list(synced_chat_ids)))
+            .values(is_active=False, updated_at=func.now())
+        )
+    else:
+        await db.execute(
+            update(TelegramChat)
+            .where(TelegramChat.account_id == account.id)
+            .where(TelegramChat.type.not_in(["group", "supergroup", "channel"]))
+            .values(is_active=False, updated_at=func.now())
+        )
 
     await db.commit()
     logger.info("Successfully synced %d chats for account %s", len(synced_chat_ids), account.id)
@@ -187,9 +189,16 @@ async def get_dialogs(
     result = await db.execute(stmt)
     chats = result.scalars().all()
 
+    # Determine if this is a group/channel list query to skip heavy API calls
+    is_group_channel_query = False
+    if chat_type:
+        allowed_types = {t.strip() for t in chat_type.split(",")}
+        if allowed_types.intersection({"group", "supergroup", "channel"}):
+            is_group_channel_query = True
+
     # If the database does not have enough chats to satisfy the requested page,
     # we can try to fetch more chats from Telegram API using offset parameters
-    if (len(chats) < page_size or total < page * page_size) and page > 0:
+    if not is_group_channel_query and (len(chats) < page_size or total < page * page_size) and page > 0:
         try:
             session_str = decrypt(account.session_string)
             client = await client_pool.get(str(account.id), session_str)
@@ -923,3 +932,121 @@ async def batch_delete_chats(db: AsyncSession, account: TelegramAccount, chat_id
             await delete_chat(db, account, chat_id)
         except Exception as exc:
             logger.warning("Failed to delete chat %s: %s", chat_id, exc)
+
+
+async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession) -> None:
+    """Fetch all groups and channels the account is joined to and cache in the DB."""
+    import datetime as dt
+    from sqlalchemy.dialects.postgresql import insert
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please reconnect first.")
+
+    logger.info("Starting groups & channels sync for account %s...", account.id)
+
+    synced_group_channel_ids = set()
+    values = []
+
+    try:
+        from telethon.tl.functions.messages import GetAllChatsRequest
+        result = await client(GetAllChatsRequest(except_ids=[]))
+        chats_list = getattr(result, "chats", [])
+
+        for c in chats_list:
+            chat_type_val = _classify_chat(c)
+            if chat_type_val not in ("group", "supergroup", "channel"):
+                continue
+
+            left = getattr(c, "left", False)
+            deactivated = getattr(c, "deactivated", False)
+            is_active = not (left or deactivated)
+            is_creator = getattr(c, "creator", False)
+            access_hash = getattr(c, "access_hash", None)
+
+            values.append({
+                "id": uuid.uuid4(),
+                "account_id": account.id,
+                "chat_id": c.id,
+                "title": getattr(c, "title", "Unknown") or "Unknown",
+                "username": getattr(c, "username", None),
+                "type": chat_type_val,
+                "unread_count": 0,
+                "last_message": None,
+                "last_message_date": None,
+                "access_hash": access_hash,
+                "is_active": is_active,
+                "is_creator": is_creator,
+                "is_archived": False,
+            })
+            if is_active:
+                synced_group_channel_ids.add(c.id)
+    except Exception as exc:
+        logger.error("Error during GetAllChatsRequest for account %s: %s", account.id, exc)
+        raise RuntimeError(f"Telegram API error: {exc}")
+
+    # Bulk upsert groups and channels
+    if values:
+        chunk_size = 100
+        for i in range(0, len(values), chunk_size):
+            chunk = values[i : i + chunk_size]
+            stmt = insert(TelegramChat).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                constraint="uq_telegram_chat_account_chat",
+                set_={
+                    "title": stmt.excluded.title,
+                    "username": stmt.excluded.username,
+                    "type": stmt.excluded.type,
+                    "unread_count": stmt.excluded.unread_count,
+                    "last_message": stmt.excluded.last_message,
+                    "last_message_date": stmt.excluded.last_message_date,
+                    "access_hash": stmt.excluded.access_hash,
+                    "is_active": True,
+                    "is_creator": stmt.excluded.is_creator,
+                    "is_archived": stmt.excluded.is_archived,
+                    "updated_at": func.now(),
+                }
+            )
+            await db.execute(stmt)
+
+    # Mark groups and channels that were not returned in this sync as inactive
+    if synced_group_channel_ids:
+        await db.execute(
+            update(TelegramChat)
+            .where(TelegramChat.account_id == account.id)
+            .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
+            .where(TelegramChat.chat_id.not_in(list(synced_group_channel_ids)))
+            .values(is_active=False, updated_at=func.now())
+        )
+    else:
+        await db.execute(
+            update(TelegramChat)
+            .where(TelegramChat.account_id == account.id)
+            .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
+            .values(is_active=False, updated_at=func.now())
+        )
+
+    # Refresh cached counts on TelegramAccount model
+    count_stmt = select(
+        func.count().filter(TelegramChat.type.in_(["group", "supergroup"])).label("total_groups"),
+        func.count().filter(TelegramChat.type.in_(["group", "supergroup"]) & TelegramChat.is_creator).label("owned_groups"),
+        func.count().filter(TelegramChat.type == "channel").label("total_channels"),
+        func.count().filter((TelegramChat.type == "channel") & TelegramChat.is_creator).label("owned_channels"),
+    ).where(
+        TelegramChat.account_id == account.id,
+        TelegramChat.is_active == True,
+    )
+    res = await db.execute(count_stmt)
+    row = res.fetchone()
+    if row:
+        account.total_groups = row.total_groups
+        account.owned_groups = row.owned_groups
+        account.total_channels = row.total_channels
+        account.owned_channels = row.owned_channels
+
+    # Update synced_at timestamp
+    account.groups_channels_synced_at = dt.datetime.now(dt.timezone.utc)
+    
+    await db.commit()
+    logger.info("Successfully synced %d groups/channels for account %s", len(synced_group_channel_ids), account.id)

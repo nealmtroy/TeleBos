@@ -745,6 +745,13 @@ const en: Dict = {
     joinFailed: "Failed to join",
     alreadyMember: "Already a member",
     identifier: "Username or Invite Link",
+    sync: "Sync Groups & Channels",
+    syncing: "Syncing...",
+    syncSuccess: "Groups & channels synced successfully!",
+    syncFailed: "Sync failed!",
+    lastSynced: "Last synced: {time}",
+    neverSynced: "Never synced",
+    syncRequiredDesc: "To optimize VPS performance, groups and channels are only synced on demand. Please sync now to fetch them.",
   },
 
   // ── 404 Not Found ──────────────────────────────────────────────────────────

@@ -183,6 +183,26 @@ async def join_chat(
     return result
 
 
+@router.post("/accounts/{account_id}/chats/sync-groups-channels", status_code=status.HTTP_200_OK)
+async def sync_groups_channels(
+    account_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Sync all groups and channels for the account from Telegram and cache in DB."""
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.sync_groups_channels_to_db(account, db)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "status": "success",
+        "groups_channels_synced_at": account.groups_channels_synced_at.isoformat() if account.groups_channels_synced_at else None
+    }
+
+
 # ── Archive / Unarchive / Delete ───────────────────────────────────────────────
 
 

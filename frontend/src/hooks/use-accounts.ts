@@ -19,6 +19,7 @@ export interface Account {
   auto_reply_enabled: boolean;
   auto_reply_text: string | null;
   last_sync_at: string | null;
+  groups_channels_synced_at: string | null;
   created_at: string;
   spam_status: string | null;
   spam_detail: string | null;

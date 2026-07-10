@@ -5,9 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
 import { useChats, type ChatItem } from "@/hooks/use-chats";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
-  Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Plus, X, Link as LinkIcon,
+  Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Plus, X, Link as LinkIcon, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
@@ -36,6 +37,34 @@ function GroupsChannelsContent() {
   const [activeTab, setActiveTab] = useState<"groups" | "channels">("groups");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+
+  const queryClient = useQueryClient();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState("");
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState("");
+
+  const activeAccountObj = (Array.isArray(accounts) ? accounts : []).find(acc => acc.id === selectedAccount);
+  const syncedAt = activeAccountObj?.groups_channels_synced_at;
+
+  const handleSync = async () => {
+    if (!selectedAccount) return;
+    setIsSyncing(true);
+    setSyncError("");
+    setSyncSuccessMsg("");
+    try {
+      const api = (await import("@/lib/api")).default;
+      await api.post(`/accounts/${selectedAccount}/chats/sync-groups-channels`);
+      setSyncSuccessMsg(_("groupsChannels.syncSuccess"));
+      await queryClient.invalidateQueries({ queryKey: ["chats", selectedAccount] });
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      setTimeout(() => setSyncSuccessMsg(""), 3000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || _("groupsChannels.syncFailed");
+      setSyncError(msg);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Join modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -124,14 +153,24 @@ function GroupsChannelsContent() {
       <div className="p-4 border-b border-gray-100 space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-gray-900">{_("groupsChannels.title")}</h1>
-          <button
-            onClick={openJoinModal}
-            disabled={!selectedAccount}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {_("groupsChannels.joinNew")}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSync}
+              disabled={!selectedAccount || isSyncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+              {isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}
+            </button>
+            <button
+              onClick={openJoinModal}
+              disabled={!selectedAccount}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {_("groupsChannels.joinNew")}
+            </button>
+          </div>
         </div>
 
         <select
@@ -146,6 +185,26 @@ function GroupsChannelsContent() {
             </option>
           ))}
         </select>
+
+        {selectedAccount && syncedAt && (
+          <div className="text-[11px] text-gray-500 flex items-center justify-between">
+            <span>
+              {_("groupsChannels.lastSynced").replace("{time}", new Date(syncedAt).toLocaleString())}
+            </span>
+          </div>
+        )}
+
+        {syncError && (
+          <div className="p-2 text-xs rounded-lg bg-red-50 border border-red-200 text-red-600">
+            {syncError}
+          </div>
+        )}
+
+        {syncSuccessMsg && (
+          <div className="p-2 text-xs rounded-lg bg-green-50 border border-green-200 text-green-700">
+            {syncSuccessMsg}
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -193,6 +252,31 @@ function GroupsChannelsContent() {
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <MessageSquare className="h-10 w-10 text-gray-200 mb-3" />
             <p className="text-sm text-gray-400">{_("chats.selectAccount")}</p>
+          </div>
+        ) : !syncedAt && !isLoading ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-sm mx-auto">
+            <div className="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center mb-3">
+              <RefreshCw className="h-6 w-6 text-primary-600 animate-pulse" />
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{_("groupsChannels.neverSynced")}</h3>
+            <p className="text-xs text-gray-500 mb-4">{_("groupsChannels.syncRequiredDesc")}</p>
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {_("groupsChannels.syncing")}
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {_("groupsChannels.sync")}
+                </>
+              )}
+            </button>
           </div>
         ) : isLoading ? (
           <div className="divide-y divide-gray-50">

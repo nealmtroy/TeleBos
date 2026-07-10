@@ -745,6 +745,13 @@ const id: Dict = {
     joinFailed: "Gagal bergabung",
     alreadyMember: "Sudah menjadi anggota",
     identifier: "Username atau Tautan Undangan",
+    sync: "Sinkronkan Grup & Saluran",
+    syncing: "Menyinkronkan...",
+    syncSuccess: "Grup & saluran berhasil disinkronkan!",
+    syncFailed: "Sinkronisasi gagal!",
+    lastSynced: "Sinkronisasi terakhir: {time}",
+    neverSynced: "Belum pernah disinkronkan",
+    syncRequiredDesc: "Untuk mengoptimalkan kinerja VPS, grup dan saluran hanya disinkronkan sesuai permintaan. Silakan sinkronkan sekarang untuk memuatnya.",
   },
 
   // ── 404 Tidak Ditemukan ────────────────────────────────────────────────
