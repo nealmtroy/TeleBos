@@ -400,8 +400,10 @@ function ChatsContent() {
       {/* ── Left Panel: Chat List ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex flex-col h-full border-r border-slate-200 bg-white transition-all duration-300 ease-in-out relative z-10 shrink-0",
-          selectedChatId ? "hidden lg:flex w-[360px] xl:w-[380px]" : "flex-1 lg:w-[360px] lg:flex-shrink-0"
+          "flex-col h-full border-r border-slate-200 bg-white transition-all duration-300 ease-in-out relative z-10",
+          selectedChatId
+            ? "hidden lg:flex w-[360px] xl:w-[380px] lg:shrink-0"
+            : "flex flex-1 min-w-0 lg:w-[360px] lg:shrink-0"
         )}
       >
         {/* List Header */}
@@ -726,8 +728,8 @@ function ChatsContent() {
       {/* ── Right Panel: Messages ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex-1 flex flex-col h-full bg-slate-50/50 min-w-0 transition-all duration-300 ease-in-out",
-          !selectedChatId && "hidden lg:flex"
+          "flex-col h-full bg-slate-50/50 min-w-0 transition-all duration-300 ease-in-out",
+          selectedChatId ? "flex flex-1" : "hidden lg:flex lg:flex-1"
         )}
       >
         {selectedChatId ? (
