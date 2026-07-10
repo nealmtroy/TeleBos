@@ -277,7 +277,21 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
 
     async with client.conversation("spambot") as conv:
         # Step 1: Send /start
-        await conv.send_message("/start")
+        try:
+            await conv.send_message("/start")
+        except Exception as e:
+            from telethon.errors import YouBlockedUserError
+            if isinstance(e, YouBlockedUserError) or "you blocked this user" in str(e).lower():
+                logger.info("SpamBot is blocked during appeal. Unblocking...")
+                from telethon import functions
+                try:
+                    await client(functions.contacts.UnblockRequest(id="spambot"))
+                    await conv.send_message("/start")
+                except Exception as unblock_err:
+                    logger.error("Failed to unblock SpamBot during appeal: %s", unblock_err)
+                    raise e
+            else:
+                raise e
         response = await conv.get_response()
 
         # Check if already free / no limits

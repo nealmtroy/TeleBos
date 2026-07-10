@@ -862,7 +862,21 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
 
     try:
         # 1. Send /start to @SpamBot
-        sent_msg = await client.send_message("SpamBot", "/start")
+        try:
+            sent_msg = await client.send_message("SpamBot", "/start")
+        except Exception as e:
+            from telethon.errors import YouBlockedUserError
+            if isinstance(e, YouBlockedUserError) or "you blocked this user" in str(e).lower():
+                logger.info("SpamBot is blocked for account %s. Unblocking...", account.phone)
+                from telethon import functions
+                try:
+                    await client(functions.contacts.UnblockRequest(id="SpamBot"))
+                    sent_msg = await client.send_message("SpamBot", "/start")
+                except Exception as unblock_err:
+                    logger.error("Failed to unblock SpamBot for account %s: %s", account.phone, unblock_err)
+                    raise e
+            else:
+                raise e
 
         # 2. Poll for response messages for up to 5 seconds
         response_msg = None
