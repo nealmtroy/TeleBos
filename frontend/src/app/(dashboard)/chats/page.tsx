@@ -400,7 +400,7 @@ function ChatsContent() {
       {/* ── Left Panel: Chat List ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out relative z-10 shrink-0",
+          "flex flex-col h-full border-r border-slate-200 bg-white transition-all duration-300 ease-in-out relative z-10 shrink-0",
           selectedChatId ? "hidden lg:flex w-[360px] xl:w-[380px]" : "flex-1 lg:w-[360px] lg:flex-shrink-0"
         )}
       >
@@ -642,7 +642,7 @@ function ChatsContent() {
 
                         {/* Hover actions (only when not in selection mode) */}
                         {!selectionMode && (
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-white pl-2">
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex lg:hidden lg:group-hover:flex items-center gap-1 bg-white pl-2">
                             <button
                               onClick={(e) => handleArchiveClick(e, chat)}
                               disabled={isBusy}
@@ -726,7 +726,7 @@ function ChatsContent() {
       {/* ── Right Panel: Messages ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex-1 flex flex-col bg-slate-50/50 min-w-0 transition-all duration-300 ease-in-out",
+          "flex-1 flex flex-col h-full bg-slate-50/50 min-w-0 transition-all duration-300 ease-in-out",
           !selectedChatId && "hidden lg:flex"
         )}
       >
