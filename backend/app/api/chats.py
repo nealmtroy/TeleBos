@@ -550,6 +550,8 @@ async def get_chat_photo(
 
     # Serve from cache if it exists
     if os.path.exists(cached_path):
+        if os.path.getsize(cached_path) == 0:
+            raise HTTPException(status_code=404, detail="No photo (cached)")
         return FileResponse(cached_path, media_type="image/jpeg")
 
     # If not cached, download using Telethon client
@@ -575,16 +577,25 @@ async def get_chat_photo(
         raise HTTPException(status_code=400, detail="Account is disconnected")
 
     try:
-        entity = await client.get_input_entity(chat_id)
+        # Try getting the entity using get_entity (robust, fetches from network if needed)
+        try:
+            entity = await client.get_entity(chat_id)
+        except Exception:
+            entity = await client.get_input_entity(chat_id)
+
         # Use download_big=False to fetch small thumbnail (typically 160x160/80x80)
         # to save massive bandwidth and storage.
         photo_result = await client.download_profile_photo(entity, file=cached_path, download_big=False)
         if not photo_result or not os.path.exists(cached_path):
-            # Write a dummy/empty file or raise 404 to avoid repeatedly downloading non-existent photo
+            # Write a 0-byte file to cache the "no photo" state and avoid hitting Telegram again
+            with open(cached_path, "wb") as f:
+                pass
             raise HTTPException(status_code=404, detail="No photo found on Telegram")
         
         return FileResponse(cached_path, media_type="image/jpeg")
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise exc
         raise HTTPException(status_code=404, detail=str(exc))
 
 
