@@ -58,16 +58,6 @@ export default function GroupsChannelsPage() {
     setSearch("");
   }, [activeTab]);
 
-  // Client-side search filter
-  const q = search.toLowerCase();
-  const filtered = q
-    ? chats.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          (c.username && c.username.toLowerCase().includes(q))
-      )
-    : chats;
-
   const chatType = activeTab === "groups" ? "group,supergroup" : "channel";
 
   const {
@@ -80,6 +70,16 @@ export default function GroupsChannelsPage() {
   const chats = chatsData?.chats ?? [];
   const total = chatsData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // Client-side search filter
+  const q = search.toLowerCase();
+  const filtered = q
+    ? chats.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          (c.username && c.username.toLowerCase().includes(q))
+      )
+    : chats;
 
   return (
     <div className="h-[calc(100vh-7rem)] -m-6 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm flex flex-col">
