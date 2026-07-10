@@ -257,6 +257,23 @@ async def batch_archive(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.post("/accounts/{account_id}/chats/batch/unarchive", status_code=status.HTTP_204_NO_CONTENT)
+async def batch_unarchive(
+    account_id: str,
+    payload: BatchChatActionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Unarchive multiple chats at once."""
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.batch_unarchive_chats(db, account, payload.chat_ids)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.post("/accounts/{account_id}/chats/batch/delete", status_code=status.HTTP_204_NO_CONTENT)
 async def batch_delete(
     account_id: str,

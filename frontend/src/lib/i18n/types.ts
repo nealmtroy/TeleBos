@@ -480,7 +480,9 @@ export interface Dict {
     next: string;
     selected: string;
     archiveAll: string;
+    unarchiveAll: string;
     deleteAll: string;
+    batchDelete: string;
     selectChat: string;
     selectChatDesc: string;
     noMessages: string;

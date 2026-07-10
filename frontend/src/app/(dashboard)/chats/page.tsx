@@ -263,7 +263,8 @@ function ChatsContent() {
     } else if (folderFilter.type === "folder") {
       result = result.filter((c) => c.folder_id === folderFilter.folderId);
     } else {
-      // "all" — show everything including archived
+      // "all" — show only non-archived chats
+      result = result.filter((c) => c.is_archived !== true);
     }
 
     return result;
@@ -300,6 +301,18 @@ function ChatsContent() {
   const batchArchiveMutation = useMutation({
     mutationFn: async (chatIds: number[]) => {
       await api.post(`/accounts/${selectedAccount}/chats/batch/archive`, {
+        chat_ids: chatIds,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats", selectedAccount] });
+      setSelectedChatIds(new Set());
+    },
+  });
+
+  const batchUnarchiveMutation = useMutation({
+    mutationFn: async (chatIds: number[]) => {
+      await api.post(`/accounts/${selectedAccount}/chats/batch/unarchive`, {
         chat_ids: chatIds,
       });
     },
@@ -396,7 +409,11 @@ function ChatsContent() {
   function handleBatchArchive() {
     const ids = Array.from(selectedChatIds);
     if (ids.length === 0) return;
-    batchArchiveMutation.mutate(ids);
+    if (folderFilter.type === "archived") {
+      batchUnarchiveMutation.mutate(ids);
+    } else {
+      batchArchiveMutation.mutate(ids);
+    }
   }
 
   function handleBatchDelete() {
@@ -723,11 +740,20 @@ function ChatsContent() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleBatchArchive}
-                disabled={batchArchiveMutation.isPending}
+                disabled={batchArchiveMutation.isPending || batchUnarchiveMutation.isPending}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
               >
-                <Archive className="h-3.5 w-3.5" />
-                {_("chats.archiveAll")}
+                {folderFilter.type === "archived" ? (
+                  <>
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                    {_("chats.unarchiveAll")}
+                  </>
+                ) : (
+                  <>
+                    <Archive className="h-3.5 w-3.5" />
+                    {_("chats.archiveAll")}
+                  </>
+                )}
               </button>
               <button
                 onClick={handleBatchDelete}

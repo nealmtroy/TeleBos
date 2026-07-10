@@ -825,7 +825,12 @@ async def archive_chat(db: AsyncSession, account: TelegramAccount, chat_id: int)
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
-    await client.edit_folder(entity, 1)
+
+    from telethon.tl.functions.folders import EditPeerFoldersRequest
+    from telethon.tl.types import InputFolderPeer
+    await client(EditPeerFoldersRequest(folder_peers=[
+        InputFolderPeer(peer=entity, folder_id=1)
+    ]))
 
     # Update database record
     stmt = (
@@ -846,7 +851,12 @@ async def unarchive_chat(db: AsyncSession, account: TelegramAccount, chat_id: in
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
-    await client.edit_folder(entity, 0)
+
+    from telethon.tl.functions.folders import EditPeerFoldersRequest
+    from telethon.tl.types import InputFolderPeer
+    await client(EditPeerFoldersRequest(folder_peers=[
+        InputFolderPeer(peer=entity, folder_id=0)
+    ]))
 
     # Update database record
     stmt = (
@@ -895,6 +905,15 @@ async def batch_archive_chats(db: AsyncSession, account: TelegramAccount, chat_i
             await archive_chat(db, account, chat_id)
         except Exception as exc:
             logger.warning("Failed to archive chat %s: %s", chat_id, exc)
+
+
+async def batch_unarchive_chats(db: AsyncSession, account: TelegramAccount, chat_ids: list[int]) -> None:
+    """Unarchive multiple chats at once."""
+    for chat_id in chat_ids:
+        try:
+            await unarchive_chat(db, account, chat_id)
+        except Exception as exc:
+            logger.warning("Failed to unarchive chat %s: %s", chat_id, exc)
 
 
 async def batch_delete_chats(db: AsyncSession, account: TelegramAccount, chat_ids: list[int]) -> None:
