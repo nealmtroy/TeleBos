@@ -32,7 +32,8 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
     values = []
 
     try:
-        dialogs = await client.get_dialogs(limit=100)
+        # 1. Fetch main dialogs (folder 0)
+        dialogs = await client.get_dialogs(limit=100, folder=0)
         for d in dialogs:
             chat_type_val = _classify_chat(d.entity)
             if chat_type_val in ("group", "supergroup", "channel"):
@@ -60,8 +61,46 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "access_hash": access_hash,
                 "is_active": True,
                 "is_creator": is_creator,
+                "is_archived": False,
             })
             synced_chat_ids.add(d.id)
+
+        # 2. Fetch archived dialogs (folder 1)
+        try:
+            archived_dialogs = await client.get_dialogs(limit=100, folder=1)
+            for d in archived_dialogs:
+                chat_type_val = _classify_chat(d.entity)
+                if chat_type_val in ("group", "supergroup", "channel"):
+                    continue
+                is_creator = getattr(d.entity, "creator", False)
+                access_hash = getattr(d.entity, "access_hash", None)
+
+                # Save the last message text and date
+                last_msg = None
+                last_time = None
+                if d.message:
+                    last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+                    last_time = d.message.date
+
+                values.append({
+                    "id": uuid.uuid4(),
+                    "account_id": account.id,
+                    "chat_id": d.id,
+                    "title": d.name or d.title or "Unknown",
+                    "username": getattr(d.entity, "username", None),
+                    "type": chat_type_val,
+                    "unread_count": d.unread_count or 0,
+                    "last_message": last_msg,
+                    "last_message_date": last_time,
+                    "access_hash": access_hash,
+                    "is_active": True,
+                    "is_creator": is_creator,
+                    "is_archived": True,
+                })
+                synced_chat_ids.add(d.id)
+        except Exception as arch_exc:
+            logger.debug("Failed to fetch archived dialogs (folder=1): %s", arch_exc)
+
     except Exception as exc:
         logger.error("Error during get_dialogs for account %s: %s", account.id, exc)
         return
@@ -88,6 +127,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "access_hash": stmt.excluded.access_hash,
                 "is_active": True,
                 "is_creator": stmt.excluded.is_creator,
+                "is_archived": stmt.excluded.is_archived,
                 "updated_at": func.now(),
             }
         )
@@ -263,8 +303,8 @@ async def get_dialogs(
             "unread_count": c.unread_count,
             "is_muted": False,
             "is_pinned": False,
-            "folder_id": 0,
-            "is_archived": False,
+            "folder_id": 1 if c.is_archived else 0,
+            "is_archived": c.is_archived,
             "is_creator": c.is_creator,
         })
 
@@ -767,7 +807,7 @@ async def mark_read(account: TelegramAccount, chat_id: int) -> None:
 # ── Archive / Unarchive / Delete ───────────────────────────────────────────────
 
 
-async def archive_chat(account: TelegramAccount, chat_id: int) -> None:
+async def archive_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) -> None:
     """Move a chat to the Archived folder (folder_id=1)."""
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -777,8 +817,18 @@ async def archive_chat(account: TelegramAccount, chat_id: int) -> None:
     entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.edit_folder(entity, 1)
 
+    # Update database record
+    stmt = (
+        update(TelegramChat)
+        .where(TelegramChat.account_id == account.id)
+        .where(TelegramChat.chat_id == chat_id)
+        .values(is_archived=True, updated_at=func.now())
+    )
+    await db.execute(stmt)
+    await db.commit()
 
-async def unarchive_chat(account: TelegramAccount, chat_id: int) -> None:
+
+async def unarchive_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) -> None:
     """Move a chat out of the Archived folder back to Main (folder_id=0)."""
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -787,6 +837,16 @@ async def unarchive_chat(account: TelegramAccount, chat_id: int) -> None:
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.edit_folder(entity, 0)
+
+    # Update database record
+    stmt = (
+        update(TelegramChat)
+        .where(TelegramChat.account_id == account.id)
+        .where(TelegramChat.chat_id == chat_id)
+        .values(is_archived=False, updated_at=func.now())
+    )
+    await db.execute(stmt)
+    await db.commit()
 
 
 async def delete_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) -> None:
@@ -818,11 +878,11 @@ async def delete_chat(db: AsyncSession, account: TelegramAccount, chat_id: int) 
     logger.info("Deactivated chat %s in local database for account %s", chat_id, account.id)
 
 
-async def batch_archive_chats(account: TelegramAccount, chat_ids: list[int]) -> None:
+async def batch_archive_chats(db: AsyncSession, account: TelegramAccount, chat_ids: list[int]) -> None:
     """Archive multiple chats at once."""
     for chat_id in chat_ids:
         try:
-            await archive_chat(account, chat_id)
+            await archive_chat(db, account, chat_id)
         except Exception as exc:
             logger.warning("Failed to archive chat %s: %s", chat_id, exc)
 

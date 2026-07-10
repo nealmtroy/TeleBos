@@ -506,6 +506,13 @@ def _run_migrations(connection):
         text("CREATE INDEX IF NOT EXISTS ix_invite_logs_account_used ON invite_logs (account_id_used)")
     )
 
+    # ── Telegram chats: is_archived ──────────────────────────────────────
+    chat_cols = [c["name"] for c in inspector.get_columns("telegram_chats")]
+    if "is_archived" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN is_archived BOOLEAN DEFAULT false NOT NULL")
+        )
+
     # ── Account folders ──────────────────────────────────────────────────
     if "account_folders" not in tables:
         connection.execute(
