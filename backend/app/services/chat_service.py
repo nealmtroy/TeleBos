@@ -950,40 +950,44 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
     values = []
 
     try:
-        from telethon.tl.functions.messages import GetAllChatsRequest
-        result = await client(GetAllChatsRequest(except_ids=[]))
-        chats_list = getattr(result, "chats", [])
-
-        for c in chats_list:
-            chat_type_val = _classify_chat(c)
+        dialogs = await client.get_dialogs(limit=500)
+        for d in dialogs:
+            chat_type_val = _classify_chat(d.entity)
             if chat_type_val not in ("group", "supergroup", "channel"):
                 continue
 
-            left = getattr(c, "left", False)
-            deactivated = getattr(c, "deactivated", False)
+            left = getattr(d.entity, "left", False)
+            deactivated = getattr(d.entity, "deactivated", False)
             is_active = not (left or deactivated)
-            is_creator = getattr(c, "creator", False)
-            access_hash = getattr(c, "access_hash", None)
+            is_creator = getattr(d.entity, "creator", False)
+            access_hash = getattr(d.entity, "access_hash", None)
+
+            # Save the last message text and date
+            last_msg = None
+            last_time = None
+            if d.message:
+                last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+                last_time = d.message.date
 
             values.append({
                 "id": uuid.uuid4(),
                 "account_id": account.id,
-                "chat_id": c.id,
-                "title": getattr(c, "title", "Unknown") or "Unknown",
-                "username": getattr(c, "username", None),
+                "chat_id": d.id,
+                "title": d.name or d.title or "Unknown",
+                "username": getattr(d.entity, "username", None),
                 "type": chat_type_val,
-                "unread_count": 0,
-                "last_message": None,
-                "last_message_date": None,
+                "unread_count": d.unread_count or 0,
+                "last_message": last_msg,
+                "last_message_date": last_time,
                 "access_hash": access_hash,
                 "is_active": is_active,
                 "is_creator": is_creator,
-                "is_archived": False,
+                "is_archived": getattr(d, "folder_id", 0) == 1,
             })
             if is_active:
-                synced_group_channel_ids.add(c.id)
+                synced_group_channel_ids.add(d.id)
     except Exception as exc:
-        logger.error("Error during GetAllChatsRequest for account %s: %s", account.id, exc)
+        logger.error("Error during get_dialogs for account %s: %s", account.id, exc)
         raise RuntimeError(f"Telegram API error: {exc}")
 
     # Bulk upsert groups and channels
