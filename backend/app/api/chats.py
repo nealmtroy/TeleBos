@@ -577,11 +577,8 @@ async def get_chat_photo(
         raise HTTPException(status_code=400, detail="Account is disconnected")
 
     try:
-        # Try getting the entity using get_entity (robust, fetches from network if needed)
-        try:
-            entity = await client.get_entity(chat_id)
-        except Exception:
-            entity = await client.get_input_entity(chat_id)
+        from app.services.chat_service import resolve_chat_entity
+        entity = await resolve_chat_entity(client, account.id, chat_id)
 
         # Use download_big=False to fetch small thumbnail (typically 160x160/80x80)
         # to save massive bandwidth and storage.
