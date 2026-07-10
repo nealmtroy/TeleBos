@@ -189,7 +189,11 @@ class TelegramClientPool:
                     # needs to see every flood event, even short ones.
                     flood_sleep_threshold=0,
                 )
-                await client.connect()
+                try:
+                    await asyncio.wait_for(client.connect(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    logger.error("Connection timeout for account %s during pool get", account_id)
+                    return None
                 if not await client.is_user_authorized():
                     logger.warning("Session expired for account %s", account_id)
                     await asyncio.wait_for(client.disconnect(), timeout=2.0)
@@ -351,7 +355,10 @@ class TelegramClientPool:
             system_lang_code=ios_params["system_lang_code"],
             flood_sleep_threshold=0,
         )
-        await client.connect()
+        try:
+            await asyncio.wait_for(client.connect(), timeout=15.0)
+        except asyncio.TimeoutError:
+            raise ValueError("Koneksi ke server Telegram timeout. Silakan periksa jaringan internet server.")
         return client
 
 

@@ -379,7 +379,11 @@ async def login_with_session(
         lang_code=ios_params["lang_code"],
         system_lang_code=ios_params["system_lang_code"],
     )
-    await test_client.connect()
+    import asyncio
+    try:
+        await asyncio.wait_for(test_client.connect(), timeout=15.0)
+    except asyncio.TimeoutError:
+        raise ValueError("Koneksi ke server Telegram timeout. Silakan periksa jaringan internet server atau IP proxy.")
     try:
         if not await test_client.is_user_authorized():
             raise ValueError("Session string is invalid or expired")
