@@ -143,22 +143,7 @@ function ChatsContent() {
 
 
 
-  // Adjust shell main container padding & overflow for a full-bleed app experience
-  useEffect(() => {
-    const mainEl = document.querySelector("main");
-    if (!mainEl) return;
 
-    const originalOverflow = mainEl.style.overflow;
-    const originalPadding = mainEl.style.padding;
-
-    mainEl.style.overflow = "hidden";
-    mainEl.style.padding = "0";
-
-    return () => {
-      mainEl.style.overflow = originalOverflow;
-      mainEl.style.padding = originalPadding;
-    };
-  }, []);
 
   const getApiUrl = useCallback(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -546,160 +531,167 @@ function ChatsContent() {
                 {_("chats.retry")}
               </button>
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-sm text-slate-400 font-medium py-12">
-              {folderFilter.type === "archived" ? _("chats.noArchived") : _("chats.noChats")}
-            </div>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {filtered.map((chat) => {
-                const isSelected = selectedChatIds.has(chat.chat_id);
-                const isBusy =
-                  archiveMutation.isPending ||
-                  unarchiveMutation.isPending ||
-                  deleteMutation.isPending;
+            <>
+              {filtered.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-sm text-slate-400 font-medium py-12">
+                  {folderFilter.type === "archived" ? _("chats.noArchived") : _("chats.noChats")}
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {filtered.map((chat) => {
+                    const isSelected = selectedChatIds.has(chat.chat_id);
+                    const isBusy =
+                      archiveMutation.isPending ||
+                      unarchiveMutation.isPending ||
+                      deleteMutation.isPending;
 
-                return (
-                  <button
-                    key={chat.chat_id}
-                    onClick={() => handleSelectChat(chat)}
-                    className={cn(
-                      "flex items-center gap-3.5 px-4 py-3.5 w-full text-left transition-all duration-200 group relative border-b border-slate-100",
-                      selectedChatId === chat.chat_id && !selectionMode
-                        ? "bg-slate-50 text-slate-900"
-                        : "bg-white hover:bg-slate-50/50 text-slate-600 hover:text-slate-900",
-                      chat.is_archived && "opacity-60"
-                    )}
-                  >
-                    {/* Selection checkbox */}
-                    {selectionMode && (
-                      <div className="flex-shrink-0">
-                        <div
-                          className={cn(
-                            "w-5 h-5 rounded border-2 flex items-center justify-center transition",
-                            isSelected
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : "border-slate-300"
-                          )}
-                        >
-                          {isSelected && <Check className="h-3.5 w-3.5" />}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Avatar */}
-                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50">
-                      {isAuthenticated && selectedAccount && (
-                        <img
-                          src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                            const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                            if (fb) fb.style.display = "flex";
-                          }}
-                          className="w-full h-full object-cover"
-                          alt=""
-                        />
-                      )}
-                      <div
+                    return (
+                      <button
+                        key={chat.chat_id}
+                        onClick={() => handleSelectChat(chat)}
                         className={cn(
-                          "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none",
-                          chat.chat_type === "user" && "bg-gradient-to-br from-blue-500 to-indigo-600",
-                          (chat.chat_type === "group" || chat.chat_type === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
-                          chat.chat_type === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
-                          chat.chat_type === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
+                          "flex items-center gap-3.5 px-4 py-3.5 w-full text-left transition-all duration-200 group relative border-b border-slate-100",
+                          selectedChatId === chat.chat_id && !selectionMode
+                            ? "bg-slate-50 text-slate-900"
+                            : "bg-white hover:bg-slate-50/50 text-slate-600 hover:text-slate-900",
+                          chat.is_archived && "opacity-60"
                         )}
-                        style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
                       >
-                        {(chat.title || "?")[0]?.toUpperCase()}
-                      </div>
-
-                      {/* Archived badge on avatar */}
-                      {chat.is_archived && !selectionMode && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-slate-100 rounded-full flex items-center justify-center shadow-sm border border-white">
-                          <Archive className="h-2.5 w-2.5 text-slate-500" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3
-                          className={cn(
-                            "text-sm font-semibold truncate",
-                            chat.is_archived ? "text-slate-400" : "text-slate-900"
-                          )}
-                        >
-                          {chat.title || _("chats.unknown")}
-                        </h3>
-                        <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">
-                          {formatRelative(chat.last_message_time)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <p
-                          className={cn(
-                            "text-xs truncate pr-2 font-medium",
-                            chat.unread_count > 0 ? "text-slate-900 font-semibold" : "text-slate-500"
-                          )}
-                        >
-                          {chat.last_message || "—"}
-                        </p>
-                        {chat.unread_count > 0 && (
-                          <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm">
-                            {chat.unread_count > 99 ? "99+" : chat.unread_count}
-                          </span>
+                        {/* Selection checkbox */}
+                        {selectionMode && (
+                          <div className="flex-shrink-0">
+                            <div
+                              className={cn(
+                                "w-5 h-5 rounded border-2 flex items-center justify-center transition",
+                                isSelected
+                                  ? "bg-primary border-primary text-primary-foreground"
+                                  : "border-slate-300"
+                              )}
+                            >
+                              {isSelected && <Check className="h-3.5 w-3.5" />}
+                            </div>
+                          </div>
                         )}
-                      </div>
-                    </div>
 
-                    {/* Hover actions (only when not in selection mode) */}
-                    {!selectionMode && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-white pl-2">
-                        <button
-                          onClick={(e) => handleArchiveClick(e, chat)}
-                          disabled={isBusy}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
-                          title={chat.is_archived ? _("chats.unarchive") : _("chats.archive")}
-                        >
-                          {chat.is_archived ? (
-                            <ArchiveRestore className="h-3.5 w-3.5" />
-                          ) : (
-                            <Archive className="h-3.5 w-3.5" />
+                        {/* Avatar */}
+                        <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50">
+                          {isAuthenticated && selectedAccount && (
+                            <img
+                              src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                                if (fb) fb.style.display = "flex";
+                              }}
+                              className="w-full h-full object-cover"
+                              alt=""
+                            />
                           )}
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteClick(e, chat)}
-                          disabled={isBusy}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
-                          title={_("chats.delete")}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+                          <div
+                            className={cn(
+                              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none",
+                              chat.chat_type === "user" && "bg-gradient-to-br from-blue-500 to-indigo-600",
+                              (chat.chat_type === "group" || chat.chat_type === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
+                              chat.chat_type === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
+                              chat.chat_type === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
+                            )}
+                            style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
+                          >
+                            {(chat.title || "?")[0]?.toUpperCase()}
+                          </div>
+
+                          {/* Archived badge on avatar */}
+                          {chat.is_archived && !selectionMode && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-slate-100 rounded-full flex items-center justify-center shadow-sm border border-white">
+                              <Archive className="h-2.5 w-2.5 text-slate-500" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3
+                              className={cn(
+                                "text-sm font-semibold truncate",
+                                chat.is_archived ? "text-slate-400" : "text-slate-900"
+                              )}
+                            >
+                              {chat.title || _("chats.unknown")}
+                            </h3>
+                            <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">
+                              {formatRelative(chat.last_message_time)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <p
+                              className={cn(
+                                "text-xs truncate pr-2 font-medium",
+                                chat.unread_count > 0 ? "text-slate-900 font-semibold" : "text-slate-500"
+                              )}
+                            >
+                              {chat.last_message || "—"}
+                            </p>
+                            {chat.unread_count > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm">
+                                {chat.unread_count > 99 ? "99+" : chat.unread_count}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Hover actions (only when not in selection mode) */}
+                        {!selectionMode && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-white pl-2">
+                            <button
+                              onClick={(e) => handleArchiveClick(e, chat)}
+                              disabled={isBusy}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
+                              title={chat.is_archived ? _("chats.unarchive") : _("chats.archive")}
+                            >
+                              {chat.is_archived ? (
+                                <ArchiveRestore className="h-3.5 w-3.5" />
+                              ) : (
+                                <Archive className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteClick(e, chat)}
+                              disabled={isBusy}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
+                              title={_("chats.delete")}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Pagination */}
-              <div className="flex items-center justify-center gap-2 py-3">
-                <button
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page <= 1}
-                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
-                >
-                  {_("chats.prev")}
-                </button>
-                <span className="text-xs text-gray-400">{_("chats.page")} {page}</span>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-md hover:bg-gray-50"
-                >
-                  {_("chats.next")}
-                </button>
-              </div>
-            </div>
+              {(page > 1 || (chatsData?.total || 0) > 50) && (
+                <div className="flex items-center justify-center gap-2 py-3 border-t border-slate-100 bg-white">
+                  <button
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 text-xs border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    {_("chats.prev")}
+                  </button>
+                  <span className="text-xs text-gray-400">{_("chats.page")} {page}</span>
+                  <button
+                    onClick={() => setPage(page + 1)}
+                    disabled={page * 50 >= (chatsData?.total || 0)}
+                    className="px-3 py-1.5 text-xs border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    {_("chats.next")}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
