@@ -13,6 +13,8 @@ RUN npm install
 # ── Build ────────────────────────────────────────────────────────────────────
 FROM deps AS builder
 WORKDIR /app
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
