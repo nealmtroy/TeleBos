@@ -331,8 +331,25 @@ function ChatsContent() {
     setSelectedChatTitle(chat.title || _("chats.unknown"));
     setSelectedChatType(chat.chat_type);
     if (selectedAccount) {
+      // Optimistic update: set unread_count to 0 instantly for instant UI feedback
+      queryClient.setQueryData<{ chats: ChatItem[]; total: number }>(
+        ["chats", selectedAccount, page],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            chats: old.chats.map((c) =>
+              c.chat_id === chat.chat_id ? { ...c, unread_count: 0 } : c
+            ),
+          };
+        }
+      );
+
       api
         .post(`/accounts/${selectedAccount}/chats/${chat.chat_id}/read`)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["chats", selectedAccount] });
+        })
         .catch(() => {});
     }
   }
