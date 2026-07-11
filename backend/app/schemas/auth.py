@@ -35,6 +35,10 @@ class ChangePasswordResponse(BaseModel):
     message: str = "Password changed successfully"
 
 
+class LogoutResponse(BaseModel):
+    success: bool = True
+
+
 class UserResponse(BaseModel):
     id: UUID
     email: str

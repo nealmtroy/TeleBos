@@ -1,16 +1,33 @@
 """Auth business logic.
 
 Registration, login, token management, and refresh are handled by Better Auth
-in the Next.js frontend. This file retains only:
+in the Next.js frontend. This file provides server-side auth operations:
 
-- change_password: Updates the password hash in Better Auth's ``account`` table
-  (run from FastAPI as a convenience for the web UI).
+- change_password: Updates the password hash in Better Auth's ``account`` table.
+- revoke_all_user_sessions: Deletes all sessions for a user from the ``session`` table.
 """
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
+
+
+async def revoke_all_user_sessions(db: AsyncSession, user: User) -> int:
+    """Delete every session row for the given user from the ``session`` table.
+
+    Called after password changes and can also be called from an admin endpoint
+    to forcibly log out a compromised account.  Returns the number of rows
+    deleted.
+
+    The caller is responsible for committing the transaction.
+    """
+    result = await db.execute(
+        text('DELETE FROM session WHERE "userId" = :user_id'),
+        {"user_id": str(user.id)},
+    )
+    await db.flush()
+    return result.rowcount
 
 
 async def change_password(

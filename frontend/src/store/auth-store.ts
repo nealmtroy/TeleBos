@@ -114,14 +114,26 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // 1. Delete the session row from the PostgreSQL session table via the
+    //    FastAPI backend.  This must happen BEFORE signOut() because the
+    //    backend needs the token (still injected by the axios interceptor).
+    //    We fire-and-forget — if it fails, signOut still runs.
+    try {
+      await api.post("/auth/logout");
+    } catch (err) {
+      console.error("Backend session deletion failed:", err);
+    }
+
+    // 2. Clear Better Auth client-side cookies and state.
     try {
       await authClient.signOut();
     } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
-      syncSessionToken(null);
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      console.error("Better Auth sign-out failed:", err);
     }
+
+    // 3. Wipe all in-memory session state regardless of above outcomes.
+    syncSessionToken(null);
+    set({ user: null, isAuthenticated: false, isLoading: false });
   },
 
   fetchMe: async () => {
