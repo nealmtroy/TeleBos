@@ -1,9 +1,5 @@
 # Product
 
-## Register
-
-product
-
 ## Users
 
 Telegram power users managing multiple accounts for broadcast, automation, and account management. They are technically literate, comfortable with complex tooling, and likely running parallel operations across dozens of accounts. The primary context is "getting work done" — sending messages to many groups at scale, monitoring delivery, and orchestrating automated responses. These are not casual Telegram users; they run this tool as part of their daily workflow.

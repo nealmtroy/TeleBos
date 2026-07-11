@@ -54,7 +54,7 @@ Broadcast messages, manage chats, sync folders, and control security settings â€
 
 ```bash
 cd TeleBos
-cp backend/.env.example backend/.env
+cp .env.example backend/.env
 ```
 
 2. **Edit `backend/.env`** with your Telegram API credentials:
@@ -150,7 +150,8 @@ See detailed docs at `/docs` when the backend is running.
 
 | Endpoint                          | Purpose                        |
 |-----------------------------------|--------------------------------|
-| `POST /api/v1/auth/*`             | Register, login, token refresh |
+| `GET /api/v1/auth/me`             | Get current user profile (role, balance) |
+| `POST /api/v1/auth/change-password` | Change user password |
 | `POST /api/v1/accounts/send-code` | Send OTP to phone number       |
 | `POST /api/v1/accounts/verify-code` | Verify OTP + optional 2FA     |
 | `POST /api/v1/accounts/upload-session` | Upload Telethon/GramJS session string |
