@@ -23,6 +23,7 @@ from app.schemas.auth import (
     ChangePasswordResponse,
     LogoutResponse,
 )
+from app.utils.session_token import hash_session_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -54,9 +55,10 @@ async def logout(
                  request.cookies.get("__Secure-better-auth.session_token")
 
     if token:
+        hashed_token = hash_session_token(token)
         await db.execute(
-            text("DELETE FROM session WHERE token = :token"),
-            {"token": token},
+            text("DELETE FROM session WHERE token_hash = :hashed_token OR (token_hash IS NULL AND token = :token)"),
+            {"hashed_token": hashed_token, "token": token},
         )
         await db.commit()
 

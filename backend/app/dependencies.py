@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
+from app.utils.session_token import hash_session_token
 
 settings = get_settings()
 
@@ -35,17 +36,21 @@ async def get_current_user(
         )
 
     # Validate the Better Auth session token by querying the session table
+    # by its SHA-256 hash.  Fall back to plaintext lookup for sessions created
+    # before the token_hash column was added (backward compatibility).
     # Better Auth stores sessions in a "session" table with columns:
-    #   id, expiresAt, token, createdAt, updatedAt, ipAddress, userAgent, userId
+    #   id, expiresAt, token, token_hash, createdAt, updatedAt, ipAddress, userAgent, userId
+    hashed_token = hash_session_token(token)
     result = await db.execute(
         text("""
             SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email, u.name
             FROM session s
             JOIN "user" u ON u.id = s."userId"
-            WHERE s.token = :token
+            WHERE s.token_hash = :hashed_token
+               OR (s.token_hash IS NULL AND s.token = :token)
             LIMIT 1
         """),
-        {"token": token},
+        {"hashed_token": hashed_token, "token": token},
     )
     row = result.one_or_none()
 
@@ -113,15 +118,17 @@ async def get_current_user_from_token_or_header(
             detail="Not authenticated",
         )
 
+    hashed_token = hash_session_token(auth_token)
     result = await db.execute(
         text("""
             SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email
             FROM session s
             JOIN "user" u ON u.id = s."userId"
-            WHERE s.token = :token
+            WHERE s.token_hash = :hashed_token
+               OR (s.token_hash IS NULL AND s.token = :token)
             LIMIT 1
         """),
-        {"token": auth_token},
+        {"hashed_token": hashed_token, "token": auth_token},
     )
     row = result.one_or_none()
 

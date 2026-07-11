@@ -17,6 +17,7 @@ from sqlalchemy import select, text
 from app.database import async_session_factory
 from app.models.user import User as UserModel
 from app.utils.rate_limiter import rate_limiter
+from app.utils.session_token import hash_session_token
 
 logger = logging.getLogger(__name__)
 
@@ -126,18 +127,20 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
     if not await _ws_rate_limit(websocket, f"connect:ip:{client_host}"):
         return None
 
-    # Validate the token against Better Auth's session table
-    # (same pattern as dependencies.py — raw SQL against BA tables)
+    # Validate the token against Better Auth's session table by its SHA-256 hash.
+    # Fall back to plaintext lookup for sessions created before token_hash was added.
     async with async_session_factory() as db:
+        hashed_token = hash_session_token(token)
         result = await db.execute(
             text("""
                 SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email
                 FROM session s
                 JOIN "user" u ON u.id = s."userId"
-                WHERE s.token = :token
+                WHERE s.token_hash = :hashed_token
+                   OR (s.token_hash IS NULL AND s.token = :token)
                 LIMIT 1
             """),
-            {"token": token},
+            {"hashed_token": hashed_token, "token": token},
         )
         row = result.one_or_none()
 

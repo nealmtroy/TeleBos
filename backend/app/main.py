@@ -84,8 +84,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 def _run_migrations(connection):
     """Apply idempotent schema migrations not covered by create_all."""
     from sqlalchemy import text, inspect
+    import hashlib
 
     inspector = inspect(connection)
+
+    # ── Session token hashing (vuln-0005) ──────────────────────────────────
+    # Adds a token_hash column so the backend can validate sessions by
+    # SHA-256 hash instead of plaintext token comparison, protecting
+    # tokens at rest in the database.  Backfills existing sessions.
+    session_cols = [c["name"] for c in inspector.get_columns("session")]
+    if "token_hash" not in session_cols:
+        connection.execute(
+            text("ALTER TABLE session ADD COLUMN token_hash TEXT")
+        )
+        connection.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_session_token_hash ON session(token_hash)")
+        )
+
+    # Backfill any sessions without a hash (new sessions get this from the
+    # Better Auth session.create.before database hook in frontend/src/lib/auth.ts)
+    backfill_result = connection.execute(
+        text("SELECT id, token FROM session WHERE token_hash IS NULL")
+    )
+    backfill_rows = backfill_result.fetchall()
+    for row in backfill_rows:
+        h = hashlib.sha256(row.token.encode()).hexdigest()
+        connection.execute(
+            text("UPDATE session SET token_hash = :h WHERE id = :id"),
+            {"h": h, "id": row.id},
+        )
+
     columns = [c["name"] for c in inspector.get_columns("broadcast_jobs")]
 
     if "loop_enabled" not in columns:

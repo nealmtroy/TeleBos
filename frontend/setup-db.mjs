@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS "session" (
   id            TEXT PRIMARY KEY,
   "expiresAt"   TIMESTAMPTZ NOT NULL,
   token         TEXT NOT NULL UNIQUE,
+  token_hash    TEXT,
   "ipAddress"   TEXT,
   "userAgent"   TEXT,
   "userId"      TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS "session" (
   "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_session_userId ON "session"("userId");
+CREATE INDEX IF NOT EXISTS idx_session_token_hash ON "session"(token_hash);
 
 -- ── account table ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "account" (

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[1b3526ad](https://github.com/nealmtroy/TeleBos/commit/1b3526ad)**: fix: invalidate session on logout and password change (vuln-0003)
 - **[8d959f80](https://github.com/nealmtroy/TeleBos/commit/8d959f80)**: fix: prevent duplicate email registration and harden session-to-user resolution
 - **[c74e0cde](https://github.com/nealmtroy/TeleBos/commit/c74e0cde)**: docs: document transaction safety pattern in marketplace_service.py
 - **[956d8980](https://github.com/nealmtroy/TeleBos/commit/956d8980)**: docs: clean up and synchronize README.md and PRODUCT.md

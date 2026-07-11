@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import { twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import bcrypt from "bcryptjs";
+import { createHash } from "crypto";
 import { sendEmail, getVerificationEmailHtml, getResetPasswordEmailHtml, getUnknownSignupAlertEmailHtml } from "./email";
 
 const pool = new Pool({
@@ -71,6 +72,19 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          // Hash the session token so it is not stored as plaintext.
+          // The plaintext token still lives in the token column (Better Auth
+          // needs it for internal operations), but token_hash lets the backend
+          // validate sessions by hash instead of direct token comparison,
+          // protecting tokens at rest in the database.
+          const tokenHash = createHash("sha256").update(session.token).digest("hex");
+          return { data: { token_hash: tokenHash } };
+        },
+      },
+    },
     user: {
       create: {
         before: async (user, ctx) => {
