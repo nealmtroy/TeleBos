@@ -21,6 +21,7 @@ from app.schemas.chat import (
 )
 from app.services import account_service, chat_service
 from app.utils.rate_limiter import rate_limiter
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(tags=["chats"])
 
@@ -42,7 +43,7 @@ async def list_chats(
             account, db, page=page, page_size=page_size, chat_type=chat_type,
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return ChatListResponse(chats=chats, total=total, page=page, page_size=page_size)
 
 
@@ -67,7 +68,7 @@ async def get_messages(
             account, chat_id, limit=limit, offset_id=offset_id
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return MessageListResponse(messages=messages, chat_id=chat_id, has_more=has_more)
 
 
@@ -92,7 +93,7 @@ async def send_message(
             account, chat_id, payload.text, reply_to=payload.reply_to
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return result
 
 
@@ -139,7 +140,7 @@ async def send_media(
             reply_to=reply_to,
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return result
 
 
@@ -157,7 +158,7 @@ async def mark_read(
     try:
         await chat_service.mark_read(db, account, chat_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 # ── Join Group / Channel ────────────────────────────────────────────────────────
@@ -177,9 +178,9 @@ async def join_chat(
     try:
         result = await chat_service.join_chat(account, payload.identifier)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return result
 
 
@@ -196,7 +197,7 @@ async def sync_groups_channels(
     try:
         await chat_service.sync_groups_channels_to_db(account, db)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {
         "status": "success",
         "groups_channels_synced_at": account.groups_channels_synced_at.isoformat() if account.groups_channels_synced_at else None
@@ -220,7 +221,7 @@ async def archive_chat(
     try:
         await chat_service.archive_chat(db, account, chat_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/accounts/{account_id}/chats/{chat_id}/unarchive", status_code=status.HTTP_204_NO_CONTENT)
@@ -237,7 +238,7 @@ async def unarchive_chat(
     try:
         await chat_service.unarchive_chat(db, account, chat_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.delete("/accounts/{account_id}/chats/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -254,7 +255,7 @@ async def delete_chat(
     try:
         await chat_service.delete_chat(db, account, chat_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 # ── Batch actions ──────────────────────────────────────────────────────────────
@@ -274,7 +275,7 @@ async def batch_archive(
     try:
         await chat_service.batch_archive_chats(db, account, payload.chat_ids)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/accounts/{account_id}/chats/batch/unarchive", status_code=status.HTTP_204_NO_CONTENT)
@@ -291,7 +292,7 @@ async def batch_unarchive(
     try:
         await chat_service.batch_unarchive_chats(db, account, payload.chat_ids)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/accounts/{account_id}/chats/batch/delete", status_code=status.HTTP_204_NO_CONTENT)
@@ -308,7 +309,7 @@ async def batch_delete(
     try:
         await chat_service.batch_delete_chats(db, account, payload.chat_ids)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 
@@ -337,7 +338,7 @@ async def sync_folders(
     try:
         await chat_service.sync_folders_from_telegram(account, db)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     folders = await chat_service.get_folders(account_id, db)
     return FolderListResponse(folders=folders)
 
@@ -392,7 +393,7 @@ async def create_folder(
             filters = []
         used_ids = {f.id for f in filters if hasattr(f, "id")}
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch existing folders from Telegram: {exc}")
+        raise HTTPException(status_code=400, detail=f"Failed to fetch existing folders from Telegram: {sanitize_exception(exc)}")
 
     new_id = 2
     while new_id in used_ids:
@@ -424,7 +425,7 @@ async def create_folder(
         )
         await client(UpdateDialogFilterRequest(id=new_id, filter=filter_obj))
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Failed to create folder on Telegram: {exc}")
+        raise HTTPException(status_code=400, detail=f"Failed to create folder on Telegram: {sanitize_exception(exc)}")
 
     # Save to DB
     from app.models.chat_folder import ChatFolder
@@ -509,7 +510,7 @@ async def update_folder(
         )
         await client(UpdateDialogFilterRequest(id=folder.folder_id, filter=filter_obj))
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Failed to sync folder update to Telegram: {exc}")
+        raise HTTPException(status_code=400, detail=f"Failed to sync folder update to Telegram: {sanitize_exception(exc)}")
 
     # Save to local DB
     update_data = payload.model_dump(exclude_none=True)
@@ -630,6 +631,6 @@ async def get_chat_photo(
     except Exception as exc:
         if isinstance(exc, HTTPException):
             raise exc
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=sanitize_exception(exc))
 
 

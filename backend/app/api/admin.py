@@ -11,6 +11,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, require_role
 from app.models.user import User
 from app.utils.rate_limiter import rate_limiter
+from app.utils.sanitize import sanitize_exception
 from app.models.order import Order
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
@@ -304,7 +305,7 @@ async def create_redeem_code(
         resp.created_by_email = current_user.email
         return resp
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=sanitize_exception(e))
 
 
 @router.delete("/redeem-codes/{code_id}")
@@ -320,7 +321,7 @@ async def delete_redeem_code(
         await svc_delete(db, code_id)
         return {"detail": "Code deactivated"}
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=sanitize_exception(e))
 
 
 @router.get("/redeem-logs", response_model=RedeemLogListResponse)

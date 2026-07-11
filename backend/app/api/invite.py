@@ -13,6 +13,7 @@ from app.schemas.invite import (
 )
 from app.services import invite_service
 from app.utils.rate_limiter import rate_limiter
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(tags=["invite"])
 
@@ -59,7 +60,7 @@ async def start_invite(
             payload.batch_size,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return job
 
 
@@ -139,7 +140,7 @@ async def delete_invite_job(
     try:
         await invite_service.delete_invite_job(db, job_id, str(user.id))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/invite/{job_id}/retry", response_model=InviteJobResponse)
@@ -151,7 +152,7 @@ async def retry_invite_job(
     try:
         job = await invite_service.retry_invite_job(db, job_id, str(user.id))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return job
 
 

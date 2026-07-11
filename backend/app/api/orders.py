@@ -17,6 +17,7 @@ from app.schemas.order import (
 )
 from app.services import order_service, smm_service
 from app.utils.rate_limiter import rate_limiter
+from app.utils.sanitize import sanitize_exception
 
 import logging
 from datetime import datetime, timezone, timedelta
@@ -171,7 +172,7 @@ async def place_single_order(
         await db.commit()
         return order
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/orders/mass", response_model=list[OrderResponse], status_code=status.HTTP_201_CREATED)
@@ -199,7 +200,7 @@ async def place_mass_order(
         await db.commit()
         return orders
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.get("/orders", response_model=list[OrderResponse])
@@ -245,7 +246,7 @@ async def refresh_order_status(
         await db.commit()
         return updated
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=sanitize_exception(exc))
 
 
 @router.post("/orders/refresh-all")

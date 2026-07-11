@@ -8,6 +8,7 @@ from app.dependencies import get_current_user, require_role
 from app.models.user import User
 from app.schemas.contact import ContactItem, ContactListResponse, ContactDetail
 from app.services import account_service, contact_service
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(tags=["contacts"])
 
@@ -34,7 +35,7 @@ async def list_contacts(
             account, page=page, page_size=page_size, search=search
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
     return ContactListResponse(
         contacts=contacts, total=total, page=page, page_size=page_size
@@ -59,7 +60,7 @@ async def get_contact_detail(
     try:
         detail = await contact_service.get_contact_detail(account, contact_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
     return detail
 
@@ -82,4 +83,4 @@ async def delete_contact(
     try:
         await contact_service.delete_contact(account, contact_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))

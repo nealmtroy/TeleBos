@@ -1,5 +1,7 @@
 """Privacy and 2FA settings endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +24,7 @@ from app.schemas.settings import (
     LoginEmailSetRequest,
 )
 from app.services import account_service, settings_service
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(prefix="/accounts/{account_id}", tags=["settings"])
 
@@ -41,7 +44,7 @@ async def get_privacy(account_id: str, db: AsyncSession = Depends(get_db), user:
     try:
         result = await settings_service.get_privacy_settings(account)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return PrivacySettingsResponse(**result)
 
 
@@ -59,7 +62,7 @@ async def update_privacy(
     try:
         result = await settings_service.update_privacy_settings(account, updates)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return PrivacySettingsResponse(**result)
 
 
@@ -73,7 +76,7 @@ async def delete_synced_contacts(
     try:
         await settings_service.delete_synced_contacts(account)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 # ── 2FA ──────────────────────────────────────────────────────────────────────
@@ -89,7 +92,7 @@ async def get_2fa_status(
     try:
         result = await settings_service.get_2fa_status(account)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
     # Sync DB field with live Telegram status so the account card stays accurate
     if result.get("enabled") != account.twofa_enabled:
@@ -119,7 +122,7 @@ async def enable_2fa(
         await settings_service.enable_2fa(account, payload.password)
         await db.flush()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "2FA enabled"}
 
 
@@ -143,7 +146,7 @@ async def disable_2fa(
         await settings_service.disable_2fa(account, payload.password)
         await db.flush()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "2FA disabled"}
 
 
@@ -168,7 +171,7 @@ async def set_2fa_email(
         await db.flush()
         return result
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/2fa/email/confirm", status_code=status.HTTP_200_OK)
@@ -191,7 +194,7 @@ async def confirm_2fa_email(
         await settings_service.confirm_2fa_email(account, payload.code)
         await db.flush()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "Recovery email confirmed"}
 
 
@@ -215,7 +218,7 @@ async def change_2fa_password(
         await settings_service.change_2fa_password(account, payload.old_password, payload.new_password)
         await db.flush()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "2FA password changed"}
 
 
@@ -237,7 +240,7 @@ async def request_2fa_recovery(
     try:
         result = await settings_service.request_2fa_recovery(account)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return TwoFARequestRecoveryResponse(**result)
 
 
@@ -261,7 +264,7 @@ async def recover_2fa(
         await settings_service.recover_2fa(account, payload.recovery_code, payload.new_password)
         await db.flush()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "2FA recovered"}
 
 
@@ -284,7 +287,7 @@ async def send_login_email_code(
     try:
         result = await settings_service.set_login_email(account, payload.email)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return result
 
 
@@ -311,5 +314,5 @@ async def verify_login_email(
     try:
         await settings_service.verify_login_email(account, payload.email, payload.code)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "Login email changed"}

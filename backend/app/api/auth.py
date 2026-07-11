@@ -24,6 +24,7 @@ from app.schemas.auth import (
     LogoutResponse,
 )
 from app.utils.session_token import hash_session_token
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -85,5 +86,5 @@ async def change_password(
         await revoke_all_user_sessions(db, current_user)
         await db.commit()
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return ChangePasswordResponse()

@@ -15,6 +15,7 @@ from app.schemas.redeem import (
     SubscriptionInfoResponse,
 )
 from app.services.redeem_service import redeem_code, auto_downgrade_if_expired
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(tags=["redeem"])
 
@@ -36,7 +37,7 @@ async def redeem_code_endpoint(
         result = await redeem_code(db, current_user, payload.code.strip())
         return RedeemResponse(**result)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=sanitize_exception(e))
 
 
 @router.get("/subscriptions/me", response_model=SubscriptionInfoResponse)

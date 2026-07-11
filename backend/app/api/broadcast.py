@@ -19,6 +19,7 @@ from app.schemas.broadcast import (
 )
 from app.services import broadcast_service
 from app.utils.rate_limiter import rate_limiter
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(tags=["broadcast"])
 
@@ -58,7 +59,7 @@ async def update_group_list(
             db, gl_id, str(user.id), payload.name, items
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=sanitize_exception(exc))
 
 
 @router.delete("/group-lists/{gl_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -70,7 +71,7 @@ async def delete_group_list(
     try:
         await broadcast_service.delete_group_list(db, gl_id, str(user.id))
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=sanitize_exception(exc))
 
 
 # ── Text Lists ───────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ async def update_text_list(
             db, tl_id, str(user.id), payload.name, payload.texts
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=sanitize_exception(exc))
 
 
 @router.delete("/text-lists/{tl_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -118,7 +119,7 @@ async def delete_text_list(
     try:
         await broadcast_service.delete_text_list(db, tl_id, str(user.id))
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=sanitize_exception(exc))
 
 
 # ── Broadcast Jobs ───────────────────────────────────────────────────────────
@@ -159,7 +160,7 @@ async def start_broadcast(
             log_destination=payload.log_destination,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return job
 
 
@@ -240,7 +241,7 @@ async def delete_job(
     try:
         await broadcast_service.delete_job(db, job_id, str(user.id))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/broadcast/{job_id}/retry", response_model=BroadcastJobResponse)
@@ -253,7 +254,7 @@ async def retry_job(
     try:
         job = await broadcast_service.retry_job(db, job_id, str(user.id))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return job
 
 

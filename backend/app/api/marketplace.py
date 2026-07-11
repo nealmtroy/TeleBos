@@ -20,6 +20,7 @@ from app.schemas.marketplace import (
     AccountAuditLogResponse,
 )
 from app.services import marketplace_service
+from app.utils.sanitize import sanitize_exception
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ async def sell_accounts(
         return MarketplaceSellResponse(total_listed=total_listed)
     except ValueError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
         await db.rollback()
         logger.exception("Failed to sell accounts: %s", exc)
@@ -125,7 +126,7 @@ async def buy_account(
         )
     except ValueError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
         await db.rollback()
         logger.exception("Failed to buy account %s: %s", account_id, exc)
@@ -153,7 +154,7 @@ async def cancel_sell_account(
         return account
     except ValueError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
         await db.rollback()
         logger.exception("Failed to cancel account sale %s: %s", account_id, exc)

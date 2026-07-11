@@ -35,6 +35,7 @@ from app.schemas.account import (
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service
 from app.utils.rate_limiter import rate_limiter
+from app.utils.sanitize import sanitize_exception
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +206,7 @@ async def qr_login_init(user: User = Depends(get_current_user)):
         )
     except Exception as exc:
         logger.error("Failed to initialize QR login: %s", exc)
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.get("/qr-login/status/{qr_id}", response_model=QRStatusResponse)
@@ -294,7 +295,7 @@ async def qr_login_2fa(
         )
     except Exception as exc:
         logger.error("QR 2FA login failed: %s", exc)
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/cancel-login")
@@ -337,7 +338,7 @@ async def send_code(request: Request, payload: SendCodeRequest, user: User = Dep
             email_pattern=email_pattern
         )
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/verify-code", response_model=VerifyCodeResponse)
@@ -367,7 +368,7 @@ async def verify_code(
         )
     except ValueError as exc:
         # Retryable: wrong/expired code — keep pending login alive so user can retry
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
         # Fatal error — discard pending login
         phone_map = _pending_logins.get(uid)
@@ -379,7 +380,7 @@ async def verify_code(
             await client.disconnect()
         except Exception:
             pass
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
     if requires_2fa:
         return VerifyCodeResponse(
@@ -443,9 +444,9 @@ async def upload_session(
             db, user, payload.session_string
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Session error: {exc}")
+        raise HTTPException(status_code=400, detail=f"Session error: {sanitize_exception(exc)}")
 
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
@@ -541,7 +542,7 @@ async def update_profile(
             payload.username, payload.bio,
         )
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
     return account
@@ -637,7 +638,7 @@ async def upload_profile_photo(
     try:
         await account_service.upload_photo(db, account, data)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "Photo updated"}
 
 
@@ -752,7 +753,7 @@ async def delete_profile_photo(
     try:
         await account_service.delete_photo(db, account)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "Photo deleted"}
 
 
@@ -770,7 +771,7 @@ async def check_spam(
         await account_service.check_spam_status(db, account)
         await db.commit()
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
     return account
@@ -822,7 +823,7 @@ async def refresh_account_stats(
         await _refresh(db, account)
         await db.commit()
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
     return AccountStatsResponse(
         contacts_count=account.contacts_count,
@@ -881,7 +882,7 @@ async def start_appeal(
             await db.commit()
         return res
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.post("/{account_id}/appeal/resume", response_model=SpamAppealResponse)
@@ -915,7 +916,7 @@ async def resume_appeal(
             await db.commit()
         return res
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.get("/{account_id}/profile-colors")
@@ -933,7 +934,7 @@ async def get_profile_colors(
         colors_data = await account_service.get_profile_colors(account)
         return colors_data
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.put("/{account_id}/profile-color", response_model=AccountResponse)
@@ -954,5 +955,5 @@ async def update_profile_color(
         )
         return account
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 

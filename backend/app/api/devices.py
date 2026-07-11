@@ -9,6 +9,7 @@ from app.models.user import User
 from app.utils.rate_limiter import rate_limiter
 from app.schemas.settings import DeviceInfo, DeviceListResponse
 from app.services import account_service, device_service
+from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(prefix="/accounts/{account_id}/devices", tags=["devices"])
 
@@ -25,7 +26,7 @@ async def list_devices(
     try:
         devices = await device_service.get_devices(account)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return DeviceListResponse(devices=[DeviceInfo(**d) for d in devices])
 
 
@@ -46,13 +47,13 @@ async def terminate_device(
     try:
         await device_service.terminate_device(account, int(device_hash))
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
         from app.utils.telegram_errors import classify_telegram_error
         err_type, err_msg = classify_telegram_error(exc)
         if err_type != "unknown":
             raise HTTPException(status_code=400, detail=err_msg)
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 
@@ -72,11 +73,11 @@ async def terminate_all_other_sessions(
     try:
         await device_service.terminate_all_other_sessions(account)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
         from app.utils.telegram_errors import classify_telegram_error
         err_type, err_msg = classify_telegram_error(exc)
         if err_type != "unknown":
             raise HTTPException(status_code=400, detail=err_msg)
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
