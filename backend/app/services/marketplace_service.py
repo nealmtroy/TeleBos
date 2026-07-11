@@ -341,14 +341,18 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     if not account:
         raise ValueError("Account is no longer available for purchase.")
 
+    # Identify the seller (who gets credited)
+    seller_id = account.seller_id or account.user_id
+
+    # Prevent self-purchasing: a seller cannot buy their own listed account
+    if user.id == seller_id:
+        raise ValueError("You cannot purchase your own listed account.")
+
     # Use the account's own sell_price; fallback to default
     buy_price = account.sell_price or 7000
 
     if user.balance < buy_price:
         raise ValueError("Insufficient balance to buy this account.")
-
-    # Identify the seller (who gets credited)
-    seller_id = account.seller_id or account.user_id
 
     # 1. Debit buyer's balance
     user.balance -= buy_price

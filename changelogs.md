@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[047392c5](https://github.com/nealmtroy/TeleBos/commit/047392c5)**: @ fix: add ALTER TABLE to setup-db.mjs for existing session tables (vuln-0005)
 - **[9dbb71f3](https://github.com/nealmtroy/TeleBos/commit/9dbb71f3)**: @ fix: hash session tokens in database with SHA-256 (vuln-0005)
 - **[1b3526ad](https://github.com/nealmtroy/TeleBos/commit/1b3526ad)**: fix: invalidate session on logout and password change (vuln-0003)
 - **[8d959f80](https://github.com/nealmtroy/TeleBos/commit/8d959f80)**: fix: prevent duplicate email registration and harden session-to-user resolution
