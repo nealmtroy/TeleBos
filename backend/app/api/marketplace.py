@@ -106,6 +106,14 @@ async def buy_account(
     try:
         account = await marketplace_service.buy_account(db, current_user, account_id)
         await db.commit()
+
+        # Reconnect outside of database transaction
+        from app.services.session_manager import session_manager
+        try:
+            await session_manager.attach_and_reconnect(db, account)
+        except Exception as exc:
+            logger.error("Failed to auto-reconnect purchased account %s (%s): %s", account.id, account.phone, exc)
+
         return MarketplaceBuyResponse(
             id=account.id,
             telegram_id=account.telegram_id,
@@ -134,6 +142,14 @@ async def cancel_sell_account(
     try:
         account = await marketplace_service.cancel_sell_account(db, current_user, account_id)
         await db.commit()
+
+        # Reconnect outside of database transaction
+        from app.services.session_manager import session_manager
+        try:
+            await session_manager.attach_and_reconnect(db, account)
+        except Exception as exc:
+            logger.error("Failed to auto-reconnect cancelled sale account %s (%s): %s", account.id, account.phone, exc)
+
         return account
     except ValueError as exc:
         await db.rollback()

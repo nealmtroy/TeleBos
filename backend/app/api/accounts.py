@@ -408,7 +408,8 @@ async def verify_code(
 
     account.user_id = user.id
     db.add(account)
-    await db.flush()
+    await db.commit()
+    await db.refresh(account)
 
     # Attach real-time event handlers and trigger background synchronization
     from app.services.session_manager import session_manager
@@ -446,12 +447,15 @@ async def upload_session(
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Session error: {exc}")
 
+    from app.services.user_account_price_service import resolve_telegram_id_price
+    account.sell_price = await resolve_telegram_id_price(db, account)
+    await db.commit()
+    await db.refresh(account)
+
     # Attach real-time event handlers and trigger background synchronization
     from app.services.session_manager import session_manager
     await session_manager.attach_and_reconnect(db, account)
 
-    from app.services.user_account_price_service import resolve_telegram_id_price
-    account.sell_price = await resolve_telegram_id_price(db, account)
     return account
 
 

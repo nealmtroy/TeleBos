@@ -391,18 +391,6 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
 
     await db.flush()
 
-    # 5. Reconnect and attach event handlers immediately
-    from app.services.session_manager import session_manager
-    try:
-        await session_manager.attach_and_reconnect(db, account)
-    except Exception as exc:
-        logger.error(
-            "Failed to auto-reconnect purchased account %s (%s): %s",
-            account.id,
-            account.phone,
-            exc,
-        )
-
     return account
 
 
@@ -451,17 +439,5 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
     db.add(audit)
 
     await db.flush()
-
-    # Reconnect and attach event handlers immediately
-    from app.services.session_manager import session_manager
-    try:
-        await session_manager.attach_and_reconnect(db, account)
-    except Exception as exc:
-        logger.error(
-            "Failed to auto-reconnect cancelled sale account %s (%s): %s",
-            account.id,
-            account.phone,
-            exc,
-        )
 
     return account
