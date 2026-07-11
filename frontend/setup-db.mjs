@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS "session" (
 CREATE INDEX IF NOT EXISTS idx_session_userId ON "session"("userId");
 CREATE INDEX IF NOT EXISTS idx_session_token_hash ON "session"(token_hash);
 
+-- Ensure token_hash column exists on pre-existing session tables (idempotent).
+ALTER TABLE IF EXISTS "session" ADD COLUMN IF NOT EXISTS token_hash TEXT;
+
 -- ── account table ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "account" (
   id                  TEXT PRIMARY KEY,
