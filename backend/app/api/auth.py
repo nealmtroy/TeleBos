@@ -41,9 +41,22 @@ async def change_password(
     Note: This updates the password hash in Better Auth's ``account`` table,
     not in the legacy ``users`` table.
     """
+    ip = request.client.host
+    from app.utils.rate_limiter import rate_limiter
+    if not await rate_limiter.check(f"change_password:ip:{ip}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password change attempts. Please try again later.",
+        )
+    if not await rate_limiter.check(f"change_password:user:{current_user.id}"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password change attempts. Please try again later.",
+        )
+
     try:
-        from app.services.auth_service import change_password
-        await change_password(
+        from app.services.auth_service import change_password as change_pwd_service
+        await change_pwd_service(
             db, current_user, payload.current_password, payload.new_password
         )
         await db.commit()

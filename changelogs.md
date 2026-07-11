@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[c74e0cde](https://github.com/nealmtroy/TeleBos/commit/c74e0cde)**: docs: document transaction safety pattern in marketplace_service.py
 - **[956d8980](https://github.com/nealmtroy/TeleBos/commit/956d8980)**: docs: clean up and synchronize README.md and PRODUCT.md
 - **[2bd04a4d](https://github.com/nealmtroy/TeleBos/commit/2bd04a4d)**: chore: remove github action for changelog due to billing
 - **[27f0dc8d](https://github.com/nealmtroy/TeleBos/commit/27f0dc8d)**: feat: add automatic changelog generation script, pre-commit hook, and GitHub Action
