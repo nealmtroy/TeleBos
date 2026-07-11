@@ -19,14 +19,20 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const { error: err } = await authClient.requestPasswordReset({
+      // Always show the success state regardless of the API response.
+      // The server returns a uniform 200 for all emails to prevent user
+      // enumeration (vuln-0006).  We still attempt the call so the reset
+      // email is actually sent when the account exists.
+      await authClient.requestPasswordReset({
         email,
         redirectTo: `${window.location.origin}/reset-password`,
       });
-      if (err) throw new Error(err.message || "Failed to send reset email");
       setSent(true);
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong");
+    } catch {
+      // Silently show success even on error — the server may reject with
+      // a non-200 status in edge cases, but we must not disclose whether
+      // the email exists.
+      setSent(true);
     } finally {
       setLoading(false);
     }
