@@ -43,6 +43,18 @@ class Settings(BaseSettings):
     RATE_LIMIT_WS_WINDOW: int = 60
     RATE_LIMIT_FAILS_OPEN: bool = True
 
+    # Trusted proxy CIDRs (in addition to hardcoded Cloudflare ranges).
+    # Comma-separated in env, e.g. "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    # Docker default bridge/overlay networks and loopback are included by default.
+    TRUSTED_PROXIES: list[str] = [
+        "127.0.0.1/8",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "::1/128",
+        "fc00::/7",
+    ]
+
     # Telethon
     TELEGRAM_API_ID: int = 0  # Fill from my.telegram.org
     TELEGRAM_API_HASH: str = ""

@@ -1,5 +1,6 @@
 """Main FastAPI application with middleware, routers, and lifespan."""
 
+import ipaddress
 import logging
 from contextlib import asynccontextmanager
 
@@ -18,34 +19,130 @@ app_settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
+# Cloudflare IPv4 ranges — https://www.cloudflare.com/ips-v4/
+# Cloudflare IPv6 ranges — https://www.cloudflare.com/ips-v6/
+# Last updated: 2025-01-15 — review periodically at https://www.cloudflare.com/ips/
+CLOUDFLARE_IP_RANGES: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = [
+    # IPv4
+    ipaddress.ip_network("173.245.48.0/20"),
+    ipaddress.ip_network("103.21.244.0/22"),
+    ipaddress.ip_network("103.22.200.0/22"),
+    ipaddress.ip_network("103.31.4.0/22"),
+    ipaddress.ip_network("141.101.64.0/18"),
+    ipaddress.ip_network("108.162.192.0/18"),
+    ipaddress.ip_network("190.93.240.0/20"),
+    ipaddress.ip_network("188.114.96.0/20"),
+    ipaddress.ip_network("197.234.240.0/22"),
+    ipaddress.ip_network("198.41.128.0/17"),
+    ipaddress.ip_network("162.158.0.0/15"),
+    ipaddress.ip_network("104.16.0.0/13"),
+    ipaddress.ip_network("104.24.0.0/14"),
+    ipaddress.ip_network("172.64.0.0/13"),
+    ipaddress.ip_network("131.0.72.0/22"),
+    # IPv6
+    ipaddress.ip_network("2400:cb00::/32"),
+    ipaddress.ip_network("2606:4700::/32"),
+    ipaddress.ip_network("2803:f800::/32"),
+    ipaddress.ip_network("2405:b500::/32"),
+    ipaddress.ip_network("2405:8100::/32"),
+    ipaddress.ip_network("2a06:98c0::/29"),
+    ipaddress.ip_network("2c0f:f248::/32"),
+]
+
+
+def _build_trusted_cidrs() -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    """Build the combined trusted proxy CIDR list from Cloudflare ranges + config."""
+    cidrs = list(CLOUDFLARE_IP_RANGES)
+    try:
+        extra = app_settings.TRUSTED_PROXIES
+        for cidr_str in extra:
+            cidr_str = cidr_str.strip()
+            if cidr_str:
+                cidrs.append(ipaddress.ip_network(cidr_str, strict=False))
+    except Exception as exc:
+        logger.warning("Failed to parse TRUSTED_PROXIES config: %s", exc)
+    return cidrs
+
+
+def _is_trusted_proxy(
+    ip_str: str,
+    trusted_cidrs: list[ipaddress.IPv4Network | ipaddress.IPv6Network],
+) -> bool:
+    """Check if an IP address belongs to a trusted proxy range."""
+    try:
+        addr = ipaddress.ip_address(ip_str)
+        return any(addr in cidr for cidr in trusted_cidrs)
+    except ValueError:
+        return False
+
+
 class RealIPMiddleware:
-    """ASGI Middleware to extract real client IP when behind Cloudflare or reverse proxies."""
+    """ASGI Middleware to extract real client IP when behind Cloudflare or reverse proxies.
+
+    Only trusts proxy headers (CF-Connecting-IP, X-Forwarded-For) when the
+    actual TCP connection IP belongs to a known trusted proxy (Cloudflare
+    published ranges + operator-configured TRUSTED_PROXIES).
+
+    Untrusted requests that send proxy headers are logged as potential
+    spoofing attempts.
+    """
 
     def __init__(self, app):
         self.app = app
+        self.trusted_cidrs = _build_trusted_cidrs()
+        logger.info(
+            "RealIPMiddleware initialised with %d trusted CIDR ranges",
+            len(self.trusted_cidrs),
+        )
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] in ("http", "websocket"):
+        if scope["type"] in ("http", "websocket") and scope.get("client"):
+            original_ip = scope["client"][0]
+            original_port = scope["client"][1]
+
+            if not _is_trusted_proxy(original_ip, self.trusted_cidrs):
+                # Connecting IP is not a trusted proxy — ignore all proxy headers.
+                # Log if the request tried to sneak in proxy headers (potential attack).
+                headers = dict(scope.get("headers", []))
+                if headers.get(b"cf-connecting-ip") or headers.get(b"x-forwarded-for"):
+                    logger.warning(
+                        "Untrusted IP %s sent proxy headers — ignoring "
+                        "(potential IP spoofing attempt)",
+                        original_ip,
+                    )
+                await self.app(scope, receive, send)
+                return
+
+            # Connecting IP is trusted — safe to read proxy headers
             headers = dict(scope.get("headers", []))
+
             # Cloudflare sends CF-Connecting-IP
             cf_ip = headers.get(b"cf-connecting-ip")
             if cf_ip:
                 try:
                     ip_str = cf_ip.decode("utf-8").strip()
-                    port = scope["client"][1] if scope.get("client") else 0
-                    scope["client"] = (ip_str, port)
-                except Exception:
+                    # Basic validation: must be a valid IP address
+                    ipaddress.ip_address(ip_str)
+                    scope["client"] = (ip_str, original_port)
+                except (ValueError, UnicodeDecodeError):
                     pass
             else:
-                # Fallback to X-Forwarded-For
+                # Fallback to X-Forwarded-For — walk right-to-left
                 x_forwarded_for = headers.get(b"x-forwarded-for")
                 if x_forwarded_for:
                     try:
-                        ips = x_forwarded_for.decode("utf-8").split(",")
-                        ip_str = ips[0].strip()
-                        port = scope["client"][1] if scope.get("client") else 0
-                        scope["client"] = (ip_str, port)
-                    except Exception:
+                        ips = [
+                            ip.strip()
+                            for ip in x_forwarded_for.decode("utf-8").split(",")
+                        ]
+                        # Walk right-to-left: first non-trusted IP is the real client
+                        for ip_str in reversed(ips):
+                            if not _is_trusted_proxy(ip_str, self.trusted_cidrs):
+                                # Validate it's a real IP before using it
+                                ipaddress.ip_address(ip_str)
+                                scope["client"] = (ip_str, original_port)
+                                break
+                    except (ValueError, UnicodeDecodeError):
                         pass
         await self.app(scope, receive, send)
 
