@@ -118,7 +118,15 @@ async def place_order(
     # Calculate total price
     total_price = _calculate_price(price_per_unit, quantity)
 
-    # Check balance
+    # Re-fetch user row with exclusive lock to prevent TOCTOU race condition.
+    # The user object from get_current_user is loaded without FOR UPDATE,
+    # so concurrent requests could all see the same pre-deduction balance.
+    locked_user_result = await db.execute(
+        select(User).where(User.id == user.id).with_for_update()
+    )
+    user = locked_user_result.scalar_one()
+
+    # Check balance (now using the locked, fresh row)
     if user.balance < total_price:
         raise ValueError(
             f"Insufficient balance. Required: {total_price}, Your balance: {user.balance}"
@@ -189,6 +197,12 @@ async def place_mass_orders(
             "price_per_unit": price_per_unit,
             "total_price": total_price,
         })
+
+    # Re-fetch user row with exclusive lock to prevent TOCTOU race condition
+    locked_user_result = await db.execute(
+        select(User).where(User.id == user.id).with_for_update()
+    )
+    user = locked_user_result.scalar_one()
 
     if user.balance < total_cost:
         raise ValueError(

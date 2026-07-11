@@ -351,6 +351,14 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     # Use the account's own sell_price; fallback to default
     buy_price = account.sell_price or 7000
 
+    # Re-fetch buyer row with exclusive lock to prevent TOCTOU race condition.
+    # The user object from get_current_user is loaded without FOR UPDATE,
+    # so concurrent purchases could all see the same pre-deduction balance.
+    locked_buyer_result = await db.execute(
+        select(User).where(User.id == user.id).with_for_update()
+    )
+    user = locked_buyer_result.scalar_one()
+
     if user.balance < buy_price:
         raise ValueError("Insufficient balance to buy this account.")
 
