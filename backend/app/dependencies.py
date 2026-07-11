@@ -66,11 +66,21 @@ async def get_current_user(
             detail="Session expired",
         )
 
-    # Map the Better Auth user to our User model via email (unique in both tables).
-    # BA uses UUID strings; our legacy "users" table uses PostgreSQL UUID type.
-    # Email is the stable cross-reference between them.
+    # Map the Better Auth user to our User model via the user ID (UUID).
+    # BA stores IDs as TEXT; our legacy "users" table uses PostgreSQL UUID type.
+    # Resolving by ID (not email) prevents a duplicate-email attack where an
+    # attacker registers with an existing email, verifies it, and the session
+    # would map to the original user's record.
+    from uuid import UUID as PyUUID
+    try:
+        user_uuid = PyUUID(row.user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in session",
+        )
     user_result = await db.execute(
-        select(User).where(User.email == row.email)
+        select(User).where(User.id == user_uuid)
     )
     user = user_result.scalar_one_or_none()
 
@@ -131,9 +141,17 @@ async def get_current_user_from_token_or_header(
             detail="Session expired",
         )
 
-    # Map via email (see comment in get_current_user above)
+    # Map via user ID (UUID) — see comment in get_current_user above
+    from uuid import UUID as PyUUID
+    try:
+        user_uuid = PyUUID(row.user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in session",
+        )
     user_result = await db.execute(
-        select(User).where(User.email == row.email)
+        select(User).where(User.id == user_uuid)
     )
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:

@@ -201,6 +201,131 @@ export function getVerificationEmailHtml(name: string, url: string): string {
 }
 
 /**
+ * Generates a premium HTML email template for unknown sign-up alerts.
+ * Sent to existing users when someone tries to register with their email address.
+ */
+export function getUnknownSignupAlertEmailHtml(name: string, email: string): string {
+  const brandColor = "#2563eb";
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Percobaan Pendaftaran - TeleBos</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #f8fafc;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      max-width: 580px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #b91c1c, #dc2626);
+      padding: 32px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.05em;
+      margin: 0;
+      text-decoration: none;
+    }
+    .content {
+      padding: 40px 32px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+    p {
+      font-size: 16px;
+      line-height: 24px;
+      color: #475569;
+      margin-top: 0;
+      margin-bottom: 24px;
+    }
+    .alert-box {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-left: 4px solid #dc2626;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 24px 0;
+    }
+    .alert-box p {
+      color: #991b1b;
+      margin: 0;
+      font-size: 14px;
+    }
+    .footer {
+      background-color: #f8fafc;
+      padding: 24px 32px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin: 0;
+      line-height: 18px;
+    }
+    .footer a {
+      color: #64748b;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="logo">⚠️ TeleBos</div>
+      </div>
+      <div class="content">
+        <h1>Halo ${name || "Pengguna"},</h1>
+        <p>Kami mendeteksi adanya percobaan pendaftaran akun baru menggunakan alamat email Anda (<strong>${email}</strong>) di TeleBos.</p>
+        <div class="alert-box">
+          <p><strong>Jika ini adalah Anda:</strong> Anda sudah memiliki akun. Silakan login menggunakan email dan kata sandi Anda yang sudah terdaftar. Tidak perlu mendaftar ulang.</p>
+        </div>
+        <p>Jika Anda <strong>tidak</strong> melakukan pendaftaran ini, Anda dapat mengabaikan email ini dengan aman. Akun Anda tetap terlindungi dan tidak ada perubahan yang dilakukan.</p>
+        <p>Untuk keamanan tambahan, kami sarankan untuk mengaktifkan otentikasi dua faktor (2FA) di pengaturan akun Anda jika belum.</p>
+      </div>
+      <div class="footer">
+        <p>Email ini dikirim secara otomatis oleh sistem keamanan TeleBos.</p>
+        <p style="margin-top: 8px;">&copy; ${new Date().getFullYear()} TeleBos. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
+/**
  * Generates a premium HTML email template for password reset.
  */
 export function getResetPasswordEmailHtml(name: string, url: string): string {
