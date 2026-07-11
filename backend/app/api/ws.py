@@ -95,6 +95,17 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
     Expected format: {"type": "auth", "token": "<jwt>"}
     Returns the authenticated User or None on failure.
     """
+    # Validate Origin header to prevent Cross-Site WebSocket Hijacking (CSWSH).
+    # The browser WebSocket API does NOT enforce CORS for handshakes;
+    # the Origin header must be checked explicitly.
+    from app.config import get_settings
+    origin = websocket.headers.get("origin")
+    allowed_origins = get_settings().CORS_ORIGINS
+    if origin and "*" not in allowed_origins:
+        if origin not in allowed_origins:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Origin not allowed")
+            return None
+
     # Must accept before we can receive
     await websocket.accept()
 
