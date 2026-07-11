@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[eec2153d](https://github.com/nealmtroy/TeleBos/commit/eec2153d)**: fix(security): sanitize raw exception messages in API responses (vuln-0006)
 - **[1c64f100](https://github.com/nealmtroy/TeleBos/commit/1c64f100)**: fix(security): prevent TOCTOU race condition in balance-modifying operations (vuln-0002)
 - **[fa7d4b44](https://github.com/nealmtroy/TeleBos/commit/fa7d4b44)**: fix(security): harden RealIPMiddleware against IP spoofing bypass - Only trust proxy headers when connecting IP is a known trusted proxy (Cloudflare ranges + TRUSTED_PROXIES config) - Parse X-Forwarded-For right-to-left, validate IPs, log spoofing attempts - Ref: vuln-0001 CVSS 8.2
 - **[f39b32e3](https://github.com/nealmtroy/TeleBos/commit/f39b32e3)**: feat: add strix_instructions.md and ignore strix_runs in git

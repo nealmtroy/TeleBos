@@ -156,10 +156,17 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Session expired")
             return None
 
-        # Load the User model via email (same bridge as dependencies.py —
-        # BA uses UUID strings, our legacy users table uses PostgreSQL UUID type)
+        # Map via user ID (UUID) — prevents duplicate-email attack
+        # (matches dependencies.py approach)
+        from uuid import UUID as PyUUID
+        try:
+            user_uuid = PyUUID(row.user_id)
+        except (ValueError, TypeError):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid user ID in session")
+            return None
+
         user_result = await db.execute(
-            select(UserModel).where(UserModel.email == row.email)
+            select(UserModel).where(UserModel.id == user_uuid)
         )
         user = user_result.scalar_one_or_none()
         if user is None or not user.is_active:
