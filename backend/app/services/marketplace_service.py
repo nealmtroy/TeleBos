@@ -315,6 +315,11 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
 
     Locks the account row, checks buyer balance, transfers ownership,
     credits the seller's balance.
+
+    Note: session_manager.attach_and_reconnect is intentionally NOT called
+    inside this function to prevent network I/O from running within the active
+    database transaction (which holds locks on User and TelegramAccount rows).
+    The caller must trigger the reconnect after committing the transaction.
     """
     try:
         acc_uuid = UUID(account_id)
@@ -397,7 +402,12 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
 async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> TelegramAccount:
     """Cancel listing a Telegram account for sale.
 
-    Resets for_sale, is_active, sell_price, and seller_id. Reconnects Telethon client.
+    Resets for_sale, is_active, sell_price, and seller_id.
+
+    Note: session_manager.attach_and_reconnect is intentionally NOT called
+    inside this function to prevent network I/O from running within the active
+    database transaction. The caller must trigger the reconnect after
+    committing the transaction.
     """
     try:
         acc_uuid = UUID(account_id)
