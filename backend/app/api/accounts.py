@@ -715,7 +715,19 @@ async def get_profile_photo(
             },
         )
 
-    raise HTTPException(status_code=404, detail="No profile photo")
+    # Fallback to premium SVG avatar instead of 404
+    from app.utils.avatar_generator import generate_avatar_svg, get_initials
+    initials = get_initials(account.first_name, account.last_name)
+    svg_data = generate_avatar_svg(str(account.id), initials=initials, is_group=False)
+    return Response(
+        content=svg_data,
+        media_type="image/svg+xml",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "ETag": etag,
+            "Expires": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + 3600)),
+        },
+    )
 
 
 @router.get("/{account_id}/photo-token")

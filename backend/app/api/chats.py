@@ -586,10 +586,20 @@ async def get_chat_photo(
     
     cached_path = os.path.join(chat_photos_dir, f"{chat_id}.jpg")
 
+    def get_fallback_svg_response(initials: str = "", is_group: bool = True):
+        from fastapi import Response
+        from app.utils.avatar_generator import generate_avatar_svg
+        svg_data = generate_avatar_svg(str(chat_id), initials=initials, is_group=is_group)
+        return Response(
+            content=svg_data,
+            media_type="image/svg+xml",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+
     # Serve from cache if it exists
     if os.path.exists(cached_path):
         if os.path.getsize(cached_path) == 0:
-            raise HTTPException(status_code=404, detail="No photo (cached)")
+            return get_fallback_svg_response(is_group=(chat_id < 0))
         return FileResponse(cached_path, media_type="image/jpeg")
 
     # If not cached, download using Telethon client
@@ -618,6 +628,22 @@ async def get_chat_photo(
         from app.services.chat_service import resolve_chat_entity
         entity = await resolve_chat_entity(client, account.id, chat_id)
 
+        # Get initials if available from chat entity
+        title = getattr(entity, "title", None)
+        first_name = getattr(entity, "first_name", None)
+        last_name = getattr(entity, "last_name", None)
+        
+        initials = ""
+        is_group = chat_id < 0
+        if title:
+            words = title.strip().split()
+            initials = "".join(w[0] for w in words if w)[:2].upper()
+            is_group = True
+        elif first_name or last_name:
+            from app.utils.avatar_generator import get_initials
+            initials = get_initials(first_name, last_name)
+            is_group = False
+
         # Use download_big=False to fetch small thumbnail (typically 160x160/80x80)
         # to save massive bandwidth and storage.
         photo_result = await client.download_profile_photo(entity, file=cached_path, download_big=False)
@@ -625,12 +651,12 @@ async def get_chat_photo(
             # Write a 0-byte file to cache the "no photo" state and avoid hitting Telegram again
             with open(cached_path, "wb") as f:
                 pass
-            raise HTTPException(status_code=404, detail="No photo found on Telegram")
+            return get_fallback_svg_response(initials=initials, is_group=is_group)
         
         return FileResponse(cached_path, media_type="image/jpeg")
     except Exception as exc:
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, HTTPException) and exc.status_code != 404:
             raise exc
-        raise HTTPException(status_code=404, detail=sanitize_exception(exc))
+        return get_fallback_svg_response(is_group=(chat_id < 0))
 
 
