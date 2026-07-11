@@ -75,3 +75,7 @@ docs/smm/
 # Backups
 backup/
 
+# Strix runs
+strix_runs/
+
+
