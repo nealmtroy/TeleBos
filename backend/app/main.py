@@ -428,6 +428,22 @@ def _run_migrations(connection):
             )
         )
 
+    # ── Better Auth user table: brute force protection columns (vuln-0007) ─
+    if "user" in tables:
+        user_ba_cols = [c["name"] for c in inspector.get_columns("user")]
+        if "failedLoginAttempts" not in user_ba_cols:
+            connection.execute(
+                text('ALTER TABLE "user" ADD COLUMN "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0')
+            )
+        if "lockedUntil" not in user_ba_cols:
+            connection.execute(
+                text('ALTER TABLE "user" ADD COLUMN "lockedUntil" TIMESTAMPTZ DEFAULT NULL')
+            )
+        if "lastFailedLoginAt" not in user_ba_cols:
+            connection.execute(
+                text('ALTER TABLE "user" ADD COLUMN "lastFailedLoginAt" TIMESTAMPTZ DEFAULT NULL')
+            )
+
     # ── Better Auth: make users.password_hash nullable ────────────────
     # Better Auth manages passwords in its own "account" table — the legacy
     # "users" table's password_hash is unused but still NOT NULL.

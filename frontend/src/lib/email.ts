@@ -466,3 +466,173 @@ export function getResetPasswordEmailHtml(name: string, url: string): string {
 </html>
   `.trim();
 }
+
+/**
+ * Generates a premium HTML email template for account lockout notification.
+ * Sent when an account is temporarily locked due to excessive failed login
+ * attempts (brute-force protection — vuln-0007).
+ */
+export function getAccountLockedEmailHtml(
+  name: string,
+  email: string,
+  lockedUntil: Date,
+  failedAttempts: number,
+): string {
+  const remainingMinutes = Math.ceil(
+    (lockedUntil.getTime() - Date.now()) / 60000,
+  );
+  const formattedTime = lockedUntil.toLocaleString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    dateStyle: "full",
+    timeStyle: "long",
+  });
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akun Dikunci - TeleBos</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 20px; box-sizing: border-box; }
+    .container { max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #b91c1c, #dc2626); padding: 32px; text-align: center; }
+    .logo { font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.05em; margin: 0; }
+    .content { padding: 40px 32px; }
+    h1 { font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 16px; }
+    p { font-size: 16px; line-height: 24px; color: #475569; margin-top: 0; margin-bottom: 24px; }
+    .alert-box { background-color: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
+    .alert-box p { color: #991b1b; margin: 0 0 8px 0; font-size: 14px; }
+    .alert-box p:last-child { margin-bottom: 0; }
+    .divider { height: 1px; background-color: #f1f5f9; margin: 32px 0; }
+    .footer { background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .footer p { font-size: 12px; color: #94a3b8; margin: 0; line-height: 18px; }
+    .footer a { color: #64748b; text-decoration: underline; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .info-label { color: #64748b; }
+    .info-value { color: #0f172a; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="logo">&#x1f512; TeleBos</div>
+      </div>
+      <div class="content">
+        <h1>Halo ${name || "Pengguna"},</h1>
+        <p>Kami mendeteksi <strong>${failedAttempts} kali percobaan login gagal</strong> pada akun Anda (<strong>${email}</strong>). Demi keamanan, akun Anda telah <strong>dikunci sementara</strong>.</p>
+        <div class="alert-box">
+          <p><strong>&#x23f1; Akun akan terbuka kembali:</strong></p>
+          <p>${formattedTime} (sekitar ${remainingMinutes} menit lagi)</p>
+        </div>
+        <p>Jika Anda lupa kata sandi, Anda dapat menggunakan fitur <strong>"Lupa Kata Sandi"</strong> setelah masa kunci berakhir untuk mengatur ulang kata sandi Anda.</p>
+        <p>Jika Anda <strong>tidak</strong> merasa melakukan percobaan login ini, kami sangat menyarankan untuk segera mengganti kata sandi Anda dan mengaktifkan otentikasi dua faktor (2FA) di pengaturan akun setelah akun terbuka kembali.</p>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Total percobaan gagal</span>
+          <span class="info-value">${failedAttempts}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Masa kunci berakhir</span>
+          <span class="info-value">${formattedTime}</span>
+        </div>
+      </div>
+      <div class="footer">
+        <p>Email ini dikirim secara otomatis oleh sistem keamanan TeleBos.</p>
+        <p style="margin-top: 8px;">&copy; ${new Date().getFullYear()} TeleBos. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
+/**
+ * Generates a premium HTML email template for suspicious login activity.
+ * Sent when failed login attempts reach 3 (before the account is actually
+ * locked) — an early warning for brute-force protection (vuln-0007).
+ */
+export function getSuspiciousLoginActivityEmailHtml(
+  name: string,
+  email: string,
+  failedAttempts: number,
+): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aktivitas Mencurigakan - TeleBos</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 20px; box-sizing: border-box; }
+    .container { max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #d97706, #ea580c); padding: 32px; text-align: center; }
+    .logo { font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.05em; margin: 0; }
+    .content { padding: 40px 32px; }
+    h1 { font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 16px; }
+    p { font-size: 16px; line-height: 24px; color: #475569; margin-top: 0; margin-bottom: 24px; }
+    .warning-box { background-color: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
+    .warning-box p { color: #92400e; margin: 0 0 8px 0; font-size: 14px; }
+    .warning-box p:last-child { margin-bottom: 0; }
+    .divider { height: 1px; background-color: #f1f5f9; margin: 32px 0; }
+    .footer { background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .footer p { font-size: 12px; color: #94a3b8; margin: 0; line-height: 18px; }
+    .footer a { color: #64748b; text-decoration: underline; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .info-label { color: #64748b; }
+    .info-value { color: #0f172a; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="logo">&#x26a0;&#xfe0f; TeleBos</div>
+      </div>
+      <div class="content">
+        <h1>Halo ${name || "Pengguna"},</h1>
+        <p>Kami mendeteksi <strong>${failedAttempts} kali percobaan login gagal</strong> pada akun Anda (<strong>${email}</strong>).</p>
+        <div class="warning-box">
+          <p><strong>Jika ini adalah Anda:</strong> Tidak perlu khawatir. Jika Anda lupa kata sandi, gunakan fitur "Lupa Kata Sandi" di halaman login untuk mengatur ulang.</p>
+        </div>
+        <p>Jika Anda <strong>tidak</strong> merasa melakukan percobaan login ini, seseorang mungkin mencoba mengakses akun Anda. Akun Anda akan <strong>dikunci otomatis</strong> setelah beberapa kali percobaan gagal berikutnya untuk melindungi keamanan Anda.</p>
+        <div class="divider"></div>
+        <div class="info-row">
+          <span class="info-label">Total percobaan gagal</span>
+          <span class="info-value">${failedAttempts}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Akun dikunci setelah</span>
+          <span class="info-value">5 kali percobaan gagal</span>
+        </div>
+      </div>
+      <div class="footer">
+        <p>Email ini dikirim secara otomatis oleh sistem keamanan TeleBos.</p>
+        <p style="margin-top: 8px;">&copy; ${new Date().getFullYear()} TeleBos. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}

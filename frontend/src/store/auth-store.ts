@@ -67,6 +67,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (error) {
       const err = new Error(error.message || "Login failed");
       (err as any).code = error.code;
+      // Propagate brute-force protection fields (vuln-0007)
+      if ((error as any).retryAfterMinutes !== undefined) {
+        (err as any).retryAfterMinutes = (error as any).retryAfterMinutes;
+      }
       throw err;
     }
 

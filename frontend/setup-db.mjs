@@ -32,9 +32,17 @@ CREATE TABLE IF NOT EXISTS "user" (
   "emailVerified" BOOLEAN NOT NULL DEFAULT FALSE,
   image         TEXT,
   "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT FALSE,
+  "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0,
+  "lockedUntil"        TIMESTAMPTZ DEFAULT NULL,
+  "lastFailedLoginAt"  TIMESTAMPTZ DEFAULT NULL,
   "createdAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Account brute-force protection columns (vuln-0007) — idempotent ALTER
+ALTER TABLE IF EXISTS "user" ADD COLUMN IF NOT EXISTS "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS "user" ADD COLUMN IF NOT EXISTS "lockedUntil" TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE IF EXISTS "user" ADD COLUMN IF NOT EXISTS "lastFailedLoginAt" TIMESTAMPTZ DEFAULT NULL;
 
 -- ── session table ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "session" (
@@ -95,6 +103,14 @@ CREATE TABLE IF NOT EXISTS "twoFactor" (
 );
 CREATE INDEX IF NOT EXISTS idx_twoFactor_userId ON "twoFactor"("userId");
 CREATE INDEX IF NOT EXISTS idx_twoFactor_secret ON "twoFactor"(secret);
+
+-- ── rate limit table (Better Auth built-in rate limiter) ─────────────────
+CREATE TABLE IF NOT EXISTS "rateLimit" (
+  id          TEXT PRIMARY KEY,
+  key         TEXT NOT NULL UNIQUE,
+  count       INTEGER NOT NULL DEFAULT 0,
+  "lastRequest" BIGINT NOT NULL DEFAULT 0
+);
 
 `;
 

@@ -21,6 +21,8 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [retryAfterMinutes, setRetryAfterMinutes] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -34,13 +36,27 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setErrorCode(null);
+    setRetryAfterMinutes(null);
     setVerificationSent(false);
     setLoading(true);
     try {
       await login(email, password);
       router.push("/dashboard");
     } catch (err: any) {
-      if (err?.code === "EMAIL_NOT_VERIFIED" || err?.message?.toLowerCase().includes("verify")) {
+      const code = err?.code || null;
+      setErrorCode(code);
+
+      if (code === "ACCOUNT_LOCKED") {
+        setRetryAfterMinutes(err?.retryAfterMinutes || null);
+        setError(
+          err?.message || _("login.loginFailed")
+        );
+      } else if (code === "TOO_MANY_REQUESTS") {
+        setError(
+          err?.message || "Terlalu banyak percobaan. Silakan tunggu dan coba lagi."
+        );
+      } else if (code === "EMAIL_NOT_VERIFIED" || err?.message?.toLowerCase().includes("verify")) {
         setError("Email Anda belum diverifikasi. Silakan periksa kotak masuk email Anda atau kirim ulang verifikasi di bawah.");
       } else {
         setError(
@@ -159,7 +175,36 @@ function LoginForm() {
               </div>
             )}
 
-            {error && (
+            {error && errorCode === "ACCOUNT_LOCKED" && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg leading-none mt-0.5">&#x1f512;</span>
+                  <div>
+                    <p className="font-semibold">Akun Dikunci Sementara</p>
+                    <p className="mt-1">{error}</p>
+                    {retryAfterMinutes && (
+                      <p className="mt-1 text-amber-600">
+                        Estimasi waktu tunggu: <strong>{retryAfterMinutes} menit</strong>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && errorCode === "TOO_MANY_REQUESTS" && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg leading-none mt-0.5">&#x26a0;&#xfe0f;</span>
+                  <div>
+                    <p className="font-semibold">Terlalu Banyak Percobaan</p>
+                    <p className="mt-1">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && errorCode !== "ACCOUNT_LOCKED" && errorCode !== "TOO_MANY_REQUESTS" && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm space-y-2">
                 <div>{error}</div>
                 {(error.includes("verifikasi") || error.includes("verification") || error.includes("verify") || error.includes("belum diverifikasi")) && (

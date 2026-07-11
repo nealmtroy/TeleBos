@@ -13,6 +13,22 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  rateLimit: {
+    storage: "database",
+    modelName: "rateLimit",
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": {
+        window: 10,
+        max: 3,    // 3 requests per 10 seconds per IP
+      },
+      "/sign-up/email": {
+        window: 10,
+        max: 3,    // 3 requests per 10 seconds per IP
+      },
+    },
+  },
   advanced: {
     database: {
       generateId: () => crypto.randomUUID(),
