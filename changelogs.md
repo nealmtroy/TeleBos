@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[27f0dc8d](https://github.com/nealmtroy/TeleBos/commit/27f0dc8d)**: feat: add automatic changelog generation script, pre-commit hook, and GitHub Action
 - **[35956e27](https://github.com/nealmtroy/TeleBos/commit/35956e27)**: fix: call attach_and_reconnect after db commit to prevent gateway timeout deadlocks
 
 ## 2026-07-10
