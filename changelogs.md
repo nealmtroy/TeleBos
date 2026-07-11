@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[2e6152e8](https://github.com/nealmtroy/TeleBos/commit/2e6152e8)**: @ fix: add account-level brute force protection for auth endpoints (vuln-0007)
 - **[d1d62aa2](https://github.com/nealmtroy/TeleBos/commit/d1d62aa2)**: @ fix: prevent email enumeration via password reset endpoint (vuln-0006)
 - **[cd66496a](https://github.com/nealmtroy/TeleBos/commit/cd66496a)**: @ fix: prevent self-purchasing of own listed marketplace accounts (vuln-0004)
 - **[047392c5](https://github.com/nealmtroy/TeleBos/commit/047392c5)**: @ fix: add ALTER TABLE to setup-db.mjs for existing session tables (vuln-0005)
