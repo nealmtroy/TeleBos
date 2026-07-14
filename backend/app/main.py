@@ -657,6 +657,14 @@ def _run_migrations(connection):
         connection.execute(
             text("ALTER TABLE telegram_chats ADD COLUMN is_archived BOOLEAN DEFAULT false NOT NULL")
         )
+    if "is_muted" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN is_muted BOOLEAN DEFAULT false NOT NULL")
+        )
+    if "is_pinned" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN is_pinned BOOLEAN DEFAULT false NOT NULL")
+        )
 
     # ── Account folders ──────────────────────────────────────────────────
     if "account_folders" not in tables:

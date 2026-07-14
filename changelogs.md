@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-14
+- **[90a1a3f2](https://github.com/nealmtroy/TeleBos/commit/90a1a3f2)**: feat(chats): implement Web K replication features (right info drawer, left settings menu, custom context menu, emoji picker, and real-time online green dots)
 - **[8d884cb2](https://github.com/nealmtroy/TeleBos/commit/8d884cb2)**: feat(chat): live typing, online statuses & media lightbox gallery
 - **[51fc2f52](https://github.com/nealmtroy/TeleBos/commit/51fc2f52)**: feat(chat): Telegram Web K replica UI & media streaming backend
 

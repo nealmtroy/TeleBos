@@ -18,6 +18,28 @@ from app.schemas.chat import (
     BatchChatActionRequest,
     JoinChatRequest,
     JoinChatResponse,
+    DeleteMessageRequest,
+    BatchDeleteMessagesRequest,
+    EditMessageRequest,
+    ForwardMessagesRequest,
+    SendReactionRequestSchema,
+    PinMessageRequest,
+    PromoteMemberRequest,
+    UpdateGroupPermissionsRequest,
+    MuteChatRequest,
+    EditChatInfoRequest,
+    SharedMediaResponse,
+    ChatSearchResponse,
+    GroupMemberListResponse,
+    GroupPermissionsResponse,
+    StickerPacksResponse,
+    InviteLinkListResponse,
+    CreateInviteLinkRequest,
+    CreatePollRequest,
+    VotePollRequest,
+    StickerSetResponse,
+    SendStickerRequest,
+    SendScheduledMessageRequest,
 )
 from app.services import account_service, chat_service
 from app.utils.rate_limiter import rate_limiter
@@ -839,6 +861,697 @@ async def stream_message_video_endpoint(
         headers=headers,
         media_type=mime or "video/mp4"
     )
+
+
+# ── Delete message ────────────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}/delete", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_single_message(
+    account_id: str,
+    chat_id: int,
+    msg_id: int,
+    payload: DeleteMessageRequest = DeleteMessageRequest(),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.delete_messages(account, chat_id, [msg_id], revoke=payload.revoke)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/batch-delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_multiple_messages(
+    account_id: str,
+    chat_id: int,
+    payload: BatchDeleteMessagesRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.delete_messages(account, chat_id, payload.message_ids, revoke=payload.revoke)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+
+# ── Edit message ──────────────────────────────────────────────────────────────
+@router.put("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}")
+async def edit_single_message(
+    account_id: str,
+    chat_id: int,
+    msg_id: int,
+    payload: EditMessageRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.edit_message(account, chat_id, msg_id, payload.text)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Forward messages ──────────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/forward")
+async def forward_multiple_messages(
+    account_id: str,
+    chat_id: int,
+    payload: ForwardMessagesRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.forward_messages(
+            account, chat_id, payload.message_ids, payload.to_chat_ids
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Shared media ──────────────────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/chats/{chat_id}/shared-media", response_model=SharedMediaResponse)
+async def get_chat_shared_media(
+    account_id: str,
+    chat_id: int,
+    media_type: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset_id: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        items, has_more, next_offset_id = await chat_service.get_shared_media(
+            account, chat_id, media_type, limit=limit, offset_id=offset_id
+        )
+        return SharedMediaResponse(items=items, has_more=has_more, next_offset_id=next_offset_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Reactions ─────────────────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}/reaction", status_code=status.HTTP_204_NO_CONTENT)
+async def send_message_reaction(
+    account_id: str,
+    chat_id: int,
+    msg_id: int,
+    payload: SendReactionRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.send_reaction(account, chat_id, msg_id, payload.reaction)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.get("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}/reactions")
+async def get_message_reactions(
+    account_id: str,
+    chat_id: int,
+    msg_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.get_reactions(account, chat_id, msg_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Message Pinning ───────────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}/pin", status_code=status.HTTP_204_NO_CONTENT)
+async def pin_chat_message(
+    account_id: str,
+    chat_id: int,
+    msg_id: int,
+    payload: PinMessageRequest = PinMessageRequest(),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.pin_message(account, chat_id, msg_id, silent=payload.silent, pm_oneside=payload.pm_oneside)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/{msg_id}/unpin", status_code=status.HTTP_204_NO_CONTENT)
+async def unpin_chat_message(
+    account_id: str,
+    chat_id: int,
+    msg_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.unpin_message(account, chat_id, msg_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.get("/accounts/{account_id}/chats/{chat_id}/pinned")
+async def get_pinned_chat_messages(
+    account_id: str,
+    chat_id: int,
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.get_pinned_messages(account, chat_id, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Chat Pinning (dialogs) ────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/pin", status_code=status.HTTP_204_NO_CONTENT)
+async def pin_chat_dialog(
+    account_id: str,
+    chat_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.pin_chat(db, account, chat_id, pinned=True)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/unpin", status_code=status.HTTP_204_NO_CONTENT)
+async def unpin_chat_dialog(
+    account_id: str,
+    chat_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.pin_chat(db, account, chat_id, pinned=False)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Searching ─────────────────────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/chats/search", response_model=ChatSearchResponse)
+async def search_all_chats(
+    account_id: str,
+    q: str = Query(...),
+    limit: int = Query(50, ge=1, le=100),
+    offset_id: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.search_global(db, account, q, limit=limit, offset_id=offset_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.get("/accounts/{account_id}/chats/{chat_id}/messages/search")
+async def search_messages_in_chat(
+    account_id: str,
+    chat_id: int,
+    q: str | None = Query(None),
+    media_type: str | None = Query(None),
+    from_user_id: int | None = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset_id: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.search_in_chat(
+            account, chat_id, query=q, media_type=media_type, from_user_id=from_user_id, limit=limit, offset_id=offset_id
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Group Membership ──────────────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/chats/{chat_id}/members", response_model=GroupMemberListResponse)
+async def get_chat_members_list(
+    account_id: str,
+    chat_id: int,
+    q: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        members, total = await chat_service.get_group_members(
+            account, chat_id, query=q, page=page, page_size=page_size
+        )
+        return GroupMemberListResponse(members=members, total=total)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/members/{user_id}/promote", status_code=status.HTTP_204_NO_CONTENT)
+async def promote_chat_member(
+    account_id: str,
+    chat_id: int,
+    user_id: int,
+    payload: PromoteMemberRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        rights_dict = payload.model_dump(exclude_none=True, exclude={"rank"})
+        await chat_service.promote_member(account, chat_id, user_id, rights_dict, payload.rank)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/members/{user_id}/kick", status_code=status.HTTP_204_NO_CONTENT)
+async def kick_chat_member(
+    account_id: str,
+    chat_id: int,
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.kick_member(account, chat_id, user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Mute / Unmute ─────────────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/mute", status_code=status.HTTP_204_NO_CONTENT)
+async def mute_chat_notifications(
+    account_id: str,
+    chat_id: int,
+    payload: MuteChatRequest = MuteChatRequest(),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.mute_chat(db, account, chat_id, payload.duration)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/unmute", status_code=status.HTTP_204_NO_CONTENT)
+async def unmute_chat_notifications(
+    account_id: str,
+    chat_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.unmute_chat(db, account, chat_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Edit Chat Info ────────────────────────────────────────────────────────────
+@router.put("/accounts/{account_id}/chats/{chat_id}/info", status_code=status.HTTP_204_NO_CONTENT)
+async def edit_group_info(
+    account_id: str,
+    chat_id: int,
+    payload: EditChatInfoRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.edit_chat_info(account, chat_id, payload.title, payload.about)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Group Permissions ─────────────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/chats/{chat_id}/permissions", response_model=GroupPermissionsResponse)
+async def get_default_group_permissions(
+    account_id: str,
+    chat_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.get_group_permissions(account, chat_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.put("/accounts/{account_id}/chats/{chat_id}/permissions", status_code=status.HTTP_204_NO_CONTENT)
+async def update_default_group_permissions(
+    account_id: str,
+    chat_id: int,
+    payload: UpdateGroupPermissionsRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.update_group_permissions(account, chat_id, payload.model_dump(exclude_none=True))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Stickers ──────────────────────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/stickers", response_model=StickerPacksResponse)
+async def get_installed_stickers(
+    account_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        packs = await chat_service.get_installed_sticker_packs(account)
+        return StickerPacksResponse(packs=packs)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Invite Links ──────────────────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/chats/{chat_id}/invite-links", response_model=InviteLinkListResponse)
+async def list_exported_invite_links(
+    account_id: str,
+    chat_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        links = await chat_service.get_invite_links(account, chat_id)
+        return InviteLinkListResponse(links=links)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/invite-links", response_model=InviteLinkItem)
+async def create_chat_invite_link(
+    account_id: str,
+    chat_id: int,
+    payload: CreateInviteLinkRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        link = await chat_service.create_invite_link(
+            account,
+            chat_id,
+            title=payload.title,
+            expire_date=payload.expire_date,
+            usage_limit=payload.usage_limit
+        )
+        return InviteLinkItem(**link)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Sticker Sets & Downloads ──────────────────────────────────────────────────
+@router.get("/accounts/{account_id}/stickers/sets/{set_name}", response_model=StickerSetResponse)
+async def get_sticker_set_details(
+    account_id: str,
+    set_name: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        data = await chat_service.get_sticker_set(account, set_name)
+        return StickerSetResponse(**data)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+from fastapi.responses import StreamingResponse
+import io
+
+@router.get("/accounts/{account_id}/stickers/documents/{document_id}/{access_hash}/download")
+async def download_sticker_file(
+    account_id: str,
+    document_id: int,
+    access_hash: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        file_bytes = await chat_service.download_sticker(account, document_id, access_hash)
+        return StreamingResponse(io.BytesIO(file_bytes), media_type="image/webp")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Polls ─────────────────────────────────────────────────────────────────────
+@router.post("/accounts/{account_id}/chats/{chat_id}/polls")
+async def send_chat_poll(
+    account_id: str,
+    chat_id: int,
+    payload: CreatePollRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        res = await chat_service.send_poll(
+            account,
+            chat_id,
+            payload.question,
+            payload.options,
+            payload.is_anonymous,
+            payload.is_quiz,
+            payload.correct_option_idx
+        )
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/{message_id}/votes", status_code=status.HTTP_204_NO_CONTENT)
+async def vote_in_poll(
+    account_id: str,
+    chat_id: int,
+    message_id: int,
+    payload: VotePollRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.vote_poll(account, chat_id, message_id, payload.options)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+# ── Voice Notes ───────────────────────────────────────────────────────────────
+import os
+import tempfile
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/voice")
+async def upload_and_send_voice(
+    account_id: str,
+    chat_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        content = await file.read()
+        suffix = os.path.splitext(file.filename or "")[1] or ".ogg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        try:
+            res = await chat_service.send_voice_note(account, chat_id, tmp_path)
+            return res
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/stickers")
+async def send_sticker_to_chat(
+    account_id: str,
+    chat_id: int,
+    payload: SendStickerRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        res = await chat_service.send_sticker(account, chat_id, payload.document_id, payload.access_hash)
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.get("/accounts/{account_id}/chats/search")
+async def search_messages_globally(
+    account_id: str,
+    q: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.search_global_messages(account, q)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.get("/accounts/{account_id}/chats/{chat_id}/messages/search")
+async def search_messages_in_chat(
+    account_id: str,
+    chat_id: int,
+    q: str | None = Query(None),
+    media_type: str | None = Query(None),
+    date_from: int | None = Query(None),
+    date_to: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.search_messages(account, chat_id, q, media_type, date_from, date_to)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.get("/accounts/{account_id}/chats/{chat_id}/messages/scheduled")
+async def list_scheduled_messages(
+    account_id: str,
+    chat_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.get_scheduled_messages(account, chat_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post("/accounts/{account_id}/chats/{chat_id}/messages/scheduled")
+async def send_scheduled_msg(
+    account_id: str,
+    chat_id: int,
+    payload: SendScheduledMessageRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        return await chat_service.send_scheduled_message(account, chat_id, payload.text, payload.schedule_date, payload.reply_to)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.delete("/accounts/{account_id}/chats/{chat_id}/messages/scheduled")
+async def delete_scheduled_msgs(
+    account_id: str,
+    chat_id: int,
+    message_ids: list[int] = Query(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        await chat_service.delete_scheduled_messages(account, chat_id, message_ids)
+        return {"status": "success"}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+
 
 
 
