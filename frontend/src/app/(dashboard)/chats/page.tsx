@@ -44,6 +44,7 @@ import {
   Folder,
   Play,
   Pause,
+  Smile,
 } from "lucide-react";
 
 export default function ChatsPage() {
@@ -58,6 +59,21 @@ export default function ChatsPage() {
       <ChatsContent />
     </Suspense>
   );
+}
+
+function getAvatarGradient(peerId: number) {
+  const colors = [
+    "from-red-400 to-red-600",
+    "from-orange-400 to-orange-600",
+    "from-amber-400 to-amber-600",
+    "from-green-400 to-green-600",
+    "from-teal-400 to-teal-600",
+    "from-blue-400 to-blue-600",
+    "from-violet-400 to-violet-600",
+    "from-pink-400 to-pink-600",
+  ];
+  const idx = Math.abs(peerId) % colors.length;
+  return colors[idx];
 }
 
 interface ChatItem {
@@ -138,6 +154,8 @@ function ChatsContent() {
   // ── Folder filter state ──────────────────────────────────────────────────
   const [folderFilter, setFolderFilter] = useState<FolderFilter>({ type: "all" });
   const [typingChats, setTypingChats] = useState<Record<number, string>>({});
+  const [onlineUsers, setOnlineUsers] = useState<Record<number, boolean>>({});
+  const [showLeftMenu, setShowLeftMenu] = useState(false);
 
   // ── Selection mode state ─────────────────────────────────────────────────
   const [selectionMode, setSelectionMode] = useState(false);
@@ -271,6 +289,11 @@ function ChatsContent() {
             return next;
           });
         }, 4000);
+      } else if (data.type === "user_update") {
+        setOnlineUsers((prev) => ({
+          ...prev,
+          [data.user_id]: data.status.includes("Online") || data.status.includes("online"),
+        }));
       } else if (data.type === "new_message" || data.type === "outgoing_message") {
         const isMsgFromActiveChat = data.chat_id === selectedChatId;
         
@@ -551,16 +574,86 @@ function ChatsContent() {
       {/* ── Left Panel: Chat List ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex-col h-full border-r border-slate-200 bg-white transition-all duration-300 ease-in-out relative z-10",
+          "flex-col h-full border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#17212b] transition-all duration-300 ease-in-out relative z-10",
           selectedChatId
             ? "hidden lg:flex w-[360px] xl:w-[380px] lg:shrink-0"
             : "flex flex-1 min-w-0 lg:w-[360px] lg:shrink-0"
         )}
       >
+        {/* Left Settings Menu Overlay */}
+        {showLeftMenu && (
+          <div className="absolute inset-0 bg-white dark:bg-[#17212b] z-20 flex flex-col animate-in slide-in-from-left duration-200">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+              <button
+                onClick={() => setShowLeftMenu(false)}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Settings</h2>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {/* Profile Block */}
+              <div className="flex flex-col items-center py-4 bg-slate-50 dark:bg-black/10 rounded-2xl p-4 border border-slate-100 dark:border-none">
+                <div className="w-16 h-16 rounded-full bg-primary text-white font-bold text-xl flex items-center justify-center mb-3">
+                  T
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">TeleBos Client</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Control panel & replica client</p>
+              </div>
+
+              {/* Toggles */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-1.5">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Dark Mode</span>
+                    <span className="text-[10px] text-slate-400">Toggle dark / light color scheme</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      document.documentElement.classList.toggle("dark");
+                    }}
+                    className="w-10 h-6 bg-primary rounded-full relative flex items-center px-1 cursor-pointer transition active:scale-95 shadow-inner"
+                  >
+                    <span className="w-4 h-4 bg-white rounded-full shadow-md animate-in duration-200" />
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between py-1.5 border-t border-slate-100 dark:border-slate-800 pt-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Desktop Notifications</span>
+                    <span className="text-[10px] text-slate-400">Enable sound and alert popups</span>
+                  </div>
+                  <button className="w-10 h-6 bg-slate-200 dark:bg-slate-800 rounded-full relative flex items-center px-1 cursor-pointer">
+                    <span className="w-4 h-4 bg-white rounded-full shadow-md translate-x-0" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400 font-semibold select-none">
+              TeleBos Web K Replica v1.0.0
+            </div>
+          </div>
+        )}
+
         {/* List Header */}
-        <div className="p-4 border-b border-slate-100 space-y-3">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#17212b] space-y-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-bold text-slate-900">{_("chats.title")}</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowLeftMenu(true)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{_("chats.title")}</h1>
+            </div>
             <div className="flex items-center gap-2">
               {connected ? (
                 <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium bg-green-50 px-2 py-0.5 rounded-full">
@@ -728,7 +821,7 @@ function ChatsContent() {
                         )}
 
                         {/* Avatar */}
-                        <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50">
+                        <div className="w-11 h-11 rounded-full flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50">
                           {isAuthenticated && selectedAccount && (
                             <img
                               src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
@@ -737,14 +830,14 @@ function ChatsContent() {
                                 const fb = e.currentTarget.nextElementSibling as HTMLElement;
                                 if (fb) fb.style.display = "flex";
                               }}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover rounded-full"
                               alt=""
                             />
                           )}
                           <div
                             className={cn(
-                              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none",
-                              chat.chat_type === "user" && "bg-gradient-to-br from-blue-500 to-indigo-600",
+                              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none rounded-full",
+                              chat.chat_type === "user" && `bg-gradient-to-br ${getAvatarGradient(chat.chat_id)}`,
                               (chat.chat_type === "group" || chat.chat_type === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
                               chat.chat_type === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
                               chat.chat_type === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
@@ -753,6 +846,11 @@ function ChatsContent() {
                           >
                             {(chat.title || "?")[0]?.toUpperCase()}
                           </div>
+
+                          {/* Online status green dot */}
+                          {onlineUsers[chat.chat_id] && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full z-10 shadow-sm animate-pulse" />
+                          )}
 
                           {/* Archived badge on avatar */}
                           {chat.is_archived && !selectionMode && (
@@ -1267,6 +1365,11 @@ function MessagePane({
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: "photo" | "video" } | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [showRightDrawer, setShowRightDrawer] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [sharedMediaTab, setSharedMediaTab] = useState<"media" | "docs">("media");
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: MessageItem } | null>(null);
+
   // Fetch messages — staleTime:0 ensures fresh data on every mount
   const { data: messagesData, isLoading, isFetching } = useQuery<{
     messages: MessageItem[];
@@ -1488,17 +1591,23 @@ function MessagePane({
   }
 
   return (
-    <>
+    <div className="flex-1 flex flex-col h-full min-w-0 relative bg-white dark:bg-[#0e1621] overflow-hidden">
       {/* Chat header */}
-      <div className="flex items-center gap-3.5 px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+      <div
+        onClick={() => setShowRightDrawer(!showRightDrawer)}
+        className="flex items-center gap-3.5 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#17212b] flex-shrink-0 cursor-pointer select-none hover:bg-slate-50 dark:hover:bg-slate-800/40 transition duration-150 z-10"
+      >
         <button
-          onClick={onBack}
-          className="lg:hidden p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-xl transition duration-200 active:scale-95"
+          onClick={(e) => {
+            e.stopPropagation();
+            onBack();
+          }}
+          className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 rounded-xl transition duration-200 active:scale-95"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
 
-        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-slate-100 relative ring-2 ring-slate-100/50">
+        <div className="w-10 h-10 rounded-full flex-shrink-0 bg-slate-100 relative ring-2 ring-slate-100/50">
           {isAuthenticated && accountId && (
             <img
               src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo`}
@@ -1507,14 +1616,14 @@ function MessagePane({
                 const fb = e.currentTarget.nextElementSibling as HTMLElement;
                 if (fb) fb.style.display = "flex";
               }}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover rounded-full"
               alt=""
             />
           )}
           <div
             className={cn(
-              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none",
-              chatType === "user" && "bg-gradient-to-br from-blue-500 to-indigo-600",
+              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none rounded-full",
+              chatType === "user" && `bg-gradient-to-br ${getAvatarGradient(chatId)}`,
               (chatType === "group" || chatType === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
               chatType === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
               chatType === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
@@ -1573,312 +1682,472 @@ function MessagePane({
         )}
       </div>
 
-      {/* Messages area */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-3 telegram-wallpaper custom-scroll"
-      >
-        {isLoading && allMessages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : allMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center mb-4">
-              <MessageSquare className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="text-sm font-semibold text-slate-500">{_("chats.noMessages")}</p>
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto space-y-1">
-            {/* Load older button */}
-            {hasMore && (
-              <div className="flex justify-center py-3">
-                <button
-                  onClick={handleLoadOlder}
-                  disabled={isFetching}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:shadow-sm transition disabled:opacity-50"
-                >
-                  {isFetching ? (
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                  ) : (
-                    <ChevronUp className="h-3 w-3" />
-                  )}
-                  {_("chats.loadOlder")}
-                </button>
+      {/* Main middle body: Scroll Area + Right Drawer */}
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+        {/* Messages list container */}
+        <div className="flex-1 flex flex-col h-full min-w-0">
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto px-4 py-3 telegram-wallpaper custom-scroll"
+          >
+            {isLoading && allMessages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            )}
-
-            {groupedMessages.map((group) => (
-              <div key={group.date}>
-                {/* Date separator */}
-                <div className="flex items-center justify-center py-4 sticky top-0 z-10">
-                  <span className="px-3.5 py-1 date-header text-[11px] text-white rounded-full border border-white/5 font-semibold select-none shadow-sm">
-                    {group.date}
-                  </span>
+            ) : allMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 dark:bg-[#17212b] dark:border-slate-800 flex items-center justify-center mb-4">
+                  <MessageSquare className="h-5 w-5 text-slate-400" />
                 </div>
-
-                {group.messages.map((msg, idx) => {
-                  const isOut = msg.is_outgoing;
-                  
-                  // Grouping calculation (5 minute window)
-                  const isFirst =
-                    idx === 0 ||
-                    group.messages[idx - 1]?.sender_id !== msg.sender_id ||
-                    (new Date(msg.date).getTime() - new Date(group.messages[idx - 1].date).getTime() > 5 * 60 * 1000);
-                    
-                  const isLast =
-                    idx === group.messages.length - 1 ||
-                    group.messages[idx + 1]?.sender_id !== msg.sender_id ||
-                    (new Date(group.messages[idx + 1].date).getTime() - new Date(msg.date).getTime() > 5 * 60 * 1000);
-
-                  const showName =
-                    !isOut &&
-                    (chatType === "group" || chatType === "supergroup") &&
-                    isFirst;
-
-                  const replyText = getReplyText(msg.reply_to_msg_id);
-                  const MediaIcon = msg.media_type ? MEDIA_ICONS[msg.media_type] || Paperclip : null;
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        "flex",
-                        isFirst ? "mt-2.5" : "mt-[3px]",
-                        isOut ? "justify-end" : "justify-start"
-                      )}
+                <p className="text-sm font-semibold text-slate-500">{_("chats.noMessages")}</p>
+              </div>
+            ) : (
+              <div className="max-w-3xl mx-auto space-y-1">
+                {/* Load older button */}
+                {hasMore && (
+                  <div className="flex justify-center py-3">
+                    <button
+                      onClick={handleLoadOlder}
+                      disabled={isFetching}
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white dark:bg-[#17212b] dark:border-slate-800 border border-slate-200 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:shadow-sm transition disabled:opacity-50"
                     >
-                      <div
-                        className={cn(
-                          "group relative max-w-[75%] min-w-[90px] px-3.5 py-2 text-[13px] leading-relaxed shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] transition-all duration-150",
-                          isOut ? "bubble-out" : "bubble-in border border-slate-200/40 dark:border-none",
-                          // Geometry rules (Tails)
-                          !isOut
-                            ? (isFirst && isLast ? "rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-none" :
-                               isFirst ? "rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-md" :
-                               isLast ? "rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-none" :
-                               "rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-md")
-                            : (isFirst && isLast ? "rounded-tl-2xl rounded-tr-2xl rounded-br-none rounded-bl-2xl" :
-                               isFirst ? "rounded-tl-2xl rounded-tr-2xl rounded-br-md rounded-bl-2xl" :
-                               isLast ? "rounded-tl-2xl rounded-tr-md rounded-br-none rounded-bl-2xl" :
-                               "rounded-tl-2xl rounded-tr-md rounded-br-md rounded-bl-2xl")
-                        )}
-                      >
-                        {/* Custom SVG tails for pixel-perfect Web K replica */}
-                        {isLast && !isOut && (
-                          <svg
-                            className="absolute bottom-0 -left-[5px] tail-in"
-                            width="9"
-                            height="12"
-                            viewBox="0 0 9 12"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M9 12C4.5 12 0 8.5 0 0V12H9Z"
-                              fill="currentColor"
-                            />
-                          </svg>
-                        )}
-                        {isLast && isOut && (
-                          <svg
-                            className="absolute bottom-0 -right-[5px] tail-out"
-                            width="9"
-                            height="12"
-                            viewBox="0 0 9 12"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M0 12C4.5 12 9 8.5 9 0V12H0Z"
-                              fill="currentColor"
-                            />
-                          </svg>
-                        )}
-                        {/* Sender name in groups */}
-                        {showName && msg.sender_name && (
-                          <p className="text-[11px] font-bold text-primary mb-1 truncate select-none">
-                            {msg.sender_name}
-                          </p>
-                        )}
+                      {isFetching ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                      ) : (
+                        <ChevronUp className="h-3 w-3" />
+                      )}
+                      {_("chats.loadOlder")}
+                    </button>
+                  </div>
+                )}
 
-                        {/* Reply reference */}
-                        {msg.reply_to_msg_id && (
-                          <div
-                            className={cn(
-                              "flex items-center gap-1.5 mb-1.5 px-2.5 py-1 rounded-lg text-[10px] border-l-2 font-medium cursor-pointer",
-                              isOut
-                                ? "bg-black/10 border-white/60 text-white/90"
-                                : "bg-slate-50 border-primary/50 text-slate-500"
-                            )}
-                          >
-                            <Reply className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{replyText || "..."}</span>
-                          </div>
-                        )}
+                {groupedMessages.map((group) => (
+                  <div key={group.date}>
+                    {/* Date separator */}
+                    <div className="flex items-center justify-center py-4 sticky top-0 z-10">
+                      <span className="px-3.5 py-1 date-header text-[11px] text-white rounded-full border border-white/5 font-semibold select-none shadow-sm">
+                        {group.date}
+                      </span>
+                    </div>
 
-                        {/* Media rendering */}
-                        {msg.media_type && (
-                          <div className="mb-1.5 max-w-full">
-                            {msg.media_type === "photo" && (
-                              <MessagePhoto
-                                messageId={msg.id}
-                                accountId={accountId}
-                                chatId={chatId}
-                                placeholder={msg.stripped_thumb}
-                                getApiUrl={getApiUrl}
-                                onOpenLightbox={(url) => setLightboxMedia({ url, type: "photo" })}
-                              />
-                            )}
-                            {msg.media_type === "video" && (
-                              <MessageVideo
-                                messageId={msg.id}
-                                accountId={accountId}
-                                chatId={chatId}
-                                poster={msg.stripped_thumb}
-                                getApiUrl={getApiUrl}
-                              />
-                            )}
-                            {msg.media_type === "video_note" && (
-                              <MessageVideoNote
-                                messageId={msg.id}
-                                accountId={accountId}
-                                chatId={chatId}
-                                getApiUrl={getApiUrl}
-                              />
-                            )}
-                            {msg.media_type === "voice" && (
-                              <MessageVoice
-                                messageId={msg.id}
-                                accountId={accountId}
-                                chatId={chatId}
-                                waveform={msg.waveform_levels || []}
-                                getApiUrl={getApiUrl}
-                                isOut={isOut}
-                              />
-                            )}
-                            {msg.media_type === "sticker" && (
-                              <MessageSticker
-                                messageId={msg.id}
-                                accountId={accountId}
-                                chatId={chatId}
-                                getApiUrl={getApiUrl}
-                              />
-                            )}
-                            {msg.media_type === "document" && (
-                              <MessageDocument
-                                messageId={msg.id}
-                                accountId={accountId}
-                                chatId={chatId}
-                                filename={msg.media_filename || "file"}
-                                fileSize={msg.file_size}
-                                getApiUrl={getApiUrl}
-                                isOut={isOut}
-                              />
-                            )}
-                            {/* Fallback for other media types (location, contact, poll, link) */}
-                            {["photo", "video", "video_note", "voice", "sticker", "document"].indexOf(msg.media_type) === -1 && MediaIcon && (
-                              <div
-                                className={cn(
-                                  "inline-flex items-center gap-1.5 text-[11px] font-semibold",
-                                  isOut ? "text-primary-100" : "text-slate-500"
-                                )}
-                              >
-                                <MediaIcon className="h-3.5 w-3.5" />
-                                {msg.media_filename || msg.media_type}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                    {group.messages.map((msg, idx) => {
+                      const isOut = msg.is_outgoing;
+                      
+                      // Grouping calculation (5 minute window)
+                      const isFirst =
+                        idx === 0 ||
+                        group.messages[idx - 1]?.sender_id !== msg.sender_id ||
+                        (new Date(msg.date).getTime() - new Date(group.messages[idx - 1].date).getTime() > 5 * 60 * 1000);
+                        
+                      const isLast =
+                        idx === group.messages.length - 1 ||
+                        group.messages[idx + 1]?.sender_id !== msg.sender_id ||
+                        (new Date(group.messages[idx + 1].date).getTime() - new Date(msg.date).getTime() > 5 * 60 * 1000);
 
-                        {/* Message text */}
-                        {msg.text && (
-                          <p className="whitespace-pre-wrap break-words">
-                            {msg.text}
-                          </p>
-                        )}
+                      const showName =
+                        !isOut &&
+                        (chatType === "group" || chatType === "supergroup") &&
+                        isFirst;
 
-                        {/* Timestamp + reply button + checkmarks */}
+                      const replyText = getReplyText(msg.reply_to_msg_id);
+                      const MediaIcon = msg.media_type ? MEDIA_ICONS[msg.media_type] || Paperclip : null;
+
+                      return (
                         <div
+                          key={msg.id}
                           className={cn(
-                            "flex items-center gap-1.5 mt-1 select-none",
-                            isOut ? "justify-end" : "justify-between"
+                            "flex",
+                            isFirst ? "mt-2.5" : "mt-[3px]",
+                            isOut ? "justify-end" : "justify-start"
                           )}
                         >
-                          {!isOut && (
-                            <button
-                              onClick={() => setReplyTo(msg)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-100 text-slate-400"
-                              title={_("chats.reply")}
-                            >
-                              <Reply className="h-3 w-3" />
-                            </button>
-                          )}
-
-                          <div className="flex items-center gap-1">
-                            <span
-                              className={cn(
-                                "text-[9px] font-medium tracking-wide",
-                                isOut ? "text-primary-100/90" : "text-slate-400"
-                              )}
-                            >
-                              {new Date(msg.date).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: false,
-                              })}
-                            </span>
-
-                            {isOut && (
+                          <div
+                            className={cn(
+                              "group relative max-w-[75%] min-w-[90px] px-3.5 py-2 text-[13px] leading-relaxed shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] transition-all duration-150 cursor-pointer select-none",
+                              isOut ? "bubble-out" : "bubble-in border border-slate-200/40 dark:border-none",
+                              // Geometry rules (Tails)
+                              !isOut
+                                ? (isFirst && isLast ? "rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-none" :
+                                   isFirst ? "rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-md" :
+                                   isLast ? "rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-none" :
+                                   "rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-md")
+                                : (isFirst && isLast ? "rounded-tl-2xl rounded-tr-2xl rounded-br-none rounded-bl-2xl" :
+                                   isFirst ? "rounded-tl-2xl rounded-tr-2xl rounded-br-md rounded-bl-2xl" :
+                                   isLast ? "rounded-tl-2xl rounded-tr-md rounded-br-none rounded-bl-2xl" :
+                                   "rounded-tl-2xl rounded-tr-md rounded-br-md rounded-bl-2xl")
+                            )}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setContextMenu({
+                                x: e.clientX,
+                                y: e.clientY,
+                                msg,
+                              });
+                            }}
+                          >
+                            {/* Custom SVG tails for pixel-perfect Web K replica */}
+                            {isLast && !isOut && (
                               <svg
-                                className="h-3.5 w-3.5 text-primary-100/90"
-                                viewBox="0 0 16 15"
+                                className="absolute bottom-0 -left-[5px] tail-in"
+                                width="9"
+                                height="12"
+                                viewBox="0 0 9 12"
                                 fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
                               >
                                 <path
-                                  d="M1.5 7.5L5.5 11.5L14.5 2.5"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M5.5 7.5L9.5 11.5L14.5 6.5"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                                  d="M9 12C4.5 12 0 8.5 0 0V12H9Z"
+                                  fill="currentColor"
                                 />
                               </svg>
                             )}
-                          </div>
+                            {isLast && isOut && (
+                              <svg
+                                className="absolute bottom-0 -right-[5px] tail-out"
+                                width="9"
+                                height="12"
+                                viewBox="0 0 9 12"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="M0 12C4.5 12 9 8.5 9 0V12H0Z"
+                                  fill="currentColor"
+                                />
+                              </svg>
+                            )}
+                            {/* Sender name in groups */}
+                            {showName && msg.sender_name && (
+                              <p className="text-[11px] font-bold text-primary mb-1 truncate select-none">
+                                {msg.sender_name}
+                              </p>
+                            )}
 
-                          {isOut && (
-                            <button
-                              onClick={() => setReplyTo(msg)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10 text-primary-100"
-                              title={_("chats.reply")}
+                            {/* Reply reference */}
+                            {msg.reply_to_msg_id && (
+                              <div
+                                className={cn(
+                                  "flex items-center gap-1.5 mb-1.5 px-2.5 py-1 rounded-lg text-[10px] border-l-2 font-medium cursor-pointer",
+                                  isOut
+                                    ? "bg-black/10 border-white/60 text-white/90"
+                                    : "bg-slate-50 border-primary/50 text-slate-500"
+                                )}
+                              >
+                                <Reply className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{replyText || "..."}</span>
+                              </div>
+                            )}
+
+                            {/* Media rendering */}
+                            {msg.media_type && (
+                              <div className="mb-1.5 max-w-full">
+                                {msg.media_type === "photo" && (
+                                  <MessagePhoto
+                                    messageId={msg.id}
+                                    accountId={accountId}
+                                    chatId={chatId}
+                                    placeholder={msg.stripped_thumb}
+                                    getApiUrl={getApiUrl}
+                                    onOpenLightbox={(url) => setLightboxMedia({ url, type: "photo" })}
+                                  />
+                                )}
+                                {msg.media_type === "video" && (
+                                  <MessageVideo
+                                    messageId={msg.id}
+                                    accountId={accountId}
+                                    chatId={chatId}
+                                    poster={msg.stripped_thumb}
+                                    getApiUrl={getApiUrl}
+                                  />
+                                )}
+                                {msg.media_type === "video_note" && (
+                                  <MessageVideoNote
+                                    messageId={msg.id}
+                                    accountId={accountId}
+                                    chatId={chatId}
+                                    getApiUrl={getApiUrl}
+                                  />
+                                )}
+                                {msg.media_type === "voice" && (
+                                  <MessageVoice
+                                    messageId={msg.id}
+                                    accountId={accountId}
+                                    chatId={chatId}
+                                    waveform={msg.waveform_levels || []}
+                                    getApiUrl={getApiUrl}
+                                    isOut={isOut}
+                                  />
+                                )}
+                                {msg.media_type === "sticker" && (
+                                  <MessageSticker
+                                    messageId={msg.id}
+                                    accountId={accountId}
+                                    chatId={chatId}
+                                    getApiUrl={getApiUrl}
+                                  />
+                                )}
+                                {msg.media_type === "document" && msg.media_filename && (
+                                  <MessageDocument
+                                    messageId={msg.id}
+                                    accountId={accountId}
+                                    chatId={chatId}
+                                    filename={msg.media_filename}
+                                    fileSize={msg.file_size}
+                                    getApiUrl={getApiUrl}
+                                    isOut={isOut}
+                                  />
+                                )}
+                              </div>
+                            )}
+
+                            {/* Message text */}
+                            {msg.text && (
+                              <p className="whitespace-pre-wrap break-words">
+                                {msg.text}
+                              </p>
+                            )}
+
+                            {/* Timestamp + reply button + checkmarks */}
+                            <div
+                              className={cn(
+                                "flex items-center gap-1.5 mt-1 select-none",
+                                isOut ? "justify-end" : "justify-between"
+                              )}
                             >
-                              <Reply className="h-3 w-3" />
-                            </button>
+                              {!isOut && (
+                                <button
+                                  onClick={() => setReplyTo(msg)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                                  title={_("chats.reply")}
+                                >
+                                  <Reply className="h-3 w-3" />
+                                </button>
+                              )}
+
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-medium tracking-wide",
+                                    isOut ? "text-primary-100/90" : "text-slate-400"
+                                  )}
+                                >
+                                  {new Date(msg.date).toLocaleTimeString("en-US", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                  })}
+                                </span>
+
+                                {isOut && (
+                                  <svg
+                                    className="h-3.5 w-3.5 text-primary-100/90"
+                                    viewBox="0 0 16 15"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                  >
+                                    <path
+                                      d="M1.5 7.5L5.5 11.5L14.5 2.5"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                    <path
+                                      d="M5.5 7.5L9.5 11.5L14.5 6.5"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                )}
+                              </div>
+
+                              {isOut && (
+                                <button
+                                  onClick={() => setReplyTo(msg)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10 text-primary-100"
+                                  title={_("chats.reply")}
+                                >
+                                  <Reply className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Drawer (Profile & Shared Media) */}
+        {showRightDrawer && (
+          <div className="w-80 h-full border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#17212b] flex flex-col flex-shrink-0 z-30 animate-in slide-in-from-right duration-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">User Info</h3>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRightDrawer(false);
+                }}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Profile Detail */}
+            <div className="p-4 flex flex-col items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-black/10">
+              <div className="w-20 h-20 rounded-full flex-shrink-0 mb-3 relative bg-slate-100 ring-2 ring-slate-100/50">
+                {isAuthenticated && accountId && (
+                  <img
+                    src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo`}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fb) fb.style.display = "flex";
+                    }}
+                    className="w-full h-full object-cover rounded-full"
+                    alt=""
+                  />
+                )}
+                <div
+                  className={cn(
+                    "w-full h-full flex items-center justify-center text-white font-bold text-2xl select-none rounded-full",
+                    getAvatarGradient(chatId)
+                  )}
+                  style={{ display: isAuthenticated && accountId ? "none" : "flex" }}
+                >
+                  {(chatTitle || "?")[0]?.toUpperCase()}
+                </div>
+              </div>
+              <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 text-center">{chatTitle}</h4>
+              <p className="text-xs text-slate-400 capitalize mt-0.5">{chatType}</p>
+            </div>
+
+            {/* Shared Media Tabs */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSharedMediaTab("media");
+                }}
+                className={cn(
+                  "flex-1 py-3 text-center border-b-2 transition",
+                  sharedMediaTab === "media"
+                    ? "border-primary text-primary font-bold"
+                    : "border-transparent hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                Media
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSharedMediaTab("docs");
+                }}
+                className={cn(
+                  "flex-1 py-3 text-center border-b-2 transition",
+                  sharedMediaTab === "docs"
+                    ? "border-primary text-primary font-bold"
+                    : "border-transparent hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                Docs
+              </button>
+            </div>
+
+            {/* List of Shared Media */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scroll">
+              {sharedMediaTab === "media" ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {allMessages
+                    .filter((m) => m.media_type === "photo" || m.media_type === "video")
+                    .map((msg) => {
+                      const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media`;
+                      return (
+                        <div
+                          key={msg.id}
+                          onClick={() => setLightboxMedia({ url: mediaUrl, type: msg.media_type === "photo" ? "photo" : "video" })}
+                          className="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 active:scale-95 transition border border-slate-200/40 dark:border-none relative"
+                        >
+                          {msg.stripped_thumb ? (
+                            <img src={msg.stripped_thumb} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                              <Image className="h-4 w-4 text-slate-400" />
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-
-            <div ref={messagesEndRef} />
+                      );
+                    })}
+                  {allMessages.filter((m) => m.media_type === "photo" || m.media_type === "video").length === 0 && (
+                    <div className="col-span-3 text-center py-8 text-xs text-slate-400 font-medium">No media found</div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {allMessages
+                    .filter((m) => m.media_type === "document")
+                    .map((msg) => {
+                      const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media`;
+                      return (
+                        <a
+                          key={msg.id}
+                          href={downloadUrl}
+                          download={msg.media_filename || "file"}
+                          className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition text-left cursor-pointer truncate"
+                        >
+                          <FileText className="h-4.5 w-4.5 text-primary flex-shrink-0" />
+                          <span className="text-xs font-semibold truncate text-slate-700 dark:text-slate-200">
+                            {msg.media_filename || "file"}
+                          </span>
+                        </a>
+                      );
+                    })}
+                  {allMessages.filter((m) => m.media_type === "document").length === 0 && (
+                    <div className="text-center py-8 text-xs text-slate-400 font-medium">No files found</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {/* ── Message input zone (Web K Floating Replica) ── */}
-      <div className="w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent flex-shrink-0 z-20">
+      <div className="w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent flex-shrink-0 z-20 relative">
+        {/* Emoji Picker Overlay */}
+        {showEmojiPicker && (
+          <div
+            className="absolute bottom-16 left-4 bg-white dark:bg-[#17212b] border border-slate-200/50 dark:border-none rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.15)] p-3.5 z-30 w-72 animate-in slide-in-from-bottom-2 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="grid grid-cols-8 gap-2 text-center text-lg h-48 overflow-y-auto custom-scroll pr-1">
+              {["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕"].map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => {
+                    setMessageText((prev) => prev + emoji);
+                    inputRef.current?.focus();
+                  }}
+                  className="hover:scale-125 transition duration-100"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col bg-white dark:bg-[#17212b] rounded-2xl shadow-[0_1.5px_4px_rgba(0,0,0,0.12)] border border-slate-200/30 dark:border-none overflow-hidden">
           
           {/* Floating Reply preview */}
@@ -1925,6 +2194,18 @@ function MessagePane({
 
           {/* Text area and action buttons */}
           <div className="flex items-end gap-2 px-3 py-2 w-full">
+            {/* Emojis smiley button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEmojiPicker(!showEmojiPicker);
+              }}
+              className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+              title="Emojis"
+            >
+              <Smile className="h-5 w-5" />
+            </button>
+
             <button
               onClick={() => fileInputRef.current?.click()}
               className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
@@ -1989,6 +2270,47 @@ function MessagePane({
         </div>
       )}
 
+      {/* Custom Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed bg-white dark:bg-[#17212b] border border-slate-200/50 dark:border-none rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] py-1.5 z-40 w-44 text-[13px] font-semibold text-slate-700 dark:text-slate-200 animate-in fade-in-0 duration-100"
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              setReplyTo(contextMenu.msg);
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-[#202b36] transition flex items-center gap-2"
+          >
+            <Reply className="h-3.5 w-3.5" />
+            {_("chats.reply")}
+          </button>
+          <button
+            onClick={() => {
+              if (contextMenu.msg.text) {
+                navigator.clipboard.writeText(contextMenu.msg.text);
+              }
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-[#202b36] transition flex items-center gap-2 border-t border-slate-100 dark:border-slate-800"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Copy Text
+          </button>
+          <button
+            onClick={() => {
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-[#202b36] text-red-500 transition flex items-center gap-2 border-t border-slate-100 dark:border-slate-800"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete Message
+          </button>
+        </div>
+      )}
+
       {/* Lightbox Media Gallery Modal */}
       {lightboxMedia && (
         <div
@@ -2033,6 +2355,6 @@ function MessagePane({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
