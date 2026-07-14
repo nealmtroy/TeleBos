@@ -570,6 +570,59 @@ async def get_messages(
         if msg.reply_to:
             reply_to_msg_id = getattr(msg.reply_to, "reply_to_msg_id", None)
 
+        # Extract stripped thumbnail
+        stripped_thumb_base64 = None
+        if msg.media:
+            from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+            from telethon.utils import stripped_photo_to_jpg
+            import base64
+            
+            stripped_bytes = None
+            if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
+                for size in getattr(msg.media.photo, "sizes", []):
+                    if type(size).__name__ == "PhotoStrippedSize":
+                        stripped_bytes = size.bytes
+                        break
+            elif isinstance(msg.media, MessageMediaDocument) and msg.media.document:
+                for size in getattr(msg.media.document, "thumbs", []):
+                    if type(size).__name__ == "PhotoStrippedSize":
+                        stripped_bytes = size.bytes
+                        break
+                        
+            if stripped_bytes:
+                try:
+                    jpeg_bytes = stripped_photo_to_jpg(stripped_bytes)
+                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode('utf-8')
+                except Exception as e:
+                    logger.warning("Failed to decode stripped thumbnail for message %s: %s", msg.id, e)
+
+        # Extract voice waveform levels
+        waveform_levels = []
+        if media_type == "voice" and msg.media and hasattr(msg.media, "document") and msg.media.document:
+            from telethon.utils import decode_waveform
+            for attr in getattr(msg.media.document, "attributes", []):
+                if type(attr).__name__ == "DocumentAttributeAudio" and getattr(attr, "voice", False):
+                    raw_wave = getattr(attr, "waveform", None)
+                    if raw_wave:
+                        try:
+                            waveform_levels = list(decode_waveform(raw_wave))
+                        except Exception as e:
+                            logger.warning("Failed to decode waveform for message %s: %s", msg.id, e)
+                    break
+
+        # Extract file size and mime_type
+        file_size = None
+        mime_type = None
+        if msg.media and hasattr(msg.media, "document") and msg.media.document:
+            file_size = msg.media.document.size
+            mime_type = msg.media.document.mime_type
+        elif msg.media and hasattr(msg.media, "photo") and msg.media.photo:
+            sizes = getattr(msg.media.photo, "sizes", [])
+            if sizes:
+                largest = sizes[-1]
+                file_size = getattr(largest, "size", None)
+            mime_type = "image/jpeg"
+
         result.append({
             "id": msg.id,
             "sender_id": sender_id,
@@ -581,6 +634,10 @@ async def get_messages(
             "reply_preview": reply_preview,
             "media_type": media_type,
             "media_filename": media_filename,
+            "stripped_thumb": stripped_thumb_base64,
+            "waveform_levels": waveform_levels,
+            "file_size": file_size,
+            "mime_type": mime_type,
         })
 
     return result, has_more

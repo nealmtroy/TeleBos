@@ -660,3 +660,185 @@ async def get_chat_photo(
         return get_fallback_svg_response(is_group=(chat_id < 0))
 
 
+@router.get("/accounts/{account_id}/chats/{chat_id}/messages/{message_id}/media")
+async def get_message_media_endpoint(
+    account_id: str,
+    chat_id: int,
+    message_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Download and cache a message's media (photo, document, voice note, etc.) and return it."""
+    import os
+    from fastapi.responses import FileResponse
+    from app.services import account_service
+    from app.services.telegram_client import client_pool
+    from app.utils.encryption import decrypt
+    from app.services.chat_service import resolve_chat_entity
+
+    # Define a local cache folder for message media files
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(chat_id))
+    os.makedirs(media_cache_dir, exist_ok=True)
+
+    # Check if we already have it cached.
+    cached_file = None
+    if os.path.exists(media_cache_dir):
+        for f in os.listdir(media_cache_dir):
+            if f.startswith(f"{message_id}."):
+                cached_file = os.path.join(media_cache_dir, f)
+                break
+
+    if cached_file and os.path.exists(cached_file):
+        import mimetypes
+        mime, _ = mimetypes.guess_type(cached_file)
+        return FileResponse(cached_file, media_type=mime or "application/octet-stream")
+
+    # If not cached, download using Telethon client
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise HTTPException(status_code=400, detail="Account is disconnected")
+
+    try:
+        entity = await resolve_chat_entity(client, account.id, chat_id)
+        msg = await client.get_messages(entity, ids=message_id)
+        if not msg or not msg.media:
+            raise HTTPException(status_code=404, detail="Message or media not found")
+
+        # Determine clean filename
+        filename = f"{message_id}"
+        ext = ""
+        if hasattr(msg.media, "document") and msg.media.document:
+            for attr in getattr(msg.media.document, "attributes", []):
+                if hasattr(attr, "file_name") and attr.file_name:
+                    filename = os.path.splitext(attr.file_name)[0]
+                    ext = os.path.splitext(attr.file_name)[1]
+                    break
+            if not ext:
+                import mimetypes
+                ext = mimetypes.guess_extension(msg.media.document.mime_type or "") or ""
+        if not ext:
+            ext = ".jpg"
+
+        dest_path = os.path.join(media_cache_dir, f"{message_id}{ext}")
+        result_path = await client.download_media(msg, file=dest_path)
+        if not result_path or not os.path.exists(dest_path):
+            raise HTTPException(status_code=500, detail="Failed to download media from Telegram")
+
+        import mimetypes
+        mime, _ = mimetypes.guess_type(dest_path)
+        return FileResponse(dest_path, media_type=mime or "application/octet-stream")
+
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("Failed to download message media: %s", exc)
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/accounts/{account_id}/chats/{chat_id}/messages/{message_id}/video/stream")
+async def stream_message_video_endpoint(
+    request: Request,
+    account_id: str,
+    chat_id: int,
+    message_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Stream video progressive notes/files using HTTP 206 Partial Content range requests."""
+    import os
+    from fastapi.responses import StreamingResponse
+    from app.services import account_service
+    from app.services.telegram_client import client_pool
+    from app.utils.encryption import decrypt
+    from app.services.chat_service import resolve_chat_entity
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(chat_id))
+    os.makedirs(media_cache_dir, exist_ok=True)
+
+    video_path = None
+    if os.path.exists(media_cache_dir):
+        for f in os.listdir(media_cache_dir):
+            if f.startswith(f"{message_id}."):
+                video_path = os.path.join(media_cache_dir, f)
+                break
+
+    if not video_path or not os.path.exists(video_path):
+        account = await account_service.get_account(db, account_id, str(user.id))
+        if account is None:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        session_str = decrypt(account.session_string)
+        client = await client_pool.get(str(account.id), session_str)
+        if client is None:
+            raise HTTPException(status_code=400, detail="Account is disconnected")
+
+        try:
+            entity = await resolve_chat_entity(client, account.id, chat_id)
+            msg = await client.get_messages(entity, ids=message_id)
+            if not msg or not msg.media:
+                raise HTTPException(status_code=404, detail="Message or video media not found")
+
+            ext = ".mp4"
+            if hasattr(msg.media, "document") and msg.media.document:
+                import mimetypes
+                ext = mimetypes.guess_extension(msg.media.document.mime_type or "") or ".mp4"
+
+            video_path = os.path.join(media_cache_dir, f"{message_id}{ext}")
+            result_path = await client.download_media(msg, file=video_path)
+            if not result_path or not os.path.exists(video_path):
+                raise HTTPException(status_code=500, detail="Failed to download video")
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    file_size = os.path.getsize(video_path)
+    range_header = request.headers.get("range")
+    
+    start = 0
+    end = file_size - 1
+    
+    if range_header:
+        range_val = range_header.replace("bytes=", "")
+        parts = range_val.split("-")
+        if parts[0]:
+            start = int(parts[0])
+        if len(parts) > 1 and parts[1]:
+            end = int(parts[1])
+
+    if end >= file_size:
+        end = file_size - 1
+
+    def range_file_generator(path: str, start_offset: int, end_offset: int, chunk_size: int = 1024 * 1024):
+        with open(path, "rb") as f:
+            f.seek(start_offset)
+            bytes_to_read = end_offset - start_offset + 1
+            while bytes_to_read > 0:
+                read_len = min(bytes_to_read, chunk_size)
+                data = f.read(read_len)
+                if not data:
+                    break
+                bytes_to_read -= len(data)
+                yield data
+
+    import mimetypes
+    mime, _ = mimetypes.guess_type(video_path)
+    
+    headers = {
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(end - start + 1),
+    }
+    return StreamingResponse(
+        range_file_generator(video_path, start, end),
+        status_code=206,
+        headers=headers,
+        media_type=mime or "video/mp4"
+    )
+
+
+

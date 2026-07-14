@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-11
+- **[2ad59cbb](https://github.com/nealmtroy/TeleBos/commit/2ad59cbb)**: feat: use premium SVG avatars instead of returning 404 for missing profile/chat photos
 - **[89097578](https://github.com/nealmtroy/TeleBos/commit/89097578)**: fix(security): validate Origin header on WebSocket endpoints to prevent CSWSH
 - **[e5230e3d](https://github.com/nealmtroy/TeleBos/commit/e5230e3d)**: fix(security): resolve WebSocket auth bypass vulnerability by switching to UUID user lookup
 - **[eec2153d](https://github.com/nealmtroy/TeleBos/commit/eec2153d)**: fix(security): sanitize raw exception messages in API responses (vuln-0006)

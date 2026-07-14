@@ -176,6 +176,71 @@ class TelegramEventRelay:
             logger.debug("Failed to get sender for new message (account %s)", account_id)
 
         channel = f"chats:{account_id}"
+        
+        # Determine media details
+        media_type = None
+        media_filename = None
+        stripped_thumb_base64 = None
+        waveform_levels = []
+        file_size = None
+        mime_type = None
+        
+        if msg.media:
+            from app.services.chat_service import _classify_media
+            from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+            from telethon.utils import stripped_photo_to_jpg, decode_waveform
+            import base64
+            
+            media_type = _classify_media(msg.media)
+            if hasattr(msg.media, "document") and msg.media.document:
+                for attr in getattr(msg.media.document, "attributes", []):
+                    if hasattr(attr, "file_name"):
+                        media_filename = attr.file_name
+                        break
+            
+            # Stripped thumb
+            stripped_bytes = None
+            if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
+                for size in getattr(msg.media.photo, "sizes", []):
+                    if type(size).__name__ == "PhotoStrippedSize":
+                        stripped_bytes = size.bytes
+                        break
+            elif isinstance(msg.media, MessageMediaDocument) and msg.media.document:
+                for size in getattr(msg.media.document, "thumbs", []):
+                    if type(size).__name__ == "PhotoStrippedSize":
+                        stripped_bytes = size.bytes
+                        break
+                        
+            if stripped_bytes:
+                try:
+                    jpeg_bytes = stripped_photo_to_jpg(stripped_bytes)
+                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode('utf-8')
+                except Exception:
+                    pass
+                    
+            # Waveform
+            if media_type == "voice" and hasattr(msg.media, "document") and msg.media.document:
+                for attr in getattr(msg.media.document, "attributes", []):
+                    if type(attr).__name__ == "DocumentAttributeAudio" and getattr(attr, "voice", False):
+                        raw_wave = getattr(attr, "waveform", None)
+                        if raw_wave:
+                            try:
+                                waveform_levels = list(decode_waveform(raw_wave))
+                            except Exception:
+                                pass
+                        break
+
+            # Size/mime_type
+            if hasattr(msg.media, "document") and msg.media.document:
+                file_size = msg.media.document.size
+                mime_type = msg.media.document.mime_type
+            elif hasattr(msg.media, "photo") and msg.media.photo:
+                sizes = getattr(msg.media.photo, "sizes", [])
+                if sizes:
+                    largest = sizes[-1]
+                    file_size = getattr(largest, "size", None)
+                mime_type = "image/jpeg"
+
         await manager.broadcast(
             channel,
             {
@@ -183,11 +248,17 @@ class TelegramEventRelay:
                 "chat_id": chat.id if chat else None,
                 "chat_title": getattr(chat, "title", None) or getattr(chat, "first_name", None),
                 "message_id": msg.id,
-                "text": msg.text or "[media]",
+                "text": msg.text or "",
                 "sender_name": getattr(sender, "first_name", None) or "Unknown",
                 "sender_id": getattr(sender, "id", None),
                 "date": msg.date.isoformat() if msg.date else None,
                 "is_outgoing": msg.out,
+                "media_type": media_type,
+                "media_filename": media_filename,
+                "stripped_thumb": stripped_thumb_base64,
+                "waveform_levels": waveform_levels,
+                "file_size": file_size,
+                "mime_type": mime_type,
             },
         )
 
@@ -268,14 +339,85 @@ class TelegramEventRelay:
             chat = None
 
         channel = f"chats:{account_id}"
+        
+        # Determine media details
+        media_type = None
+        media_filename = None
+        stripped_thumb_base64 = None
+        waveform_levels = []
+        file_size = None
+        mime_type = None
+        
+        if msg.media:
+            from app.services.chat_service import _classify_media
+            from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+            from telethon.utils import stripped_photo_to_jpg, decode_waveform
+            import base64
+            
+            media_type = _classify_media(msg.media)
+            if hasattr(msg.media, "document") and msg.media.document:
+                for attr in getattr(msg.media.document, "attributes", []):
+                    if hasattr(attr, "file_name"):
+                        media_filename = attr.file_name
+                        break
+            
+            # Stripped thumb
+            stripped_bytes = None
+            if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
+                for size in getattr(msg.media.photo, "sizes", []):
+                    if type(size).__name__ == "PhotoStrippedSize":
+                        stripped_bytes = size.bytes
+                        break
+            elif isinstance(msg.media, MessageMediaDocument) and msg.media.document:
+                for size in getattr(msg.media.document, "thumbs", []):
+                    if type(size).__name__ == "PhotoStrippedSize":
+                        stripped_bytes = size.bytes
+                        break
+                        
+            if stripped_bytes:
+                try:
+                    jpeg_bytes = stripped_photo_to_jpg(stripped_bytes)
+                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode('utf-8')
+                except Exception:
+                    pass
+                    
+            # Waveform
+            if media_type == "voice" and hasattr(msg.media, "document") and msg.media.document:
+                for attr in getattr(msg.media.document, "attributes", []):
+                    if type(attr).__name__ == "DocumentAttributeAudio" and getattr(attr, "voice", False):
+                        raw_wave = getattr(attr, "waveform", None)
+                        if raw_wave:
+                            try:
+                                waveform_levels = list(decode_waveform(raw_wave))
+                            except Exception:
+                                pass
+                        break
+
+            # Size/mime_type
+            if hasattr(msg.media, "document") and msg.media.document:
+                file_size = msg.media.document.size
+                mime_type = msg.media.document.mime_type
+            elif hasattr(msg.media, "photo") and msg.media.photo:
+                sizes = getattr(msg.media.photo, "sizes", [])
+                if sizes:
+                    largest = sizes[-1]
+                    file_size = getattr(largest, "size", None)
+                mime_type = "image/jpeg"
+
         await manager.broadcast(
             channel,
             {
                 "type": "outgoing_message",
                 "chat_id": chat.id if chat else None,
                 "message_id": msg.id,
-                "text": msg.text or "[media]",
+                "text": msg.text or "",
                 "date": msg.date.isoformat() if msg.date else None,
+                "media_type": media_type,
+                "media_filename": media_filename,
+                "stripped_thumb": stripped_thumb_base64,
+                "waveform_levels": waveform_levels,
+                "file_size": file_size,
+                "mime_type": mime_type,
             },
         )
 

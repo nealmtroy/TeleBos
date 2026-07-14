@@ -42,6 +42,8 @@ import {
   Square,
   Check,
   Folder,
+  Play,
+  Pause,
 } from "lucide-react";
 
 export default function ChatsPage() {
@@ -91,6 +93,10 @@ interface MessageItem {
   reply_preview: string | null;
   media_type: string | null;
   media_filename: string | null;
+  stripped_thumb?: string | null;
+  waveform_levels?: number[];
+  file_size?: number | null;
+  mime_type?: string | null;
 }
 
 const MEDIA_ICONS: Record<string, any> = {
@@ -185,7 +191,27 @@ function ChatsContent() {
     enabled: !!selectedAccount,
   });
 
-  const chats = Array.isArray(chatsData?.chats) ? chatsData.chats : [];
+  const [loadedChats, setLoadedChats] = useState<ChatItem[]>([]);
+
+  useEffect(() => {
+    if (!chatsData?.chats) return;
+    if (page === 1) {
+      setLoadedChats(chatsData.chats);
+    } else {
+      setLoadedChats((prev) => {
+        const existingIds = new Set(prev.map((c) => c.chat_id));
+        const uniqueNew = chatsData.chats.filter((c) => !existingIds.has(c.chat_id));
+        return [...prev, ...uniqueNew];
+      });
+    }
+  }, [chatsData, page]);
+
+  useEffect(() => {
+    setPage(1);
+    setLoadedChats([]);
+  }, [selectedAccount]);
+
+  const chats = loadedChats;
 
   // Auto-populate selectedChatTitle/type when coming from URL param (e.g. from contacts)
   useEffect(() => {
@@ -229,12 +255,25 @@ function ChatsContent() {
   const handleRealtimeEvent = useCallback(
     (data: any) => {
       if (!data || !data.type) return;
-      queryClient.invalidateQueries({ queryKey: ["chats", selectedAccount] });
-      queryClient.invalidateQueries({ queryKey: ["folders", selectedAccount] });
-      if (selectedChatId) {
-        queryClient.invalidateQueries({
-          queryKey: ["messages", selectedAccount, selectedChatId],
-        });
+
+      if (data.type === "new_message" || data.type === "outgoing_message") {
+        const isMsgFromActiveChat = data.chat_id === selectedChatId;
+        
+        setLoadedChats((prev) =>
+          prev.map((c) =>
+            c.chat_id === data.chat_id
+              ? {
+                  ...c,
+                  last_message: data.text || (data.media_type ? `[${data.media_type}]` : ""),
+                  last_message_time: data.date || new Date().toISOString(),
+                  unread_count: isMsgFromActiveChat ? 0 : c.unread_count + (data.is_outgoing ? 0 : 1),
+                }
+              : c
+          )
+        );
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["chats", selectedAccount] });
+        queryClient.invalidateQueries({ queryKey: ["folders", selectedAccount] });
       }
     },
     [queryClient, selectedAccount, selectedChatId]
@@ -430,6 +469,69 @@ function ChatsContent() {
 
   return (
     <>
+    <style>{`
+      .telegram-wallpaper {
+        background-color: #e7ebf0;
+        background-image: radial-gradient(rgba(0,0,0,0.06) 1.2px, transparent 0), radial-gradient(rgba(0,0,0,0.06) 1.2px, transparent 0);
+        background-size: 24px 24px;
+        background-position: 0 0, 12px 12px;
+      }
+      .dark .telegram-wallpaper {
+        background-color: #0e1621;
+        background-image: radial-gradient(rgba(255,255,255,0.04) 1.2px, transparent 0), radial-gradient(rgba(255,255,255,0.04) 1.2px, transparent 0);
+        background-size: 24px 24px;
+        background-position: 0 0, 12px 12px;
+      }
+      .bubble-out {
+        background-color: #eeffde !important;
+        color: #000000 !important;
+      }
+      .dark .bubble-out {
+        background-color: #2b5278 !important;
+        color: #f5f5f5 !important;
+      }
+      .bubble-in {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+      }
+      .dark .bubble-in {
+        background-color: #182533 !important;
+        color: #f5f5f5 !important;
+      }
+      .tail-out {
+        color: #eeffde !important;
+      }
+      .dark .tail-out {
+        color: #2b5278 !important;
+      }
+      .tail-in {
+        color: #ffffff !important;
+      }
+      .dark .tail-in {
+        color: #182533 !important;
+      }
+      .date-header {
+        background-color: rgba(120, 130, 140, 0.4) !important;
+        backdrop-filter: blur(4px);
+      }
+      .dark .date-header {
+        background-color: rgba(16, 25, 33, 0.6) !important;
+        backdrop-filter: blur(4px);
+      }
+      .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.15);
+        border-radius: 9999px;
+      }
+      .dark .custom-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.12);
+      }
+    `}</style>
     <div className="flex h-full w-full bg-white overflow-hidden">
       {/* ── Left Panel: Chat List ───────────────────────────────────── */}
       <div
@@ -542,7 +644,7 @@ function ChatsContent() {
         )}
 
         {/* Chat list body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scroll">
           {!selectedAccount ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-4">
@@ -707,24 +809,24 @@ function ChatsContent() {
                 </div>
               )}
 
-              {/* Pagination */}
-              {(page > 1 || (chatsData?.total || 0) > 50) && (
-                <div className="flex items-center justify-center gap-2 py-3 border-t border-slate-100 bg-white">
-                  <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page <= 1}
-                    className="px-3 py-1.5 text-xs border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
-                  >
-                    {_("chats.prev")}
-                  </button>
-                  <span className="text-xs text-gray-400">{_("chats.page")} {page}</span>
-                  <button
-                    onClick={() => setPage(page + 1)}
-                    disabled={page * 50 >= (chatsData?.total || 0)}
-                    className="px-3 py-1.5 text-xs border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
-                  >
-                    {_("chats.next")}
-                  </button>
+              {/* Infinite Scroll Sentinel */}
+              {chatsData && loadedChats.length < chatsData.total && (
+                <div
+                  ref={(el) => {
+                    if (!el) return;
+                    const observer = new IntersectionObserver(
+                      (entries) => {
+                        if (entries[0].isIntersecting && !isLoading) {
+                          setPage((p) => p + 1);
+                        }
+                      },
+                      { threshold: 0.1 }
+                    );
+                    observer.observe(el);
+                  }}
+                  className="flex items-center justify-center py-4 bg-white"
+                >
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
               )}
             </>
@@ -771,7 +873,7 @@ function ChatsContent() {
       {/* ── Right Panel: Messages ───────────────────────────────────── */}
       <div
         className={cn(
-          "flex-col h-full bg-slate-50/50 min-w-0 transition-all duration-300 ease-in-out",
+          "flex-col h-full bg-[#e7ebf0] dark:bg-[#0e1621] min-w-0 transition-all duration-300 ease-in-out",
           selectedChatId ? "flex flex-1" : "hidden lg:flex lg:flex-1"
         )}
       >
@@ -830,6 +932,274 @@ function ChatsContent() {
       variant="danger"
     />
     </>
+  );
+}
+
+// ── Message Media Components ──────────────────────────────────────────────────
+
+function MessagePhoto({
+  messageId,
+  accountId,
+  chatId,
+  placeholder,
+  getApiUrl,
+}: {
+  messageId: number;
+  accountId: string;
+  chatId: number;
+  placeholder?: string | null;
+  getApiUrl: () => string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-slate-100/50 border border-slate-200/40 max-w-[280px] sm:max-w-[320px] aspect-[4/3] cursor-pointer hover:opacity-95 transition">
+      {placeholder && !loaded && (
+        <img
+          src={placeholder}
+          className="absolute inset-0 w-full h-full object-cover blur-md scale-105"
+          alt=""
+        />
+      )}
+      <img
+        src={mediaUrl}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          "w-full h-full object-cover transition-opacity duration-300",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
+        onClick={() => window.open(mediaUrl, "_blank")}
+        alt="Photo Attachment"
+      />
+    </div>
+  );
+}
+
+function MessageVideo({
+  messageId,
+  accountId,
+  chatId,
+  poster,
+  getApiUrl,
+}: {
+  messageId: number;
+  accountId: string;
+  chatId: number;
+  poster?: string | null;
+  getApiUrl: () => string;
+}) {
+  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream`;
+  return (
+    <div className="relative rounded-xl overflow-hidden bg-slate-950 max-w-[280px] sm:max-w-[320px] border border-slate-200/10">
+      <video
+        src={streamUrl}
+        poster={poster || undefined}
+        controls
+        preload="metadata"
+        className="w-full max-h-[240px] rounded-xl"
+        playsInline
+      />
+    </div>
+  );
+}
+
+function MessageVideoNote({
+  messageId,
+  accountId,
+  chatId,
+  getApiUrl,
+}: {
+  messageId: number;
+  accountId: string;
+  chatId: number;
+  getApiUrl: () => string;
+}) {
+  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream`;
+  return (
+    <div className="relative rounded-full overflow-hidden bg-slate-950 w-44 h-44 border-2 border-primary/20 aspect-square">
+      <video
+        src={streamUrl}
+        controls
+        loop
+        muted
+        preload="metadata"
+        className="w-full h-full object-cover rounded-full"
+        playsInline
+      />
+    </div>
+  );
+}
+
+function MessageVoice({
+  messageId,
+  accountId,
+  chatId,
+  waveform,
+  getApiUrl,
+  isOut,
+}: {
+  messageId: number;
+  accountId: string;
+  chatId: number;
+  waveform: number[];
+  getApiUrl: () => string;
+  isOut: boolean;
+}) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+
+  const bars = useMemo(() => {
+    if (waveform && waveform.length > 0) return waveform;
+    return Array.from({ length: 45 }, (_, i) => Math.abs(Math.sin(i * 0.2)) * 18 + 2);
+  }, [waveform]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(mediaUrl);
+      audioRef.current.onended = () => {
+        setPlaying(false);
+        setProgress(0);
+      };
+      audioRef.current.ontimeupdate = () => {
+        if (audioRef.current) {
+          const cur = audioRef.current.currentTime;
+          const dur = audioRef.current.duration || 1;
+          setProgress(cur / dur);
+        }
+      };
+    }
+
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
+    setPlaying(!playing);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <div className={cn(
+      "flex items-center gap-3 py-1.5 px-2.5 rounded-xl min-w-[200px] max-w-[280px]",
+      isOut ? "bg-black/10 text-white" : "bg-slate-50 text-slate-800 border border-slate-100"
+    )}>
+      <button
+        onClick={togglePlay}
+        className={cn(
+          "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition active:scale-95 shadow-sm",
+          isOut ? "bg-white text-primary" : "bg-primary text-primary-foreground"
+        )}
+      >
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+      </button>
+      
+      <div className="flex-1 flex items-end gap-[1.5px] h-6 select-none">
+        {bars.map((val, idx) => {
+          const isActive = idx / bars.length <= progress;
+          return (
+            <span
+              key={idx}
+              className="w-[2px] rounded-full transition-colors duration-100"
+              style={{
+                height: `${Math.max(12, (val / 31) * 100)}%`,
+                backgroundColor: isActive
+                  ? (isOut ? "#ffffff" : "var(--primary)")
+                  : (isOut ? "rgba(255,255,255,0.3)" : "#cbd5e1")
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MessageSticker({
+  messageId,
+  accountId,
+  chatId,
+  getApiUrl,
+}: {
+  messageId: number;
+  accountId: string;
+  chatId: number;
+  getApiUrl: () => string;
+}) {
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+  return (
+    <div className="w-32 h-32 select-none hover:scale-105 transition duration-200">
+      <img
+        src={mediaUrl}
+        loading="lazy"
+        className="w-full h-full object-contain"
+        alt="Sticker"
+      />
+    </div>
+  );
+}
+
+function MessageDocument({
+  messageId,
+  accountId,
+  chatId,
+  filename,
+  fileSize,
+  getApiUrl,
+  isOut,
+}: {
+  messageId: number;
+  accountId: string;
+  chatId: number;
+  filename: string;
+  fileSize?: number | null;
+  getApiUrl: () => string;
+  isOut: boolean;
+}) {
+  const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+  
+  const sizeText = useMemo(() => {
+    if (!fileSize) return "";
+    if (fileSize < 1024) return `${fileSize} B`;
+    if (fileSize < 1024 * 1024) return `${(fileSize / 1024).toFixed(1)} KB`;
+    return `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
+  }, [fileSize]);
+
+  return (
+    <a
+      href={downloadUrl}
+      download={filename}
+      className={cn(
+        "flex items-center gap-3 p-2.5 rounded-xl border max-w-[280px] transition text-left cursor-pointer active:scale-98 select-none group",
+        isOut
+          ? "bg-black/10 border-white/10 hover:bg-black/20 text-white"
+          : "bg-slate-50 border-slate-200/60 hover:bg-slate-100 text-slate-800"
+      )}
+    >
+      <div className={cn(
+        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-xs uppercase shadow-sm transition group-hover:scale-105",
+        isOut ? "bg-white text-primary" : "bg-primary text-primary-foreground"
+      )}>
+        <FileText className="h-5 w-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold truncate leading-snug">{filename}</p>
+        {sizeText && <p className={cn(
+          "text-[10px] mt-0.5 font-medium",
+          isOut ? "text-primary-100" : "text-slate-400"
+        )}>{sizeText}</p>}
+      </div>
+    </a>
   );
 }
 
@@ -900,14 +1270,73 @@ function MessagePane({
       setAllMessages(newMsgs);
       setIsInitialLoad(true);
     } else {
+      // ── Scroll Anchoring ──
+      const container = scrollContainerRef.current;
+      const prevScrollHeight = container ? container.scrollHeight : 0;
+      const prevScrollTop = container ? container.scrollTop : 0;
+
       setAllMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m.id));
         const uniqueNew = newMsgs.filter((m) => !existingIds.has(m.id));
         return [...uniqueNew, ...prev];
       });
       setIsInitialLoad(false);
+
+      if (container && prevScrollHeight > 0) {
+        requestAnimationFrame(() => {
+          const newScrollHeight = container.scrollHeight;
+          const diff = newScrollHeight - prevScrollHeight;
+          container.scrollTop = prevScrollTop + diff;
+        });
+      }
     }
   }, [messagesData, offsetId, chatId]);
+
+  // ── Real-time WebSocket updates for open chat ──
+  const { setHandler: setPaneHandler } = useChatSocket(accountId);
+
+  const handleRealtimeEventInPane = useCallback(
+    (data: any) => {
+      if (!data || !data.type) return;
+
+      if ((data.type === "new_message" || data.type === "outgoing_message") && data.chat_id === chatId) {
+        const newMsgItem: MessageItem = {
+          id: data.message_id,
+          sender_id: data.sender_id || null,
+          sender_name: data.sender_name || (data.type === "outgoing_message" ? "You" : "Unknown"),
+          text: data.text,
+          date: data.date || new Date().toISOString(),
+          is_outgoing: data.is_outgoing ?? (data.type === "outgoing_message"),
+          reply_to_msg_id: data.reply_to_msg_id || null,
+          reply_preview: null,
+          media_type: data.media_type || null,
+          media_filename: data.media_filename || null,
+          stripped_thumb: data.stripped_thumb || null,
+          waveform_levels: data.waveform_levels || [],
+          file_size: data.file_size || null,
+          mime_type: data.mime_type || null,
+        };
+
+        setAllMessages((prev) => {
+          if (prev.some((m) => m.id === newMsgItem.id)) return prev;
+          return [...prev, newMsgItem];
+        });
+
+        // Auto-scroll to bottom on new message
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        });
+
+        // Mark as read
+        api.post(`/accounts/${accountId}/chats/${chatId}/read`).catch(() => {});
+      }
+    },
+    [accountId, chatId]
+  );
+
+  useEffect(() => {
+    setPaneHandler(handleRealtimeEventInPane);
+  }, [setPaneHandler, handleRealtimeEventInPane]);
 
   // Auto-scroll to bottom on initial load
   useEffect(() => {
@@ -1097,12 +1526,7 @@ function MessagePane({
       {/* Messages area */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-3"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)",
-          backgroundSize: "20px 20px",
-        }}
+        className="flex-1 overflow-y-auto px-4 py-3 telegram-wallpaper custom-scroll"
       >
         {isLoading && allMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -1138,18 +1562,30 @@ function MessagePane({
             {groupedMessages.map((group) => (
               <div key={group.date}>
                 {/* Date separator */}
-                <div className="flex items-center justify-center py-4">
-                  <span className="px-3.5 py-1 bg-slate-100/90 backdrop-blur-sm text-[10px] text-slate-500 rounded-full border border-slate-200/50 font-semibold select-none">
+                <div className="flex items-center justify-center py-4 sticky top-0 z-10">
+                  <span className="px-3.5 py-1 date-header text-[11px] text-white rounded-full border border-white/5 font-semibold select-none shadow-sm">
                     {group.date}
                   </span>
                 </div>
 
                 {group.messages.map((msg, idx) => {
                   const isOut = msg.is_outgoing;
+                  
+                  // Grouping calculation (5 minute window)
+                  const isFirst =
+                    idx === 0 ||
+                    group.messages[idx - 1]?.sender_id !== msg.sender_id ||
+                    (new Date(msg.date).getTime() - new Date(group.messages[idx - 1].date).getTime() > 5 * 60 * 1000);
+                    
+                  const isLast =
+                    idx === group.messages.length - 1 ||
+                    group.messages[idx + 1]?.sender_id !== msg.sender_id ||
+                    (new Date(group.messages[idx + 1].date).getTime() - new Date(msg.date).getTime() > 5 * 60 * 1000);
+
                   const showName =
                     !isOut &&
                     (chatType === "group" || chatType === "supergroup") &&
-                    (idx === 0 || group.messages[idx - 1]?.sender_id !== msg.sender_id);
+                    isFirst;
 
                   const replyText = getReplyText(msg.reply_to_msg_id);
                   const MediaIcon = msg.media_type ? MEDIA_ICONS[msg.media_type] || Paperclip : null;
@@ -1158,21 +1594,61 @@ function MessagePane({
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex mb-1",
+                        "flex",
+                        isFirst ? "mt-2.5" : "mt-[3px]",
                         isOut ? "justify-end" : "justify-start"
                       )}
                     >
                       <div
                         className={cn(
-                          "group relative max-w-[75%] min-w-[80px] px-3.5 py-2 rounded-2xl text-[13px] leading-relaxed shadow-sm",
-                          isOut
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-white text-slate-800 rounded-bl-none border border-slate-100/80"
+                          "group relative max-w-[75%] min-w-[90px] px-3.5 py-2 text-[13px] leading-relaxed shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] transition-all duration-150",
+                          isOut ? "bubble-out" : "bubble-in border border-slate-200/40 dark:border-none",
+                          // Geometry rules (Tails)
+                          !isOut
+                            ? (isFirst && isLast ? "rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-none" :
+                               isFirst ? "rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-md" :
+                               isLast ? "rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-none" :
+                               "rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-md")
+                            : (isFirst && isLast ? "rounded-tl-2xl rounded-tr-2xl rounded-br-none rounded-bl-2xl" :
+                               isFirst ? "rounded-tl-2xl rounded-tr-2xl rounded-br-md rounded-bl-2xl" :
+                               isLast ? "rounded-tl-2xl rounded-tr-md rounded-br-none rounded-bl-2xl" :
+                               "rounded-tl-2xl rounded-tr-md rounded-br-md rounded-bl-2xl")
                         )}
                       >
+                        {/* Custom SVG tails for pixel-perfect Web K replica */}
+                        {isLast && !isOut && (
+                          <svg
+                            className="absolute bottom-0 -left-[5px] tail-in"
+                            width="9"
+                            height="12"
+                            viewBox="0 0 9 12"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M9 12C4.5 12 0 8.5 0 0V12H9Z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                        )}
+                        {isLast && isOut && (
+                          <svg
+                            className="absolute bottom-0 -right-[5px] tail-out"
+                            width="9"
+                            height="12"
+                            viewBox="0 0 9 12"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M0 12C4.5 12 9 8.5 9 0V12H0Z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                        )}
                         {/* Sender name in groups */}
                         {showName && msg.sender_name && (
-                          <p className="text-[11px] font-bold text-primary mb-1 truncate">
+                          <p className="text-[11px] font-bold text-primary mb-1 truncate select-none">
                             {msg.sender_name}
                           </p>
                         )}
@@ -1181,7 +1657,7 @@ function MessagePane({
                         {msg.reply_to_msg_id && (
                           <div
                             className={cn(
-                              "flex items-center gap-1.5 mb-1 px-2.5 py-1.5 rounded-lg text-[10px] border-l-2 font-medium",
+                              "flex items-center gap-1.5 mb-1.5 px-2.5 py-1 rounded-lg text-[10px] border-l-2 font-medium cursor-pointer",
                               isOut
                                 ? "bg-black/10 border-white/60 text-white/90"
                                 : "bg-slate-50 border-primary/50 text-slate-500"
@@ -1192,16 +1668,76 @@ function MessagePane({
                           </div>
                         )}
 
-                        {/* Media badge */}
-                        {MediaIcon && (
-                          <div
-                            className={cn(
-                              "inline-flex items-center gap-1.5 text-[11px] mb-1 font-semibold",
-                              isOut ? "text-primary-100" : "text-slate-500"
+                        {/* Media rendering */}
+                        {msg.media_type && (
+                          <div className="mb-1.5 max-w-full">
+                            {msg.media_type === "photo" && (
+                              <MessagePhoto
+                                messageId={msg.id}
+                                accountId={accountId}
+                                chatId={chatId}
+                                placeholder={msg.stripped_thumb}
+                                getApiUrl={getApiUrl}
+                              />
                             )}
-                          >
-                            <MediaIcon className="h-3.5 w-3.5" />
-                            {msg.media_filename || msg.media_type}
+                            {msg.media_type === "video" && (
+                              <MessageVideo
+                                messageId={msg.id}
+                                accountId={accountId}
+                                chatId={chatId}
+                                poster={msg.stripped_thumb}
+                                getApiUrl={getApiUrl}
+                              />
+                            )}
+                            {msg.media_type === "video_note" && (
+                              <MessageVideoNote
+                                messageId={msg.id}
+                                accountId={accountId}
+                                chatId={chatId}
+                                getApiUrl={getApiUrl}
+                              />
+                            )}
+                            {msg.media_type === "voice" && (
+                              <MessageVoice
+                                messageId={msg.id}
+                                accountId={accountId}
+                                chatId={chatId}
+                                waveform={msg.waveform_levels || []}
+                                getApiUrl={getApiUrl}
+                                isOut={isOut}
+                              />
+                            )}
+                            {msg.media_type === "sticker" && (
+                              <MessageSticker
+                                messageId={msg.id}
+                                accountId={accountId}
+                                chatId={chatId}
+                                getApiUrl={getApiUrl}
+                              />
+                            )}
+                            {msg.media_type === "document" && (
+                              <MessageDocument
+                                messageId={msg.id}
+                                accountId={accountId}
+                                chatId={chatId}
+                                filename={msg.media_filename || "file"}
+                                fileSize={msg.file_size}
+                                getApiUrl={getApiUrl}
+                                isOut={isOut}
+                              />
+                            )}
+                            {/* Fallback for other media types (location, contact, poll, link) */}
+                            {["photo", "video", "video_note", "voice", "sticker", "document"].indexOf(msg.media_type) === -1 && MediaIcon && (
+                              <div
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 text-[11px] font-semibold",
+                                  isOut ? "text-primary-100" : "text-slate-500"
+                                )}
+                              >
+                                <MediaIcon className="h-3.5 w-3.5" />
+                                {msg.media_filename || msg.media_type}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1212,38 +1748,71 @@ function MessagePane({
                           </p>
                         )}
 
-                        {/* Timestamp + reply button */}
+                        {/* Timestamp + reply button + checkmarks */}
                         <div
                           className={cn(
-                            "flex items-center gap-2 mt-1",
+                            "flex items-center gap-1.5 mt-1 select-none",
                             isOut ? "justify-end" : "justify-between"
                           )}
                         >
-                          <span
-                            className={cn(
-                              "text-[9px] font-medium tracking-wide select-none",
-                              isOut ? "text-primary-100" : "text-slate-400"
-                            )}
-                          >
-                            {new Date(msg.date).toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })}
-                          </span>
+                          {!isOut && (
+                            <button
+                              onClick={() => setReplyTo(msg)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-100 text-slate-400"
+                              title={_("chats.reply")}
+                            >
+                              <Reply className="h-3 w-3" />
+                            </button>
+                          )}
 
-                          <button
-                            onClick={() => setReplyTo(msg)}
-                            className={cn(
-                              "opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded",
-                              isOut
-                                ? "hover:bg-black/10 text-primary-100"
-                                : "hover:bg-slate-100 text-slate-400"
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={cn(
+                                "text-[9px] font-medium tracking-wide",
+                                isOut ? "text-primary-100/90" : "text-slate-400"
+                              )}
+                            >
+                              {new Date(msg.date).toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })}
+                            </span>
+
+                            {isOut && (
+                              <svg
+                                className="h-3.5 w-3.5 text-primary-100/90"
+                                viewBox="0 0 16 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="M1.5 7.5L5.5 11.5L14.5 2.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M5.5 7.5L9.5 11.5L14.5 6.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
                             )}
-                            title={_("chats.reply")}
-                          >
-                            <Reply className="h-3 w-3" />
-                          </button>
+                          </div>
+
+                          {isOut && (
+                            <button
+                              onClick={() => setReplyTo(msg)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/10 text-primary-100"
+                              title={_("chats.reply")}
+                            >
+                              <Reply className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1257,103 +1826,109 @@ function MessagePane({
         )}
       </div>
 
-      {/* ── Reply preview bar ──────────────────────────────────────── */}
-      {replyTo && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border-t border-primary/10">
-          <Reply className="h-4 w-4 text-primary flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-primary truncate">
-              {replyTo.sender_name || "Message"}
-            </p>
-            <p className="text-xs text-slate-500 truncate mt-0.5">
-              {replyTo.text || "[media]"}
-            </p>
-          </div>
-          <button
-            onClick={() => setReplyTo(null)}
-            className="p-1 hover:bg-primary/10 rounded-lg transition"
-          >
-            <X className="h-4 w-4 text-primary/60" />
-          </button>
-        </div>
-      )}
-
-      {/* ── Attached file preview bar ────────────────────────────────── */}
-      {attachedFile && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-t border-slate-100">
-          <Paperclip className="h-4 w-4 text-primary flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-700 truncate">
-              {attachedFile.name}
-            </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              {(attachedFile.size / 1024).toFixed(1)} KB
-            </p>
-          </div>
-          <button
-            onClick={() => setAttachedFile(null)}
-            className="p-1 hover:bg-slate-100 rounded-lg transition"
-          >
-            <X className="h-4 w-4 text-slate-400" />
-          </button>
-        </div>
-      )}
-
-      {/* ── Message input bar ──────────────────────────────────────── */}
-      <div className="flex items-end gap-2 px-4 py-3 bg-white border-t border-slate-100 flex-shrink-0">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-2.5 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition flex-shrink-0"
-          title={_("chats.attachFile")}
-        >
-          <Paperclip className="h-5 w-5" />
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              setAttachedFile(file);
-            }
-          }}
-          className="hidden"
-        />
-        <textarea
-          ref={inputRef}
-          value={messageText}
-          onChange={(e) => setMessageText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={attachedFile ? _("chats.addCaption") : _("chats.typeMessage")}
-          rows={1}
-          className="flex-1 resize-none px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-150 ease-in-out max-h-32 leading-relaxed"
-          style={{
-            height: "auto",
-            minHeight: "40px",
-            overflow: messageText.split("\n").length > 3 ? "auto" : "hidden",
-          }}
-          onInput={(e) => {
-            const t = e.currentTarget;
-            t.style.height = "auto";
-            t.style.height = Math.min(t.scrollHeight, 128) + "px";
-          }}
-        />
-        <button
-          onClick={handleSend}
-          disabled={(!messageText.trim() && !attachedFile) || sendMutation.isPending}
-          className={cn(
-            "p-2.5 rounded-xl transition-all duration-200 flex-shrink-0 flex items-center justify-center",
-            messageText.trim() || attachedFile
-              ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-sm"
-              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+      {/* ── Message input zone (Web K Floating Replica) ── */}
+      <div className="w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent flex-shrink-0 z-20">
+        <div className="flex flex-col bg-white dark:bg-[#17212b] rounded-2xl shadow-[0_1.5px_4px_rgba(0,0,0,0.12)] border border-slate-200/30 dark:border-none overflow-hidden">
+          
+          {/* Floating Reply preview */}
+          {replyTo && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 dark:bg-primary/10 border-b border-slate-100 dark:border-slate-800/80">
+              <Reply className="h-4 w-4 text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-primary truncate">
+                  {replyTo.sender_name || "Message"}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  {replyTo.text || "[media]"}
+                </p>
+              </div>
+              <button
+                onClick={() => setReplyTo(null)}
+                className="p-1 hover:bg-primary/10 rounded-lg transition"
+              >
+                <X className="h-4 w-4 text-primary/60" />
+              </button>
+            </div>
           )}
-        >
-          {sendMutation.isPending ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Send className="h-5 w-5" />
+
+          {/* Floating Attached file preview */}
+          {attachedFile && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-[#202b36] border-b border-slate-100 dark:border-slate-800/80">
+              <Paperclip className="h-4 w-4 text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                  {attachedFile.name}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {(attachedFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+              <button
+                onClick={() => setAttachedFile(null)}
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition"
+              >
+                <X className="h-4 w-4 text-slate-400" />
+              </button>
+            </div>
           )}
-        </button>
+
+          {/* Text area and action buttons */}
+          <div className="flex items-end gap-2 px-3 py-2 w-full">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+              title={_("chats.attachFile")}
+            >
+              <Paperclip className="h-5 w-5" />
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setAttachedFile(file);
+                }
+              }}
+              className="hidden"
+            />
+            <textarea
+              ref={inputRef}
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={attachedFile ? _("chats.addCaption") : _("chats.typeMessage")}
+              rows={1}
+              className="flex-1 resize-none px-2 py-2 bg-transparent text-slate-800 dark:text-slate-100 text-[14.5px] placeholder:text-slate-400 focus:outline-none max-h-32 leading-relaxed"
+              style={{
+                height: "auto",
+                minHeight: "40px",
+                overflow: messageText.split("\n").length > 3 ? "auto" : "hidden",
+              }}
+              onInput={(e) => {
+                const t = e.currentTarget;
+                t.style.height = "auto";
+                t.style.height = Math.min(t.scrollHeight, 128) + "px";
+              }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={(!messageText.trim() && !attachedFile) || sendMutation.isPending}
+              className={cn(
+                "p-2.5 rounded-full transition-all duration-200 flex-shrink-0 flex items-center justify-center w-10 h-10",
+                messageText.trim() || attachedFile
+                  ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-sm"
+                  : "bg-slate-100 text-slate-400 dark:bg-[#202b36] dark:text-slate-600 cursor-not-allowed"
+              )}
+            >
+              {sendMutation.isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-4.5 w-4.5" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Send error */}
