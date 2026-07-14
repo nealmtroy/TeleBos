@@ -40,6 +40,7 @@ from app.schemas.chat import (
     StickerSetResponse,
     SendStickerRequest,
     SendScheduledMessageRequest,
+    InviteLinkItem,
 )
 from app.services import account_service, chat_service
 from app.utils.rate_limiter import rate_limiter
