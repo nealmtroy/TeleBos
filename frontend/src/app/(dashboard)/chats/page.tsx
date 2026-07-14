@@ -137,6 +137,7 @@ function ChatsContent() {
 
   // ── Folder filter state ──────────────────────────────────────────────────
   const [folderFilter, setFolderFilter] = useState<FolderFilter>({ type: "all" });
+  const [typingChats, setTypingChats] = useState<Record<number, string>>({});
 
   // ── Selection mode state ─────────────────────────────────────────────────
   const [selectionMode, setSelectionMode] = useState(false);
@@ -256,7 +257,21 @@ function ChatsContent() {
     (data: any) => {
       if (!data || !data.type) return;
 
-      if (data.type === "new_message" || data.type === "outgoing_message") {
+      if (data.type === "typing") {
+        setTypingChats((prev) => ({
+          ...prev,
+          [data.chat_id]: data.action || "typing",
+        }));
+
+        // Clear typing status after 4 seconds
+        setTimeout(() => {
+          setTypingChats((prev) => {
+            const next = { ...prev };
+            delete next[data.chat_id];
+            return next;
+          });
+        }, 4000);
+      } else if (data.type === "new_message" || data.type === "outgoing_message") {
         const isMsgFromActiveChat = data.chat_id === selectedChatId;
         
         setLoadedChats((prev) =>
@@ -765,10 +780,13 @@ function ChatsContent() {
                             <p
                               className={cn(
                                 "text-xs truncate pr-2 font-medium",
+                                typingChats[chat.chat_id] ? "text-primary dark:text-blue-400 font-bold" :
                                 chat.unread_count > 0 ? "text-slate-900 font-semibold" : "text-slate-500"
                               )}
                             >
-                              {chat.last_message || "—"}
+                              {typingChats[chat.chat_id]
+                                ? `${typingChats[chat.chat_id].replace("_", " ")}...`
+                                : chat.last_message || "—"}
                             </p>
                             {chat.unread_count > 0 && (
                               <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex-shrink-0 shadow-sm group-hover:lg:opacity-0 transition-opacity duration-150">
@@ -943,12 +961,14 @@ function MessagePhoto({
   chatId,
   placeholder,
   getApiUrl,
+  onOpenLightbox,
 }: {
   messageId: number;
   accountId: string;
   chatId: number;
   placeholder?: string | null;
   getApiUrl: () => string;
+  onOpenLightbox: (url: string) => void;
 }) {
   const [loaded, setLoaded] = useState(false);
   const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
@@ -970,7 +990,7 @@ function MessagePhoto({
           "w-full h-full object-cover transition-opacity duration-300",
           loaded ? "opacity-100" : "opacity-0"
         )}
-        onClick={() => window.open(mediaUrl, "_blank")}
+        onClick={() => onOpenLightbox(mediaUrl)}
         alt="Photo Attachment"
       />
     </div>
@@ -1240,6 +1260,12 @@ function MessagePane({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Web K live state enhancements
+  const [typingStatus, setTypingStatus] = useState<string | null>(null);
+  const [onlineStatus, setOnlineStatus] = useState<string | null>(null);
+  const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: "photo" | "video" } | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch messages — staleTime:0 ensures fresh data on every mount
   const { data: messagesData, isLoading, isFetching } = useQuery<{
@@ -1299,7 +1325,16 @@ function MessagePane({
     (data: any) => {
       if (!data || !data.type) return;
 
-      if ((data.type === "new_message" || data.type === "outgoing_message") && data.chat_id === chatId) {
+      if (data.type === "typing" && data.chat_id === chatId) {
+        setTypingStatus(`${data.action || "typing"}...`.replace("_", " "));
+        
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => {
+          setTypingStatus(null);
+        }, 4000);
+      } else if (data.type === "user_update" && data.user_id === chatId) {
+        setOnlineStatus(data.status);
+      } else if ((data.type === "new_message" || data.type === "outgoing_message") && data.chat_id === chatId) {
         const newMsgItem: MessageItem = {
           id: data.message_id,
           sender_id: data.sender_id || null,
@@ -1491,8 +1526,23 @@ function MessagePane({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-slate-900 truncate">{chatTitle}</h2>
-          <p className="text-xs text-slate-400 font-semibold capitalize tracking-wide">{chatType}</p>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{chatTitle}</h2>
+          <p className="text-xs font-medium truncate leading-tight mt-0.5">
+            {typingStatus ? (
+              <span className="text-primary dark:text-blue-400 font-semibold animate-pulse">{typingStatus}</span>
+            ) : onlineStatus ? (
+              <span className={cn(
+                "capitalize",
+                onlineStatus.includes("Online") || onlineStatus.includes("online")
+                  ? "text-green-600 dark:text-green-400 font-bold"
+                  : "text-slate-400 dark:text-slate-500"
+              )}>
+                {onlineStatus.replace("UserStatus", "").toLowerCase()}
+              </span>
+            ) : (
+              <span className="text-slate-400 dark:text-slate-500 capitalize">{chatType}</span>
+            )}
+          </p>
         </div>
 
         {(onArchive || onDelete) && (
@@ -1678,6 +1728,7 @@ function MessagePane({
                                 chatId={chatId}
                                 placeholder={msg.stripped_thumb}
                                 getApiUrl={getApiUrl}
+                                onOpenLightbox={(url) => setLightboxMedia({ url, type: "photo" })}
                               />
                             )}
                             {msg.media_type === "video" && (
@@ -1935,6 +1986,51 @@ function MessagePane({
       {sendMutation.isError && (
         <div className="px-4 py-1.5 bg-red-50 text-xs text-red-600 border-t border-red-100">
           {_("chats.sendFailed")}
+        </div>
+      )}
+
+      {/* Lightbox Media Gallery Modal */}
+      {lightboxMedia && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center animate-in fade-in-0 duration-200 select-none"
+          onClick={() => setLightboxMedia(null)}
+        >
+          <button
+            onClick={() => setLightboxMedia(null)}
+            className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          
+          <a
+            href={lightboxMedia.url}
+            download
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-4 right-20 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md flex items-center justify-center"
+            title="Download"
+          >
+            <FileText className="h-6 w-6" />
+          </a>
+
+          <div
+            className="relative max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {lightboxMedia.type === "photo" ? (
+              <img
+                src={lightboxMedia.url}
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                alt="Fullscreen View"
+              />
+            ) : (
+              <video
+                src={lightboxMedia.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              />
+            )}
+          </div>
         </div>
       )}
     </>
