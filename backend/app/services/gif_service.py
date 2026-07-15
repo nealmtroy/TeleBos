@@ -112,7 +112,7 @@ async def download_gif(account: TelegramAccount, document_id: int | str, access_
     file_ref_bytes = bytes.fromhex(file_reference) if file_reference else b''
     
     doc = InputDocument(id=document_id, access_hash=access_hash, file_reference=file_ref_bytes)
-    file_bytes = await client.download_media(doc, bytes)
+    file_bytes = await client.download_file(doc, file=bytes)
     if not file_bytes:
         raise RuntimeError("Failed to download GIF media.")
         
