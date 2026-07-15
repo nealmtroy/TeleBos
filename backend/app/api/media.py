@@ -42,7 +42,7 @@ from app.schemas.chat import (
     SendScheduledMessageRequest,
     InviteLinkItem,
 )
-from app.services import account_service, media_service as chat_service
+from app.services import account_service, message_service as chat_service
 from app.utils.rate_limiter import rate_limiter
 from app.utils.sanitize import sanitize_exception
 

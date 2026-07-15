@@ -555,18 +555,3 @@ async def create_invite_link(
 
 
 
-async def send_voice_note(account: TelegramAccount, chat_id: int, file_path: str) -> dict:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
-    entity = await resolve_chat_entity(client, account.id, chat_id)
-    
-    res = await client.send_file(entity, file_path, voice_note=True)
-    return {
-        "id": res.id,
-        "text": res.message or "",
-        "date": res.date.isoformat() if res.date else None,
-    }
-
-
