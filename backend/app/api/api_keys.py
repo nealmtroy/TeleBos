@@ -19,7 +19,7 @@ from app.schemas.api_key import (
 )
 from app.utils.api_keys import generate_api_key
 
-router = APIRouter(prefix="/api-keys", tags=["api-keys"])
+router = APIRouter(prefix="/api/v1/api-keys", tags=["api-keys"])
 
 
 def _validate_scopes(scopes: list[str]) -> list[str]:

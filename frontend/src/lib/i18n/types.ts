@@ -553,6 +553,30 @@ export interface Dict {
     changingPassword: string;
     sessionExpired: string;
     failedChangePassword: string;
+    apiKeys: string;
+    apiKeysDesc: string;
+    createApiKey: string;
+    apiKeyName: string;
+    apiKeyNamePlaceholder: string;
+    apiKeyScopes: string;
+    apiKeyScopesDesc: string;
+    profileRead: string;
+    accountsRead: string;
+    jobsRead: string;
+    generateKey: string;
+    generatingKey: string;
+    apiKeyCreated: string;
+    apiKeyCreatedDesc: string;
+    copySecret: string;
+    copied: string;
+    secretWarning: string;
+    noApiKeys: string;
+    revoke: string;
+    revokeConfirm: string;
+    revoked: string;
+    failedLoadApiKeys: string;
+    failedCreateApiKey: string;
+    failedRevokeApiKey: string;
   };
 
   // Account Settings (per-account)

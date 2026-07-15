@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-15
+- **[eb1c9008](https://github.com/nealmtroy/TeleBos/commit/eb1c9008)**: fix: allow swagger source maps in csp
 - **[9292a168](https://github.com/nealmtroy/TeleBos/commit/9292a168)**: fix: allow swagger assets in api docs csp
 - **[023d6f0e](https://github.com/nealmtroy/TeleBos/commit/023d6f0e)**: fix: serve API docs under api prefix
 - **[fb2aa51f](https://github.com/nealmtroy/TeleBos/commit/fb2aa51f)**: fix: render api key jsonb default correctly
