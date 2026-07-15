@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-15
+- **[5f43c3ea](https://github.com/nealmtroy/TeleBos/commit/5f43c3ea)**: fix: use low-level client.download_file for InputDocument media download
 - **[77fa0be0](https://github.com/nealmtroy/TeleBos/commit/77fa0be0)**: debug: log download tracebacks in stickers and gifs routers
 - **[f3070374](https://github.com/nealmtroy/TeleBos/commit/f3070374)**: fix: import StickerSearchResponse in api/stickers.py
 - **[8e3da092](https://github.com/nealmtroy/TeleBos/commit/8e3da092)**: feat: implement live Telegram GIF search, saved GIFs collection, and sticker search matching reference tweb
