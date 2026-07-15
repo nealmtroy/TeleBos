@@ -314,6 +314,7 @@ class VotePollRequest(BaseModel):
 class StickerItem(BaseModel):
     id: str
     access_hash: str
+    file_reference: str
     width: int
     height: int
     mime_type: str
@@ -331,6 +332,7 @@ class StickerSetResponse(BaseModel):
 class SendStickerRequest(BaseModel):
     document_id: str
     access_hash: str
+    file_reference: str | None = None
 
 
 class SendScheduledMessageRequest(BaseModel):

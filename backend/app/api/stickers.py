@@ -91,6 +91,7 @@ async def download_sticker_file(
     account_id: str,
     document_id: str,
     access_hash: str,
+    file_reference: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user_from_token_or_header),
 ):
@@ -98,7 +99,7 @@ async def download_sticker_file(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        file_bytes = await chat_service.download_sticker(account, document_id, access_hash)
+        file_bytes = await chat_service.download_sticker(account, document_id, access_hash, file_reference)
         return StreamingResponse(io.BytesIO(file_bytes), media_type="image/webp")
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
@@ -118,7 +119,7 @@ async def send_sticker_to_chat(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        res = await chat_service.send_sticker(account, chat_id, payload.document_id, payload.access_hash)
+        res = await chat_service.send_sticker(account, chat_id, payload.document_id, payload.access_hash, payload.file_reference)
         return res
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

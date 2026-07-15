@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-15
+- **[0fc74dd9](https://github.com/nealmtroy/TeleBos/commit/0fc74dd9)**: fix: resolve media_service import error by utilizing message_service for media and voice note endpoints
 - **[d2194350](https://github.com/nealmtroy/TeleBos/commit/d2194350)**: refactor: split chat_service and chats api into modular domain-specific files & fix sticker document precision loss
 - **[83acfb3e](https://github.com/nealmtroy/TeleBos/commit/83acfb3e)**: fix: authenticate media/sticker/video URLs with session token query param
 

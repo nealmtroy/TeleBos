@@ -329,7 +329,7 @@ export function MessagePane({
   });
 
   const sendStickerMutation = useMutation({
-    mutationFn: async (payload: { document_id: number; access_hash: number }) => {
+    mutationFn: async (payload: { document_id: string; access_hash: string; file_reference?: string }) => {
       await api.post(`/accounts/${accountId}/chats/${chatId}/stickers`, payload);
     },
     onSuccess: () => {
@@ -1340,7 +1340,7 @@ export function MessagePane({
                           ) : stickerSetDetails && stickerSetDetails.length > 0 ? (
                             <div className="grid grid-cols-4 gap-2.5">
                               {stickerSetDetails.map((sticker: any) => {
-                                const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam()}`;
+                                const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam()}${sticker.file_reference ? `&file_reference=${sticker.file_reference}` : ""}`;
                                 return (
                                   <button
                                     key={sticker.id}
@@ -1348,6 +1348,7 @@ export function MessagePane({
                                       sendStickerMutation.mutate({
                                         document_id: sticker.id,
                                         access_hash: sticker.access_hash,
+                                        file_reference: sticker.file_reference,
                                       });
                                     }}
                                     className="aspect-square bg-slate-50 dark:bg-[#202b36]/20 rounded-xl overflow-hidden hover:scale-105 active:scale-95 transition border border-slate-150 dark:border-none p-1 flex items-center justify-center cursor-pointer"

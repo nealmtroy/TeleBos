@@ -64,6 +64,7 @@ async def get_sticker_set(account: TelegramAccount, short_name: str) -> dict:
         stickers.append({
             "id": str(doc.id),
             "access_hash": str(doc.access_hash),
+            "file_reference": getattr(doc, "file_reference", b"").hex(),
             "width": w,
             "height": h,
             "mime_type": doc.mime_type,
@@ -80,7 +81,7 @@ async def get_sticker_set(account: TelegramAccount, short_name: str) -> dict:
     }
 
 
-async def download_sticker(account: TelegramAccount, document_id: int | str, access_hash: int | str) -> bytes:
+async def download_sticker(account: TelegramAccount, document_id: int | str, access_hash: int | str, file_reference: str | None = None) -> bytes:
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
@@ -88,8 +89,9 @@ async def download_sticker(account: TelegramAccount, document_id: int | str, acc
     
     document_id = int(document_id)
     access_hash = int(access_hash)
+    file_ref_bytes = bytes.fromhex(file_reference) if file_reference else b''
     from telethon.tl.types import InputDocument
-    doc = InputDocument(id=document_id, access_hash=access_hash, file_reference=b'')
+    doc = InputDocument(id=document_id, access_hash=access_hash, file_reference=file_ref_bytes)
     file_bytes = await client.download_media(doc, bytes)
     if not file_bytes:
         raise RuntimeError("Failed to download sticker media.")
@@ -97,7 +99,7 @@ async def download_sticker(account: TelegramAccount, document_id: int | str, acc
 
 
 
-async def send_sticker(account: TelegramAccount, chat_id: int, document_id: int | str, access_hash: int | str) -> dict:
+async def send_sticker(account: TelegramAccount, chat_id: int, document_id: int | str, access_hash: int | str, file_reference: str | None = None) -> dict:
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
@@ -106,8 +108,9 @@ async def send_sticker(account: TelegramAccount, chat_id: int, document_id: int 
     
     document_id = int(document_id)
     access_hash = int(access_hash)
+    file_ref_bytes = bytes.fromhex(file_reference) if file_reference else b''
     from telethon.tl.types import InputDocument
-    doc = InputDocument(id=document_id, access_hash=access_hash, file_reference=b'')
+    doc = InputDocument(id=document_id, access_hash=access_hash, file_reference=file_ref_bytes)
     res = await client.send_file(entity, doc)
     return {
         "id": res.id,
