@@ -119,3 +119,82 @@ async def send_sticker(account: TelegramAccount, chat_id: int, document_id: int 
     }
 
 
+async def search_stickers(account: TelegramAccount, query: str) -> dict:
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+        
+    from telethon.tl.functions.messages import GetStickersRequest, SearchStickerSetsRequest
+    from telethon.tl.types import DocumentAttributeImageSize, DocumentAttributeVideo
+    
+    is_emoticon = False
+    if query:
+        first_char = ord(query[0])
+        if first_char > 127:
+            is_emoticon = True
+
+    stickers = []
+    sets = []
+    
+    if is_emoticon:
+        res = await client(GetStickersRequest(emoticon=query, hash=0))
+        for doc in getattr(res, "stickers", []):
+            w, h = 512, 512
+            for attr in getattr(doc, "attributes", []) or []:
+                if isinstance(attr, DocumentAttributeImageSize):
+                    w, h = attr.w, attr.h
+                elif isinstance(attr, DocumentAttributeVideo):
+                    w, h = attr.w, attr.h
+            stickers.append({
+                "id": str(doc.id),
+                "access_hash": str(doc.access_hash),
+                "file_reference": getattr(doc, "file_reference", b"").hex(),
+                "width": w,
+                "height": h,
+                "mime_type": doc.mime_type,
+                "file_size": doc.size,
+            })
+    else:
+        res = await client(SearchStickerSetsRequest(q=query, hash=0))
+        for covered in getattr(res, "sets", []):
+            s_set = getattr(covered, "set", None)
+            if s_set:
+                cover_docs = []
+                doc_list = []
+                if hasattr(covered, "cover") and covered.cover:
+                    doc_list.append(covered.cover)
+                elif hasattr(covered, "covers") and covered.covers:
+                    doc_list.extend(covered.covers)
+                
+                for doc in doc_list:
+                    w, h = 512, 512
+                    for attr in getattr(doc, "attributes", []) or []:
+                        if isinstance(attr, DocumentAttributeImageSize):
+                            w, h = attr.w, attr.h
+                        elif isinstance(attr, DocumentAttributeVideo):
+                            w, h = attr.w, attr.h
+                    cover_docs.append({
+                        "id": str(doc.id),
+                        "access_hash": str(doc.access_hash),
+                        "file_reference": getattr(doc, "file_reference", b"").hex(),
+                        "width": w,
+                        "height": h,
+                        "mime_type": doc.mime_type,
+                        "file_size": doc.size,
+                    })
+
+                sets.append({
+                    "set_id": str(s_set.id),
+                    "access_hash": str(s_set.access_hash),
+                    "title": getattr(s_set, "title", ""),
+                    "short_name": getattr(s_set, "short_name", ""),
+                    "stickers": cover_docs
+                })
+
+    return {
+        "stickers": stickers,
+        "sets": sets
+    }
+
+

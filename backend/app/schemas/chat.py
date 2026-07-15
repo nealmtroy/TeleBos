@@ -341,5 +341,36 @@ class SendScheduledMessageRequest(BaseModel):
     reply_to: int | None = None
 
 
+class GifItem(BaseModel):
+    id: str
+    access_hash: str
+    file_reference: str
+    width: int | None = None
+    height: int | None = None
+    thumb_url: str | None = None
+
+
+class GifListResponse(BaseModel):
+    gifs: list[GifItem]
+    next_offset: str | None = None
+
+
+class SaveGifRequest(BaseModel):
+    document_id: str
+    access_hash: str
+    unsave: bool = False
+
+
+class SendGifRequest(BaseModel):
+    document_id: str
+    access_hash: str
+    file_reference: str
+
+
+class StickerSearchResponse(BaseModel):
+    stickers: list[StickerItem]
+    sets: list[StickerSetResponse]
+
+
 
 

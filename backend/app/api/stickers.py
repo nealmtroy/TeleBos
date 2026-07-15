@@ -125,3 +125,20 @@ async def send_sticker_to_chat(
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
+@router.get("/accounts/{account_id}/stickers/search", response_model=StickerSearchResponse)
+async def search_stickers_endpoint(
+    account_id: str,
+    q: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    try:
+        res = await chat_service.search_stickers(account, q)
+        return StickerSearchResponse(**res)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
