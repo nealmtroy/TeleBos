@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-15
+- **[217c2865](https://github.com/nealmtroy/TeleBos/commit/217c2865)**: feat(api): expose telegram login and session upload endpoints in public api
 - **[1804319f](https://github.com/nealmtroy/TeleBos/commit/1804319f)**: feat: add API key management settings
 - **[eb1c9008](https://github.com/nealmtroy/TeleBos/commit/eb1c9008)**: fix: allow swagger source maps in csp
 - **[9292a168](https://github.com/nealmtroy/TeleBos/commit/9292a168)**: fix: allow swagger assets in api docs csp
