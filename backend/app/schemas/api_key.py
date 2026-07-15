@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-API_KEY_SCOPES = ("profile:read", "accounts:read", "jobs:read")
+API_KEY_SCOPES = ("profile:read", "accounts:read", "jobs:read", "accounts:write")
 
 
 class ApiKeyCreateRequest(BaseModel):

@@ -418,6 +418,7 @@ export default function SettingsPage() {
               {[
                 ["profile:read", _("settings.profileRead")],
                 ["accounts:read", _("settings.accountsRead")],
+                ["accounts:write", _("settings.accountsWrite")],
                 ["jobs:read", _("settings.jobsRead")],
               ].map(([scope, label]) => (
                 <label key={scope} className={cn(

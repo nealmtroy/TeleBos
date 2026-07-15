@@ -601,6 +601,7 @@ const en: Dict = {
     profileRead: "Read your profile",
     accountsRead: "Read account metadata",
     jobsRead: "Read job status",
+    accountsWrite: "Add or authenticate Telegram accounts",
     generateKey: "Generate API key",
     generatingKey: "Generating...",
     apiKeyCreated: "API key created",

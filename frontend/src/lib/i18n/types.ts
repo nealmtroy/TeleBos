@@ -563,6 +563,7 @@ export interface Dict {
     profileRead: string;
     accountsRead: string;
     jobsRead: string;
+    accountsWrite: string;
     generateKey: string;
     generatingKey: string;
     apiKeyCreated: string;

@@ -601,6 +601,7 @@ const id: Dict = {
     profileRead: "Baca profil Anda",
     accountsRead: "Baca metadata akun",
     jobsRead: "Baca status pekerjaan",
+    accountsWrite: "Tambah atau autentikasi akun Telegram",
     generateKey: "Generate API key",
     generatingKey: "Membuat...",
     apiKeyCreated: "API key berhasil dibuat",
