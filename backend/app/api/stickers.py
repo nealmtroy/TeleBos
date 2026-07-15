@@ -41,6 +41,7 @@ from app.schemas.chat import (
     SendStickerRequest,
     SendScheduledMessageRequest,
     InviteLinkItem,
+    StickerSearchResponse,
 )
 from app.services import account_service, sticker_service as chat_service
 from app.utils.rate_limiter import rate_limiter
