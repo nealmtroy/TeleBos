@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { getAuthParam } from "./helpers";
 import { FileText, Pause, Play } from "lucide-react";
 
 export function MessagePhoto({
@@ -18,7 +19,7 @@ export function MessagePhoto({
   onOpenLightbox: (url: string) => void;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-slate-100/50 border border-slate-200/40 max-w-[280px] sm:max-w-[320px] aspect-[4/3] cursor-pointer hover:opacity-95 transition">
@@ -60,7 +61,7 @@ export function MessageVideo({
   poster?: string | null;
   getApiUrl: () => string;
 }) {
-  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream`;
+  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam()}`;
   return (
     <div className="relative rounded-xl overflow-hidden bg-slate-950 max-w-[280px] sm:max-w-[320px] border border-slate-200/10">
       <video
@@ -86,7 +87,7 @@ export function MessageVideoNote({
   chatId: number;
   getApiUrl: () => string;
 }) {
-  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream`;
+  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam()}`;
   return (
     <div className="relative rounded-full overflow-hidden bg-slate-950 w-44 h-44 border-2 border-primary/20 aspect-square">
       <video
@@ -120,7 +121,7 @@ export function MessageVoice({
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
 
   const bars = useMemo(() => {
     if (waveform && waveform.length > 0) return waveform;
@@ -220,7 +221,7 @@ export function MessageSticker({
   chatId: number;
   getApiUrl: () => string;
 }) {
-  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
   return (
     <div className="w-32 h-32 select-none hover:scale-105 transition duration-200">
       <img
@@ -250,7 +251,7 @@ export function MessageDocument({
   getApiUrl: () => string;
   isOut: boolean;
 }) {
-  const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media`;
+  const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
   
   const sizeText = useMemo(() => {
     if (!fileSize) return "";

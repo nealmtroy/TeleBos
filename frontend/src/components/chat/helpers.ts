@@ -45,6 +45,7 @@ export const MEDIA_ICONS: Record<string, any> = {
 import React from "react";
 import Icons from "./Icons";
 import { cn } from "@/lib/utils";
+import { getSessionToken } from "@/lib/api";
 
 export function TgIcon({ name, className }: { name: string; className?: string }) {
   const hex = (Icons as Record<string, string>)[name];
@@ -53,3 +54,12 @@ export function TgIcon({ name, className }: { name: string; className?: string }
   return React.createElement("span", { className: cn("tgico select-none", className) }, char);
 }
 
+/**
+ * Returns a query string `?token=xxx` with the current session token,
+ * so that `<img src>` / `<video src>` / `<audio src>` can authenticate
+ * against backend endpoints that require auth.
+ */
+export function getAuthParam(): string {
+  const t = getSessionToken();
+  return t ? `?token=${encodeURIComponent(t)}` : "";
+}

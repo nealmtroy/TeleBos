@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import api from "@/lib/api";
+import api, { getSessionToken } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
@@ -50,6 +50,12 @@ export function ChatsContent() {
       return "/api/v1";
     }
     return apiUrl;
+  }, []);
+
+  // Returns "?token=xxx" for use in <img src> / <video src> URLs
+  const getAuthParam = useCallback(() => {
+    const t = getSessionToken();
+    return t ? `?token=${encodeURIComponent(t)}` : "";
   }, []);
 
   // Auto-select first account
@@ -531,6 +537,7 @@ export function ChatsContent() {
           setShowLeftMenu={setShowLeftMenu}
           isAuthenticated={isAuthenticated}
           getApiUrl={getApiUrl}
+          getAuthParam={getAuthParam}
           page={page}
           setPage={setPage}
           chatsData={chatsData}
@@ -551,6 +558,7 @@ export function ChatsContent() {
               chatTitle={selectedChatTitle}
               chatType={selectedChatType}
               getApiUrl={getApiUrl}
+              getAuthParam={getAuthParam}
               onBack={handleBackToList}
               isArchived={chats.find((c) => c.chat_id === selectedChatId)?.is_archived || false}
               onArchive={() => {

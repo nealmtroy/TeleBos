@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_user_from_token_or_header
 from app.models.user import User
 from app.schemas.chat import (
     ChatListResponse,
@@ -689,7 +689,7 @@ async def get_message_media_endpoint(
     chat_id: int,
     message_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_from_token_or_header),
 ):
     """Download and cache a message's media (photo, document, voice note, etc.) and return it."""
     import os
@@ -770,7 +770,7 @@ async def stream_message_video_endpoint(
     chat_id: int,
     message_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_from_token_or_header),
 ):
     """Stream video progressive notes/files using HTTP 206 Partial Content range requests."""
     import os
@@ -1359,7 +1359,7 @@ async def download_sticker_file(
     document_id: int,
     access_hash: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_from_token_or_header),
 ):
     account = await account_service.get_account(db, account_id, str(user.id))
     if account is None:

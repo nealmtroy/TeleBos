@@ -34,7 +34,7 @@ import {
   Clock,
 } from "lucide-react";
 import { MessageItem, ChatItem } from "./types";
-import { getAvatarGradient, MEDIA_ICONS } from "./helpers";
+import { getAvatarGradient, MEDIA_ICONS, getAuthParam } from "./helpers";
 import {
   MessagePhoto,
   MessageVideo,
@@ -51,6 +51,7 @@ interface MessagePaneProps {
   chatTitle: string;
   chatType: string;
   getApiUrl: () => string;
+  getAuthParam: () => string;
   onBack: () => void;
   isArchived?: boolean;
   onArchive?: () => void;
@@ -110,6 +111,7 @@ export function MessagePane({
   chatTitle,
   chatType,
   getApiUrl,
+  getAuthParam,
   onBack,
   isArchived,
   onArchive,
@@ -758,8 +760,8 @@ export function MessagePane({
     return mediaList.findIndex((m) => {
       const isPhoto = m.media_type === "photo";
       const mediaUrl = isPhoto
-        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/photo`
-        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/video`;
+        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/media${getAuthParam()}`
+        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/media${getAuthParam()}`;
       return mediaUrl === lightboxMedia.url || (m.media_filename && lightboxMedia.url.includes(m.id.toString()));
     });
   }, [lightboxMedia, mediaList, accountId, chatId]);
@@ -771,8 +773,8 @@ export function MessagePane({
       const targetMsg = mediaList[targetIdx];
       const isPhoto = targetMsg.media_type === "photo";
       const targetUrl = isPhoto
-        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/photo`
-        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/video`;
+        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/media${getAuthParam()}`
+        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/media${getAuthParam()}`;
       setLightboxMedia({ url: targetUrl, type: isPhoto ? "photo" : "video" });
       setZoomLevel(1);
     }
@@ -1338,7 +1340,7 @@ export function MessagePane({
                           ) : stickerSetDetails && stickerSetDetails.length > 0 ? (
                             <div className="grid grid-cols-4 gap-2.5">
                               {stickerSetDetails.map((sticker: any) => {
-                                const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download`;
+                                const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam()}`;
                                 return (
                                   <button
                                     key={sticker.id}

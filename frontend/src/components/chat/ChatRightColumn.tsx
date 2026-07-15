@@ -18,7 +18,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { MessageItem } from "./types";
-import { getAvatarGradient } from "./helpers";
+import { getAvatarGradient, getAuthParam } from "./helpers";
 
 interface ChatRightColumnProps {
   showRightDrawer: boolean;
@@ -261,7 +261,7 @@ export function ChatRightColumn({
                   {allMessages
                     .filter((m) => m.media_type === "photo" || m.media_type === "video")
                     .map((msg) => {
-                      const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media`;
+                      const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`;
                       return (
                         <div
                           key={msg.id}
@@ -294,7 +294,7 @@ export function ChatRightColumn({
                   {allMessages
                     .filter((m) => m.media_type === "document")
                     .map((msg) => {
-                      const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media`;
+                      const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`;
                       return (
                         <a
                           key={msg.id}
