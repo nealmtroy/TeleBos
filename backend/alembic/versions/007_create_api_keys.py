@@ -18,7 +18,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("key_prefix", sa.String(32), nullable=False),
         sa.Column("key_hash", sa.String(64), nullable=False),
-        sa.Column("scopes", postgresql.JSONB(), nullable=False, server_default="'[]'::jsonb"),
+        sa.Column("scopes", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),

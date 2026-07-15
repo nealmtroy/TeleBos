@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-15
+- **[e2fd2c97](https://github.com/nealmtroy/TeleBos/commit/e2fd2c97)**: feat: expose scoped public API docs
 - **[471eabf6](https://github.com/nealmtroy/TeleBos/commit/471eabf6)**: fix: use InputDocumentFileLocation for download_file in sticker and gif services
 - **[d0eec98d](https://github.com/nealmtroy/TeleBos/commit/d0eec98d)**: feat: render animated GIFs (animations) in message bubble history and media lightbox
 - **[37b87a47](https://github.com/nealmtroy/TeleBos/commit/37b87a47)**: feat: replace hardcoded emojis with complete set from tweb, and enable keyword search
