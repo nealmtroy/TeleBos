@@ -802,7 +802,7 @@ export function MessagePane({
 
   // Media Viewer navigation & zoom
   const mediaList = useMemo(() => {
-    return allMessages.filter((m) => m.media_type === "photo" || m.media_type === "video");
+    return allMessages.filter((m) => m.media_type === "photo" || m.media_type === "video" || m.media_type === "animation");
   }, [allMessages]);
 
   const currentMediaIndex = useMemo(() => {
@@ -2495,6 +2495,21 @@ const MessageBubble = memo(({
                 poster={msg.stripped_thumb}
                 getApiUrl={getApiUrl}
               />
+            )}
+            {msg.media_type === "animation" && (
+              <div
+                onClick={() => setLightboxMedia({ url: `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`, type: "video" })}
+                className="rounded-xl overflow-hidden max-w-[240px] relative bg-slate-100 dark:bg-slate-800 cursor-pointer hover:opacity-95"
+              >
+                <video
+                  src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`}
+                  className="w-full h-auto object-cover max-h-60"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              </div>
             )}
             {msg.media_type === "video_note" && (
               <MessageVideoNote
