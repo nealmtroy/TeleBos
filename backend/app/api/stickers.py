@@ -103,6 +103,8 @@ async def download_sticker_file(
         file_bytes = await chat_service.download_sticker(account, document_id, access_hash, file_reference)
         return StreamingResponse(io.BytesIO(file_bytes), media_type="image/webp")
     except Exception as exc:
+        import logging
+        logging.getLogger("app.api.stickers").exception("Failed to download sticker: %s", exc)
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 

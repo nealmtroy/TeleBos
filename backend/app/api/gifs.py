@@ -85,6 +85,8 @@ async def download_gif_endpoint(
         file_bytes, media_type = await gif_service.download_gif(account, document_id, access_hash, file_reference)
         return StreamingResponse(io.BytesIO(file_bytes), media_type=media_type)
     except Exception as exc:
+        import logging
+        logging.getLogger("app.api.gifs").exception("Failed to download GIF: %s", exc)
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
