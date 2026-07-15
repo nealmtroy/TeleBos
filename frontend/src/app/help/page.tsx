@@ -110,6 +110,22 @@ export default function HelpPage() {
 
       {/* Card grid */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <Link
+          href="/help/api"
+          className="group mb-5 flex items-center justify-between rounded-2xl border border-primary-100 bg-primary-50/60 p-5 transition hover:border-primary-200 hover:bg-primary-50"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-primary-600 shadow-sm">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 group-hover:text-primary-700">API Documentation</h2>
+              <p className="mt-1 text-sm text-gray-600">Integrate other websites with the scoped TeleBos API.</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-primary-400 transition group-hover:translate-x-1 group-hover:text-primary-600" />
+        </Link>
+
         {filteredSections.length === 0 ? (
           <div className="text-center py-20">
             <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />

@@ -5,13 +5,53 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
+from fastapi.security import HTTPBearer
+
+
+_MAX_PUBLIC_SCHEMA_PATH_PREFIX = "/api/public/v1/"
+
+
+def _build_public_openapi(app: FastAPI) -> dict:
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags,
+    )
+    schema["paths"] = {
+        path: operations
+        for path, operations in schema.get("paths", {}).items()
+        if path.startswith(_MAX_PUBLIC_SCHEMA_PATH_PREFIX)
+    }
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["HTTPBearer"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "TeleBos API key",
+        "description": "Use a scoped integration key in the Authorization header.",
+    }
+    for operations in schema["paths"].values():
+        for operation in operations.values():
+            if isinstance(operation, dict) and operation.get("tags") == ["public-api"]:
+                operation["security"] = [{"HTTPBearer": []}]
+    return schema
+
+
+public_api_bearer = HTTPBearer(
+    auto_error=False,
+    description="Scoped TeleBos integration API key. Use Authorization: Bearer tb_live_...",
+)
+
+
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
-from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices, account_folders, messages, media, reactions, pins, group_admin, stickers, polls, forward, gifs
+from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices, account_folders, messages, media, reactions, pins, group_admin, stickers, polls, forward, gifs, public, api_keys
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
 
@@ -959,8 +999,28 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=app_settings.APP_NAME,
     version="1.0.0",
+    description=(
+        "TeleBos API for first-party dashboard use and carefully scoped integrations. "
+        "Browser sessions use x-better-auth-token; external websites must use a scoped "
+        "Authorization: Bearer API key. Never share browser session tokens with third parties."
+    ),
+    contact={"name": "TeleBos Support", "url": "https://telebos.app/help"},
+    openapi_tags=[
+        {"name": "public-api", "description": "Stable, read-only endpoints for external integrations."},
+        {"name": "api-keys", "description": "Create and revoke external integration keys."},
+    ],
     lifespan=lifespan,
 )
+app.openapi_schema = None
+
+
+def public_openapi() -> dict:
+    if app.openapi_schema is None:
+        app.openapi_schema = _build_public_openapi(app)
+    return app.openapi_schema
+
+
+app.openapi = public_openapi  # type: ignore[method-assign]
 
 # Security headers
 app.add_middleware(SecurityHeadersMiddleware)
@@ -1041,6 +1101,8 @@ app.include_router(admin_account_prices.router, prefix="/api/v1")
 app.include_router(account_folders.router, prefix="/api/v1")
 app.include_router(ws.router)
 app.include_router(system.router)
+app.include_router(public.router)
+app.include_router(api_keys.router)
 
 
 @app.get("/api/v1/health")

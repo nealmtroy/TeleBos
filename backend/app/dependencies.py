@@ -1,7 +1,12 @@
 """FastAPI dependency injection helpers."""
 
-from fastapi import Depends, HTTPException, status, Query, Request
+from fastapi import Depends, HTTPException, status, Query, Request, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
+from datetime import datetime, timezone
+
+from app.models.api_key import ApiKey
+from app.utils.api_keys import hash_api_key
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -167,6 +172,49 @@ async def get_current_user_from_token_or_header(
             detail="User not found or inactive",
         )
     return user
+
+
+api_key_scheme = HTTPBearer(auto_error=False, description="TeleBos integration API key")
+
+
+async def get_api_principal(
+    credentials: HTTPAuthorizationCredentials | None = Security(api_key_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Validate a scoped integration key; never accepts browser session cookies."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key")
+
+    key_hash = hash_api_key(credentials.credentials)
+    result = await db.execute(
+        select(ApiKey, User)
+        .join(User, User.id == ApiKey.user_id)
+        .where(ApiKey.key_hash == key_hash)
+    )
+    row = result.one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+    api_key, user = row
+    now = datetime.now(timezone.utc)
+    if api_key.revoked_at is not None or (api_key.expires_at and api_key.expires_at <= now):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired or revoked")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
+
+    api_key.last_used_at = now
+    # The route dependency owns the transaction and commits this timestamp.
+    setattr(user, "_api_key_scopes", set(api_key.scopes or []))
+    setattr(user, "_api_key_id", api_key.id)
+    return user
+
+
+def require_api_scope(scope: str):
+    async def dependency(user: User = Depends(get_api_principal)) -> User:
+        if scope not in getattr(user, "_api_key_scopes", set()):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Missing API scope: {scope}")
+        return user
+    return dependency
 
 
 def require_role(allowed_roles: list[str] | str):
