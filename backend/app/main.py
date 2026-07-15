@@ -209,7 +209,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com; "
             "font-src 'self' data:; "
-            "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com; "
+            "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com https://cdn.jsdelivr.net; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self'"
