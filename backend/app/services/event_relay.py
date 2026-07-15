@@ -186,7 +186,7 @@ class TelegramEventRelay:
         mime_type = None
         
         if msg.media:
-            from app.services.chat_service import _classify_media
+            from app.services.message_service import _classify_media
             from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
             from telethon.utils import stripped_photo_to_jpg, decode_waveform
             import base64
@@ -349,7 +349,7 @@ class TelegramEventRelay:
         mime_type = None
         
         if msg.media:
-            from app.services.chat_service import _classify_media
+            from app.services.message_service import _classify_media
             from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
             from telethon.utils import stripped_photo_to_jpg, decode_waveform
             import base64

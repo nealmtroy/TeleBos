@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-15
+- **[83acfb3e](https://github.com/nealmtroy/TeleBos/commit/83acfb3e)**: fix: authenticate media/sticker/video URLs with session token query param
+
 ## 2026-07-14
 - **[1944d01a](https://github.com/nealmtroy/TeleBos/commit/1944d01a)**: fix: import InviteLinkItem in chats.py API
 - **[7cb73635](https://github.com/nealmtroy/TeleBos/commit/7cb73635)**: feat: complete deep gap alignment roadmap phases 1-6 (tweb replica)

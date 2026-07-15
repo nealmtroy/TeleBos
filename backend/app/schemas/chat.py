@@ -264,7 +264,7 @@ class GroupPermissionsResponse(BaseModel):
 
 
 class StickerPackItem(BaseModel):
-    id: int
+    id: str
     title: str
     short_name: str
     count: int
@@ -312,8 +312,8 @@ class VotePollRequest(BaseModel):
 
 
 class StickerItem(BaseModel):
-    id: int
-    access_hash: int
+    id: str
+    access_hash: str
     width: int
     height: int
     mime_type: str
@@ -321,16 +321,16 @@ class StickerItem(BaseModel):
 
 
 class StickerSetResponse(BaseModel):
-    set_id: int
-    access_hash: int
+    set_id: str
+    access_hash: str
     title: str
     short_name: str
     stickers: list[StickerItem]
 
 
 class SendStickerRequest(BaseModel):
-    document_id: int
-    access_hash: int
+    document_id: str
+    access_hash: str
 
 
 class SendScheduledMessageRequest(BaseModel):

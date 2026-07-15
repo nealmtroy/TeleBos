@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
-from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices, account_folders
+from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices, account_folders, messages, media, reactions, pins, group_admin, stickers, polls, forward
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
 
@@ -1018,6 +1018,14 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(accounts.router, prefix="/api/v1")
 app.include_router(chats.router, prefix="/api/v1")
+app.include_router(messages.router, prefix="/api/v1")
+app.include_router(media.router, prefix="/api/v1")
+app.include_router(reactions.router, prefix="/api/v1")
+app.include_router(pins.router, prefix="/api/v1")
+app.include_router(group_admin.router, prefix="/api/v1")
+app.include_router(stickers.router, prefix="/api/v1")
+app.include_router(polls.router, prefix="/api/v1")
+app.include_router(forward.router, prefix="/api/v1")
 app.include_router(contacts.router, prefix="/api/v1")
 app.include_router(devices.router, prefix="/api/v1")
 app.include_router(api_settings.router, prefix="/api/v1")
