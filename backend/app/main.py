@@ -1009,6 +1009,11 @@ app = FastAPI(
         {"name": "public-api", "description": "Stable, read-only endpoints for external integrations."},
         {"name": "api-keys", "description": "Create and revoke external integration keys."},
     ],
+    # Keep documentation under /api so it works both through Next.js and
+    # when the backend is exposed directly by a reverse proxy.
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
 app.openapi_schema = None

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-15
+- **[fb2aa51f](https://github.com/nealmtroy/TeleBos/commit/fb2aa51f)**: fix: render api key jsonb default correctly
 - **[e2fd2c97](https://github.com/nealmtroy/TeleBos/commit/e2fd2c97)**: feat: expose scoped public API docs
 - **[471eabf6](https://github.com/nealmtroy/TeleBos/commit/471eabf6)**: fix: use InputDocumentFileLocation for download_file in sticker and gif services
 - **[d0eec98d](https://github.com/nealmtroy/TeleBos/commit/d0eec98d)**: feat: render animated GIFs (animations) in message bubble history and media lightbox

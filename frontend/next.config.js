@@ -16,24 +16,6 @@ const nextConfig = {
         source: "/ws/:path*",
         destination: `${apiTarget}/ws/:path*`,
       },
-      {
-        source: "/api/docs",
-        destination: `${apiTarget}/docs`,
-      },
-      {
-        source: "/api/redoc",
-        destination: `${apiTarget}/redoc`,
-      },
-      {
-        source: "/api/openapi.json",
-        destination: `${apiTarget}/openapi.json`,
-      },
-      // FastAPI's generated Swagger/ReDoc HTML references /openapi.json.
-      // Proxy that asset too so the docs work from the frontend origin.
-      {
-        source: "/openapi.json",
-        destination: `${apiTarget}/openapi.json`,
-      },
     ];
   },
 };
