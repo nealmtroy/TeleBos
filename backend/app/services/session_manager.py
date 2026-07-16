@@ -364,12 +364,13 @@ class SessionManager:
                 account.phone,
                 exc,
             )
+            # Deactivating account
             try:
                 from app.services.account_service import move_to_expired_folder
                 await move_to_expired_folder(db, account.id, account.user_id)
                 await db.commit()
             except Exception as folder_exc:
-                logger.error("Failed to move account %s to Expired folder: %s", account.id, folder_exc)
+                logger.error("Failed to deactivate account %s: %s", account.id, folder_exc)
                 account.is_active = False
                 await db.commit()
             return False

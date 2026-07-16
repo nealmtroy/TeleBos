@@ -266,7 +266,7 @@ class TelegramClientPool:
                 return None
 
     async def _handle_expired_session(self, account_id: str) -> None:
-        """Mark the account as inactive and move it to the 'Expired' folder in the database."""
+        """Mark the account as inactive in the database."""
         try:
             from app.database import async_session_factory
             from app.models.telegram_account import TelegramAccount

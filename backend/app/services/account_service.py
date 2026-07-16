@@ -982,44 +982,18 @@ async def remove_from_expired_folder(db: AsyncSession, account_id: Any, user_id:
 
 
 async def move_to_expired_folder(db: AsyncSession, account_id: Any, user_id: Any) -> None:
-    """Deactivate account and move it to the 'Expired' folder, removing it from other folders."""
+    """Deactivate account when its session expires (no longer moving it to an 'Expired' folder)."""
     from app.models.telegram_account import TelegramAccount
-    from app.models.account_folder import AccountFolder
-    from app.models.account_folder_member import AccountFolderMember
-    from sqlalchemy import select, delete, update
+    from sqlalchemy import update
 
-    # 1. Deactivate account
+    # Deactivate account
     await db.execute(
         update(TelegramAccount)
         .where(TelegramAccount.id == account_id)
         .values(is_active=False)
     )
-
-    # 2. Get or create 'Expired' folder
-    folder_result = await db.execute(
-        select(AccountFolder).where(
-            AccountFolder.user_id == user_id,
-            AccountFolder.name == "Expired"
-        )
-    )
-    folder = folder_result.scalar_one_or_none()
-    if not folder:
-        folder = AccountFolder(user_id=user_id, name="Expired")
-        db.add(folder)
-        await db.flush()
-        await db.refresh(folder)
-
-    # 3. Remove from all other folders
-    await db.execute(
-        delete(AccountFolderMember).where(
-            AccountFolderMember.account_id == account_id
-        )
-    )
-
-    # 4. Add to 'Expired' folder
-    db.add(AccountFolderMember(folder_id=folder.id, account_id=account_id))
     await db.flush()
-    logger.info("Account %s marked as expired and moved to 'Expired' folder", account_id)
+    logger.info("Account %s marked as inactive due to expired session", account_id)
 
 
 async def get_profile_colors(account: TelegramAccount) -> dict:
