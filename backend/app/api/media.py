@@ -271,61 +271,102 @@ async def stream_message_video_endpoint(
             if not msg or not msg.media:
                 raise HTTPException(status_code=404, detail="Message or video media not found")
 
-            ext = ".mp4"
+            file_size = 0
+            mime = "video/mp4"
             if hasattr(msg.media, "document") and msg.media.document:
-                import mimetypes
-                ext = mimetypes.guess_extension(msg.media.document.mime_type or "") or ".mp4"
+                file_size = msg.media.document.size
+                mime = msg.media.document.mime_type or "video/mp4"
+            else:
+                raise HTTPException(status_code=400, detail="Media is not a document/video")
 
-            video_path = os.path.join(media_cache_dir, f"{message_id}{ext}")
-            result_path = await client.download_media(msg, file=video_path)
-            if not result_path or not os.path.exists(video_path):
-                raise HTTPException(status_code=500, detail="Failed to download video")
+            range_header = request.headers.get("range")
+            start = 0
+            end = file_size - 1
+            
+            if range_header:
+                range_val = range_header.replace("bytes=", "")
+                parts = range_val.split("-")
+                if parts[0]:
+                    start = int(parts[0])
+                if len(parts) > 1 and parts[1]:
+                    end = int(parts[1])
+
+            if end >= file_size:
+                end = file_size - 1
+
+            headers = {
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(end - start + 1),
+            }
+
+            async def telethon_stream_generator():
+                bytes_to_read = end - start + 1
+                async for chunk in client.iter_download(msg.media, offset=start):
+                    if not chunk:
+                        break
+                    if len(chunk) > bytes_to_read:
+                        yield chunk[:bytes_to_read]
+                        break
+                    yield chunk
+                    bytes_to_read -= len(chunk)
+                    if bytes_to_read <= 0:
+                        break
+
+            return StreamingResponse(
+                telethon_stream_generator(),
+                status_code=206,
+                headers=headers,
+                media_type=mime
+            )
         except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error("Failed to stream video: %s", exc)
             raise HTTPException(status_code=400, detail=str(exc))
-
-    file_size = os.path.getsize(video_path)
-    range_header = request.headers.get("range")
-    
-    start = 0
-    end = file_size - 1
-    
-    if range_header:
-        range_val = range_header.replace("bytes=", "")
-        parts = range_val.split("-")
-        if parts[0]:
-            start = int(parts[0])
-        if len(parts) > 1 and parts[1]:
-            end = int(parts[1])
-
-    if end >= file_size:
+    else:
+        file_size = os.path.getsize(video_path)
+        range_header = request.headers.get("range")
+        
+        start = 0
         end = file_size - 1
+        
+        if range_header:
+            range_val = range_header.replace("bytes=", "")
+            parts = range_val.split("-")
+            if parts[0]:
+                start = int(parts[0])
+            if len(parts) > 1 and parts[1]:
+                end = int(parts[1])
 
-    def range_file_generator(path: str, start_offset: int, end_offset: int, chunk_size: int = 1024 * 1024):
-        with open(path, "rb") as f:
-            f.seek(start_offset)
-            bytes_to_read = end_offset - start_offset + 1
-            while bytes_to_read > 0:
-                read_len = min(bytes_to_read, chunk_size)
-                data = f.read(read_len)
-                if not data:
-                    break
-                bytes_to_read -= len(data)
-                yield data
+        if end >= file_size:
+            end = file_size - 1
 
-    import mimetypes
-    mime, _ = mimetypes.guess_type(video_path)
-    
-    headers = {
-        "Content-Range": f"bytes {start}-{end}/{file_size}",
-        "Accept-Ranges": "bytes",
-        "Content-Length": str(end - start + 1),
-    }
-    return StreamingResponse(
-        range_file_generator(video_path, start, end),
-        status_code=206,
-        headers=headers,
-        media_type=mime or "video/mp4"
-    )
+        def range_file_generator(path: str, start_offset: int, end_offset: int, chunk_size: int = 1024 * 1024):
+            with open(path, "rb") as f:
+                f.seek(start_offset)
+                bytes_to_read = end_offset - start_offset + 1
+                while bytes_to_read > 0:
+                    read_len = min(bytes_to_read, chunk_size)
+                    data = f.read(read_len)
+                    if not data:
+                        break
+                    bytes_to_read -= len(data)
+                    yield data
+
+        import mimetypes
+        mime, _ = mimetypes.guess_type(video_path)
+        
+        headers = {
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(end - start + 1),
+        }
+        return StreamingResponse(
+            range_file_generator(video_path, start, end),
+            status_code=206,
+            headers=headers,
+            media_type=mime or "video/mp4"
+        )
 
 
 # ── Delete message ────────────────────────────────────────────────────────────

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-16
+- **[97c159d5](https://github.com/nealmtroy/TeleBos/commit/97c159d5)**: fix: stop moving expired accounts to Expired folder, just deactivate them
+
 ## 2026-07-15
 - **[a1b5e70c](https://github.com/nealmtroy/TeleBos/commit/a1b5e70c)**: refactor(frontend): split MessagePane.tsx into smaller, modular components
 - **[217c2865](https://github.com/nealmtroy/TeleBos/commit/217c2865)**: feat(api): expose telegram login and session upload endpoints in public api
