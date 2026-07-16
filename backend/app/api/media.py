@@ -303,7 +303,7 @@ async def stream_message_video_endpoint(
             async def telethon_stream_generator():
                 try:
                     bytes_to_read = end - start + 1
-                    async for chunk in client.iter_download(msg.media, offset=start):
+                    async for chunk in client.iter_download(msg.media, offset=start, request_size=128 * 1024):
                         if not chunk:
                             break
                         
