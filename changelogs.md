@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-16
+- **[0ebeaff3](https://github.com/nealmtroy/TeleBos/commit/0ebeaff3)**: fix: resolve 504 Gateway Timeout in video streaming by streaming chunks directly from Telethon using iter_download
 - **[97c159d5](https://github.com/nealmtroy/TeleBos/commit/97c159d5)**: fix: stop moving expired accounts to Expired folder, just deactivate them
 
 ## 2026-07-15

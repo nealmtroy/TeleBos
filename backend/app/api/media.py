@@ -301,17 +301,27 @@ async def stream_message_video_endpoint(
             }
 
             async def telethon_stream_generator():
-                bytes_to_read = end - start + 1
-                async for chunk in client.iter_download(msg.media, offset=start):
-                    if not chunk:
-                        break
-                    if len(chunk) > bytes_to_read:
-                        yield chunk[:bytes_to_read]
-                        break
-                    yield chunk
-                    bytes_to_read -= len(chunk)
-                    if bytes_to_read <= 0:
-                        break
+                try:
+                    bytes_to_read = end - start + 1
+                    async for chunk in client.iter_download(msg.media, offset=start):
+                        if not chunk:
+                            break
+                        
+                        if isinstance(chunk, memoryview):
+                            chunk = chunk.tobytes()
+                        elif not isinstance(chunk, bytes):
+                            chunk = bytes(chunk)
+
+                        if len(chunk) > bytes_to_read:
+                            yield chunk[:bytes_to_read]
+                            break
+                        yield chunk
+                        bytes_to_read -= len(chunk)
+                        if bytes_to_read <= 0:
+                            break
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error("Error during streaming chunks: %s", e)
 
             return StreamingResponse(
                 telethon_stream_generator(),
