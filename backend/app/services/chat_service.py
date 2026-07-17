@@ -344,6 +344,8 @@ def _classify_chat(entity: Any) -> str:
         Channel as TLChannel,
     )
     if isinstance(entity, TLUser):
+        if getattr(entity, "bot", False):
+            return "bot"
         return "user"
     if isinstance(entity, TLChannel):
         if getattr(entity, "megagroup", False):

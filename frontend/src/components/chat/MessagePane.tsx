@@ -668,6 +668,12 @@ export function MessagePane({
           <p className="text-xs font-medium truncate leading-tight mt-0.5">
             {typingStatus ? (
               <span className="text-primary dark:text-blue-400 font-semibold animate-pulse">{typingStatus}</span>
+            ) : chatType === "bot" ? (
+              <span className="text-slate-400 dark:text-slate-500 font-semibold">bot</span>
+            ) : chatType === "group" || chatType === "supergroup" ? (
+              <span className="text-slate-400 dark:text-slate-500 capitalize">{chatType}</span>
+            ) : chatType === "channel" ? (
+              <span className="text-slate-400 dark:text-slate-500 capitalize">channel</span>
             ) : onlineStatus ? (
               <span className={cn(
                 "capitalize",
@@ -678,7 +684,7 @@ export function MessagePane({
                 {onlineStatus.replace("UserStatus", "").toLowerCase()}
               </span>
             ) : (
-              <span className="text-slate-400 dark:text-slate-500 capitalize">{chatType}</span>
+              <span className="text-slate-400 dark:text-slate-500 capitalize">{chatType || "user"}</span>
             )}
           </p>
         </div>
