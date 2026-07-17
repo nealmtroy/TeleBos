@@ -28,7 +28,7 @@ TeleBos must explicitly avoid the "AI-generated" aesthetic family:
 - No generic blue-and-white SaaS with rounded card grids (old HubSpot, Bootstrap admin templates)
 - No "hero-metric" layout (big number, small label, gradient accent — the SaaS cliché)
 - No cartoonish illustrations, bubbly buttons, or gamified UI elements
-- The interface should not mimic Telegram's own UI — TeleBos is its own product, not a web wrapper
+- The dashboard interface should not mimic Telegram's own UI — TeleBos is its own product (with the explicit exception of the `/chats` page, which intentionally mimics Telegram Web K to provide a native, high-performance chatting experience decoupled from the global TeleBos shell).
 
 ## Design Principles
 

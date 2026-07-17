@@ -48,6 +48,7 @@ Layered architecture following FastAPI conventions:
 - **`src/app/api/auth/[...all]/`** — Better Auth catch-all API route handler
 - **`src/components/`** — shadcn/ui primitives (button, card, badge, avatar, skeleton, toast) + custom components:
   - `accounts/`: `account-card`, `account-avatar`, `spam-appeal-dialog`, `folder-manager-dialog`, `folder-filter-bar`
+  - `chat/`: `AccountSwitcher` (scalable 100-250+ accounts panel), `ChatLeftColumn` (Telegram Web K list & 72px rows), `ChatRightColumn` (cover photo zoom & info cards), `ChatsContent` (realtime sorting & state controller), `EmojiPicker` (interactive emoji/sticker/gif picker), `chat.css` (scope-based theme system)
   - `broadcast/`: `broadcast-progress`, `cycle-accordion`
   - `layout/`: `sidebar`, `navbar`, `account-switcher`, `language-switcher`, `announcement-banner`
   - `orders/`: order-related components

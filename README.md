@@ -11,7 +11,7 @@ Broadcast messages, manage chats, sync folders, and control security settings â€
 - **Profile Management**: Edit name, username, bio, profile photo (upload/view/delete)
 - **Privacy & Security**: Set visibility rules (phone, photo, status, last seen, forwards, voice messages), enable/disable 2FA, manage recovery email
 - **Device Management**: View and terminate active Telegram sessions
-- **Chat Viewer**: Real-time chat list with type indicators, unread counts, and pagination
+- **Chat Viewer (Telegram Web K inspired)**: Standalone immersive 100vh chat interface with independent CSS variable theming, scalable Account Switcher (100-250+ accounts with search & live WS status), strict Telegram sorting (pinned chats locked on top, unpinned sorted by latest message), right-column cover photo zoom animation, username/invite link cards, and shared links extraction.
 - **Chat Folders & Groups**: View, sync, create, edit, and delete Telegram folders. Organize Telegram accounts into custom folders.
 - **Broadcast System**:
   - Manage group lists (username, invite link, or group ID targets) with bulk import

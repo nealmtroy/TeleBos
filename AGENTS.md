@@ -149,6 +149,25 @@ Auto-reply configuration is stored on the `TelegramAccount` model (per-account f
 - To convert session strings from other formats (GramJS, Pyrogram, raw), use `backend/app/utils/session_converter.py`
 - `TelegramAccount` model stores `pts`, `qts`, `date` fields for Telegram state sync
 
+### Working with the Chat UI system (Telegram Web K inspired)
+
+The `/chats` page is built as a standalone, immersive Telegram Web K-inspired interface:
+
+1. **Layout Isolation:** `frontend/src/app/(dashboard)/shell.tsx` conditionally hides the global dashboard navbar, sidebar, and banners when `/chats` is active, allowing full 100vh viewport usage.
+2. **Independent CSS Theme System:** `frontend/src/components/chat/chat.css` defines scoped CSS custom properties (`--tg-*`) under `.tg-chat-root` and `.tg-chat-root.tg-dark`. Theme toggle is saved in `localStorage` (`tg-chat-theme`) independently of the global TeleBos theme.
+3. **Scalable Account Switcher:** `frontend/src/components/chat/AccountSwitcher.tsx` handles 100-250+ accounts with instant search, avatar color gradients, spam status check (`limited`, `temporary_limit`, `permanent_limit`), and live WS connection status.
+4. **Strict Telegram Chat Sorting:** `ChatsContent.tsx` enforces Telegram sorting rules:
+   - Pinned chats (`is_pinned === true`) are locked at the very top.
+   - Unpinned chats are sorted dynamically by `last_message_time` descending (newest first).
+   - Realtime WebSocket `new_message` / `outgoing_message` events update timestamps and trigger instant list reordering.
+5. **Left Column Row & Badges:** `ChatLeftColumn.tsx` uses 72px row height and 54px avatars with distinct badges for Saved Messages (Bookmark icon), Official Telegram (ShieldCheck icon), Bot (`BOT` tag), Group, and Channel entities.
+6. **Right Column Cover Photo & Cards:** `ChatRightColumn.tsx` features:
+   - Cover photo zoom animation on scroll (`scrollTop === 0` expands cover photo with bottom gradient overlay and white title/subtitle).
+   - Info cards for Username/Invite Link (with Copy & QR actions) and Notifications toggle switch.
+   - Segmented pill tabs (`Media`, `Docs`, `Links` with automatic URL extraction from message history).
+7. **Message Bubble Linkification:** `MessageBubble.tsx` (`renderFormattedText`) automatically converts URLs into clickable `<a>` links with `var(--tg-accent)` color and `target="_blank"`.
+8. **Interactive Popups & Focus:** `EmojiPicker.tsx` handles `onMouseDown={(e) => e.preventDefault()}` on buttons to preserve textarea focus during emoji selection.
+
 ### Working with account folders
 
 Account folders let users organize their Telegram accounts into groups (different from Telegram chat folders).
