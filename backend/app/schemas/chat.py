@@ -23,6 +23,7 @@ class ChatItem(BaseModel):
     member_count: int | None = None
     online_count: int | None = None
     invite_link: str | None = None
+    account_id: str | None = None
 
 
 class ChatListResponse(BaseModel):

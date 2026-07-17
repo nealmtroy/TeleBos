@@ -331,6 +331,7 @@ async def get_dialogs(
             "member_count": c.member_count,
             "online_count": c.online_count,
             "invite_link": c.invite_link,
+            "account_id": str(c.account_id) if c.account_id else None,
         })
 
     return page_dialogs, total

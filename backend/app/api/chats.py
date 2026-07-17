@@ -489,7 +489,8 @@ async def list_public_chats_index(
         func.max(TelegramChat.member_count).label("member_count"),
         func.max(TelegramChat.online_count).label("online_count"),
         func.max(TelegramChat.invite_link).label("invite_link"),
-        func.max(TelegramChat.last_message_date).label("last_message_date")
+        func.max(TelegramChat.last_message_date).label("last_message_date"),
+        func.max(TelegramChat.account_id).label("account_id")
     ).where(
         TelegramChat.is_active == True,
         TelegramChat.type.in_(["group", "supergroup", "channel"]),
@@ -541,6 +542,7 @@ async def list_public_chats_index(
             member_count=r.member_count,
             online_count=r.online_count,
             invite_link=r.invite_link,
+            account_id=str(r.account_id) if r.account_id else None,
         ))
 
     return ChatListResponse(chats=chats, total=total, page=page, page_size=page_size)

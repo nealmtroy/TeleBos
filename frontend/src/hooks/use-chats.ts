@@ -17,6 +17,7 @@ export interface ChatItem {
   member_count?: number | null;
   online_count?: number | null;
   invite_link?: string | null;
+  account_id?: string | null;
 }
 
 export function useChats(

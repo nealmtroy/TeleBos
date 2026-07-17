@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[15a1a64a](https://github.com/nealmtroy/TeleBos/commit/15a1a64a)**: feat: make groups & channels sync fully automatic on load and account login
 - **[2ce88d6e](https://github.com/nealmtroy/TeleBos/commit/2ce88d6e)**: feat: implement groups & channels auto-sync, member detailed stats, invite links copying, and pro public index page
 
 ## 2026-07-16
