@@ -47,11 +47,11 @@ import Icons from "./Icons";
 import { cn } from "@/lib/utils";
 import { getSessionToken } from "@/lib/api";
 
-export function TgIcon({ name, className }: { name: string; className?: string }) {
+export function TgIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const hex = (Icons as Record<string, string>)[name];
   if (!hex) return null;
   const char = String.fromCharCode(parseInt(hex, 16));
-  return React.createElement("span", { className: cn("tgico select-none", className) }, char);
+  return React.createElement("span", { className: cn("tgico select-none", className), style }, char);
 }
 
 /**

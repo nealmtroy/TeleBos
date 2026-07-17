@@ -420,72 +420,20 @@ export function ChatsContent() {
     setBatchDeleteOpen(false);
   }
 
+  // Independent chat theme (separate from global TeleBos theme)
+  const [tgTheme, setTgTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("tg-chat-theme") as "light" | "dark") || "light";
+    }
+    return "light";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("tg-chat-theme", tgTheme);
+  }, [tgTheme]);
+
   return (
-    <>
-      <style>{`
-        .telegram-wallpaper {
-          background-color: #e7ebf0;
-          background-image: radial-gradient(rgba(0,0,0,0.06) 1.2px, transparent 0), radial-gradient(rgba(0,0,0,0.06) 1.2px, transparent 0);
-          background-size: 24px 24px;
-          background-position: 0 0, 12px 12px;
-        }
-        .dark .telegram-wallpaper {
-          background-color: #0e1621;
-          background-image: radial-gradient(rgba(255,255,255,0.04) 1.2px, transparent 0), radial-gradient(rgba(255,255,255,0.04) 1.2px, transparent 0);
-          background-size: 24px 24px;
-          background-position: 0 0, 12px 12px;
-        }
-        .bubble-out {
-          background-color: #eeffde !important;
-          color: #000000 !important;
-        }
-        .dark .bubble-out {
-          background-color: #2b5278 !important;
-          color: #f5f5f5 !important;
-        }
-        .bubble-in {
-          background-color: #ffffff !important;
-          color: #000000 !important;
-        }
-        .dark .bubble-in {
-          background-color: #182533 !important;
-          color: #f5f5f5 !important;
-        }
-        .tail-out {
-          color: #eeffde !important;
-        }
-        .dark .tail-out {
-          color: #2b5278 !important;
-        }
-        .tail-in {
-          color: #ffffff !important;
-        }
-        .dark .tail-in {
-          color: #182533 !important;
-        }
-        .date-header {
-          background-color: rgba(120, 130, 140, 0.4) !important;
-          backdrop-filter: blur(4px);
-        }
-        .dark .date-header {
-          background-color: rgba(16, 25, 33, 0.6) !important;
-          backdrop-filter: blur(4px);
-        }
-        .custom-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-          background-color: rgba(0, 0, 0, 0.15);
-          border-radius: 9999px;
-        }
-        .dark .custom-scroll::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.12);
-        }
-      `}</style>
-      <div className="flex h-full w-full bg-white dark:bg-[#0e1621] overflow-hidden">
+    <div className={`tg-chat-root${tgTheme === "dark" ? " tg-dark" : ""}`} style={{ display: "flex", height: "100%", width: "100%", overflow: "hidden" }}>
         <ChatLeftColumn
           selectedAccount={selectedAccount}
           setSelectedAccount={setSelectedAccount}
@@ -542,13 +490,23 @@ export function ChatsContent() {
           setPage={setPage}
           chatsData={chatsData}
           t={t}
+          tgTheme={tgTheme}
+          setTgTheme={setTgTheme}
         />
 
         <div
           className={cn(
-            "flex-col h-full bg-[#e7ebf0] dark:bg-[#0e1621] min-w-0 transition-all duration-300 ease-in-out col-center-slide",
-            selectedChatId ? "flex flex-1 active-mobile" : "hidden lg:flex lg:flex-1"
+            "col-center-slide",
+            selectedChatId ? "active-mobile" : ""
           )}
+          style={{
+            display: selectedChatId ? "flex" : "none",
+            flexDirection: "column",
+            height: "100%",
+            backgroundColor: "var(--tg-bg-chat)",
+            minWidth: 0,
+            flex: selectedChatId ? 1 : undefined,
+          }}
         >
           {selectedChatId ? (
             <MessagePane
@@ -571,18 +529,49 @@ export function ChatsContent() {
               }}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center px-8 py-12 bg-white dark:bg-[#0e1621]">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-[#17212b] border border-slate-200/60 dark:border-slate-800 flex items-center justify-center mb-5 shadow-sm">
-                <MessageSquare className="h-6 w-6 text-primary animate-pulse" />
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              textAlign: "center",
+              padding: "32px",
+              backgroundColor: "var(--tg-bg-chat)",
+            }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: 16,
+                backgroundColor: "var(--tg-bg-primary)",
+                border: "1px solid var(--tg-border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 20,
+                boxShadow: "var(--tg-shadow-sm)",
+              }}>
+                <MessageSquare style={{ width: 24, height: 24, color: "var(--tg-accent)" }} />
               </div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-1">{t("chats.selectChat")}</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--tg-text-primary)", marginBottom: 4 }}>
+                {t("chats.selectChat")}
+              </h2>
+              <p style={{ fontSize: 13, color: "var(--tg-text-secondary)", maxWidth: 320, lineHeight: 1.5 }}>
                 {t("chats.selectChatDesc")}
               </p>
             </div>
           )}
         </div>
-      </div>
+
+        {/* Desktop: show center column when no chat selected */}
+        <style>{`
+          @media (min-width: 1024px) {
+            .tg-chat-root > .col-center-slide {
+              display: flex !important;
+              flex: 1 !important;
+            }
+          }
+        `}</style>
 
       <ConfirmDialog
         open={deleteChatOpen}
@@ -605,7 +594,7 @@ export function ChatsContent() {
         cancelText={t("navbar.cancel")}
         variant="danger"
       />
-    </>
+    </div>
   );
 }
 export default ChatsContent;
