@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[67b24a57](https://github.com/nealmtroy/TeleBos/commit/67b24a57)**: fix(backend): fix Telethon get_participants TypeError by removing invalid offset argument
 - **[8fcf3fd6](https://github.com/nealmtroy/TeleBos/commit/8fcf3fd6)**: feat(chat): match Telegram Web K right column cover photo zoom, username/invite link cards, and message URL formatting
 - **[4929dbe0](https://github.com/nealmtroy/TeleBos/commit/4929dbe0)**: fix(chat): fix account switch chat retention, emoji picker click, entity distinction, and pinned chat sorting
 - **[d0767e69](https://github.com/nealmtroy/TeleBos/commit/d0767e69)**: fix(chat): fix account switcher spam status check, message bubble alignment, and room theme variables

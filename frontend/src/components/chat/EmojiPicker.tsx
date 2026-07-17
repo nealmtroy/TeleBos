@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDraftStore } from "@/lib/drafts";
 import { EMOJI_CATEGORIES, MOCK_GIFS, EMOJI_SUGGESTIONS } from "./constants";
 
 interface EmojiPickerProps {
@@ -128,12 +129,13 @@ export function EmojiPicker({
 
   return (
     <div
-      className="absolute bottom-16 left-4 rounded-2xl shadow-lg p-3.5 z-30 w-80 h-96 flex flex-col animate-in slide-in-from-bottom-2 duration-150"
+      className="absolute bottom-16 left-4 rounded-2xl shadow-lg p-3.5 z-30 w-80 h-96 flex flex-col animate-in slide-in-from-bottom-2 duration-150 select-none"
       style={{
         backgroundColor: "var(--tg-bg-primary)",
         border: "1px solid var(--tg-border)",
         color: "var(--tg-text-primary)",
       }}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tab Headers */}
@@ -141,9 +143,11 @@ export function EmojiPicker({
         {(["emoji", "sticker", "gif"] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setPickerTab(tab)}
             className={cn(
-              "flex-1 pb-2 text-center border-b-2 capitalize transition font-bold",
+              "flex-1 pb-2 text-center border-b-2 capitalize transition font-bold cursor-pointer",
               pickerTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent opacity-70 hover:opacity-100"
@@ -163,7 +167,8 @@ export function EmojiPicker({
               placeholder="Search Emojis..."
               value={emojiSearch}
               onChange={(e) => setEmojiSearch(e.target.value)}
-              className="w-full px-3 py-1.5 mb-2 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-primary"
+              onMouseDown={(e) => e.stopPropagation()}
+              className="w-full px-3 py-1.5 mb-2 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-primary select-text"
               style={{
                 backgroundColor: "var(--tg-bg-secondary)",
                 border: "1px solid var(--tg-border)",
@@ -190,12 +195,26 @@ export function EmojiPicker({
                       {filtered.map((emoji) => (
                         <button
                           key={emoji}
-                          onClick={(e) => {
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
-                            setMessageText((prev) => prev + emoji);
-                            inputRef.current?.focus();
                           }}
-                          className="hover:scale-125 transition duration-100"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setMessageText((prev) => {
+                              const next = prev + emoji;
+                              if (accountId && chatId) {
+                                useDraftStore.getState().setDraft(accountId, chatId, next);
+                              }
+                              return next;
+                            });
+                            setTimeout(() => {
+                              inputRef.current?.focus();
+                            }, 10);
+                          }}
+                          className="hover:scale-125 transition duration-100 cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           {emoji}
                         </button>
