@@ -624,6 +624,38 @@
 }
 
 /* ============================================================
+   MODERN ROUNDED FLOATING COLUMNS (Desktop View)
+   ============================================================ */
+@media (min-width: 1024px) {
+  .tg-chat-root {
+    padding: 10px !important;
+    gap: 10px !important;
+    background-color: var(--tg-bg-chat) !important;
+  }
+
+  .col-left-slide {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--tg-border) !important;
+    box-shadow: var(--tg-shadow-sm) !important;
+  }
+
+  .col-center-slide {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--tg-border) !important;
+    box-shadow: var(--tg-shadow-sm) !important;
+  }
+
+  .drawer-right-slide {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--tg-border) !important;
+    box-shadow: var(--tg-shadow-sm) !important;
+  }
+}
+
+/* ============================================================
    UTILITY CLASSES
    ============================================================ */
 .tg-truncate {

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[c789ee2f](https://github.com/nealmtroy/TeleBos/commit/c789ee2f)**: fix(chat): classify Telegram bots as 'bot' in backend and prioritize bot/group/channel status in header subtitle
 - **[3b393483](https://github.com/nealmtroy/TeleBos/commit/3b393483)**: fix(chat): add explicit type=button, mousedown event prevention on smile button and boost EmojiPicker z-index to 50
 - **[0c02b31c](https://github.com/nealmtroy/TeleBos/commit/0c02b31c)**: fix(chat): prevent handleDocClick from premature unmounting of EmojiPicker on emoji click
 - **[f930d657](https://github.com/nealmtroy/TeleBos/commit/f930d657)**: docs: update documentation (CLAUDE.md, AGENTS.md, README.md, PRODUCT.md) with Telegram Web K chat system architecture and guidelines
