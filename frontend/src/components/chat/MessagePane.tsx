@@ -606,7 +606,11 @@ export function MessagePane({
 
   // Handle document click to close pickers/menus
   useEffect(() => {
-    const handleDocClick = () => {
+    const handleDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest(".tg-emoji-picker") || target.closest(".tg-emoji-btn"))) {
+        return;
+      }
       setContextMenu(null);
       setShowEmojiPicker(false);
     };
@@ -1172,7 +1176,7 @@ export function MessagePane({
                     e.stopPropagation();
                     setShowEmojiPicker(!showEmojiPicker);
                   }}
-                  className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                  className="tg-emoji-btn p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
                   title="Emojis"
                 >
                   <Smile className="h-5 w-5" />

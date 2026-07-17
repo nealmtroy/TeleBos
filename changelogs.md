@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[f930d657](https://github.com/nealmtroy/TeleBos/commit/f930d657)**: docs: update documentation (CLAUDE.md, AGENTS.md, README.md, PRODUCT.md) with Telegram Web K chat system architecture and guidelines
 - **[09ab5e06](https://github.com/nealmtroy/TeleBos/commit/09ab5e06)**: fix(chat): fix emoji button mousedown focus loss and draft store update in EmojiPicker
 - **[67b24a57](https://github.com/nealmtroy/TeleBos/commit/67b24a57)**: fix(backend): fix Telethon get_participants TypeError by removing invalid offset argument
 - **[8fcf3fd6](https://github.com/nealmtroy/TeleBos/commit/8fcf3fd6)**: feat(chat): match Telegram Web K right column cover photo zoom, username/invite link cards, and message URL formatting
