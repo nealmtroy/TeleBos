@@ -656,6 +656,35 @@
 }
 
 /* ============================================================
+   LEFT MENU DRAWER ITEMS
+   ============================================================ */
+.tg-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--tg-transition-fast);
+  color: var(--tg-text-primary);
+  text-decoration: none;
+}
+.tg-menu-row:hover {
+  background-color: var(--tg-bg-hover);
+}
+.tg-menu-icon-bg {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ============================================================
    UTILITY CLASSES
    ============================================================ */
 .tg-truncate {

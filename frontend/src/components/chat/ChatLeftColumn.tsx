@@ -26,6 +26,14 @@ import {
   ShieldCheck,
   Users,
   Radio,
+  Camera,
+  Wallet,
+  Settings,
+  Moon,
+  Sun,
+  SlidersHorizontal,
+  X,
+  ChevronRight,
 } from "lucide-react";
 import { ChatItem, FolderFilter } from "./types";
 import { TgIcon } from "./helpers";
@@ -164,6 +172,12 @@ export function ChatLeftColumn({
     unmuteMutationPending;
 
   const [settingsTab, setSettingsTab] = useState<"main" | "theme" | "sessions">("main");
+  const [showStoriesModal, setShowStoriesModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const currentAccount = activeAccs.find((acc) => acc.id === selectedAccount);
+  const archivedCount = chatsData?.chats?.filter((c) => c.is_archived).length || 0;
+
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; chat: ChatItem } | null>(null);
 
   const [accentColor, setAccentColor] = useState(() => {
@@ -274,22 +288,135 @@ export function ChatLeftColumn({
 
           <div className="tg-scroll" style={{ flex: 1, overflowY: "auto" }}>
             {settingsTab === "main" && (
-              <div>
-                {/* Back to Dashboard */}
-                <a href="/dashboard" className="tg-back-link" style={{ borderBottom: "1px solid var(--tg-divider)" }}>
-                  <LayoutDashboard style={{ width: 18, height: 18 }} />
-                  Back to Dashboard
-                </a>
+              <div className="flex flex-col py-1">
+                {/* User Profile Header */}
+                {currentAccount && (
+                  <div className="px-4 py-3 border-b mb-1 flex items-center justify-between" style={{ borderColor: "var(--tg-divider)" }}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-full flex-shrink-0 bg-primary/10 flex items-center justify-center font-bold text-primary text-base overflow-hidden relative">
+                        {isAuthenticated && (
+                          <img
+                            src={`${getApiUrl()}/accounts/${currentAccount.id}/photo`}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                            className="w-full h-full object-cover rounded-full"
+                            alt=""
+                          />
+                        )}
+                        <span>{((currentAccount.first_name || currentAccount.title) || "?")[0]?.toUpperCase()}</span>
+                      </div>
+                      <div className="min-w-0 text-left">
+                        <div className="font-bold text-sm truncate" style={{ color: "var(--tg-text-primary)" }}>
+                          {currentAccount.first_name || currentAccount.title} {currentAccount.last_name || ""}
+                        </div>
+                        <div className="text-xs truncate" style={{ color: "var(--tg-text-tertiary)" }}>
+                          {currentAccount.phone || (currentAccount.username ? `@${currentAccount.username}` : "Active Account")}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTgTheme(tgTheme === "dark" ? "light" : "dark")}
+                      className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition text-slate-500"
+                      title={tgTheme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+                    >
+                      {tgTheme === "dark" ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
+                    </button>
+                  </div>
+                )}
 
-                {/* Settings options */}
-                <button className="tg-settings-row" onClick={() => setSettingsTab("theme")}>
-                  <span>Appearance (Theme)</span>
-                  <TgIcon name="brush" className="tg-text-tertiary" style={{ width: 18, height: 18 }} />
+                {/* 1. Saved Messages */}
+                <button
+                  type="button"
+                  className="tg-menu-row"
+                  onClick={() => {
+                    setShowLeftMenu(false);
+                    const savedChat = filteredChats.find(
+                      (c) => c.chat_type === "saved" || c.title === "Saved Messages" || c.chat_type === "self"
+                    );
+                    if (savedChat) {
+                      handleSelectChat(savedChat);
+                    } else if (filteredChats.length > 0) {
+                      handleSelectChat(filteredChats[0]);
+                    }
+                  }}
+                >
+                  <div className="tg-menu-icon-bg bg-blue-500 text-white">
+                    <Bookmark className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 text-left font-medium text-sm">Saved Messages</span>
                 </button>
-                <button className="tg-settings-row" onClick={() => setSettingsTab("sessions")}>
-                  <span>Active Sessions</span>
-                  <Laptop style={{ width: 18, height: 18, color: "var(--tg-text-tertiary)" }} />
+
+                {/* 2. Archived Chats (with count notification badge) */}
+                <button
+                  type="button"
+                  className="tg-menu-row"
+                  onClick={() => {
+                    setShowLeftMenu(false);
+                    setFolderFilter({ type: "archived" });
+                  }}
+                >
+                  <div className="tg-menu-icon-bg bg-indigo-500 text-white">
+                    <Archive className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 text-left font-medium text-sm">Archived Chats</span>
+                  {archivedCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-primary text-white">
+                      {archivedCount}
+                    </span>
+                  )}
                 </button>
+
+                {/* 3. My Stories */}
+                <button
+                  type="button"
+                  className="tg-menu-row"
+                  onClick={() => setShowStoriesModal(true)}
+                >
+                  <div className="tg-menu-icon-bg bg-amber-500 text-white">
+                    <Camera className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 text-left font-medium text-sm">My Stories</span>
+                </button>
+
+                {/* 4. Wallet */}
+                <button
+                  type="button"
+                  className="tg-menu-row"
+                  onClick={() => setShowWalletModal(true)}
+                >
+                  <div className="tg-menu-icon-bg bg-emerald-500 text-white">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 text-left font-medium text-sm">Wallet</span>
+                </button>
+
+                {/* 5. Settings */}
+                <button
+                  type="button"
+                  className="tg-menu-row"
+                  onClick={() => setSettingsTab("theme")}
+                >
+                  <div className="tg-menu-icon-bg bg-slate-500 text-white">
+                    <Settings className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 text-left font-medium text-sm">Settings</span>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                <div className="my-2 border-t" style={{ borderColor: "var(--tg-divider)" }} />
+
+                {/* Back to Dashboard */}
+                <a
+                  href="/dashboard"
+                  className="tg-menu-row text-primary font-semibold"
+                >
+                  <div className="tg-menu-icon-bg bg-primary/10 text-primary">
+                    <LayoutDashboard className="w-4 h-4" />
+                  </div>
+                  <span className="flex-1 text-left font-semibold text-sm">Back to Dashboard</span>
+                </a>
               </div>
             )}
 
@@ -850,6 +977,100 @@ export function ChatLeftColumn({
             <Trash2 style={{ width: 16, height: 16 }} />
             Delete Chat
           </button>
+        </div>
+      )}
+
+      {/* ======== MY STORIES MODAL ======== */}
+      {showStoriesModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setShowStoriesModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#17212b] rounded-2xl p-5 w-full max-w-sm shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--tg-divider)" }}>
+              <div className="flex items-center gap-2 font-bold text-base" style={{ color: "var(--tg-text-primary)" }}>
+                <Camera className="w-5 h-5 text-amber-500" />
+                <span>My Stories</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStoriesModal(false)}
+                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Share photo & video updates with your Telegram contacts. Stories expire after 24 hours.
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="p-3 bg-amber-500/10 rounded-xl flex items-center gap-3">
+                <Camera className="w-5 h-5 text-amber-500" />
+                <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  0 Active Stories
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("Story creation feature ready. Connect camera or select media file.");
+                  setShowStoriesModal(false);
+                }}
+                className="w-full py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:opacity-90 transition shadow-sm"
+              >
+                Post New Story
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======== WALLET MODAL ======== */}
+      {showWalletModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setShowWalletModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#17212b] rounded-2xl p-5 w-full max-w-sm shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--tg-divider)" }}>
+              <div className="flex items-center gap-2 font-bold text-base" style={{ color: "var(--tg-text-primary)" }}>
+                <Wallet className="w-5 h-5 text-emerald-500" />
+                <span>Telegram Wallet</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWalletModal(false)}
+                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 bg-emerald-500/10 rounded-xl flex flex-col gap-1">
+              <span className="text-xs text-slate-400 font-semibold">Total Balance</span>
+              <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">0.00 TON</span>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Manage your TON cryptocurrencies and instant Telegram payments safely.
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  window.open("https://t.me/wallet", "_blank");
+                  setShowWalletModal(false);
+                }}
+                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:opacity-90 transition text-center shadow-sm"
+              >
+                Open @wallet Bot
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
