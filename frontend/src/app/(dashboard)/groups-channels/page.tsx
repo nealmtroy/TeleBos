@@ -46,6 +46,35 @@ function GroupsChannelsContent() {
   const activeAccountObj = (Array.isArray(accounts) ? accounts : []).find(acc => acc.id === selectedAccount);
   const syncedAt = activeAccountObj?.groups_channels_synced_at;
 
+  const [copiedChatId, setCopiedChatId] = useState<number | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  const getInviteLink = (chat: ChatItem) => {
+    return chat.invite_link || (chat.username ? `https://t.me/${chat.username}` : "");
+  };
+
+  const handleCopyLink = (e: React.MouseEvent, chat: ChatItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const link = getInviteLink(chat);
+    if (link) {
+      navigator.clipboard.writeText(link);
+      setCopiedChatId(chat.chat_id);
+      setTimeout(() => setCopiedChatId(null), 2000);
+    }
+  };
+
+  const handleCopyAll = () => {
+    const links = filtered
+      .map((chat) => getInviteLink(chat))
+      .filter((link) => !!link);
+    if (links.length > 0) {
+      navigator.clipboard.writeText(links.join("\n"));
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    }
+  };
+
   const handleSync = async () => {
     if (!selectedAccount) return;
     setIsSyncing(true);
@@ -162,6 +191,15 @@ function GroupsChannelsContent() {
               <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
               {isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}
             </button>
+            {filtered.some(chat => getInviteLink(chat)) && (
+              <button
+                onClick={handleCopyAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition"
+              >
+                <LinkIcon className="h-3.5 w-3.5" />
+                {copiedAll ? _("groupsChannels.copiedAllLinks") : _("groupsChannels.copyAllLinks")}
+              </button>
+            )}
             <button
               onClick={openJoinModal}
               disabled={!selectedAccount}
@@ -297,36 +335,74 @@ function GroupsChannelsContent() {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {filtered.map((chat) => (
-              <Link
-                key={chat.chat_id}
-                href={`/chats?account=${selectedAccount}&chat=${chat.chat_id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
-                  style={{
-                    backgroundColor: activeTab === "channels" ? "#dbeafe" : "#f3e8ff",
-                    color: activeTab === "channels" ? "#1d4ed8" : "#7c3aed",
-                  }}
+            {filtered.map((chat) => {
+              const linkToCopy = getInviteLink(chat);
+              return (
+                <Link
+                  key={chat.chat_id}
+                  href={`/chats?account=${selectedAccount}&chat=${chat.chat_id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                 >
-                  {(chat.title || "?")[0]?.toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-semibold truncate text-gray-900">{chat.title}</h3>
-                    {chat.is_creator && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200 flex-shrink-0">
-                        <Crown className="h-2.5 w-2.5" />
-                        {_("groupsChannels.owner")}
-                      </span>
-                    )}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
+                    style={{
+                      backgroundColor: activeTab === "channels" ? "#dbeafe" : "#f3e8ff",
+                      color: activeTab === "channels" ? "#1d4ed8" : "#7c3aed",
+                    }}
+                  >
+                    {(chat.title || "?")[0]?.toUpperCase()}
                   </div>
-                  {chat.username && <p className="text-xs text-gray-400 truncate">@{chat.username}</p>}
-                </div>
-                <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
-              </Link>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-sm font-semibold truncate text-gray-900">{chat.title}</h3>
+                      {chat.is_creator && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200 flex-shrink-0">
+                          <Crown className="h-2.5 w-2.5" />
+                          {_("groupsChannels.owner")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {chat.username && <span className="text-xs text-gray-400">@{chat.username}</span>}
+                      {chat.username && (chat.member_count !== undefined && chat.member_count !== null || chat.online_count !== undefined && chat.online_count !== null) && <span className="text-gray-300 text-xs">•</span>}
+                      {chat.member_count !== undefined && chat.member_count !== null && (
+                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {chat.member_count.toLocaleString()}
+                        </span>
+                      )}
+                      {chat.online_count !== undefined && chat.online_count !== null && (
+                        <>
+                          <span className="text-gray-300 text-xs">•</span>
+                          <span className="text-xs text-emerald-600 flex items-center gap-1 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                            {chat.online_count.toLocaleString()} {_("groupsChannels.onlineCount")}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {linkToCopy && (
+                      <button
+                        onClick={(e) => handleCopyLink(e, chat)}
+                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-primary-600 transition flex-shrink-0 relative group"
+                        title={_("groupsChannels.copyLink")}
+                      >
+                        {copiedChatId === chat.chat_id ? (
+                          <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded border border-green-200 whitespace-nowrap">
+                            {_("groupsChannels.copiedLink")}
+                          </span>
+                        ) : (
+                          <LinkIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                  </div>
+                </Link>
+              );
+            })}
 
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 py-3">

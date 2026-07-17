@@ -705,6 +705,18 @@ def _run_migrations(connection):
         connection.execute(
             text("ALTER TABLE telegram_chats ADD COLUMN is_pinned BOOLEAN DEFAULT false NOT NULL")
         )
+    if "member_count" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN member_count INTEGER DEFAULT NULL")
+        )
+    if "online_count" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN online_count INTEGER DEFAULT NULL")
+        )
+    if "invite_link" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN invite_link VARCHAR(500) DEFAULT NULL")
+        )
 
     # ── Account folders ──────────────────────────────────────────────────
     if "account_folders" not in tables:
@@ -910,6 +922,51 @@ async def lifespan(app: FastAPI):
     profile_sync_task = asyncio.create_task(_profile_sync_loop())
     logger.info("Profile sync background task started (5-min interval)")
 
+    async def _groups_channels_sync_loop():
+        """Periodically sync Telegram groups and channels for active accounts."""
+        await asyncio.sleep(120)  # Initial delay — let accounts connect and profile sync run first
+        while True:
+            try:
+                from app.services.chat_service import sync_groups_channels_to_db
+                from app.models.telegram_account import TelegramAccount
+                from datetime import datetime, timezone, timedelta
+                from sqlalchemy import select, or_
+                
+                async with async_session_factory() as db:
+                    # Find active accounts that haven't been synced in the last hour
+                    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+                    stmt = select(TelegramAccount).where(
+                        TelegramAccount.is_active == True,
+                        or_(
+                            TelegramAccount.groups_channels_synced_at.is_(None),
+                            TelegramAccount.groups_channels_synced_at < one_hour_ago
+                        )
+                    )
+                    res = await db.execute(stmt)
+                    accounts = res.scalars().all()
+                    
+                for acc in accounts:
+                    try:
+                        async with async_session_factory() as db_session:
+                            acc_res = await db_session.execute(
+                                select(TelegramAccount).where(TelegramAccount.id == acc.id)
+                            )
+                            db_acc = acc_res.scalar_one_or_none()
+                            if db_acc:
+                                await sync_groups_channels_to_db(db_acc, db_session)
+                    except Exception as acc_exc:
+                        logger.warning("Failed background sync of groups/channels for account %s: %s", acc.id, acc_exc)
+                    # Pause between accounts to prevent hitting flood limits
+                    await asyncio.sleep(15)
+            except Exception as exc:
+                logger.warning("Groups & channels sync loop error: %s", exc)
+            
+            # Check every 10 minutes
+            await asyncio.sleep(600)
+
+    groups_channels_sync_task = asyncio.create_task(_groups_channels_sync_loop())
+    logger.info("Groups & channels background sync task started (10-min check interval)")
+
     # 5. Spawn SMM services sync background loop (checks every 12 hours)
     from app.services.admin_smm_service import sync_services
 
@@ -972,6 +1029,12 @@ async def lifespan(app: FastAPI):
     profile_sync_task.cancel()
     try:
         await profile_sync_task
+    except asyncio.CancelledError:
+        pass
+
+    groups_channels_sync_task.cancel()
+    try:
+        await groups_channels_sync_task
     except asyncio.CancelledError:
         pass
 

@@ -14,6 +14,9 @@ export interface ChatItem {
   folder_id?: number | null;
   is_archived?: boolean;
   is_creator?: boolean;
+  member_count?: number | null;
+  online_count?: number | null;
+  invite_link?: string | null;
 }
 
 export function useChats(
@@ -31,5 +34,23 @@ export function useChats(
       return data;
     },
     enabled: !!accountId,
+  });
+}
+
+export function usePublicChatsIndex(
+  page: number = 1,
+  pageSize: number = 50,
+  search?: string,
+  chatType?: string
+) {
+  return useQuery<{ chats: ChatItem[]; total: number }>({
+    queryKey: ["public-chats-index", page, pageSize, search || "", chatType || "all"],
+    queryFn: async () => {
+      let url = `/chats/public-index?page=${page}&page_size=${pageSize}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (chatType) url += `&chat_type=${encodeURIComponent(chatType)}`;
+      const { data } = await api.get(url);
+      return data;
+    },
   });
 }

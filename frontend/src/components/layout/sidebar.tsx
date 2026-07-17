@@ -8,6 +8,7 @@ import { useT, useI18nStore } from "@/lib/i18n";
 import {
   LayoutDashboard,
   Smartphone,
+  Search,
   MessageSquare,
   Send,
   ClipboardList,
@@ -50,6 +51,11 @@ const broadcastSubItems = [
   { href: "/broadcast/text-lists", labelKey: "nav.textLists", icon: FileText },
   { href: "/broadcast/history", labelKey: "nav.broadcastHistory", icon: Clock },
   { href: "/broadcast/logs", labelKey: "nav.broadcastLogs", icon: ClipboardList },
+];
+
+const groupsChannelsSubItems = [
+  { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone },
+  { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search },
 ];
 
 const ordersSubItems = [
@@ -107,10 +113,12 @@ export function Sidebar() {
   const isBroadcastPage = pathname.startsWith("/broadcast");
   const isOrdersPage = pathname.startsWith("/orders");
   const isAdminPage = pathname.startsWith("/admin");
+  const isGroupsChannelsPage = pathname.startsWith("/groups-channels");
 
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [ordersOpen, setOrdersOpen] = useState(isOrdersPage);
   const [adminOpen, setAdminOpen] = useState(isAdminPage);
+  const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
@@ -129,6 +137,10 @@ export function Sidebar() {
   useEffect(() => {
     if (isAdminPage) setAdminOpen(true);
   }, [isAdminPage]);
+
+  useEffect(() => {
+    if (isGroupsChannelsPage) setGroupsChannelsOpen(true);
+  }, [isGroupsChannelsPage]);
 
   // Auto-open sidebar on desktop on first mount
   useEffect(() => {
@@ -188,7 +200,14 @@ export function Sidebar() {
         { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, minRole: 0 },
         { href: "/chats", labelKey: "nav.chats", icon: MessageSquare, minRole: 0 },
         { href: "/contacts", labelKey: "nav.contacts", icon: Users, minRole: 1 },
-        { href: "/groups-channels", labelKey: "nav.groupsChannels", icon: Hash, minRole: 0 },
+        {
+          href: "/groups-channels",
+          labelKey: "nav.groupsChannels",
+          icon: Hash,
+          hasSubItems: true,
+          subItems: groupsChannelsSubItems,
+          minRole: 0,
+        },
       ],
     },
     {
@@ -254,6 +273,7 @@ export function Sidebar() {
     if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
     if (href.startsWith("/orders")) return { isOpen: ordersOpen, setIsOpen: setOrdersOpen };
     if (href.startsWith("/admin")) return { isOpen: adminOpen, setIsOpen: setAdminOpen };
+    if (href.startsWith("/groups-channels")) return { isOpen: groupsChannelsOpen, setIsOpen: setGroupsChannelsOpen };
     return { isOpen: false, setIsOpen: () => {} };
   };
 
@@ -397,7 +417,9 @@ export function Sidebar() {
                               >
                                 {item.subItems.map((sub) => {
                                   const isSubActive =
-                                    sub.href === "/broadcast/new"
+                                    sub.href === "/groups-channels"
+                                      ? pathname === "/groups-channels"
+                                      : sub.href === "/broadcast/new"
                                       ? pathname === "/broadcast/new"
                                       : sub.href === "/orders"
                                       ? pathname === "/orders"

@@ -738,6 +738,21 @@ export interface Dict {
     lastSynced: string;
     neverSynced: string;
     syncRequiredDesc: string;
+    memberCount: string;
+    onlineCount: string;
+    inviteLink: string;
+    copyLink: string;
+    copiedLink: string;
+    copyAllLinks: string;
+    copiedAllLinks: string;
+    publicIndex: string;
+    publicIndexDesc: string;
+    proOnly: string;
+    proOnlyDesc: string;
+    upgradeNow: string;
+    myChats: string;
+    allChats: string;
+    noPublicChats: string;
   };
 
   // 404 Not Found

@@ -35,6 +35,9 @@ class TelegramChat(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_muted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    member_count: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    online_count: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    invite_link: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

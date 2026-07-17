@@ -20,6 +20,9 @@ class ChatItem(BaseModel):
     folder_id: int | None = None  # 0=main, 1=archived, >=2=custom folder
     is_archived: bool = False
     is_creator: bool = False
+    member_count: int | None = None
+    online_count: int | None = None
+    invite_link: str | None = None
 
 
 class ChatListResponse(BaseModel):

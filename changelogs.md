@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-16
+- **[90667430](https://github.com/nealmtroy/TeleBos/commit/90667430)**: fix: set request_size=128KB in iter_download to avoid Telegram LIMIT_INVALID errors
 - **[d4bfc47e](https://github.com/nealmtroy/TeleBos/commit/d4bfc47e)**: fix: convert memoryview chunk to bytes to prevent Starlette StreamingResponse crash and ERR_CONTENT_LENGTH_MISMATCH
 - **[0ebeaff3](https://github.com/nealmtroy/TeleBos/commit/0ebeaff3)**: fix: resolve 504 Gateway Timeout in video streaming by streaming chunks directly from Telethon using iter_download
 - **[97c159d5](https://github.com/nealmtroy/TeleBos/commit/97c159d5)**: fix: stop moving expired accounts to Expired folder, just deactivate them

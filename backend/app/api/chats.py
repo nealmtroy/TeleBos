@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_current_user_from_token_or_header
+from app.dependencies import get_current_user, get_current_user_from_token_or_header, require_role
 from app.models.user import User
 from app.schemas.chat import (
     ChatListResponse,
@@ -464,6 +464,86 @@ async def delete_folder(
 
     await db.delete(folder)
     await db.flush()
+
+
+@router.get("/chats/public-index", response_model=ChatListResponse)
+async def list_public_chats_index(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    search: str | None = Query(None),
+    chat_type: str | None = Query(None, description="Filter by type: group, supergroup, channel. Comma-separated."),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(["pro", "premium", "owner"])),
+):
+    """Get public groups & channels from all accounts, deduplicated by chat_id."""
+    from sqlalchemy import select, or_, func, text
+    from app.models.telegram_chat import TelegramChat
+    from app.schemas.chat import ChatItem
+
+    # Group by chat_id and get max of other fields to deduplicate
+    stmt = select(
+        TelegramChat.chat_id,
+        func.max(TelegramChat.title).label("title"),
+        func.max(TelegramChat.username).label("username"),
+        func.max(TelegramChat.type).label("type"),
+        func.max(TelegramChat.member_count).label("member_count"),
+        func.max(TelegramChat.online_count).label("online_count"),
+        func.max(TelegramChat.invite_link).label("invite_link"),
+        func.max(TelegramChat.last_message_date).label("last_message_date")
+    ).where(
+        TelegramChat.is_active == True,
+        TelegramChat.type.in_(["group", "supergroup", "channel"]),
+        or_(TelegramChat.username.isnot(None), TelegramChat.invite_link.isnot(None))
+    ).group_by(TelegramChat.chat_id)
+
+    # Filter by chat_type
+    if chat_type:
+        allowed_types = {t.strip() for t in chat_type.split(",")}
+        stmt = stmt.where(TelegramChat.type.in_(allowed_types))
+
+    # Apply search filter (if search query is present)
+    if search:
+        search_filter = f"%{search}%"
+        stmt = stmt.having(
+            or_(
+                func.max(TelegramChat.title).ilike(search_filter),
+                func.max(TelegramChat.username).ilike(search_filter)
+            )
+        )
+
+    # Get total count of deduplicated groups/channels
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = await db.scalar(count_stmt) or 0
+
+    # Paginate & order by last_message_date descending
+    stmt = stmt.order_by(text("last_message_date DESC NULLS LAST"))
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    chats = []
+    for r in rows:
+        chats.append(ChatItem(
+            chat_id=r.chat_id,
+            title=r.title,
+            username=r.username,
+            chat_type=r.type,
+            last_message=None,
+            last_message_time=r.last_message_date,
+            unread_count=0,
+            photo=None,
+            is_muted=False,
+            is_pinned=False,
+            folder_id=None,
+            is_archived=False,
+            is_creator=False,
+            member_count=r.member_count,
+            online_count=r.online_count,
+            invite_link=r.invite_link,
+        ))
+
+    return ChatListResponse(chats=chats, total=total, page=page, page_size=page_size)
 
 
 

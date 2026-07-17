@@ -320,6 +320,9 @@ async def get_dialogs(
             "folder_id": 1 if c.is_archived else 0,
             "is_archived": c.is_archived,
             "is_creator": c.is_creator,
+            "member_count": c.member_count,
+            "online_count": c.online_count,
+            "invite_link": c.invite_link,
         })
 
     return page_dialogs, total
@@ -667,6 +670,56 @@ async def batch_delete_chats(db: AsyncSession, account: TelegramAccount, chat_id
             logger.warning("Failed to delete chat %s: %s", chat_id, exc)
 
 
+async def get_full_chat_details(client, entity, chat_type: str):
+    """Helper to fetch member count, online count, and invite link of a chat."""
+    import asyncio
+    from telethon.tl.functions.channels import GetFullChannelRequest
+    from telethon.tl.functions.messages import GetFullChatRequest
+
+    member_count = None
+    online_count = None
+    invite_link = None
+
+    try:
+        # Rate limit protection
+        await asyncio.sleep(0.2)
+        if chat_type in ("channel", "supergroup"):
+            full = await client(GetFullChannelRequest(entity))
+            full_chat = full.full_chat
+            member_count = getattr(full_chat, "participants_count", None)
+            online_count = getattr(full_chat, "online_count", None)
+            exported_invite = getattr(full_chat, "exported_invite", None)
+            if exported_invite and hasattr(exported_invite, "link"):
+                invite_link = exported_invite.link
+            elif getattr(entity, "username", None):
+                invite_link = f"https://t.me/{entity.username}"
+        elif chat_type == "group":
+            full = await client(GetFullChatRequest(entity.id))
+            full_chat = full.full_chat
+            if hasattr(full_chat, "participants") and full_chat.participants:
+                member_count = len(full_chat.participants.participants)
+                try:
+                    # Count online users if status is present
+                    online_count = sum(
+                        1 for p in getattr(full_chat.participants, "participants", [])
+                        if hasattr(p, "status") and p.status.__class__.__name__ == "UserStatusOnline"
+                    )
+                except Exception:
+                    online_count = None
+            exported_invite = getattr(full_chat, "exported_invite", None)
+            if exported_invite and hasattr(exported_invite, "link"):
+                invite_link = exported_invite.link
+            elif getattr(entity, "username", None):
+                invite_link = f"https://t.me/{entity.username}"
+    except Exception as e:
+        logger.debug("Failed to fetch full details for chat %s: %s", getattr(entity, "id", "unknown"), e)
+        # Fallback for invite link if username exists
+        if getattr(entity, "username", None):
+            invite_link = f"https://t.me/{entity.username}"
+
+    return member_count, online_count, invite_link
+
+
 async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession) -> None:
     """Fetch all groups and channels the account is joined to and cache in the DB."""
     import datetime as dt
@@ -702,6 +755,13 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
                 last_msg = d.message.text or "[non-text message]" if d.message.text else ""
                 last_time = d.message.date
 
+            # Fetch detailed member stats and invite links
+            member_count = None
+            online_count = None
+            invite_link = None
+            if is_active:
+                member_count, online_count, invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
+
             values.append({
                 "id": uuid.uuid4(),
                 "account_id": account.id,
@@ -718,6 +778,9 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
                 "is_archived": getattr(d, "folder_id", 0) == 1,
                 "is_pinned": getattr(d, "pinned", False),
                 "is_muted": _is_chat_muted(d),
+                "member_count": member_count,
+                "online_count": online_count,
+                "invite_link": invite_link,
             })
             if is_active:
                 synced_group_channel_ids.add(d.id)
@@ -746,6 +809,9 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
                     "is_archived": stmt.excluded.is_archived,
                     "is_pinned": stmt.excluded.is_pinned,
                     "is_muted": stmt.excluded.is_muted,
+                    "member_count": stmt.excluded.member_count,
+                    "online_count": stmt.excluded.online_count,
+                    "invite_link": stmt.excluded.invite_link,
                     "updated_at": func.now(),
                 }
             )
