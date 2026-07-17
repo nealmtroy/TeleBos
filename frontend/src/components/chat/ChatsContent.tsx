@@ -105,11 +105,11 @@ export function ChatsContent() {
         return [...prev, ...uniqueNew];
       });
     }
-  }, [chatsData, page]);
+  }, [chatsData, page, selectedAccount]);
 
   useEffect(() => {
     setPage(1);
-    setLoadedChats([]);
+    setSelectedChatId(null);
   }, [selectedAccount]);
 
   const chats = loadedChats;
@@ -201,9 +201,9 @@ export function ChatsContent() {
     setHandler(handleRealtimeEvent);
   }, [setHandler, handleRealtimeEvent]);
 
-  // Filter chats
+  // Filter & Sort chats (Telegram sorting rules: Pinned first, then newest last_message_time)
   const filteredChats = useMemo(() => {
-    let result = chats;
+    let result = [...chats];
 
     if (search) {
       result = result.filter(
@@ -225,6 +225,21 @@ export function ChatsContent() {
     } else {
       result = result.filter((c) => c.is_archived !== true);
     }
+
+    // Telegram sorting rules:
+    // 1. Pinned chats ALWAYS on top (is_pinned === true)
+    // 2. Unpinned chats below
+    // 3. Within each group, sort by last_message_time DESC (newest first)
+    result.sort((a, b) => {
+      const aPinned = a.is_pinned ? 1 : 0;
+      const bPinned = b.is_pinned ? 1 : 0;
+      if (aPinned !== bPinned) {
+        return bPinned - aPinned; // Pinned chats stay at top
+      }
+      const aTime = a.last_message_time ? new Date(a.last_message_time).getTime() : 0;
+      const bTime = b.last_message_time ? new Date(b.last_message_time).getTime() : 0;
+      return bTime - aTime; // Newest message first
+    });
 
     return result;
   }, [chats, search, folderFilter, folders]);

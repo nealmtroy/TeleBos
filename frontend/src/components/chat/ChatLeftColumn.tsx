@@ -21,6 +21,11 @@ import {
   Laptop,
   Home,
   LayoutDashboard,
+  Bookmark,
+  Bot,
+  ShieldCheck,
+  Users,
+  Radio,
 } from "lucide-react";
 import { ChatItem, FolderFilter } from "./types";
 import { TgIcon } from "./helpers";
@@ -565,9 +570,22 @@ export function ChatLeftColumn({
                   const isTyping = !!typingChats[chat.chat_id];
                   const typingText = typingChats[chat.chat_id] || "";
                   const draftText = drafts[`${selectedAccount}:${chat.chat_id}`] || "";
-                  const avatarColor = chat.chat_type === "user"
-                    ? getChatAvatarColor(chat.chat_id)
-                    : CHAT_TYPE_COLORS[chat.chat_type] || getChatAvatarColor(chat.chat_id);
+
+                  const isSavedMessages = chat.chat_type === "saved" || chat.title === "Saved Messages" || chat.chat_type === "self";
+                  const isTelegram = chat.chat_id === 777000 || chat.username?.toLowerCase() === "telegram" || chat.title === "Telegram";
+                  const isBot = chat.chat_type === "bot" || (!!chat.username && chat.username.toLowerCase().endsWith("bot"));
+                  const isGroup = chat.chat_type === "group" || chat.chat_type === "supergroup";
+                  const isChannel = chat.chat_type === "channel";
+
+                  const avatarColor = isSavedMessages || isTelegram
+                    ? { top: "#5CAFFA", bottom: "#408ACF" }
+                    : isBot
+                    ? { top: "#FEBB5B", bottom: "#F68136" }
+                    : isGroup
+                    ? { top: "#9AD164", bottom: "#46BA43" }
+                    : isChannel
+                    ? { top: "#B694F9", bottom: "#6C61DF" }
+                    : getChatAvatarColor(chat.chat_id);
 
                   return (
                     <div
@@ -597,28 +615,36 @@ export function ChatLeftColumn({
                           "--avatar-bottom": avatarColor.bottom,
                         } as React.CSSProperties}
                       >
-                        {isAuthenticated && selectedAccount && (
-                          <img
-                            src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                              if (fb) fb.style.display = "flex";
-                            }}
-                            alt=""
-                          />
+                        {isSavedMessages ? (
+                          <Bookmark style={{ width: 22, height: 22, color: "#fff" }} />
+                        ) : isTelegram ? (
+                          <ShieldCheck style={{ width: 22, height: 22, color: "#fff" }} />
+                        ) : (
+                          <>
+                            {isAuthenticated && selectedAccount && (
+                              <img
+                                src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (fb) fb.style.display = "flex";
+                                }}
+                                alt=""
+                              />
+                            )}
+                            <span
+                              style={{
+                                display: isAuthenticated && selectedAccount ? "none" : "flex",
+                                width: "100%",
+                                height: "100%",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {isBot ? <Bot style={{ width: 22, height: 22, color: "#fff" }} /> : (chat.title || "?")[0]?.toUpperCase()}
+                            </span>
+                          </>
                         )}
-                        <span
-                          style={{
-                            display: isAuthenticated && selectedAccount ? "none" : "flex",
-                            width: "100%",
-                            height: "100%",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {(chat.title || "?")[0]?.toUpperCase()}
-                        </span>
 
                         {/* Online dot */}
                         {onlineUsers[chat.chat_id] && <div className="tg-online-badge" />}
@@ -646,9 +672,20 @@ export function ChatLeftColumn({
                               fontSize: 15,
                               fontWeight: chat.unread_count > 0 ? 600 : 500,
                               color: chat.is_archived ? "var(--tg-text-tertiary)" : "var(--tg-text-primary)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
                             }}
                           >
-                            {chat.title || t("chats.unknown")}
+                            <span className="tg-truncate">{chat.title || t("chats.unknown")}</span>
+                            {isTelegram && <ShieldCheck style={{ width: 14, height: 14, color: "var(--tg-accent)", flexShrink: 0 }} />}
+                            {isBot && (
+                              <span style={{
+                                fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 4,
+                                backgroundColor: "var(--tg-accent-light)", color: "var(--tg-accent)",
+                                textTransform: "uppercase", letterSpacing: "0.4px", flexShrink: 0,
+                              }}>bot</span>
+                            )}
                           </div>
                           <span
                             style={{

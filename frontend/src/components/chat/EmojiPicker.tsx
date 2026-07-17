@@ -128,11 +128,16 @@ export function EmojiPicker({
 
   return (
     <div
-      className="absolute bottom-16 left-4 bg-white dark:bg-[#17212b] border border-slate-200/50 dark:border-none rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.15)] p-3.5 z-30 w-80 h-96 flex flex-col animate-in slide-in-from-bottom-2 duration-150"
+      className="absolute bottom-16 left-4 rounded-2xl shadow-lg p-3.5 z-30 w-80 h-96 flex flex-col animate-in slide-in-from-bottom-2 duration-150"
+      style={{
+        backgroundColor: "var(--tg-bg-primary)",
+        border: "1px solid var(--tg-border)",
+        color: "var(--tg-text-primary)",
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tab Headers */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex-shrink-0">
+      <div className="flex border-b text-xs font-semibold mb-2 flex-shrink-0" style={{ borderColor: "var(--tg-border)", color: "var(--tg-text-secondary)" }}>
         {(["emoji", "sticker", "gif"] as const).map((tab) => (
           <button
             key={tab}
@@ -141,7 +146,7 @@ export function EmojiPicker({
               "flex-1 pb-2 text-center border-b-2 capitalize transition font-bold",
               pickerTab === tab
                 ? "border-primary text-primary"
-                : "border-transparent hover:text-slate-800 dark:hover:text-slate-200"
+                : "border-transparent opacity-70 hover:opacity-100"
             )}
           >
             {tab}
@@ -158,9 +163,14 @@ export function EmojiPicker({
               placeholder="Search Emojis..."
               value={emojiSearch}
               onChange={(e) => setEmojiSearch(e.target.value)}
-              className="w-full px-3 py-1.5 mb-2 text-xs border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#202b36] rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-slate-800 dark:text-white"
+              className="w-full px-3 py-1.5 mb-2 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-primary"
+              style={{
+                backgroundColor: "var(--tg-bg-secondary)",
+                border: "1px solid var(--tg-border)",
+                color: "var(--tg-text-primary)",
+              }}
             />
-            <div className="flex-1 overflow-y-auto custom-scroll pr-1">
+            <div className="flex-1 overflow-y-auto tg-scroll pr-1">
               {EMOJI_CATEGORIES.map((cat) => {
                 const filtered = cat.list.filter((em) => {
                   if (!emojiSearch) return true;
@@ -173,14 +183,15 @@ export function EmojiPicker({
                 if (filtered.length === 0) return null;
                 return (
                   <div key={cat.label} className="mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: "var(--tg-text-tertiary)" }}>
                       {cat.icon} {cat.label}
                     </span>
                     <div className="grid grid-cols-7 gap-2 text-center text-lg">
                       {filtered.map((emoji) => (
                         <button
                           key={emoji}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setMessageText((prev) => prev + emoji);
                             inputRef.current?.focus();
                           }}

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[d0767e69](https://github.com/nealmtroy/TeleBos/commit/d0767e69)**: fix(chat): fix account switcher spam status check, message bubble alignment, and room theme variables
 - **[58ca2b5f](https://github.com/nealmtroy/TeleBos/commit/58ca2b5f)**: feat(chat): redesign chat page UI/UX to match Telegram Web with independent theming and scalable account switcher
 - **[fd126e85](https://github.com/nealmtroy/TeleBos/commit/fd126e85)**: fix: cast UUID account_id to String inside max() aggregation in PostgreSQL
 - **[85184e90](https://github.com/nealmtroy/TeleBos/commit/85184e90)**: feat: add sort by total members and active members to public groups channel index
