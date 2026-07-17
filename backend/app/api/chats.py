@@ -477,7 +477,7 @@ async def list_public_chats_index(
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
     """Get public groups & channels from all accounts, deduplicated by chat_id."""
-    from sqlalchemy import select, or_, func, text
+    from sqlalchemy import select, or_, func, text, cast, String
     from app.models.telegram_chat import TelegramChat
     from app.schemas.chat import ChatItem
 
@@ -491,7 +491,7 @@ async def list_public_chats_index(
         func.max(TelegramChat.online_count).label("online_count"),
         func.max(TelegramChat.invite_link).label("invite_link"),
         func.max(TelegramChat.last_message_date).label("last_message_date"),
-        func.max(TelegramChat.account_id).label("account_id")
+        func.max(cast(TelegramChat.account_id, String)).label("account_id")
     ).where(
         TelegramChat.is_active == True,
         TelegramChat.type.in_(["group", "supergroup", "channel"]),

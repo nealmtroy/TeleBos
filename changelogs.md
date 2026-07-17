@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[85184e90](https://github.com/nealmtroy/TeleBos/commit/85184e90)**: feat: add sort by total members and active members to public groups channel index
 - **[e2031b0b](https://github.com/nealmtroy/TeleBos/commit/e2031b0b)**: feat: render chat profile photos on groups & channels page and public index
 - **[15a1a64a](https://github.com/nealmtroy/TeleBos/commit/15a1a64a)**: feat: make groups & channels sync fully automatic on load and account login
 - **[2ce88d6e](https://github.com/nealmtroy/TeleBos/commit/2ce88d6e)**: feat: implement groups & channels auto-sync, member detailed stats, invite links copying, and pro public index page
