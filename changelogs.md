@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[547b1b2b](https://github.com/nealmtroy/TeleBos/commit/547b1b2b)**: feat(chat): transform chat header and input bar into floating Dynamic Island pill capsules
 - **[1022760c](https://github.com/nealmtroy/TeleBos/commit/1022760c)**: style(chat): add rounded floating 3-column layout on desktop to match Telegram Web K
 - **[c789ee2f](https://github.com/nealmtroy/TeleBos/commit/c789ee2f)**: fix(chat): classify Telegram bots as 'bot' in backend and prioritize bot/group/channel status in header subtitle
 - **[3b393483](https://github.com/nealmtroy/TeleBos/commit/3b393483)**: fix(chat): add explicit type=button, mousedown event prevention on smile button and boost EmojiPicker z-index to 50

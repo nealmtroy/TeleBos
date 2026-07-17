@@ -620,24 +620,26 @@ export function MessagePane({
 
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 relative overflow-hidden" style={{ backgroundColor: "var(--tg-bg-chat)" }}>
-      {/* Chat header (Dynamic Island Pill Style) */}
-      <div className="flex-shrink-0 z-20 pt-3 px-3 w-full flex justify-center pointer-events-none">
-        <div
-          onClick={() => setShowRightDrawer(!showRightDrawer)}
-          className="pointer-events-auto flex items-center gap-3.5 px-4 py-2.5 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.18)] border border-slate-200/80 dark:border-slate-800/80 cursor-pointer select-none transition-all duration-300 hover:scale-[1.005] active:scale-[0.995] max-w-2xl w-full"
-          style={{ backgroundColor: "var(--tg-bg-primary)" }}
+      {/* Telegram Web Topbar Header */}
+      <div
+        onClick={() => setShowRightDrawer(!showRightDrawer)}
+        className="flex items-center gap-3.5 px-4 py-3 flex-shrink-0 cursor-pointer select-none transition duration-150 z-10"
+        style={{
+          backgroundColor: "var(--tg-bg-primary)",
+          borderBottom: "1px solid var(--tg-border)",
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onBack();
+          }}
+          className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 rounded-xl transition duration-200 active:scale-95"
         >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onBack();
-            }}
-            className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 rounded-full transition duration-200 active:scale-95"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+          <ArrowLeft className="h-5 w-5" />
+        </button>
 
-        <div className="w-10 h-10 rounded-full flex-shrink-0 bg-slate-100 relative ring-2 ring-slate-100/50">
+        <div className="w-10 h-10 rounded-full flex-shrink-0 relative">
           {isAuthenticated && accountId && (
             <img
               src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo`}
@@ -734,7 +736,6 @@ export function MessagePane({
           )}
         </div>
       </div>
-    </div>
 
       {showSearchPanel && (
         <div className="bg-slate-50 dark:bg-[#1a242f] border-b border-slate-200/60 dark:border-slate-800/80 px-4 py-3 flex flex-col gap-3 z-10 select-none animate-in slide-in-from-top-2 duration-200 flex-shrink-0 text-left">
