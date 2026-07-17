@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-17
+- **[2ce88d6e](https://github.com/nealmtroy/TeleBos/commit/2ce88d6e)**: feat: implement groups & channels auto-sync, member detailed stats, invite links copying, and pro public index page
+
 ## 2026-07-16
 - **[90667430](https://github.com/nealmtroy/TeleBos/commit/90667430)**: fix: set request_size=128KB in iter_download to avoid Telegram LIMIT_INVALID errors
 - **[d4bfc47e](https://github.com/nealmtroy/TeleBos/commit/d4bfc47e)**: fix: convert memoryview chunk to bytes to prevent Starlette StreamingResponse crash and ERR_CONTENT_LENGTH_MISMATCH

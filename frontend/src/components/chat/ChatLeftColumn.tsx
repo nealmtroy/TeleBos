@@ -885,7 +885,7 @@ export function ChatLeftColumn({
             )}
 
             {/* Infinite Scroll Sentinel */}
-            {chatsData && filteredChats.length < chatsData.total && (
+            {chatsData && chatsData.chats && chatsData.chats.length === 50 && filteredChats.length < chatsData.total && (
               <div
                 ref={(el) => {
                   if (!el) return;

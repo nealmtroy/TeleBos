@@ -19,7 +19,19 @@ export function MessagePhoto({
   onOpenLightbox: (url: string) => void;
 }) {
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
   const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 w-[240px] aspect-[4/3] p-4 text-center select-none">
+        <svg className="h-8 w-8 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <p className="text-[11px] font-semibold text-slate-500">Expired or unavailable photo</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-slate-100/50 border border-slate-200/40 max-w-[280px] sm:max-w-[320px] aspect-[4/3] cursor-pointer hover:opacity-95 transition">
@@ -37,6 +49,7 @@ export function MessagePhoto({
         src={mediaUrl}
         loading="lazy"
         onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
         className={cn(
           "w-full h-full object-cover transition-all duration-500 ease-out",
           loaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
@@ -61,7 +74,20 @@ export function MessageVideo({
   poster?: string | null;
   getApiUrl: () => string;
 }) {
+  const [error, setError] = useState(false);
   const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam()}`;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 w-[240px] aspect-[4/3] p-4 text-center select-none">
+        <svg className="h-8 w-8 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        <p className="text-[11px] font-semibold text-slate-500">Expired or unavailable video</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative rounded-xl overflow-hidden bg-slate-950 max-w-[280px] sm:max-w-[320px] border border-slate-200/10">
       <video
@@ -69,6 +95,7 @@ export function MessageVideo({
         poster={poster || undefined}
         controls
         preload="metadata"
+        onError={() => setError(true)}
         className="w-full max-h-[240px] rounded-xl"
         playsInline
       />
@@ -87,7 +114,17 @@ export function MessageVideoNote({
   chatId: number;
   getApiUrl: () => string;
 }) {
+  const [error, setError] = useState(false);
   const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam()}`;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/60 w-44 h-44 p-4 text-center select-none text-xs text-slate-500 font-semibold">
+        Expired Video Note
+      </div>
+    );
+  }
+
   return (
     <div className="relative rounded-full overflow-hidden bg-slate-950 w-44 h-44 border-2 border-primary/20 aspect-square">
       <video
@@ -96,6 +133,7 @@ export function MessageVideoNote({
         loop
         muted
         preload="metadata"
+        onError={() => setError(true)}
         className="w-full h-full object-cover rounded-full"
         playsInline
       />
@@ -120,6 +158,7 @@ export function MessageVoice({
 }) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
 
@@ -129,8 +168,13 @@ export function MessageVoice({
   }, [waveform]);
 
   const togglePlay = () => {
+    if (error) return;
     if (!audioRef.current) {
       audioRef.current = new Audio(mediaUrl);
+      audioRef.current.onerror = () => {
+        setError(true);
+        setPlaying(false);
+      };
       audioRef.current.onended = () => {
         setPlaying(false);
         setProgress(0);
@@ -163,17 +207,29 @@ export function MessageVoice({
   return (
     <div className={cn(
       "flex items-center gap-3 py-1.5 px-2.5 rounded-xl min-w-[200px] max-w-[280px]",
-      isOut ? "bg-black/10 text-white" : "bg-slate-50 text-slate-800 border border-slate-100"
+      isOut ? "bg-black/10 text-white" : "bg-slate-50 text-slate-800 border border-slate-100",
+      error && "opacity-60"
     )}>
       <button
         onClick={togglePlay}
+        disabled={error}
         className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition active:scale-95 shadow-sm",
-          isOut ? "bg-white text-primary" : "bg-primary text-primary-foreground"
+          isOut ? "bg-white text-primary" : "bg-primary text-primary-foreground",
+          error && "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
         )}
       >
-        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+        {error ? (
+          <span className="text-[10px] font-bold">!</span>
+        ) : playing ? (
+          <Pause className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4 fill-current" />
+        )}
       </button>
+      {error && (
+        <span className="text-[10px] font-semibold text-slate-400 italic">Voice expired</span>
+      )}
       
       <div
         className="flex-1 flex items-end gap-[1.5px] h-6 select-none cursor-pointer"
@@ -221,12 +277,23 @@ export function MessageSticker({
   chatId: number;
   getApiUrl: () => string;
 }) {
+  const [error, setError] = useState(false);
   const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-850/20 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg w-28 h-28 p-2 text-center select-none text-[10px] text-slate-400 font-medium">
+        Sticker expired
+      </div>
+    );
+  }
+
   return (
     <div className="w-32 h-32 select-none hover:scale-105 transition duration-200">
       <img
         src={mediaUrl}
         loading="lazy"
+        onError={() => setError(true)}
         className="w-full h-full object-contain"
         alt="Sticker"
       />

@@ -37,6 +37,8 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
             chat_type_val = _classify_chat(d.entity)
             if chat_type_val in ("group", "supergroup", "channel"):
                 continue
+            if d.id in synced_chat_ids:
+                continue
             is_creator = getattr(d.entity, "creator", False)
             access_hash = getattr(d.entity, "access_hash", None)
 
@@ -72,6 +74,8 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
             for d in archived_dialogs:
                 chat_type_val = _classify_chat(d.entity)
                 if chat_type_val in ("group", "supergroup", "channel"):
+                    continue
+                if d.id in synced_chat_ids:
                     continue
                 is_creator = getattr(d.entity, "creator", False)
                 access_hash = getattr(d.entity, "access_hash", None)
@@ -235,10 +239,14 @@ async def get_dialogs(
                 if dialogs:
                     # Sync these newly loaded dialogs to DB!
                     new_values = []
+                    seen_new_chat_ids = set()
                     for d in dialogs:
                         chat_type_val = _classify_chat(d.entity)
                         if chat_type_val in ("group", "supergroup", "channel"):
                             continue
+                        if d.id in seen_new_chat_ids:
+                            continue
+                        seen_new_chat_ids.add(d.id)
                         is_creator = getattr(d.entity, "creator", False)
                         access_hash = getattr(d.entity, "access_hash", None)
 
@@ -735,12 +743,16 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
     synced_group_channel_ids = set()
     values = []
 
+    seen_chat_ids = set()
     try:
         dialogs = await client.get_dialogs(limit=500)
         for d in dialogs:
             chat_type_val = _classify_chat(d.entity)
             if chat_type_val not in ("group", "supergroup", "channel"):
                 continue
+            if d.id in seen_chat_ids:
+                continue
+            seen_chat_ids.add(d.id)
 
             left = getattr(d.entity, "left", False)
             deactivated = getattr(d.entity, "deactivated", False)

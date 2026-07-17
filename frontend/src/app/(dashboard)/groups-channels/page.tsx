@@ -121,6 +121,13 @@ function GroupsChannelsContent() {
     setActiveTab("groups");
   }, [selectedAccount]);
 
+  // Auto-sync if never synced
+  useEffect(() => {
+    if (selectedAccount && !syncedAt && !isSyncing && !syncError) {
+      handleSync();
+    }
+  }, [selectedAccount, syncedAt, isSyncing, syncError]);
+
   // ── Join handler ─────────────────────────────────────────────────────
   const handleJoin = async () => {
     if (!selectedAccount || !joinIdentifier.trim()) return;
@@ -291,7 +298,7 @@ function GroupsChannelsContent() {
             <MessageSquare className="h-10 w-10 text-gray-200 mb-3" />
             <p className="text-sm text-gray-400">{_("chats.selectAccount")}</p>
           </div>
-        ) : !syncedAt && !isLoading ? (
+        ) : !syncedAt && !isLoading && !isSyncing ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-sm mx-auto">
             <div className="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center mb-3">
               <RefreshCw className="h-6 w-6 text-primary-600 animate-pulse" />
@@ -316,7 +323,7 @@ function GroupsChannelsContent() {
               )}
             </button>
           </div>
-        ) : isLoading ? (
+        ) : isLoading || isSyncing ? (
           <div className="divide-y divide-gray-50">
             {Array.from({ length: 8 }).map((_, i) => (
               <ChatRowSkeleton key={i} />

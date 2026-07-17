@@ -197,6 +197,13 @@ async def get_message_media_endpoint(
         if not msg or not msg.media:
             raise HTTPException(status_code=404, detail="Message or media not found")
 
+        # Check if media is empty/expired (e.g. view-once media that has expired/been viewed)
+        from telethon.tl.types import PhotoEmpty, DocumentEmpty
+        if hasattr(msg.media, "photo") and (msg.media.photo is None or isinstance(msg.media.photo, PhotoEmpty)):
+            raise HTTPException(status_code=404, detail="Media is unavailable or has expired")
+        if hasattr(msg.media, "document") and (msg.media.document is None or isinstance(msg.media.document, DocumentEmpty)):
+            raise HTTPException(status_code=404, detail="Media is unavailable or has expired")
+
         # Determine clean filename
         filename = f"{message_id}"
         ext = ""
@@ -221,6 +228,8 @@ async def get_message_media_endpoint(
         mime, _ = mimetypes.guess_type(dest_path)
         return FileResponse(dest_path, media_type=mime or "application/octet-stream")
 
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as exc:
         import logging
         logging.getLogger(__name__).error("Failed to download message media: %s", exc)
@@ -270,6 +279,11 @@ async def stream_message_video_endpoint(
             msg = await client.get_messages(entity, ids=message_id)
             if not msg or not msg.media:
                 raise HTTPException(status_code=404, detail="Message or video media not found")
+
+            # Check if video document is empty/expired
+            from telethon.tl.types import DocumentEmpty
+            if hasattr(msg.media, "document") and (msg.media.document is None or isinstance(msg.media.document, DocumentEmpty)):
+                raise HTTPException(status_code=404, detail="Video media is unavailable or has expired")
 
             file_size = 0
             mime = "video/mp4"
@@ -329,6 +343,8 @@ async def stream_message_video_endpoint(
                 headers=headers,
                 media_type=mime
             )
+        except HTTPException as http_exc:
+            raise http_exc
         except Exception as exc:
             import logging
             logging.getLogger(__name__).error("Failed to stream video: %s", exc)

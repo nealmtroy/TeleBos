@@ -55,6 +55,13 @@ async def _background_chat_sync(account_id: str) -> None:
                     except Exception as folders_exc:
                         logger.warning("Error in background folders sync for account %s: %s", account_id, folders_exc)
 
+                    # 4. Sync groups and channels
+                    try:
+                        from app.services.chat_service import sync_groups_channels_to_db
+                        await sync_groups_channels_to_db(account, db)
+                    except Exception as gc_exc:
+                        logger.warning("Error in background groups/channels sync for account %s: %s", account_id, gc_exc)
+
                     # Explicitly commit all synced data
                     await db.commit()
 
