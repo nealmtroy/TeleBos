@@ -89,7 +89,7 @@ export const MessageBubble = memo(({
       className={cn(
         "flex items-center gap-2.5 w-full transition duration-150 rounded-lg",
         isFirst ? "mt-2.5" : "mt-[3px]",
-        isOut ? "justify-end flex-row-reverse" : "justify-start flex-row",
+        isOut ? "justify-end flex-row" : "justify-start flex-row",
         msgSelectionMode && "hover:bg-slate-100/10 cursor-pointer"
       )}
       onClick={() => {

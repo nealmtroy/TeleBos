@@ -615,11 +615,12 @@ export function MessagePane({
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col h-full min-w-0 relative bg-white dark:bg-[#0e1621] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full min-w-0 relative overflow-hidden" style={{ backgroundColor: "var(--tg-bg-chat)" }}>
       {/* Chat header */}
       <div
         onClick={() => setShowRightDrawer(!showRightDrawer)}
-        className="flex items-center gap-3.5 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#17212b] flex-shrink-0 cursor-pointer select-none hover:bg-slate-50 dark:hover:bg-slate-800/40 transition duration-150 z-10"
+        className="flex items-center gap-3.5 px-4 py-3 flex-shrink-0 cursor-pointer select-none transition duration-150 z-10"
+        style={{ backgroundColor: "var(--tg-bg-primary)", borderBottom: "1px solid var(--tg-border)" }}
       >
         <button
           onClick={(e) => {
@@ -659,7 +660,7 @@ export function MessagePane({
         </div>
 
         <div className="flex-1 min-w-0 text-left">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{chatTitle}</h2>
+          <h2 className="text-sm font-bold truncate" style={{ color: "var(--tg-text-primary)" }}>{chatTitle}</h2>
           <p className="text-xs font-medium truncate leading-tight mt-0.5">
             {typingStatus ? (
               <span className="text-primary dark:text-blue-400 font-semibold animate-pulse">{typingStatus}</span>
@@ -860,7 +861,7 @@ export function MessagePane({
         <div className="flex-1 flex flex-col h-full min-w-0">
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto px-4 py-3 telegram-wallpaper custom-scroll bg-chat-wallpaper"
+            className="flex-1 overflow-y-auto px-4 py-3 tg-wallpaper tg-scroll"
           >
             {isLoading && allMessages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
@@ -1084,7 +1085,7 @@ export function MessagePane({
             inputRef={inputRef}
           />
 
-          <div className="flex flex-col bg-white dark:bg-[#17212b] rounded-2xl shadow-[0_1.5px_4px_rgba(0,0,0,0.12)] border border-slate-200/30 dark:border-none overflow-hidden">
+          <div className="flex flex-col rounded-2xl shadow-sm overflow-hidden" style={{ backgroundColor: "var(--tg-bg-primary)", border: "1px solid var(--tg-border)" }}>
             {scheduledMessagesData && scheduledMessagesData.length > 0 && (
               <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-[#202b36] border-b border-slate-100 dark:border-slate-800 text-xs text-slate-500 font-semibold select-none text-left">
                 <span className="flex items-center gap-1.5">
@@ -1210,8 +1211,9 @@ export function MessagePane({
                   onKeyDown={handleKeyDown}
                   placeholder={attachedFile ? t("chats.addCaption") : t("chats.typeMessage")}
                   rows={1}
-                  className="flex-1 resize-none px-2 py-2 bg-transparent text-slate-800 dark:text-slate-100 text-[14.5px] placeholder:text-slate-400 focus:outline-none max-h-32 leading-relaxed"
+                  className="flex-1 resize-none px-2 py-2 bg-transparent text-[14.5px] placeholder:text-slate-400 focus:outline-none max-h-32 leading-relaxed"
                   style={{
+                    color: "var(--tg-text-primary)",
                     height: "auto",
                     minHeight: "40px",
                     overflow: messageText.split("\n").length > 3 ? "auto" : "hidden",

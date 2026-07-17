@@ -153,10 +153,10 @@ export function ChatRightColumn({
   if (!showRightDrawer) return null;
 
   return (
-    <div className="w-80 h-full border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#17212b] flex flex-col flex-shrink-0 z-30 animate-in slide-in-from-right duration-200">
+    <div className="w-80 h-full flex flex-col flex-shrink-0 z-30 animate-in slide-in-from-right duration-200" style={{ backgroundColor: "var(--tg-bg-primary)", borderLeft: "1px solid var(--tg-border)" }}>
       {/* Drawer Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--tg-border)" }}>
+        <h3 className="text-sm font-bold" style={{ color: "var(--tg-text-primary)" }}>
           {isGroupish ? "Group Info" : "User Info"}
         </h3>
         <button

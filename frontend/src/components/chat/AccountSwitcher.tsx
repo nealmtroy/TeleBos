@@ -387,7 +387,7 @@ export function AccountSwitcher({
                     </div>
 
                     {/* Spam status indicator */}
-                    {acc.spam_status && acc.spam_status !== "clean" && (
+                    {acc.spam_status && ["limited", "temporary_limit", "permanent_limit"].includes(acc.spam_status) && (
                       <span
                         style={{
                           fontSize: 10,
