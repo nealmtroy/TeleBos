@@ -247,11 +247,13 @@ async def get_group_members(account: TelegramAccount, chat_id: int, query: str |
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     offset = (page - 1) * page_size
-    participants = await client.get_participants(entity, search=query or "", offset=offset, limit=page_size)
+    fetch_limit = max(page_size * page, 100)
+    participants = await client.get_participants(entity, search=query or "", limit=fetch_limit)
     total = getattr(participants, "total", len(participants))
     
     members_list = []
-    for p in participants:
+    page_participants = participants[offset : offset + page_size] if offset < len(participants) else participants
+    for p in page_participants:
         is_admin = False
         is_creator = False
         rank = None
