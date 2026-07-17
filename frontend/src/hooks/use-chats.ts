@@ -42,12 +42,13 @@ export function usePublicChatsIndex(
   page: number = 1,
   pageSize: number = 50,
   search?: string,
-  chatType?: string
+  chatType?: string,
+  sortBy: string = "member_count"
 ) {
   return useQuery<{ chats: ChatItem[]; total: number }>({
-    queryKey: ["public-chats-index", page, pageSize, search || "", chatType || "all"],
+    queryKey: ["public-chats-index", page, pageSize, search || "", chatType || "all", sortBy],
     queryFn: async () => {
-      let url = `/chats/public-index?page=${page}&page_size=${pageSize}`;
+      let url = `/chats/public-index?page=${page}&page_size=${pageSize}&sort_by=${sortBy}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (chatType) url += `&chat_type=${encodeURIComponent(chatType)}`;
       const { data } = await api.get(url);

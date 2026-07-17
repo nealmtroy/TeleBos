@@ -472,6 +472,7 @@ async def list_public_chats_index(
     page_size: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
     chat_type: str | None = Query(None, description="Filter by type: group, supergroup, channel. Comma-separated."),
+    sort_by: str = Query("member_count", description="Sort by: member_count, online_count"),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -516,8 +517,11 @@ async def list_public_chats_index(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = await db.scalar(count_stmt) or 0
 
-    # Paginate & order by last_message_date descending
-    stmt = stmt.order_by(text("last_message_date DESC NULLS LAST"))
+    # Paginate & order
+    if sort_by == "online_count":
+        stmt = stmt.order_by(text("online_count DESC NULLS LAST"), text("last_message_date DESC NULLS LAST"))
+    else: # default: member_count
+        stmt = stmt.order_by(text("member_count DESC NULLS LAST"), text("last_message_date DESC NULLS LAST"))
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(stmt)

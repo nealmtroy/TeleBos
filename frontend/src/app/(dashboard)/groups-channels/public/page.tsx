@@ -40,6 +40,7 @@ function PublicGroupsChannelsContent() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); // Submitted search
+  const [sortBy, setSortBy] = useState<"member_count" | "online_count">("member_count");
 
   const [copiedChatId, setCopiedChatId] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
@@ -54,7 +55,7 @@ function PublicGroupsChannelsContent() {
     isLoading,
     error,
     refetch,
-  } = usePublicChatsIndex(page, 50, searchQuery, chatType);
+  } = usePublicChatsIndex(page, 50, searchQuery, chatType, sortBy);
 
   const chats = chatsData?.chats ?? [];
   const total = chatsData?.total ?? 0;
@@ -171,32 +172,50 @@ function PublicGroupsChannelsContent() {
         </form>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
-        <button
-          onClick={() => { setActiveTab("groups"); setSearchQuery(""); setSearch(""); }}
-          className={cn(
-            "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
-            activeTab === "groups"
-              ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          )}
-        >
-          <Users className="h-3 w-3 inline mr-1" />
-          {_("groupsChannels.groups")}
-        </button>
-        <button
-          onClick={() => { setActiveTab("channels"); setSearchQuery(""); setSearch(""); }}
-          className={cn(
-            "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
-            activeTab === "channels"
-              ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          )}
-        >
-          <Hash className="h-3 w-3 inline mr-1" />
-          {_("groupsChannels.channels")}
-        </button>
+      {/* Tabs & Sort */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => { setActiveTab("groups"); setSearchQuery(""); setSearch(""); }}
+            className={cn(
+              "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
+              activeTab === "groups"
+                ? "bg-primary-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            )}
+          >
+            <Users className="h-3 w-3 inline mr-1" />
+            {_("groupsChannels.groups")}
+          </button>
+          <button
+            onClick={() => { setActiveTab("channels"); setSearchQuery(""); setSearch(""); }}
+            className={cn(
+              "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
+              activeTab === "channels"
+                ? "bg-primary-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            )}
+          >
+            <Hash className="h-3 w-3 inline mr-1" />
+            {_("groupsChannels.channels")}
+          </button>
+        </div>
+
+        {/* Sort Select */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value as any);
+              setPage(1);
+            }}
+            className="px-2 py-1 text-xs border border-gray-200 rounded-md focus:ring-1 focus:ring-primary-500 outline-none bg-white text-gray-700"
+          >
+            <option value="member_count">{_("groupsChannels.memberCount") || "Total Members"}</option>
+            <option value="online_count">{_("groupsChannels.onlineCount") || "Active Members"}</option>
+          </select>
+        </div>
       </div>
 
       {/* Results List */}
