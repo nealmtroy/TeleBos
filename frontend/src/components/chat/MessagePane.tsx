@@ -963,6 +963,7 @@ export function MessagePane({
           accountId={accountId}
           isAuthenticated={isAuthenticated}
           getApiUrl={getApiUrl}
+          getAuthParam={getAuthParam}
           sharedMediaTab={sharedMediaTab}
           setSharedMediaTab={setSharedMediaTab}
           allMessages={allMessages}

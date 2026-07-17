@@ -37,13 +37,14 @@ const renderFormattedText = (text: string | null) => {
   let html = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt bridge;"); // Let's make sure it doesn't break formatting
-  
-  // Reverting &gt bridge; to simple &gt; to avoid typo
-  html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+
+  // Linkify URLs (http, https, t.me)
+  const urlRegex = /(https?:\/\/[^\s<]+|t\.me\/[^\s<]+)/g;
+  html = html.replace(urlRegex, (url) => {
+    const fullUrl = url.startsWith("t.me") ? `https://${url}` : url;
+    return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="tg-link hover:underline font-semibold" style="color: var(--tg-accent)" onclick="event.stopPropagation()">${url}</a>`;
+  });
 
   html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   html = html.replace(/_(.*?)_/g, "<em>$1</em>");
