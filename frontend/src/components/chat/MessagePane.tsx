@@ -1172,11 +1172,17 @@ export function MessagePane({
             ) : (
               <div className="flex items-end gap-2 px-3 py-2 w-full">
                 <button
-                  onClick={(e) => {
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
-                    setShowEmojiPicker(!showEmojiPicker);
                   }}
-                  className="tg-emoji-btn p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowEmojiPicker((prev) => !prev);
+                  }}
+                  className="tg-emoji-btn p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center cursor-pointer"
                   title="Emojis"
                 >
                   <Smile className="h-5 w-5" />

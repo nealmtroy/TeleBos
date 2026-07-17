@@ -129,7 +129,7 @@ export function EmojiPicker({
 
   return (
     <div
-      className="tg-emoji-picker absolute bottom-16 left-4 rounded-2xl shadow-lg p-3.5 z-30 w-80 h-96 flex flex-col animate-in slide-in-from-bottom-2 duration-150 select-none"
+      className="tg-emoji-picker absolute bottom-16 left-4 rounded-2xl shadow-2xl p-3.5 z-50 w-80 h-96 flex flex-col animate-in slide-in-from-bottom-2 duration-150 select-none"
       style={{
         backgroundColor: "var(--tg-bg-primary)",
         border: "1px solid var(--tg-border)",

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-17
+- **[0c02b31c](https://github.com/nealmtroy/TeleBos/commit/0c02b31c)**: fix(chat): prevent handleDocClick from premature unmounting of EmojiPicker on emoji click
 - **[f930d657](https://github.com/nealmtroy/TeleBos/commit/f930d657)**: docs: update documentation (CLAUDE.md, AGENTS.md, README.md, PRODUCT.md) with Telegram Web K chat system architecture and guidelines
 - **[09ab5e06](https://github.com/nealmtroy/TeleBos/commit/09ab5e06)**: fix(chat): fix emoji button mousedown focus loss and draft store update in EmojiPicker
 - **[67b24a57](https://github.com/nealmtroy/TeleBos/commit/67b24a57)**: fix(backend): fix Telethon get_participants TypeError by removing invalid offset argument
