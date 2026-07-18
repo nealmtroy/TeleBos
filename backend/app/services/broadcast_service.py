@@ -8,7 +8,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import InvalidRequestError
 
@@ -129,6 +129,13 @@ async def delete_group_list(db: AsyncSession, gl_id: str, user_id: str) -> None:
     gl = result.scalar_one_or_none()
     if gl is None:
         raise ValueError("Group list not found")
+    # Nullify FK on broadcast_jobs that reference this group list to avoid
+    # IntegrityError (ForeignKeyViolationError) on delete.
+    await db.execute(
+        update(BroadcastJob)
+        .where(BroadcastJob.group_list_id == gl.id)
+        .values(group_list_id=None)
+    )
     await db.delete(gl)
 
 
@@ -175,6 +182,13 @@ async def delete_text_list(db: AsyncSession, tl_id: str, user_id: str) -> None:
     tl = result.scalar_one_or_none()
     if tl is None:
         raise ValueError("Text list not found")
+    # Nullify FK on broadcast_jobs that reference this text list to avoid
+    # IntegrityError (ForeignKeyViolationError) on delete.
+    await db.execute(
+        update(BroadcastJob)
+        .where(BroadcastJob.text_list_id == tl.id)
+        .values(text_list_id=None)
+    )
     await db.delete(tl)
 
 
@@ -557,6 +571,17 @@ async def _join_and_resolve_target(client, target: str):
         except Exception as e:
             logger.warning("Failed to resolve/join discussion group for channel %s: %s", target, e)
 
+    # Proactive admin-only chat detection: if the group's default_banned_rights
+    # forbids send_messages (or send_plain for newer API layers), regular members
+    # cannot post.  Raise an error so the broadcast loop classifies this as
+    # "admin_only" and skips it without wasting an API call.
+    if isinstance(entity, Channel):
+        dbr = getattr(entity, "default_banned_rights", None)
+        if dbr and (getattr(dbr, "send_messages", False) or getattr(dbr, "send_plain", False)):
+            raise ValueError(
+                f"CHAT_WRITE_FORBIDDEN: Admin-only chat detected — {target}"
+            )
+
     return entity
 
 
@@ -564,7 +589,17 @@ async def _broadcast_entities_for_target(client, target: str) -> list:
     if _chatlist_slug(target):
         entities = await _join_and_resolve_chatlist(client, target)
         if entities:
-            return entities
+            # Filter out admin-only entities from chatlists
+            from telethon.tl.types import Channel
+            filtered = []
+            for ent in entities:
+                if isinstance(ent, Channel):
+                    dbr = getattr(ent, "default_banned_rights", None)
+                    if dbr and (getattr(dbr, "send_messages", False) or getattr(dbr, "send_plain", False)):
+                        logger.info("Skipping admin-only chat in chatlist: %s", getattr(ent, "title", target))
+                        continue
+                filtered.append(ent)
+            return filtered if filtered else entities  # fallback to original if all filtered
     return [await _join_and_resolve_target(client, target)]
 
 

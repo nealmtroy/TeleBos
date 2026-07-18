@@ -830,6 +830,29 @@ def _run_migrations(connection):
                 if str(col_type) == "INTEGER":
                     connection.execute(text(f"ALTER TABLE orders ALTER COLUMN {col} TYPE BIGINT"))
 
+    # ── Fix broadcast_jobs FK constraints to use ON DELETE SET NULL ────────
+    # Existing DBs have bare FKs that block group_list / text_list deletion.
+    # We drop and re-create with ON DELETE SET NULL.
+    if "broadcast_jobs" in tables:
+        existing_fks = inspector.get_foreign_keys("broadcast_jobs")
+        for fk in existing_fks:
+            ref_table = fk.get("referred_table", "")
+            fk_name = fk.get("name")
+            if ref_table in ("group_lists", "text_lists") and fk_name:
+                on_delete = (fk.get("options", {}).get("ondelete") or "").upper()
+                if on_delete != "SET NULL":
+                    col_name = fk["constrained_columns"][0]
+                    connection.execute(
+                        text(f"ALTER TABLE broadcast_jobs DROP CONSTRAINT {fk_name}")
+                    )
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE broadcast_jobs "
+                            f"ADD CONSTRAINT {fk_name} "
+                            f"FOREIGN KEY ({col_name}) REFERENCES {ref_table}(id) ON DELETE SET NULL"
+                        )
+                    )
+
 
 # Configure logging
 logging.basicConfig(

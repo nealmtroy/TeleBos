@@ -5,6 +5,10 @@ from telethon import TelegramClient
 
 logger = logging.getLogger(__name__)
 
+# Cache resolved log destinations per client to avoid repeated API calls
+_resolved_dest_cache: dict[tuple[int, str], object] = {}
+
+
 def _parse_dest(dest: str):
     """Parse a destination string into the form Telethon's send_message accepts."""
     if not dest:
@@ -78,6 +82,46 @@ def _format_cycle_summary(
     return "\n".join(lines)
 
 
+async def _resolve_dest_entity(client: TelegramClient, target):
+    """Resolve a destination to a Telethon entity, with bot /start fallback.
+
+    Bots require the user to have /started them before messages can be sent.
+    If the initial resolution fails (username not found in cache), we try
+    get_entity first, and if that also fails for a bot username, we send
+    /start to establish the dialog.
+    """
+    # Check module-level cache
+    me = await client.get_me()
+    cache_key = (me.id, str(target))
+    if cache_key in _resolved_dest_cache:
+        return _resolved_dest_cache[cache_key]
+
+    entity = None
+    try:
+        entity = await client.get_entity(target)
+    except Exception:
+        # If target looks like a bot username, try /start to create the dialog
+        target_str = str(target).lstrip("@")
+        if target_str.lower().endswith("bot") or target_str.endswith("_bot"):
+            try:
+                from telethon.tl.functions.contacts import ResolveUsernameRequest
+                result = await client(ResolveUsernameRequest(target_str))
+                if result.users:
+                    entity = result.users[0]
+                    # Send /start to establish dialog so future sends work
+                    try:
+                        await client.send_message(entity, "/start")
+                        logger.info("Auto-started bot @%s for broadcast logging", target_str)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+    if entity:
+        _resolved_dest_cache[cache_key] = entity
+    return entity
+
+
 async def send_cycle_summary(
     client: TelegramClient,
     job,
@@ -99,15 +143,14 @@ async def send_cycle_summary(
             settings = get_settings()
             dest = settings.BROADCAST_LOG_DEFAULT_DEST
         except Exception:
-            dest = "@teleboslogging_bot"
-            
+            return
+
     if not dest or dest == "web_only":
         return
-        
     try:
         from datetime import timezone
         end_time = datetime.now(timezone.utc)
-        start_time = job.created_at # Approximate start time for cycle
+        start_time = job.created_at  # Approximate start time for cycle
         if cycle_logs:
             first_log = min(cycle_logs, key=lambda l: l.sent_at)
             start_time = first_log.sent_at
@@ -133,7 +176,15 @@ async def send_cycle_summary(
         )
         target = _parse_dest(dest)
         if target:
-            await client.send_message(target, text, parse_mode="html", link_preview=False)
+            # Resolve entity first (handles bot /start if needed)
+            entity = await _resolve_dest_entity(client, target)
+            if entity:
+                await client.send_message(entity, text, parse_mode="html", link_preview=False)
+            else:
+                logger.warning(
+                    "Could not resolve log destination %s — broadcasting account may need to /start the bot first",
+                    dest,
+                )
     except Exception as exc:
         logger.warning(
             "Failed to send cycle %d log for job %s to %s: %s",

@@ -29,10 +29,10 @@ class BroadcastJob(Base):
         nullable=False, index=True,
     )
     group_list_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("group_lists.id")
+        UUID(as_uuid=True), ForeignKey("group_lists.id", ondelete="SET NULL")
     )
     text_list_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("text_lists.id")
+        UUID(as_uuid=True), ForeignKey("text_lists.id", ondelete="SET NULL")
     )
 
     mode: Mapped[str] = mapped_column(String(20), nullable=False, default="single_text")
