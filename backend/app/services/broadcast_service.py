@@ -506,11 +506,51 @@ async def _join_and_resolve_chatlist(client, target: str) -> list:
     return entities
 
 
-async def _join_and_resolve_target(client, target: str):
+async def check_send_permission(client, entity) -> tuple[bool, str | None]:
+    """
+    Checks if the client has permission to send messages in the group or channel.
+    Returns (bool, reason) where bool is True if allowed, False otherwise.
+    """
+    from telethon.tl.types import Channel, Chat
+    from telethon.errors import UserNotParticipantError
+    try:
+        if not isinstance(entity, (Channel, Chat)):
+            return True, None
+            
+        permissions = await client.get_permissions(entity, 'me')
+        
+        if permissions.has_left:
+            return False, "You are not a participant in this chat"
+            
+        if getattr(entity, 'broadcast', False):
+            if permissions.is_creator or (permissions.is_admin and permissions.post_messages):
+                return True, None
+            else:
+                return False, "Only admins can write in this group"
+                
+        default_banned_rights = getattr(entity, 'default_banned_rights', None)
+        if default_banned_rights and default_banned_rights.send_messages:
+            if not (permissions.is_admin or permissions.is_creator):
+                return False, "Only admins can write in this group"
+                
+        if permissions.is_banned:
+            banned_rights = getattr(permissions.participant, 'banned_rights', None)
+            if banned_rights and banned_rights.send_messages:
+                return False, "You are muted in this group"
+                
+        return True, None
+    except UserNotParticipantError:
+        return False, "You are not a participant in this chat"
+    except Exception as e:
+        logger.debug(f"Error checking chat permissions: {e}")
+        return True, None
+
+
+async def _join_and_resolve_target(client, target: str, job_id_str: str | None = None):
     from telethon.tl.functions.channels import JoinChannelRequest, GetFullChannelRequest
     from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
     from telethon.tl.types import ChatInviteAlready, ChatInvite, Channel
-    from telethon.errors import UserAlreadyParticipantError
+    from telethon.errors import UserAlreadyParticipantError, InviteRequestSentError, FloodWaitError
 
     invite = _invite_hash(target)
     entity = None
@@ -521,21 +561,36 @@ async def _join_and_resolve_target(client, target: str):
         if isinstance(invite_info, ChatInviteAlready):
             entity = invite_info.chat
         else:
-            try:
-                updates = await client(ImportChatInviteRequest(invite))
-                if getattr(updates, "chats", None):
-                    entity = updates.chats[0]
-            except UserAlreadyParticipantError:
-                # Fallback: if CheckChatInviteRequest did not return ChatInviteAlready
-                # but we are already a participant, search dialogue list by name matching the invite title
-                expected_title = getattr(invite_info, "title", None)
-                if expected_title:
-                    async for dialog in client.iter_dialogs():
-                        if dialog.name == expected_title:
-                            entity = dialog.entity
-                            break
-                if not entity:
-                    raise ValueError(f"Already a participant but could not find private chat with title '{expected_title}' in dialogs")
+            for attempt in range(2):
+                try:
+                    updates = await client(ImportChatInviteRequest(invite))
+                    if getattr(updates, "chats", None):
+                        entity = updates.chats[0]
+                    break
+                except UserAlreadyParticipantError:
+                    # Fallback: if CheckChatInviteRequest did not return ChatInviteAlready
+                    # but we are already a participant, search dialogue list by name matching the invite title
+                    expected_title = getattr(invite_info, "title", None)
+                    if expected_title:
+                        async for dialog in client.iter_dialogs():
+                            if dialog.name == expected_title:
+                                entity = dialog.entity
+                                break
+                    if not entity:
+                        raise ValueError(f"Already a participant but could not find private chat with title '{expected_title}' in dialogs")
+                    break
+                except FloodWaitError as e:
+                    if e.seconds <= 30:
+                        logger.warning("Flood wait error joining private group! Waiting %s seconds...", e.seconds)
+                        if job_id_str:
+                            completed = await _interruptible_sleep(job_id_str, e.seconds)
+                            if not completed:
+                                raise
+                        else:
+                            await asyncio.sleep(e.seconds)
+                        if attempt == 0:
+                            continue
+                    raise
     else:
         public = _public_target(target)
         if public.lstrip("-").isdigit():
@@ -543,13 +598,30 @@ async def _join_and_resolve_target(client, target: str):
         else:
             entity = await client.get_entity(public)
 
-        try:
-            await client(JoinChannelRequest(entity))
-        except UserAlreadyParticipantError:
-            pass
-        except Exception:
-            # Fallback in case JoinChannelRequest fails for other reasons but entity is accessible
-            pass
+        for attempt in range(2):
+            try:
+                await client(JoinChannelRequest(entity))
+                break
+            except UserAlreadyParticipantError:
+                break
+            except InviteRequestSentError:
+                raise
+            except FloodWaitError as e:
+                if e.seconds <= 30:
+                    logger.warning("Flood wait error joining public group! Waiting %s seconds...", e.seconds)
+                    if job_id_str:
+                        completed = await _interruptible_sleep(job_id_str, e.seconds)
+                        if not completed:
+                            raise
+                    else:
+                        await asyncio.sleep(e.seconds)
+                    if attempt == 0:
+                        continue
+                raise
+            except Exception:
+                if attempt == 1:
+                    # Fallback in case JoinChannelRequest fails for other reasons but entity is accessible
+                    pass
 
     if not entity:
         raise ValueError(f"Could not resolve or join target: {target}")
@@ -585,7 +657,7 @@ async def _join_and_resolve_target(client, target: str):
     return entity
 
 
-async def _broadcast_entities_for_target(client, target: str) -> list:
+async def _broadcast_entities_for_target(client, target: str, job_id_str: str | None = None) -> list:
     if _chatlist_slug(target):
         entities = await _join_and_resolve_chatlist(client, target)
         if entities:
@@ -600,7 +672,7 @@ async def _broadcast_entities_for_target(client, target: str) -> list:
                         continue
                 filtered.append(ent)
             return filtered if filtered else entities  # fallback to original if all filtered
-    return [await _join_and_resolve_target(client, target)]
+    return [await _join_and_resolve_target(client, target, job_id_str)]
 
 
 async def execute_broadcast(job_id: str):
@@ -795,7 +867,7 @@ async def execute_broadcast(job_id: str):
 
                     client = selected_acc["client"]
                     try:
-                        entities_retry = await _broadcast_entities_for_target(client, pitem["group_identifier"])
+                        entities_retry = await _broadcast_entities_for_target(client, pitem["group_identifier"], job_id_str)
                         if entities_retry:
                             joined_pool[pkey] = entities_retry
                             newly_joined.append(pkey)
@@ -997,7 +1069,7 @@ async def execute_broadcast(job_id: str):
                     if cached_entity is not None:
                         entities = cached_entity
                     else:
-                        entities = await _broadcast_entities_for_target(client, group_identifier)
+                        entities = await _broadcast_entities_for_target(client, group_identifier, job_id_str)
                         if not entities:
                             raise ValueError(f"Could not resolve any entities for: {group_identifier}")
 
@@ -1040,6 +1112,14 @@ async def execute_broadcast(job_id: str):
                     try:
                         if chosen_text:
                             for entity in entities:
+                                # Pre-check send permissions
+                                can_send, reason = await check_send_permission(client, entity)
+                                if not can_send:
+                                    if "participant" in reason or "member" in reason:
+                                        raise telethon.errors.UserNotParticipantError(None)
+                                    else:
+                                        raise ValueError(f"CHAT_WRITE_FORBIDDEN: {reason}")
+
                                 for retry_attempt in range(2):
                                     try:
                                         await client.send_message(entity, chosen_text)
@@ -1052,6 +1132,24 @@ async def execute_broadcast(job_id: str):
                                                 continue
                                             except Exception as join_err:
                                                 raise join_err
+                                        raise
+                                    except telethon.errors.SlowModeWaitError as e:
+                                        if e.seconds <= 30:
+                                            logger.warning("Slow mode active (job %s, account %s): waiting %s seconds to retry...", job_id_str, acc_id_str, e.seconds)
+                                            completed = await _interruptible_sleep(job_id_str, e.seconds)
+                                            if not completed:
+                                                raise
+                                            if retry_attempt == 0:
+                                                continue
+                                        raise
+                                    except telethon.errors.FloodWaitError as e:
+                                        if e.seconds <= 30:
+                                            logger.warning("Flood wait active (job %s, account %s): waiting %s seconds to retry...", job_id_str, acc_id_str, e.seconds)
+                                            completed = await _interruptible_sleep(job_id_str, e.seconds)
+                                            if not completed:
+                                                raise
+                                            if retry_attempt == 0:
+                                                continue
                                         raise
                                     except (ConnectionError, TimeoutError, OSError) as net_exc:
                                         if retry_attempt == 0:
@@ -1100,7 +1198,7 @@ async def execute_broadcast(job_id: str):
                         log_err_msg = err_msg
                         failed += 1
 
-                        if err_type in ("admin_only", "banned", "invalid_username", "invalid_link", "private_channel"):
+                        if err_type in ("admin_only", "banned", "invalid_username", "invalid_link", "private_channel", "muted"):
                             permanent_failures_pool.add(pkey)
 
                         if err_type == "flood":

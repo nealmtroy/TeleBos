@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-18
+- **[c8e92cd1](https://github.com/nealmtroy/TeleBos/commit/c8e92cd1)**: fix: group list FK constraint, admin-only chat detection, broadcast log sender bot resolution
+
 ## 2026-07-17
 - **[8ae246c5](https://github.com/nealmtroy/TeleBos/commit/8ae246c5)**: feat(chat): add Saved Messages, Archived Chats with count badge, My Stories, Wallet, and Settings to left menu drawer
 - **[11e74be4](https://github.com/nealmtroy/TeleBos/commit/11e74be4)**: refactor(chat): restore authentic Telegram Web topbar header structure matching web.telegram.org HTML
