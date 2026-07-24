@@ -168,7 +168,7 @@ function OverviewContent() {
           <QuickLinkCard
             title="SMM settings"
             desc="Configure pricing markup, default pricing, and marketplace settings."
-            href="/admin/smm"
+            href="/admin/smm/settings"
             icon={Settings}
             color="purple"
           />

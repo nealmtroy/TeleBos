@@ -79,7 +79,7 @@ const adminRedeemSubItems = [
 const adminSmmSubItems = [
   { href: "/admin/smm/services", exact: false, labelKey: "adminSmm.services", icon: Package },
   { href: "/admin/smm/orders", exact: false, labelKey: "adminSmm.allOrders", icon: ShoppingCart },
-  { href: "/admin/smm", exact: true, labelKey: "adminSmm.settings", icon: Settings },
+  { href: "/admin/smm/settings", exact: true, labelKey: "adminSmm.settings", icon: Settings },
 ];
 
 // role hierarchy: basic < pro < premium < owner
@@ -305,7 +305,7 @@ export function Sidebar() {
           icon: Package,
           hasSubItems: true,
           subItems: adminSmmSubItems,
-          matchPrefixes: ["/admin/smm/services", "/admin/smm/orders", "/admin/smm"],
+          matchPrefixes: ["/admin/smm/services", "/admin/smm/orders", "/admin/smm/settings"],
           minRole: 3,
         },
       ],
