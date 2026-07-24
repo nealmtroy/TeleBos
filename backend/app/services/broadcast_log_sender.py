@@ -190,3 +190,34 @@ async def send_cycle_summary(
             "Failed to send cycle %d log for job %s to %s: %s",
             cycle_number, job.id, dest, exc,
         )
+
+
+async def send_job_log_message(
+    client: TelegramClient,
+    job,
+    message: str,
+) -> None:
+    dest = job.log_destination
+    if dest == "web_only":
+        return
+    if not dest:
+        from app.config import get_settings
+        try:
+            settings = get_settings()
+            dest = settings.BROADCAST_LOG_DEFAULT_DEST
+        except Exception:
+            return
+
+    if not dest or dest == "web_only":
+        return
+
+    try:
+        target = _parse_dest(dest)
+        if target:
+            entity = await _resolve_dest_entity(client, target)
+            if entity:
+                await client.send_message(entity, message)
+            else:
+                logger.warning("Could not resolve log destination %s to send message", dest)
+    except Exception as exc:
+        logger.warning("Failed to send log message to %s: %s", dest, exc)

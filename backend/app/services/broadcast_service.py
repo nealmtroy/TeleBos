@@ -1299,6 +1299,7 @@ async def execute_broadcast(job_id: str):
             # Auto stop broadcast job if there are no valid groups
             if len(permanent_failures_pool) >= len(items) and len(items) > 0:
                 logger.warning("Broadcast Job %s has been stopped because there is no valid group", job_id_str)
+                log_msg = f"Broadcast Job {job_id_str} has been stopped because there is no valid group"
                 async with async_session_factory() as db_stop:
                     result = await db_stop.execute(
                         select(BroadcastJob).where(BroadcastJob.id == job_uuid)
@@ -1308,6 +1309,18 @@ async def execute_broadcast(job_id: str):
                         db_job.status = "failed"
                         db_job.completed_at = datetime.now(timezone.utc)
                         await db_stop.commit()
+                        
+                        # Send stopped notification to logging destination
+                        try:
+                            from app.services.broadcast_log_sender import send_job_log_message
+                            sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
+                            await send_job_log_message(
+                                client=sender["client"],
+                                job=db_job,
+                                message=log_msg
+                            )
+                        except Exception as log_exc:
+                            logger.warning("Failed to send job stopped log: %s", log_exc)
                 
                 await _push_broadcast(job_id_str, "error", {
                     "status": "failed",
