@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useAdminStats } from "@/hooks/use-admin";
+import { useAdminSmmStats, useAdminSmmProfile } from "@/hooks/use-admin-smm";
 import {
   Shield, AlertCircle, Users, Send, UserPlus, Radio,
-  Zap, Star, Crown, BarChart3,
+  Zap, Star, Crown, BarChart3, Package, ShoppingCart, DollarSign, Settings,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,8 @@ export default function AdminOverviewPage() {
 function OverviewContent() {
   const _ = useT();
   const { data: stats, isLoading, error } = useAdminStats();
+  const { data: smmStats } = useAdminSmmStats();
+  const { data: smmProfile } = useAdminSmmProfile();
 
   if (isLoading) {
     return (
@@ -61,57 +64,100 @@ function OverviewContent() {
 
   return (
     <div className="space-y-8">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard
-          icon={Users}
-          label={_("admin.totalUsers")}
-          value={stats?.total_users ?? 0}
-          color="blue"
-          breakdown={[
-            { label: "Basic", value: stats?.total_basic_users ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
-            { label: "Pro", value: stats?.total_pro_users ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
-            { label: "Premium", value: stats?.total_premium_users ?? 0, color: "bg-amber-50 text-amber-700 border-amber-100" },
-            { label: "Owner", value: stats?.total_owner_users ?? 0, color: "bg-purple-50 text-purple-700 border-purple-100" },
-          ]}
-        />
-        <StatCard
-          icon={Radio}
-          label={_("admin.totalAccountsConnected") || "Connected Accounts"}
-          value={stats?.total_accounts_connected ?? 0}
-          color="emerald"
-          breakdown={[
-            { label: "Active", value: stats?.accounts_active ?? 0, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-            { label: "Selling", value: stats?.accounts_selling ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
-            { label: "Expired", value: stats?.accounts_expired ?? 0, color: "bg-red-50 text-red-700 border-red-100" },
-          ]}
-        />
-        <StatCard
-          icon={Send}
-          label={_("admin.totalBroadcastJobs")}
-          value={stats?.total_broadcast_jobs ?? 0}
-          color="indigo"
-          breakdown={[
-            { label: "Running", value: stats?.broadcast_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
-            { label: "Stopped", value: stats?.broadcast_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
-          ]}
-        />
-        <StatCard
-          icon={UserPlus}
-          label={_("admin.totalInviteJobs")}
-          value={stats?.total_invite_jobs ?? 0}
-          color="purple"
-          breakdown={[
-            { label: "Running", value: stats?.invite_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
-            { label: "Stopped", value: stats?.invite_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
-          ]}
-        />
+      {/* Platform Stats Grid */}
+      <div className="space-y-3.5">
+        <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">Platform Overview</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <StatCard
+            icon={Users}
+            label={_("admin.totalUsers")}
+            value={stats?.total_users ?? 0}
+            color="blue"
+            breakdown={[
+              { label: "Basic", value: stats?.total_basic_users ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
+              { label: "Pro", value: stats?.total_pro_users ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+              { label: "Premium", value: stats?.total_premium_users ?? 0, color: "bg-amber-50 text-amber-700 border-amber-100" },
+              { label: "Owner", value: stats?.total_owner_users ?? 0, color: "bg-purple-50 text-purple-700 border-purple-100" },
+            ]}
+          />
+          <StatCard
+            icon={Radio}
+            label={_("admin.totalAccountsConnected") || "Connected Accounts"}
+            value={stats?.total_accounts_connected ?? 0}
+            color="emerald"
+            breakdown={[
+              { label: "Active", value: stats?.accounts_active ?? 0, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+              { label: "Selling", value: stats?.accounts_selling ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+              { label: "Expired", value: stats?.accounts_expired ?? 0, color: "bg-red-50 text-red-700 border-red-100" },
+            ]}
+          />
+          <StatCard
+            icon={Send}
+            label={_("admin.totalBroadcastJobs")}
+            value={stats?.total_broadcast_jobs ?? 0}
+            color="indigo"
+            breakdown={[
+              { label: "Running", value: stats?.broadcast_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+              { label: "Stopped", value: stats?.broadcast_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
+            ]}
+          />
+          <StatCard
+            icon={UserPlus}
+            label={_("admin.totalInviteJobs")}
+            value={stats?.total_invite_jobs ?? 0}
+            color="purple"
+            breakdown={[
+              { label: "Running", value: stats?.invite_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+              { label: "Stopped", value: stats?.invite_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* SMM Provider Status Grid */}
+      <div className="space-y-3.5">
+        <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">SMM Provider Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <StatCard
+            icon={Package}
+            label="SMM Services"
+            value={smmStats?.total_services ?? 0}
+            color="blue"
+            breakdown={[
+              { label: "Active", value: smmStats?.active_services ?? 0, color: "bg-green-50 text-green-700 border-green-100" },
+            ]}
+          />
+          <StatCard
+            icon={ShoppingCart}
+            label="SMM Orders"
+            value={smmStats?.total_orders ?? 0}
+            color="indigo"
+            breakdown={[
+              { label: "Pending", value: smmStats?.pending_orders ?? 0, color: "bg-yellow-50 text-yellow-700 border-yellow-100 animate-pulse" },
+            ]}
+          />
+          <StatCard
+            icon={DollarSign}
+            label="SMM Revenue"
+            value={smmStats?.total_revenue ?? 0}
+            color="emerald"
+            prefix="Rp "
+          />
+          {smmProfile?.balance && (
+            <StatCard
+              icon={DollarSign}
+              label="SMM Provider Balance"
+              value={smmProfile.balance}
+              color="amber"
+            />
+          )}
+        </div>
       </div>
 
       {/* Admin Quick Action Panel */}
       <div className="space-y-3.5">
         <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">Owner Action Control Deck</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <QuickLinkCard
             title="User Management"
             desc="Configure user accounts, roles, balances, and permissions."
@@ -120,18 +166,25 @@ function OverviewContent() {
             color="blue"
           />
           <QuickLinkCard
-            title="Redeem Codes"
-            desc="Create subscription vouchers and monitor redeem logs."
-            href="/admin/redeem-codes"
-            icon={Star}
-            color="amber"
+            title="SMM settings"
+            desc="Configure pricing markup, default pricing, and marketplace settings."
+            href="/admin/smm"
+            icon={Settings}
+            color="purple"
           />
           <QuickLinkCard
-            title="SMM Panel Settings"
-            desc="Configure pricing rates and settings for the SMM panel."
-            href="/admin/smm"
-            icon={Crown}
-            color="purple"
+            title="SMM Services"
+            desc="Active, disable, or adjust pricing markup for SMM services."
+            href="/admin/smm/services"
+            icon={Package}
+            color="blue"
+          />
+          <QuickLinkCard
+            title="SMM Orders"
+            desc="Monitor SMM orders, status histories, and refresh updates."
+            href="/admin/smm/orders"
+            icon={ShoppingCart}
+            color="indigo"
           />
           <QuickLinkCard
             title="ID Prefix Prices"
@@ -139,6 +192,13 @@ function OverviewContent() {
             href="/admin/account-prices"
             icon={BarChart3}
             color="indigo"
+          />
+          <QuickLinkCard
+            title="Redeem Codes"
+            desc="Create subscription vouchers and monitor redeem logs."
+            href="/admin/redeem-codes"
+            icon={Star}
+            color="amber"
           />
         </div>
       </div>
@@ -152,12 +212,14 @@ function StatCard({
   value,
   color,
   breakdown,
+  prefix = "",
 }: {
   icon: any;
   label: string;
   value: string | number;
   color: string;
   breakdown?: Array<{ label: string; value: number | string; color?: string }>;
+  prefix?: string;
 }) {
   const colorMap: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600",
@@ -173,6 +235,7 @@ function StatCard({
           <div className="space-y-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
             <p className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              {prefix}
               {typeof value === "number" ? value.toLocaleString() : value}
             </p>
           </div>
