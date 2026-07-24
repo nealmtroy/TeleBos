@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-24
+- **[61778f54](https://github.com/nealmtroy/TeleBos/commit/61778f54)**: feat(admin-smm): relocate SMM Settings to /admin/smm/settings and redesign UI/UX for responsiveness and overflow fixes
 - **[462c6acb](https://github.com/nealmtroy/TeleBos/commit/462c6acb)**: feat(sidebar): reorganize sidebar navigation links and collapsible groups
 - **[2c252960](https://github.com/nealmtroy/TeleBos/commit/2c252960)**: feat(admin-smm): split SMM panel into settings, services, and orders pages, and integrated SMM overview to main admin overview
 - **[41ada48b](https://github.com/nealmtroy/TeleBos/commit/41ada48b)**: feat(admin): redesign admin panel with stats breakdown and quick action deck
