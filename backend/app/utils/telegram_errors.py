@@ -339,6 +339,9 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "only admins" in msg.lower():
         return ("admin_only", "Only admins can send messages in this group")
 
+    if "no user has" in msg.lower() and "as username" in msg.lower():
+        return ("invalid_link", "Invite link is expired or invalid")
+
     return ("unknown", msg[:500])
 
 
