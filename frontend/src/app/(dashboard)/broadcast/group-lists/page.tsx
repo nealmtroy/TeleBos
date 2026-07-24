@@ -14,6 +14,15 @@ import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 /**
  * Parse bulk text input and extract Telegram links/usernames.
@@ -315,73 +324,90 @@ export default function GroupListsPage() {
                       ))
                     )}
                   </div>
-
-                  {/* Bulk import panel */}
-                  {bulkListId === list.id && (
-                <div className="border-t border-primary-200 bg-primary-50/50 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-primary-800">
-                      {_("groupLists.bulkImport")}
-                    </h4>
-                    <button
-                      onClick={() => {
+                  {/* Bulk import Dialog */}
+                  <Dialog
+                    open={bulkListId === list.id}
+                    onOpenChange={(open) => {
+                      if (!open) {
                         setBulkListId(null);
                         setBulkText("");
                         setBulkPreview([]);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-primary-600">
-                    {_("groupLists.bulkImportDesc")}
-                  </p>
-                  <Textarea
-                    value={bulkText}
-                    onChange={(e) => setBulkText(e.target.value)}
-                    rows={6}
-                    placeholder={`👉 WANANDA 33\nhttps://t.me/WANANDA33OFC\n\n👉 BIRAHIHUB OFFICIAL\nhttps://t.me/birahihub_official\n\n@somegroup\n@anothergroup`}
-                    className="resize-none border-primary-300 focus-visible:ring-primary-500"
-                  />
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={handleBulkParse}
-                      disabled={!bulkText.trim()}
-                      className="px-3 py-1.5 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 disabled:bg-gray-300"
-                    >
-                      {bulkPreview.length > 0
-                        ? _("groupLists.bulkRefresh") + ` (${bulkPreview.length})`
-                        : _("groupLists.bulkParse")}
-                    </button>
-                    {bulkPreview.length > 0 && (
-                      <button
-                        onClick={() => handleBulkImport(list.id, list.items)}
-                        className="px-3 py-1.5 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                      >
-                        {_("groupLists.bulkImportBtn")} {bulkPreview.length} {_("groupLists.importGroups")}
-                      </button>
-                    )}
-                  </div>
+                      }
+                    }}
+                  >
+                    <DialogContent className="sm:max-w-lg border border-gray-100 shadow-xl rounded-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="text-gray-900 font-bold">{_("groupLists.bulkImport")}</DialogTitle>
+                        <DialogDescription className="text-xs text-gray-500 mt-1">
+                          {_("groupLists.bulkImportDesc")}
+                        </DialogDescription>
+                      </DialogHeader>
 
-                  {/* Preview parsed items */}
-                  {bulkPreview.length > 0 && (
-                    <div className="bg-white border border-primary-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100">
-                      {bulkPreview.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 px-3 py-1.5 text-xs"
+                      <div className="space-y-4 py-2">
+                        <Textarea
+                          value={bulkText}
+                          onChange={(e) => setBulkText(e.target.value)}
+                          rows={8}
+                          placeholder={`👉 WANANDA 33\nhttps://t.me/WANANDA33OFC\n\n👉 BIRAHIHUB OFFICIAL\nhttps://t.me/birahihub_official\n\n@somegroup\n@anothergroup`}
+                          className="resize-none text-sm border-gray-200 focus-visible:ring-primary-500"
+                        />
+
+                        {/* Preview parsed items */}
+                        {bulkPreview.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                              Parsed Targets Preview ({bulkPreview.length})
+                            </p>
+                            <div className="bg-gray-50 border border-gray-150 rounded-xl max-h-40 overflow-y-auto divide-y divide-gray-100/60 no-scrollbar">
+                              {bulkPreview.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-2 px-3.5 py-2 text-xs"
+                                >
+                                  <span className="bg-primary-50 border border-primary-100 text-primary-600 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold">
+                                    {item.type}
+                                  </span>
+                                  <span className="text-gray-700 font-medium truncate">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setBulkListId(null);
+                            setBulkText("");
+                            setBulkPreview([]);
+                          }}
+                          size="sm"
                         >
-                          <span className="bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded font-mono">
-                            {item.type}
-                          </span>
-                          <span className="text-gray-600">{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleBulkParse}
+                          disabled={!bulkText.trim()}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          {bulkPreview.length > 0
+                            ? _("groupLists.bulkRefresh") + ` (${bulkPreview.length})`
+                            : _("groupLists.bulkParse")}
+                        </Button>
+                        {bulkPreview.length > 0 && (
+                          <Button
+                            onClick={() => handleBulkImport(list.id, list.items)}
+                            size="sm"
+                          >
+                            {_("groupLists.bulkImportBtn")} ({bulkPreview.length})
+                          </Button>
+                        )}
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
               {/* Add item to this list */}
               <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center gap-2">
