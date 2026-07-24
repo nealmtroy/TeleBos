@@ -153,28 +153,35 @@ export const Navbar5 = () => {
           </div>
 
           <Sheet>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="outline" size="icon" className="h-8 w-8">
-                <MenuIcon className="h-4 w-4" />
-              </Button>
+            <SheetTrigger
+              className="lg:hidden"
+              render={
+                <Button variant="outline" size="icon" className="h-8 w-8" />
+              }
+            >
+              <MenuIcon className="h-4 w-4" />
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-full h-full border-none px-4 pt-2 pb-4 max-h-screen overflow-auto [&>button]:hidden">
               <SheetHeader className="text-left flex flex-row items-center justify-between pb-0">
-                <SheetTitle asChild>
-                  <Link href="/" className="flex items-center">
-                    <span className="text-xl font-bold tracking-tight text-gray-900">
-                      TeleBos
-                    </span>
-                  </Link>
+                <SheetTitle
+                  render={
+                    <Link href="/" className="flex items-center" />
+                  }
+                >
+                  <span className="text-xl font-bold tracking-tight text-gray-900">
+                    TeleBos
+                  </span>
                 </SheetTitle>
-                <SheetClose asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8">
-                    <X className="h-4 w-4" />
-                  </Button>
+                <SheetClose
+                  render={
+                    <Button variant="outline" size="icon" className="h-8 w-8" />
+                  }
+                >
+                  <X className="h-4 w-4" />
                 </SheetClose>
               </SheetHeader>
               <div className="flex flex-col py-2">
-                <Accordion type="single" collapsible className="w-full mt-4">
+                <Accordion className="w-full mt-4">
                   <AccordionItem value="solutions" className="border-none">
                     <AccordionTrigger className="text-base font-medium text-gray-700 hover:text-primary py-3 hover:no-underline transition-colors">
                       {_("landing.navFeatures")}
