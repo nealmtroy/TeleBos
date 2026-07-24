@@ -22,6 +22,10 @@ export interface Dict {
     telegramReactions: string;
     telegramAutoReactions: string;
     telegramPostViews: string;
+    services: string;
+    administrations: string;
+    redeem: string;
+    smm: string;
   };
 
   // Account Folders

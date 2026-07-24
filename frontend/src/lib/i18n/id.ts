@@ -22,6 +22,10 @@ const id: Dict = {
     telegramReactions: "Telegram Reactions",
     telegramAutoReactions: "Telegram Auto Reactions",
     telegramPostViews: "Telegram Post Views",
+    services: "Layanan",
+    administrations: "Administrasi",
+    redeem: "Redeem",
+    smm: "SMM",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────

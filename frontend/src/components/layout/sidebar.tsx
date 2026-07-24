@@ -58,25 +58,28 @@ const groupsChannelsSubItems = [
   { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search },
 ];
 
-const ordersSubItems = [
+const servicesSubItems = [
   { href: "/orders/members", labelKey: "nav.telegramMembers", icon: Users },
   { href: "/orders/reactions", labelKey: "nav.telegramReactions", icon: Sparkles },
   { href: "/orders/auto-reactions", labelKey: "nav.telegramAutoReactions", icon: Clock },
   { href: "/orders/post-views", labelKey: "nav.telegramPostViews", icon: Eye },
-  { href: "/orders/buy-accounts", labelKey: "orders.buyAccounts", icon: ShoppingCart },
-  { href: "/orders/sell-accounts", labelKey: "orders.sellAccounts", icon: DollarSign },
-  { href: "/orders", labelKey: "orders.history", icon: ClipboardList },
 ];
 
-const adminSubItems = [
+const administrationsSubItems = [
   { href: "/admin", exact: true, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
+  { href: "/admin/account-prices", exact: false, labelKey: "Account Prices", icon: Tag },
+];
+
+const adminRedeemSubItems = [
   { href: "/admin/redeem-codes", exact: false, labelKey: "adminRedeem.title", icon: Ticket },
   { href: "/admin/redeem-logs", exact: false, labelKey: "adminRedeem.logs", icon: ClipboardList },
-  { href: "/admin/smm", exact: true, labelKey: "adminSmm.settings", icon: Settings },
+];
+
+const adminSmmSubItems = [
   { href: "/admin/smm/services", exact: false, labelKey: "adminSmm.services", icon: Package },
   { href: "/admin/smm/orders", exact: false, labelKey: "adminSmm.allOrders", icon: ShoppingCart },
-  { href: "/admin/account-prices", exact: false, labelKey: "Account Prices", icon: Tag },
+  { href: "/admin/smm", exact: true, labelKey: "adminSmm.settings", icon: Settings },
 ];
 
 // role hierarchy: basic < pro < premium < owner
@@ -87,13 +90,22 @@ const ROLE_HIERARCHY: Record<string, number> = {
   owner: 3,
 };
 
+interface SubItem {
+  href: string;
+  labelKey: string;
+  icon: any;
+  exact?: boolean;
+}
+
 interface NavItem {
   href: string;
   labelKey: string;
   icon: any;
+  exact?: boolean;
   hasSubItems?: boolean;
   minRole?: number;
-  subItems?: { href: string; labelKey: string; icon: any }[];
+  subItems?: SubItem[];
+  matchPrefixes?: string[];
 }
 
 interface NavGroup {
@@ -113,36 +125,42 @@ export function Sidebar() {
   const locale = useI18nStore((s) => s.locale);
 
   const isBroadcastPage = pathname.startsWith("/broadcast");
-  const isOrdersPage = pathname.startsWith("/orders");
-  const isAdminPage = pathname.startsWith("/admin");
   const isGroupsChannelsPage = pathname.startsWith("/groups-channels");
+  const isServicesOpen =
+    pathname.startsWith("/orders/members") ||
+    pathname.startsWith("/orders/reactions") ||
+    pathname.startsWith("/orders/auto-reactions") ||
+    pathname.startsWith("/orders/post-views");
+  const isAdministrationsOpen =
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/users") ||
+    pathname.startsWith("/admin/account-prices");
+  const isAdminRedeemOpen =
+    pathname.startsWith("/admin/redeem-codes") ||
+    pathname.startsWith("/admin/redeem-logs");
+  const isAdminSmmOpen = pathname.startsWith("/admin/smm");
 
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
-  const [ordersOpen, setOrdersOpen] = useState(isOrdersPage);
-  const [adminOpen, setAdminOpen] = useState(isAdminPage);
   const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
+  const [servicesOpen, setServicesOpen] = useState(isServicesOpen);
+  const [administrationsOpen, setAdministrationsOpen] = useState(isAdministrationsOpen);
+  const [adminRedeemOpen, setAdminRedeemOpen] = useState(isAdminRedeemOpen);
+  const [adminSmmOpen, setAdminSmmOpen] = useState(isAdminSmmOpen);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const logout = useAuthStore((s) => s.logout);
 
-  // Auto-open sections on mount
+  // Auto-open sections on mount / pathname change
   useEffect(() => {
     if (isBroadcastPage) setBroadcastOpen(true);
-  }, [isBroadcastPage]);
-
-  useEffect(() => {
-    if (isOrdersPage) setOrdersOpen(true);
-  }, [isOrdersPage]);
-
-  useEffect(() => {
-    if (isAdminPage) setAdminOpen(true);
-  }, [isAdminPage]);
-
-  useEffect(() => {
     if (isGroupsChannelsPage) setGroupsChannelsOpen(true);
-  }, [isGroupsChannelsPage]);
+    if (isServicesOpen) setServicesOpen(true);
+    if (isAdministrationsOpen) setAdministrationsOpen(true);
+    if (isAdminRedeemOpen) setAdminRedeemOpen(true);
+    if (isAdminSmmOpen) setAdminSmmOpen(true);
+  }, [pathname]);
 
   // Auto-open sidebar on desktop on first mount
   useEffect(() => {
@@ -230,16 +248,20 @@ export function Sidebar() {
     },
     {
       id: "billing",
-      labelKey: locale === "id" ? "PEMBAYARAN & INFO" : "BILLING & INFO",
+      labelKey: locale === "id" ? "LAYANAN" : "SERVICES",
       items: [
         {
-          href: "/orders",
-          labelKey: "nav.orders",
-          icon: ShoppingCart,
+          href: "/orders-services",
+          labelKey: "nav.services",
+          icon: Sparkles,
           hasSubItems: true,
-          subItems: ordersSubItems,
+          subItems: servicesSubItems,
+          matchPrefixes: ["/orders/members", "/orders/reactions", "/orders/auto-reactions", "/orders/post-views"],
           minRole: 0,
         },
+        { href: "/orders/buy-accounts", labelKey: "orders.buyAccounts", icon: ShoppingCart, minRole: 0 },
+        { href: "/orders/sell-accounts", labelKey: "orders.sellAccounts", icon: DollarSign, minRole: 0 },
+        { href: "/orders", labelKey: "orders.history", icon: ClipboardList, exact: true, minRole: 0 },
         { href: "/subscriptions", labelKey: "subscription.title", icon: Crown, minRole: 0 },
         { href: "/redeem", labelKey: "redeem.title", icon: Ticket, minRole: 0 },
       ],
@@ -260,11 +282,30 @@ export function Sidebar() {
       labelKey: locale === "id" ? "ADMINISTRASI" : "ADMINISTRATION",
       items: [
         {
-          href: "/admin",
-          labelKey: "admin.title",
+          href: "/admin-administrations",
+          labelKey: "nav.administrations",
           icon: Shield,
           hasSubItems: true,
-          subItems: adminSubItems,
+          subItems: administrationsSubItems,
+          matchPrefixes: ["/admin/users", "/admin/account-prices"],
+          minRole: 3,
+        },
+        {
+          href: "/admin-redeem",
+          labelKey: "nav.redeem",
+          icon: Ticket,
+          hasSubItems: true,
+          subItems: adminRedeemSubItems,
+          matchPrefixes: ["/admin/redeem-codes", "/admin/redeem-logs"],
+          minRole: 3,
+        },
+        {
+          href: "/admin-smm",
+          labelKey: "nav.smm",
+          icon: Package,
+          hasSubItems: true,
+          subItems: adminSmmSubItems,
+          matchPrefixes: ["/admin/smm/services", "/admin/smm/orders", "/admin/smm"],
           minRole: 3,
         },
       ],
@@ -273,9 +314,11 @@ export function Sidebar() {
 
   const getSubmenuState = (href: string) => {
     if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
-    if (href.startsWith("/orders")) return { isOpen: ordersOpen, setIsOpen: setOrdersOpen };
-    if (href.startsWith("/admin")) return { isOpen: adminOpen, setIsOpen: setAdminOpen };
     if (href.startsWith("/groups-channels")) return { isOpen: groupsChannelsOpen, setIsOpen: setGroupsChannelsOpen };
+    if (href === "/orders-services") return { isOpen: servicesOpen, setIsOpen: setServicesOpen };
+    if (href === "/admin-administrations") return { isOpen: administrationsOpen, setIsOpen: setAdministrationsOpen };
+    if (href === "/admin-redeem") return { isOpen: adminRedeemOpen, setIsOpen: setAdminRedeemOpen };
+    if (href === "/admin-smm") return { isOpen: adminSmmOpen, setIsOpen: setAdminSmmOpen };
     return { isOpen: false, setIsOpen: () => {} };
   };
 
@@ -349,10 +392,13 @@ export function Sidebar() {
                 )}
 
                 {visibleItems.map((item) => {
-                  const isActive =
-                    item.href === "/dashboard"
-                      ? pathname === "/dashboard"
-                      : pathname.startsWith(item.href);
+                  const isActive = (() => {
+                    if (item.href === "/dashboard") return pathname === "/dashboard";
+                    if (item.matchPrefixes) {
+                      return item.matchPrefixes.some((pref) => pathname.startsWith(pref)) || (item.exact ? pathname === item.href : pathname.startsWith(item.href));
+                    }
+                    return item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                  })();
 
                   if (item.hasSubItems && item.subItems) {
                     const { isOpen, setIsOpen } = getSubmenuState(item.href);
@@ -418,14 +464,9 @@ export function Sidebar() {
                                 className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden"
                               >
                                 {item.subItems.map((sub) => {
-                                  const isSubActive =
-                                    sub.href === "/groups-channels"
-                                      ? pathname === "/groups-channels"
-                                      : sub.href === "/broadcast/new"
-                                      ? pathname === "/broadcast/new"
-                                      : sub.href === "/orders"
-                                      ? pathname === "/orders"
-                                      : pathname.startsWith(sub.href);
+                                  const isSubActive = sub.exact
+                                    ? pathname === sub.href
+                                    : pathname.startsWith(sub.href);
                                   return (
                                     <Link
                                       key={sub.href}
