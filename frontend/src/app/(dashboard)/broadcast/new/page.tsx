@@ -53,6 +53,8 @@ export default function NewBroadcastPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [warningOpen, setWarningOpen] = useState(false);
   const [conflictNames, setConflictNames] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   // Active job tracking — via WebSocket for real-time updates
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -98,15 +100,49 @@ export default function NewBroadcastPage() {
     }
   }, [wsLiveLogs]);
 
-  // Auto-select first account
+  // Clear validation errors when selections/inputs change
   useEffect(() => {
-    if (accounts && accounts.length > 0 && selectedAccountIds.length === 0) {
-      setSelectedAccountIds([accounts[0].id]);
-    }
-  }, [accounts, selectedAccountIds]);
+    setValidationError(null);
+  }, [selectedAccountIds, groupListId, textListId, customText, mode]);
 
   function handlePreStart() {
-    if (selectedAccountIds.length === 0 || !groupListId) return;
+    setAttemptedSubmit(true);
+    setValidationError(null);
+
+    const isIndonesian = _("newBroadcast.title") === "Siaran Baru";
+
+    if (selectedAccountIds.length === 0) {
+      setValidationError(
+        isIndonesian
+          ? "Mohon pilih minimal satu akun Telegram pengirim."
+          : "Please select at least one sending Telegram account."
+      );
+      return;
+    }
+    if (!groupListId) {
+      setValidationError(
+        isIndonesian
+          ? "Mohon pilih daftar grup target."
+          : "Please select a target Group List."
+      );
+      return;
+    }
+    if (mode === "multi_random" && !textListId) {
+      setValidationError(
+        isIndonesian
+          ? "Mohon pilih daftar teks pesan."
+          : "Please select a Text List."
+      );
+      return;
+    }
+    if (mode === "single_text" && !customText.trim()) {
+      setValidationError(
+        isIndonesian
+          ? "Mohon isi teks pesan siaran."
+          : "Please enter the custom message text."
+      );
+      return;
+    }
 
     // Check for running jobs with selected accounts
     const runningJobs = (allJobs || []).filter(j => j.status === "running");
@@ -273,7 +309,12 @@ export default function NewBroadcastPage() {
           </div>
 
           {/* Scrollable grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-56 overflow-y-auto p-1.5 border border-gray-200 rounded-lg bg-gray-50">
+          <div className={cn(
+            "grid grid-cols-1 md:grid-cols-2 gap-3 max-h-56 overflow-y-auto p-1.5 border rounded-lg transition-all duration-200",
+            attemptedSubmit && selectedAccountIds.length === 0
+              ? "border-red-300 bg-red-50/10 shadow-sm shadow-red-100"
+              : "border-gray-200 bg-gray-50"
+          )}>
             {filteredAccounts.length === 0 ? (
               <div className="col-span-full text-center py-6 text-sm text-gray-500">
                 No accounts found
@@ -338,7 +379,10 @@ export default function NewBroadcastPage() {
           <select
             value={groupListId}
             onChange={(e) => setGroupListId(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+            className={cn(
+              "w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all duration-200",
+              attemptedSubmit && !groupListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
+            )}
           >
             <option value="">{_("newBroadcast.groupListPlaceholder")}</option>
             {(groupLists || []).map((gl) => (
@@ -381,7 +425,10 @@ export default function NewBroadcastPage() {
             <select
               value={textListId}
               onChange={(e) => setTextListId(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+              className={cn(
+                "w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all duration-200",
+                attemptedSubmit && !textListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
+              )}
             >
               <option value="">{_("newBroadcast.textListPlaceholder")}</option>
               {(textLists || []).map((tl) => (
@@ -399,7 +446,10 @@ export default function NewBroadcastPage() {
               onChange={(e) => setCustomText(e.target.value)}
               rows={3}
               placeholder={_("newBroadcast.messagePlaceholder")}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none"
+              className={cn(
+                "w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none transition-all duration-200",
+                attemptedSubmit && !customText.trim() ? "border-red-300 bg-red-50/10" : "border-gray-300"
+              )}
             />
           </div>
         )}
@@ -503,14 +553,18 @@ export default function NewBroadcastPage() {
           </div>
         </div>
 
+        {/* Validation error message */}
+        {validationError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3.5 text-xs flex items-center gap-2.5">
+            <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+            <span className="font-semibold">{validationError}</span>
+          </div>
+        )}
+
         {/* Start button */}
         <button
           onClick={handlePreStart}
-          disabled={
-            selectedAccountIds.length === 0 || !groupListId || startMutation.isPending ||
-            (mode === "multi_random" && !textListId) ||
-            (mode === "single_text" && !customText.trim())
-          }
+          disabled={startMutation.isPending}
           className="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 transition flex items-center justify-center gap-2"
         >
           <Send className="h-4 w-4" />
