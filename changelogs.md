@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-24
+- **[4ea39888](https://github.com/nealmtroy/TeleBos/commit/4ea39888)**: feat(ui): add standard shadcn Table component and refactor SMM orders page to use it
 - **[8bf9c3f0](https://github.com/nealmtroy/TeleBos/commit/8bf9c3f0)**: feat(ui): replace custom card component with official shadcn/ui Card component
 - **[61778f54](https://github.com/nealmtroy/TeleBos/commit/61778f54)**: feat(admin-smm): relocate SMM Settings to /admin/smm/settings and redesign UI/UX for responsiveness and overflow fixes
 - **[462c6acb](https://github.com/nealmtroy/TeleBos/commit/462c6acb)**: feat(sidebar): reorganize sidebar navigation links and collapsible groups

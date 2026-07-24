@@ -12,6 +12,7 @@ import { Plus, Trash2, X, FileText } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function TextListsPage() {
   const _ = useT();
@@ -181,7 +182,7 @@ export default function TextListsPage() {
 
                 {/* Add Text Footer */}
                 <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50 flex items-end gap-2">
-                  <textarea
+                  <Textarea
                     value={newItemTexts[list.id] || ""}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -189,7 +190,7 @@ export default function TextListsPage() {
                     }}
                     placeholder={_("textLists.addTextPlaceholder")}
                     rows={2}
-                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none bg-white transition"
+                    className="flex-1 text-xs resize-none min-h-[50px] bg-white transition"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();

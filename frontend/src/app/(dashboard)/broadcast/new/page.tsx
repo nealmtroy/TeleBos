@@ -25,6 +25,7 @@ import { useT } from "@/lib/i18n";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle, Wifi, RefreshCw, Info, Search, UserPlus, Plus, List } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function NewBroadcastPage() {
   const _ = useT();
@@ -441,14 +442,14 @@ export default function NewBroadcastPage() {
         ) : (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.messageText")}</label>
-            <textarea
+            <Textarea
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               rows={3}
               placeholder={_("newBroadcast.messagePlaceholder")}
               className={cn(
-                "w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none transition-all duration-200",
-                attemptedSubmit && !customText.trim() ? "border-red-300 bg-red-50/10" : "border-gray-300"
+                "resize-none transition-all duration-200",
+                attemptedSubmit && !customText.trim() ? "border-red-300 bg-red-50/10 focus-visible:ring-red-500" : ""
               )}
             />
           </div>

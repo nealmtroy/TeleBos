@@ -13,6 +13,7 @@ import { Plus, Trash2, X, Users, Upload } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { Textarea } from "@/components/ui/textarea";
 
 /**
  * Parse bulk text input and extract Telegram links/usernames.
@@ -336,12 +337,12 @@ export default function GroupListsPage() {
                   <p className="text-xs text-primary-600">
                     {_("groupLists.bulkImportDesc")}
                   </p>
-                  <textarea
+                  <Textarea
                     value={bulkText}
                     onChange={(e) => setBulkText(e.target.value)}
                     rows={6}
                     placeholder={`👉 WANANDA 33\nhttps://t.me/WANANDA33OFC\n\n👉 BIRAHIHUB OFFICIAL\nhttps://t.me/birahihub_official\n\n@somegroup\n@anothergroup`}
-                    className="w-full px-3 py-2 border border-primary-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                    className="resize-none border-primary-300 focus-visible:ring-primary-500"
                   />
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
