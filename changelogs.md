@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-24
+- **[ff49b3c8](https://github.com/nealmtroy/TeleBos/commit/ff49b3c8)**: fix(errors): classify 'no user has... as username' as invalid_link
 - **[fa6a2b98](https://github.com/nealmtroy/TeleBos/commit/fa6a2b98)**: feat(broadcast): integrate join, permission pre-checking, immediate retry, and precise error classifications (muted/admin-only) from script
 
 ## 2026-07-18

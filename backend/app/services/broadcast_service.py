@@ -1296,6 +1296,25 @@ async def execute_broadcast(job_id: str):
             if current_status is None or current_status == "cancelled":
                 break
 
+            # Auto stop broadcast job if there are no valid groups
+            if len(permanent_failures_pool) >= len(items) and len(items) > 0:
+                logger.warning("Broadcast Job %s has been stopped because there is no valid group", job_id_str)
+                async with async_session_factory() as db_stop:
+                    result = await db_stop.execute(
+                        select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                    )
+                    db_job = result.scalar_one_or_none()
+                    if db_job:
+                        db_job.status = "failed"
+                        db_job.completed_at = datetime.now(timezone.utc)
+                        await db_stop.commit()
+                
+                await _push_broadcast(job_id_str, "error", {
+                    "status": "failed",
+                    "message": "Broadcast Job has been stopped because there is no valid group",
+                })
+                break
+
             if is_looping:
                 cycle_count += 1
                 await _push_broadcast(job_id_str, "cycle_complete", {
