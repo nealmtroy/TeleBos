@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useAdminStats } from "@/hooks/use-admin";
@@ -43,7 +44,7 @@ function OverviewContent() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -59,43 +60,86 @@ function OverviewContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           icon={Users}
           label={_("admin.totalUsers")}
           value={stats?.total_users ?? 0}
           color="blue"
+          breakdown={[
+            { label: "Basic", value: stats?.total_basic_users ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
+            { label: "Pro", value: stats?.total_pro_users ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+            { label: "Premium", value: stats?.total_premium_users ?? 0, color: "bg-amber-50 text-amber-700 border-amber-100" },
+            { label: "Owner", value: stats?.total_owner_users ?? 0, color: "bg-purple-50 text-purple-700 border-purple-100" },
+          ]}
+        />
+        <StatCard
+          icon={Radio}
+          label={_("admin.totalAccountsConnected") || "Connected Accounts"}
+          value={stats?.total_accounts_connected ?? 0}
+          color="emerald"
+          breakdown={[
+            { label: "Active", value: stats?.accounts_active ?? 0, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+            { label: "Selling", value: stats?.accounts_selling ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+            { label: "Expired", value: stats?.accounts_expired ?? 0, color: "bg-red-50 text-red-700 border-red-100" },
+          ]}
         />
         <StatCard
           icon={Send}
           label={_("admin.totalBroadcastJobs")}
           value={stats?.total_broadcast_jobs ?? 0}
           color="indigo"
+          breakdown={[
+            { label: "Running", value: stats?.broadcast_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+            { label: "Stopped", value: stats?.broadcast_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
+          ]}
         />
         <StatCard
           icon={UserPlus}
           label={_("admin.totalInviteJobs")}
           value={stats?.total_invite_jobs ?? 0}
           color="purple"
-        />
-        <StatCard
-          icon={Radio}
-          label={_("admin.totalAccountsConnected")}
-          value={stats?.total_accounts_connected ?? 0}
-          color="emerald"
+          breakdown={[
+            { label: "Running", value: stats?.invite_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
+            { label: "Stopped", value: stats?.invite_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
+          ]}
         />
       </div>
 
-      {/* Role Breakdown */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Users by Role</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <RoleCard icon={Zap} label="Basic" value={stats?.total_basic_users ?? 0} color="gray" />
-          <RoleCard icon={Star} label="Pro" value={stats?.total_pro_users ?? 0} color="blue" />
-          <RoleCard icon={Crown} label="Premium" value={stats?.total_premium_users ?? 0} color="amber" />
-          <RoleCard icon={Shield} label="Owner" value={stats?.total_owner_users ?? 0} color="purple" />
+      {/* Admin Quick Action Panel */}
+      <div className="space-y-3.5">
+        <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">Owner Action Control Deck</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <QuickLinkCard
+            title="User Management"
+            desc="Configure user accounts, roles, balances, and permissions."
+            href="/admin/users"
+            icon={Users}
+            color="blue"
+          />
+          <QuickLinkCard
+            title="Redeem Codes"
+            desc="Create subscription vouchers and monitor redeem logs."
+            href="/admin/redeem-codes"
+            icon={Star}
+            color="amber"
+          />
+          <QuickLinkCard
+            title="SMM Panel Settings"
+            desc="Configure pricing rates and settings for the SMM panel."
+            href="/admin/smm"
+            icon={Crown}
+            color="purple"
+          />
+          <QuickLinkCard
+            title="ID Prefix Prices"
+            desc="Set customized price tiers based on Telegram ID prefixes."
+            href="/admin/account-prices"
+            icon={BarChart3}
+            color="indigo"
+          />
         </div>
       </div>
     </div>
@@ -107,11 +151,13 @@ function StatCard({
   label,
   value,
   color,
+  breakdown,
 }: {
   icon: any;
   label: string;
   value: string | number;
   color: string;
+  breakdown?: Array<{ label: string; value: number | string; color?: string }>;
 }) {
   const colorMap: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600",
@@ -121,51 +167,83 @@ function StatCard({
   };
 
   return (
-    <Card>
-      <CardContent className="p-5">
+    <Card className="hover:shadow-md transition-shadow duration-300 flex flex-col justify-between min-h-[175px] border border-gray-200">
+      <CardContent className="p-5 flex flex-col justify-between h-full flex-1">
         <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-gray-500">{label}</p>
-            <p className="text-2xl font-bold mt-1">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+            <p className="text-3xl font-extrabold text-gray-900 tracking-tight">
               {typeof value === "number" ? value.toLocaleString() : value}
             </p>
           </div>
-          <div className={cn("p-2.5 rounded-lg", colorMap[color] || colorMap.blue)}>
+          <div className={cn("p-2.5 rounded-xl shrink-0", colorMap[color] || colorMap.blue)}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
+
+        {breakdown && breakdown.length > 0 && (
+          <div className="border-t border-gray-100 pt-3.5 mt-4">
+            <div className="flex flex-wrap gap-1.5">
+              {breakdown.map((item, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold border transition",
+                    item.color || "bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-50"
+                  )}
+                >
+                  <span className="opacity-80 font-normal">{item.label}:</span>
+                  <span>
+                    {typeof item.value === "number" ? item.value.toLocaleString() : item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function RoleCard({
+function QuickLinkCard({
+  title,
+  desc,
+  href,
   icon: Icon,
-  label,
-  value,
   color,
 }: {
+  title: string;
+  desc: string;
+  href: string;
   icon: any;
-  label: string;
-  value: string | number;
   color: string;
 }) {
+  const router = useRouter();
   const colorMap: Record<string, string> = {
-    gray: "bg-gray-100 text-gray-600 border-gray-200",
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    amber: "bg-amber-50 text-amber-600 border-amber-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
+    blue: "hover:border-blue-400 hover:bg-blue-50/5 text-blue-600",
+    indigo: "hover:border-indigo-400 hover:bg-indigo-50/5 text-indigo-600",
+    purple: "hover:border-purple-400 hover:bg-purple-50/5 text-purple-600",
+    amber: "hover:border-amber-400 hover:bg-amber-50/5 text-amber-600",
   };
 
   return (
-    <div className={cn("flex items-center gap-3 p-3 rounded-xl border", colorMap[color] || colorMap.gray)}>
-      <div className="p-2 rounded-lg bg-white/60">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div>
-        <p className="text-xs font-medium opacity-75">{label}</p>
-        <p className="text-lg font-bold">{typeof value === "number" ? value.toLocaleString() : value}</p>
-      </div>
-    </div>
+    <Card
+      onClick={() => router.push(href)}
+      className={cn(
+        "cursor-pointer border border-gray-200 transition-all duration-300 hover:shadow-sm active:scale-[0.99]",
+        colorMap[color] || colorMap.blue
+      )}
+    >
+      <CardContent className="p-5 flex items-start gap-4">
+        <div className="p-3 rounded-xl bg-gray-50 text-current shrink-0 border border-gray-100">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="space-y-1 text-left min-w-0 flex-1">
+          <h4 className="font-bold text-gray-900 text-sm truncate">{title}</h4>
+          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed font-normal">{desc}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

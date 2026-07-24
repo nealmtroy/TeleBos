@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-24
+- **[c1271f03](https://github.com/nealmtroy/TeleBos/commit/c1271f03)**: feat(frontend): make text lists page responsive and fix text input duplication bug
 - **[662be6d8](https://github.com/nealmtroy/TeleBos/commit/662be6d8)**: feat(frontend): prevent auto-selecting first account on new broadcast page and add form validations
 - **[3e21353f](https://github.com/nealmtroy/TeleBos/commit/3e21353f)**: feat(frontend): make broadcast history page professional and show setup details & sending accounts
 - **[31733757](https://github.com/nealmtroy/TeleBos/commit/31733757)**: feat(broadcast): send stopped notification to Telegram logging bot destination

@@ -74,6 +74,19 @@ class AdminStatsResponse(BaseModel):
     total_redeem_codes: int = 0
     total_redeemed: int = 0
 
+    # Accounts Connected Breakdown
+    accounts_active: int = 0
+    accounts_selling: int = 0
+    accounts_expired: int = 0
+
+    # Broadcast Jobs Breakdown
+    broadcast_running: int = 0
+    broadcast_stopped: int = 0
+
+    # Invite Jobs Breakdown
+    invite_running: int = 0
+    invite_stopped: int = 0
+
 
 class BalanceHistoryResponse(BaseModel):
     user_id: UUID
@@ -99,18 +112,53 @@ async def get_admin_stats(
     bj_count_result = await db.execute(select(func.count(BroadcastJob.id)))
     total_broadcast_jobs = bj_count_result.scalar() or 0
 
+    bj_running_result = await db.execute(select(func.count(BroadcastJob.id)).where(BroadcastJob.status == "running"))
+    broadcast_running = bj_running_result.scalar() or 0
+    broadcast_stopped = total_broadcast_jobs - broadcast_running
+
     # Total invite jobs
     ij_count_result = await db.execute(select(func.count(InviteJob.id)))
     total_invite_jobs = ij_count_result.scalar() or 0
 
-    # Total connected accounts (phone_verified = true AND is_active = true)
+    ij_running_result = await db.execute(select(func.count(InviteJob.id)).where(InviteJob.status == "running"))
+    invite_running = ij_running_result.scalar() or 0
+    invite_stopped = total_invite_jobs - invite_running
+
+    # Total connected accounts (phone_verified = True)
     ta_count_result = await db.execute(
+        select(func.count(TelegramAccount.id)).where(
+            TelegramAccount.phone_verified == True
+        )
+    )
+    total_accounts_connected = ta_count_result.scalar() or 0
+
+    # Active accounts (phone_verified = True and is_active = True)
+    ta_active_result = await db.execute(
         select(func.count(TelegramAccount.id)).where(
             TelegramAccount.phone_verified == True,
             TelegramAccount.is_active == True,
         )
     )
-    total_accounts_connected = ta_count_result.scalar() or 0
+    accounts_active = ta_active_result.scalar() or 0
+
+    # Selling accounts (phone_verified = True and is_active = True and for_sale = True)
+    ta_selling_result = await db.execute(
+        select(func.count(TelegramAccount.id)).where(
+            TelegramAccount.phone_verified == True,
+            TelegramAccount.is_active == True,
+            TelegramAccount.for_sale == True,
+        )
+    )
+    accounts_selling = ta_selling_result.scalar() or 0
+
+    # Expired accounts (phone_verified = True and is_active = False)
+    ta_expired_result = await db.execute(
+        select(func.count(TelegramAccount.id)).where(
+            TelegramAccount.phone_verified == True,
+            TelegramAccount.is_active == False,
+        )
+    )
+    accounts_expired = ta_expired_result.scalar() or 0
 
     # Count users by role
     role_counts = {"basic": 0, "pro": 0, "premium": 0, "owner": 0}
@@ -138,6 +186,13 @@ async def get_admin_stats(
         total_owner_users=role_counts["owner"],
         total_redeem_codes=total_redeem_codes,
         total_redeemed=total_redeemed,
+        accounts_active=accounts_active,
+        accounts_selling=accounts_selling,
+        accounts_expired=accounts_expired,
+        broadcast_running=broadcast_running,
+        broadcast_stopped=broadcast_stopped,
+        invite_running=invite_running,
+        invite_stopped=invite_stopped,
     )
 
 

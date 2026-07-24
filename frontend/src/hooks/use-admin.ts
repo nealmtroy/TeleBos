@@ -12,6 +12,16 @@ export interface AdminStats {
   total_pro_users: number;
   total_premium_users: number;
   total_owner_users: number;
+
+  accounts_active: number;
+  accounts_selling: number;
+  accounts_expired: number;
+
+  broadcast_running: number;
+  broadcast_stopped: number;
+
+  invite_running: number;
+  invite_stopped: number;
 }
 
 export interface AdminUser {
