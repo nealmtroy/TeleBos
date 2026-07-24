@@ -21,6 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -215,36 +223,36 @@ export default function SmmOrdersPage() {
           </div>
 
           {/* Desktop: table layout */}
-          <div className="hidden sm:block overflow-x-auto bg-white rounded-xl border border-gray-200 shadow-sm">
-            <table className="w-full text-sm min-w-[700px]">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 whitespace-nowrap">User</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500">Service</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500">Target</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Qty</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Price</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Status</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="hidden sm:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+                  <TableHead className="font-semibold text-gray-500 whitespace-nowrap">User</TableHead>
+                  <TableHead className="font-semibold text-gray-500">Service</TableHead>
+                  <TableHead className="font-semibold text-gray-500">Target</TableHead>
+                  <TableHead className="font-semibold text-gray-500 text-right whitespace-nowrap">Qty</TableHead>
+                  <TableHead className="font-semibold text-gray-500 text-right whitespace-nowrap">Price</TableHead>
+                  <TableHead className="font-semibold text-gray-500 text-center whitespace-nowrap">Status</TableHead>
+                  <TableHead className="font-semibold text-gray-500 text-center whitespace-nowrap">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.orders.map((o) => (
-                  <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
-                    <td className="py-3 px-4">
+                  <TableRow key={o.id} className="hover:bg-gray-50/30">
+                    <TableCell className="font-normal">
                       <p className="font-medium text-gray-900">{o.user_email}</p>
                       <p className="text-xs text-gray-400 font-mono">{o.id.slice(0, 8)}...</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="text-gray-900">{o.service_name}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-gray-900 font-normal">{o.service_name}</p>
                       <p className="text-xs text-gray-400">{o.category}</p>
-                    </td>
-                    <td className="py-3 px-4 max-w-[200px] truncate text-gray-600" title={o.data_target}>
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-gray-600" title={o.data_target}>
                       {o.data_target}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-gray-600 whitespace-nowrap">{o.quantity.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-mono text-gray-600 whitespace-nowrap">{o.total_price.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-gray-600 whitespace-nowrap">{o.quantity.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-mono text-gray-600 whitespace-nowrap">{o.total_price.toLocaleString()}</TableCell>
+                    <TableCell className="text-center">
                       <span
                         className={cn(
                           "inline-block text-xs font-medium px-2.5 py-1 rounded-lg border whitespace-nowrap",
@@ -253,8 +261,8 @@ export default function SmmOrdersPage() {
                       >
                         {o.status}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="text-center">
                       <button
                         onClick={() => handleRefreshOrder(o.id)}
                         disabled={refreshOrder.isPending}
@@ -263,11 +271,11 @@ export default function SmmOrdersPage() {
                       >
                         <RefreshCw className={cn("h-4 w-4", refreshOrder.isPending && "animate-spin")} />
                       </button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </>
       )}
