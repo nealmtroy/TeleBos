@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-24
+- **[5cc283a5](https://github.com/nealmtroy/TeleBos/commit/5cc283a5)**: chore: clean up unused resources and migrate shadcn components to Base UI
 - **[ba206087](https://github.com/nealmtroy/TeleBos/commit/ba206087)**: feat(ui): add standard shadcn Dialog component and refactor group-lists bulk import to use it
 - **[517c4007](https://github.com/nealmtroy/TeleBos/commit/517c4007)**: feat(ui): add standard shadcn Textarea component and refactor broadcast pages to use it
 - **[4ea39888](https://github.com/nealmtroy/TeleBos/commit/4ea39888)**: feat(ui): add standard shadcn Table component and refactor SMM orders page to use it

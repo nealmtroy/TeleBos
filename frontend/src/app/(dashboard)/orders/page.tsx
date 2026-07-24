@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { DatePickerWithRange } from "@/components/ui/date-picker-range";
+import { DateRange } from "react-day-picker";
 
 type HistoryTab = "all" | "accounts" | "smm";
 
@@ -86,8 +88,10 @@ export default function OrderHistoryPage() {
   const [activeTab, setActiveTab] = useState<HistoryTab>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined,
+  });
   const [page, setPage] = useState(1);
 
   // Sorting
@@ -246,13 +250,13 @@ export default function OrderHistoryPage() {
     }
 
     // Date range filter
-    if (startDate) {
-      const start = new Date(startDate);
+    if (dateRange?.from) {
+      const start = new Date(dateRange.from);
       start.setHours(0, 0, 0, 0);
       result = result.filter((item) => item.dateRaw >= start);
     }
-    if (endDate) {
-      const end = new Date(endDate);
+    if (dateRange?.to) {
+      const end = new Date(dateRange.to);
       end.setHours(23, 59, 59, 999);
       result = result.filter((item) => item.dateRaw <= end);
     }
@@ -273,7 +277,7 @@ export default function OrderHistoryPage() {
     });
 
     return result;
-  }, [tabFilteredItems, search, statusFilter, startDate, endDate, sortBy, sortOrder]);
+  }, [tabFilteredItems, search, statusFilter, dateRange, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
@@ -402,22 +406,13 @@ export default function OrderHistoryPage() {
           </select>
 
           {/* Date Picker Range */}
-          <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white text-xs font-semibold text-gray-700">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-              className="outline-none bg-transparent cursor-pointer"
-            />
-            <span className="text-gray-300">|</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-              className="outline-none bg-transparent cursor-pointer"
-            />
-          </div>
+          <DatePickerWithRange
+            date={dateRange}
+            setDate={(range) => {
+              setDateRange(range);
+              setPage(1);
+            }}
+          />
 
           {/* Export */}
           <Button
