@@ -430,6 +430,11 @@ const id: Dict = {
     cancelConfirm: "Batalkan siaran yang tertunda?",
     deleteConfirm: "Hapus pekerjaan siaran ini?",
     of: "dari",
+    accounts: "Akun Pengirim",
+    setup: "Konfigurasi Siaran",
+    groupList: "Grup",
+    textList: "Template Pesan",
+    customText: "Teks Kustom",
   },
 
   // ── Log Siaran ──────────────────────────────────────────────────────────

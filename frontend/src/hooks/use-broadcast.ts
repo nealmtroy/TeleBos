@@ -31,6 +31,7 @@ export interface BroadcastJob {
   group_list_id: string | null;
   text_list_id: string | null;
   mode: string;
+  custom_text: string | null;
   status: string;
   progress: number;
   total_groups: number;

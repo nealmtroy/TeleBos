@@ -430,6 +430,11 @@ export interface Dict {
     cancelConfirm: string;
     deleteConfirm: string;
     of: string;
+    accounts: string;
+    setup: string;
+    groupList: string;
+    textList: string;
+    customText: string;
   };
 
   // Broadcast Logs

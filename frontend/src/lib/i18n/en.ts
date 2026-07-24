@@ -430,6 +430,11 @@ const en: Dict = {
     cancelConfirm: "Cancel this pending broadcast?",
     deleteConfirm: "Delete this broadcast job?",
     of: "of",
+    accounts: "Sending Accounts",
+    setup: "Setup Details",
+    groupList: "Group List",
+    textList: "Text List",
+    customText: "Custom Text",
   },
 
   // ── Broadcast Logs ──────────────────────────────────────────────────────

@@ -70,6 +70,7 @@ class BroadcastJobResponse(BaseModel):
     group_list_id: UUID | None
     text_list_id: UUID | None
     mode: str
+    custom_text: str | None = None
     status: str
     progress: int
     total_groups: int
