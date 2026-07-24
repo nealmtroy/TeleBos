@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-24
+- **[662be6d8](https://github.com/nealmtroy/TeleBos/commit/662be6d8)**: feat(frontend): prevent auto-selecting first account on new broadcast page and add form validations
 - **[3e21353f](https://github.com/nealmtroy/TeleBos/commit/3e21353f)**: feat(frontend): make broadcast history page professional and show setup details & sending accounts
 - **[31733757](https://github.com/nealmtroy/TeleBos/commit/31733757)**: feat(broadcast): send stopped notification to Telegram logging bot destination
 - **[6a451714](https://github.com/nealmtroy/TeleBos/commit/6a451714)**: feat(broadcast): auto-stop broadcast job if no valid groups exist
