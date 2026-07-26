@@ -18,9 +18,11 @@ def sanitize_exception(exc: Exception, *, context: str = "") -> str:
 
     - ValueError / RuntimeError: raised intentionally by service code with
       user-facing messages — pass through (truncated).
+    - Exceptions flagged ``user_facing = True`` (e.g. DuplicateAccountError):
+      pass through — expected business errors, not bugs.
     - All other exceptions: return a generic message and log the raw error.
     """
-    if isinstance(exc, (ValueError, RuntimeError)):
+    if isinstance(exc, (ValueError, RuntimeError)) or getattr(exc, "user_facing", False):
         msg = str(exc)
         if len(msg) > _MAX_DETAIL_LEN:
             msg = msg[:_MAX_DETAIL_LEN] + "…"

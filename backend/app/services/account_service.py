@@ -17,8 +17,12 @@ from app.utils.encryption import encrypt, decrypt
 from app.utils.session_converter import convert_to_telethon
 
 class DuplicateAccountError(Exception):
-    """Raised when trying to add a Telegram account that already exists in the system."""
-    pass
+    """Raised when trying to add a Telegram account that already exists in the system.
+
+    Carries a user-facing message: ``sanitize_exception`` passes it through
+    verbatim (no traceback logged) instead of masking it as an unexpected error.
+    """
+    user_facing = True
 
 
 # ── Role-based account limits ──────────────────────────────────────────────
@@ -303,9 +307,13 @@ async def verify_code(
         existing_acc = existing.scalar_one_or_none()
         if existing_acc:
             if existing_acc.for_sale or existing_acc.is_sold:
-                reason = "dijual" if existing_acc.for_sale else "telah dibeli"
+                reason = (
+                    "sedang dijual"
+                    if existing_acc.for_sale
+                    else "telah dibeli"
+                )
                 raise DuplicateAccountError(
-                    f"Akun Telegram ini sedang dalam proses {reason} di marketplace dan tidak dapat disambungkan kembali."
+                    f"Akun Telegram ini {reason} di marketplace dan tidak dapat disambungkan kembali."
                 )
             if user is None or existing_acc.user_id != user.id:
                 raise DuplicateAccountError(
