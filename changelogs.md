@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-27
+- **[9f23fda6](https://github.com/nealmtroy/TeleBos/commit/9f23fda6)**: fix(marketplace): verify sale profile bio
 - **[8250c5bd](https://github.com/nealmtroy/TeleBos/commit/8250c5bd)**: fix(marketplace): brand sale profile names
 - **[7f4d7934](https://github.com/nealmtroy/TeleBos/commit/7f4d7934)**: fix(marketplace): bound sale preparation timeouts
 - **[1242ee24](https://github.com/nealmtroy/TeleBos/commit/1242ee24)**: feat(marketplace): sanitize profiles before sale

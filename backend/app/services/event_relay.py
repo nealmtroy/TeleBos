@@ -48,7 +48,18 @@ class TelegramEventRelay:
     def __init__(self) -> None:
         self._handlers: dict[str, list] = {}  # account_id -> list of handler callables
         self._tg_id_map: dict[str, int] = {}  # account_id -> telegram_id (for self-detection)
-        self._db_sem = asyncio.Semaphore(10)  # Limit concurrent DB writes to prevent pool exhaustion
+        self._profile_sync_suppressed: set[str] = set()
+        self._db_sem = asyncio.Semaphore(
+            10
+        )  # Limit concurrent DB writes to prevent pool exhaustion
+
+    def suspend_profile_sync(self, account_id: str) -> None:
+        """Prevent raw profile events from starting competing Telegram reads."""
+        self._profile_sync_suppressed.add(account_id)
+
+    def resume_profile_sync(self, account_id: str) -> None:
+        """Allow normal raw-event profile synchronization again."""
+        self._profile_sync_suppressed.discard(account_id)
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -68,54 +79,38 @@ class TelegramEventRelay:
 
         # Outgoing message (so frontend sees what the user sent)
         outgoing_handler = client.on(events.NewMessage(outgoing=True))(
-            lambda event: asyncio.create_task(
-                self._on_outgoing_message(account_id, event)
-            )
+            lambda event: asyncio.create_task(self._on_outgoing_message(account_id, event))
         )
 
         # Message edited
         edit_handler = client.on(events.MessageEdited())(
-            lambda event: asyncio.create_task(
-                self._on_message_edited(account_id, event)
-            )
+            lambda event: asyncio.create_task(self._on_message_edited(account_id, event))
         )
 
         # Message read (someone read our messages)
         read_handler = client.on(events.MessageRead())(
-            lambda event: asyncio.create_task(
-                self._on_message_read(account_id, event)
-            )
+            lambda event: asyncio.create_task(self._on_message_read(account_id, event))
         )
 
         # User typing
         typing_handler = client.on(events.UserUpdate())(
-            lambda event: asyncio.create_task(
-                self._on_user_update(account_id, event)
-            )
+            lambda event: asyncio.create_task(self._on_user_update(account_id, event))
         )
 
         # Chat action (someone joined/left/pinned/typing)
         chat_action_handler = client.on(events.ChatAction())(
-            lambda event: asyncio.create_task(
-                self._on_chat_action(account_id, event)
-            )
+            lambda event: asyncio.create_task(self._on_chat_action(account_id, event))
         )
 
         # Raw TL handler for profile changes (instant detection)
         # Catches UpdateUserName, UpdateUserPhone, UpdateUser for self
         raw_profile_handler = client.on(
             events.Raw(types=(UpdateUserName, UpdateUserPhone, UpdateUser))
-        )(
-            lambda event: asyncio.create_task(
-                self._on_profile_change(account_id, event)
-            )
-        )
+        )(lambda event: asyncio.create_task(self._on_profile_change(account_id, event)))
 
         # Message deleted
         delete_handler = client.on(events.MessageDeleted())(
-            lambda event: asyncio.create_task(
-                self._on_message_deleted(account_id, event)
-            )
+            lambda event: asyncio.create_task(self._on_message_deleted(account_id, event))
         )
 
         # Cache our own telegram_id for self-detection in raw handlers
@@ -183,7 +178,7 @@ class TelegramEventRelay:
             logger.debug("Failed to get sender for new message (account %s)", account_id)
 
         channel = f"chats:{account_id}"
-        
+
         # Determine media details
         media_type = None
         media_filename = None
@@ -191,20 +186,20 @@ class TelegramEventRelay:
         waveform_levels = []
         file_size = None
         mime_type = None
-        
+
         if msg.media:
             from app.services.message_service import _classify_media
             from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
             from telethon.utils import stripped_photo_to_jpg, decode_waveform
             import base64
-            
+
             media_type = _classify_media(msg.media)
             if hasattr(msg.media, "document") and msg.media.document:
                 for attr in getattr(msg.media.document, "attributes", []):
                     if hasattr(attr, "file_name"):
                         media_filename = attr.file_name
                         break
-            
+
             # Stripped thumb
             stripped_bytes = None
             if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
@@ -217,18 +212,22 @@ class TelegramEventRelay:
                     if type(size).__name__ == "PhotoStrippedSize":
                         stripped_bytes = size.bytes
                         break
-                        
+
             if stripped_bytes:
                 try:
                     jpeg_bytes = stripped_photo_to_jpg(stripped_bytes)
-                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode('utf-8')
+                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(
+                        jpeg_bytes
+                    ).decode("utf-8")
                 except Exception:
                     pass
-                    
+
             # Waveform
             if media_type == "voice" and hasattr(msg.media, "document") and msg.media.document:
                 for attr in getattr(msg.media.document, "attributes", []):
-                    if type(attr).__name__ == "DocumentAttributeAudio" and getattr(attr, "voice", False):
+                    if type(attr).__name__ == "DocumentAttributeAudio" and getattr(
+                        attr, "voice", False
+                    ):
                         raw_wave = getattr(attr, "waveform", None)
                         if raw_wave:
                             try:
@@ -296,8 +295,11 @@ class TelegramEventRelay:
 
                 # Check Redis rate limit and cooldown
                 from app.utils.redis import check_auto_reply_rate_limit, record_auto_reply_sent
+
                 if not await check_auto_reply_rate_limit(account_id):
-                    logger.warning("Auto-reply skipped for account %s due to rate limit/cooldown", account_id)
+                    logger.warning(
+                        "Auto-reply skipped for account %s due to rate limit/cooldown", account_id
+                    )
                     return
 
                 # 2. Fast path: check DB log for existing reply
@@ -315,9 +317,7 @@ class TelegramEventRelay:
                 if chat is None:
                     return
 
-                await event.client.send_message(
-                    chat, account.auto_reply_text, reply_to=msg.id
-                )
+                await event.client.send_message(chat, account.auto_reply_text, reply_to=msg.id)
 
                 # 4. Log the reply so we never reply to this user again
                 db.add(AutoReplyLog(account_id=account.id, sender_id=sender_id))
@@ -328,10 +328,7 @@ class TelegramEventRelay:
                 await record_auto_reply_sent(account_id)
 
             except Exception as exc:
-                logger.error(
-                    "Auto-reply error for account %s: %s", account_id, exc
-                )
-
+                logger.error("Auto-reply error for account %s: %s", account_id, exc)
 
     async def _on_outgoing_message(self, account_id: str, event) -> None:
         """Fire when we send a message."""
@@ -346,7 +343,7 @@ class TelegramEventRelay:
             chat = None
 
         channel = f"chats:{account_id}"
-        
+
         # Determine media details
         media_type = None
         media_filename = None
@@ -354,20 +351,20 @@ class TelegramEventRelay:
         waveform_levels = []
         file_size = None
         mime_type = None
-        
+
         if msg.media:
             from app.services.message_service import _classify_media
             from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
             from telethon.utils import stripped_photo_to_jpg, decode_waveform
             import base64
-            
+
             media_type = _classify_media(msg.media)
             if hasattr(msg.media, "document") and msg.media.document:
                 for attr in getattr(msg.media.document, "attributes", []):
                     if hasattr(attr, "file_name"):
                         media_filename = attr.file_name
                         break
-            
+
             # Stripped thumb
             stripped_bytes = None
             if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
@@ -380,18 +377,22 @@ class TelegramEventRelay:
                     if type(size).__name__ == "PhotoStrippedSize":
                         stripped_bytes = size.bytes
                         break
-                        
+
             if stripped_bytes:
                 try:
                     jpeg_bytes = stripped_photo_to_jpg(stripped_bytes)
-                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode('utf-8')
+                    stripped_thumb_base64 = "data:image/jpeg;base64," + base64.b64encode(
+                        jpeg_bytes
+                    ).decode("utf-8")
                 except Exception:
                     pass
-                    
+
             # Waveform
             if media_type == "voice" and hasattr(msg.media, "document") and msg.media.document:
                 for attr in getattr(msg.media.document, "attributes", []):
-                    if type(attr).__name__ == "DocumentAttributeAudio" and getattr(attr, "voice", False):
+                    if type(attr).__name__ == "DocumentAttributeAudio" and getattr(
+                        attr, "voice", False
+                    ):
                         raw_wave = getattr(attr, "waveform", None)
                         if raw_wave:
                             try:
@@ -503,7 +504,7 @@ class TelegramEventRelay:
         if account_id not in self._handlers:
             return
         channel = f"chats:{account_id}"
-        
+
         # 1. Handle typing indicator in private chat
         if event.typing:
             action_name = "typing"
@@ -514,13 +515,14 @@ class TelegramEventRelay:
                     SendMessageUploadPhotoAction,
                     SendMessageRecordVideoAction,
                 )
+
                 if isinstance(action, SendMessageRecordAudioAction):
                     action_name = "recording_audio"
                 elif isinstance(action, SendMessageUploadPhotoAction):
                     action_name = "uploading_photo"
                 elif isinstance(action, SendMessageRecordVideoAction):
                     action_name = "recording_video"
-            
+
             await manager.broadcast(
                 channel,
                 {
@@ -552,7 +554,9 @@ class TelegramEventRelay:
         channel = f"chats:{account_id}"
 
         try:
-            user_name = getattr(await event.get_user(), "first_name", None) if event.user_id else None
+            user_name = (
+                getattr(await event.get_user(), "first_name", None) if event.user_id else None
+            )
         except Exception:
             user_name = None
         await manager.broadcast(
@@ -568,7 +572,6 @@ class TelegramEventRelay:
 
         # Update DB in the background
         asyncio.create_task(self._update_chat_action(account_id, event))
-
 
     # ── Database Event Synchronization Helpers ───────────────────────────────
 
@@ -587,6 +590,7 @@ class TelegramEventRelay:
 
         # Classify entity type
         from telethon.tl.types import User as TLUser, Chat as TLChat, Channel as TLChannel
+
         if isinstance(chat, TLUser):
             chat_type_val = "user"
         elif isinstance(chat, TLChannel):
@@ -639,8 +643,7 @@ class TelegramEventRelay:
                         set_clause["unread_count"] = TelegramChat.unread_count + 1
 
                     stmt = stmt.on_conflict_do_update(
-                        constraint="uq_telegram_chat_account_chat",
-                        set_=set_clause
+                        constraint="uq_telegram_chat_account_chat", set_=set_clause
                     )
                     await db.execute(stmt)
 
@@ -650,25 +653,27 @@ class TelegramEventRelay:
                     if state:
                         from app.models.telegram_account import TelegramAccount
                         from sqlalchemy import update
+
                         await db.execute(
                             update(TelegramAccount)
                             .where(TelegramAccount.id == uuid.UUID(account_id))
-                            .values(
-                                pts=state.pts,
-                                qts=state.qts,
-                                date=state.date
-                            )
+                            .values(pts=state.pts, qts=state.qts, date=state.date)
                         )
 
                     await db.commit()
                 except Exception as exc:
-                    logger.warning("Failed to update chat/account state on message in DB (account %s): %s", account_id, exc)
+                    logger.warning(
+                        "Failed to update chat/account state on message in DB (account %s): %s",
+                        account_id,
+                        exc,
+                    )
 
     async def _update_chat_read(self, account_id: str, event) -> None:
         # If we read it (event.inbox is True)
         if getattr(event, "inbox", False):
             from app.models.telegram_chat import TelegramChat
             from sqlalchemy import update, func
+
             async with self._db_sem:
                 async with async_session_factory() as db:
                     try:
@@ -680,7 +685,11 @@ class TelegramEventRelay:
                         )
                         await db.commit()
                     except Exception as exc:
-                        logger.warning("Failed to reset chat unread count in DB (account %s): %s", account_id, exc)
+                        logger.warning(
+                            "Failed to reset chat unread count in DB (account %s): %s",
+                            account_id,
+                            exc,
+                        )
 
     async def _update_chat_action(self, account_id: str, event) -> None:
         my_tg_id = self._tg_id_map.get(account_id)
@@ -693,6 +702,7 @@ class TelegramEventRelay:
         if (event.user_left or event.user_kicked) and event.user_id == my_tg_id:
             from app.models.telegram_chat import TelegramChat
             from sqlalchemy import update, func
+
             async with self._db_sem:
                 async with async_session_factory() as db:
                     try:
@@ -703,9 +713,17 @@ class TelegramEventRelay:
                             .values(is_active=False, updated_at=func.now())
                         )
                         await db.commit()
-                        logger.info("Deactivated chat %s for account %s (user left/kicked)", chat_id, account_id)
+                        logger.info(
+                            "Deactivated chat %s for account %s (user left/kicked)",
+                            chat_id,
+                            account_id,
+                        )
                     except Exception as exc:
-                        logger.warning("Failed to deactivate chat on action in DB (account %s): %s", account_id, exc)
+                        logger.warning(
+                            "Failed to deactivate chat on action in DB (account %s): %s",
+                            account_id,
+                            exc,
+                        )
 
         # If we joined / were added
         elif (event.user_joined or event.user_added) and event.user_id == my_tg_id:
@@ -714,7 +732,9 @@ class TelegramEventRelay:
                 if chat:
                     await self._update_single_chat(account_id, chat)
             except Exception as exc:
-                logger.warning("Failed to sync new chat on action (account %s): %s", account_id, exc)
+                logger.warning(
+                    "Failed to sync new chat on action (account %s): %s", account_id, exc
+                )
 
     async def _update_single_chat(self, account_id: str, chat) -> None:
         from app.models.telegram_chat import TelegramChat
@@ -728,6 +748,7 @@ class TelegramEventRelay:
         title = getattr(chat, "title", None) or getattr(chat, "first_name", "Unknown")
 
         from telethon.tl.types import User as TLUser, Chat as TLChat, Channel as TLChannel
+
         if isinstance(chat, TLUser):
             chat_type_val = "user"
         elif isinstance(chat, TLChannel):
@@ -768,14 +789,15 @@ class TelegramEventRelay:
                             "is_active": True,
                             "is_creator": stmt.excluded.is_creator,
                             "updated_at": func.now(),
-                        }
+                        },
                     )
                     await db.execute(stmt)
                     await db.commit()
                     logger.info("Upserted joined chat %s for account %s", chat.id, account_id)
                 except Exception as exc:
-                    logger.warning("Failed to upsert chat on join in DB (account %s): %s", account_id, exc)
-
+                    logger.warning(
+                        "Failed to upsert chat on join in DB (account %s): %s", account_id, exc
+                    )
 
     async def _on_profile_change(self, account_id: str, event) -> None:
         """Handle raw TL profile updates (UpdateUserName, UpdateUserPhone, UpdateUser).
@@ -797,9 +819,19 @@ class TelegramEventRelay:
             return
 
         update_type = type(event).__name__
+        if account_id in self._profile_sync_suppressed:
+            logger.info(
+                "Profile change via %s deferred during marketplace preparation for account %s",
+                update_type,
+                account_id,
+            )
+            return
+
         logger.info(
             "Profile change detected via %s for account %s (tg_id=%s)",
-            update_type, account_id, tg_user_id,
+            update_type,
+            account_id,
+            tg_user_id,
         )
 
         # Trigger immediate profile sync (deferred import to avoid circular)
@@ -817,12 +849,11 @@ class TelegramEventRelay:
                         await db.commit()
                         logger.info(
                             "Instant profile sync completed for %s: %s",
-                            account_id, list(changes.keys()),
+                            account_id,
+                            list(changes.keys()),
                         )
         except Exception as exc:
-            logger.warning(
-                "Instant profile sync failed for %s: %s", account_id, exc
-            )
+            logger.warning("Instant profile sync failed for %s: %s", account_id, exc)
 
 
 # Singleton

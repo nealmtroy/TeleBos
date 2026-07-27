@@ -15,6 +15,7 @@ from app.services import marketplace_profile_service
 from app.services.marketplace_profile_service import (
     OFFICIAL_MARKETPLACE_BIO,
     MarketplaceProfilePreparationError,
+    MarketplaceProfilePreparationRateLimitError,
     MarketplaceProfilePreparationTimeoutError,
     prepare_account_for_sale,
 )
@@ -115,7 +116,7 @@ async def test_prepare_account_for_sale_updates_profile_username_and_all_photos(
     assert profile_request.last_name.endswith(" by Telebos")
     assert username_request.username == identity.username
     assert profile_request.last_name.removesuffix(" by Telebos").lower() in identity.username
-    assert request_names.count("GetFullUserRequest") == 2
+    assert request_names.count("GetFullUserRequest") == 1
     assert request_names.count("DeletePhotosRequest") == 2
     assert not photo_path.exists()
     assert account.first_name == identity.first_name
@@ -131,9 +132,7 @@ async def test_prepare_account_for_sale_updates_profile_username_and_all_photos(
 async def test_prepare_account_for_sale_retries_when_telegram_bio_is_stale(monkeypatch, tmp_path):
     account = make_account()
     db = FakeDatabase()
-    client = FakeClient(
-        [[]], bio_values=["old bio", OFFICIAL_MARKETPLACE_BIO, OFFICIAL_MARKETPLACE_BIO]
-    )
+    client = FakeClient([[]], bio_values=["old bio", OFFICIAL_MARKETPLACE_BIO])
     photo_path = tmp_path / "account-id.jpg"
 
     monkeypatch.setattr(marketplace_profile_service, "decrypt", lambda _: "session")
@@ -146,7 +145,7 @@ async def test_prepare_account_for_sale_retries_when_telegram_bio_is_stale(monke
 
     request_names = [type(request).__name__ for request in client.requests]
     assert request_names.count("UpdateProfileRequest") == 2
-    assert request_names.count("GetFullUserRequest") == 3
+    assert request_names.count("GetFullUserRequest") == 2
     assert account.bio == OFFICIAL_MARKETPLACE_BIO
     db.flush.assert_awaited_once()
 
@@ -168,6 +167,37 @@ async def test_prepare_account_for_sale_fails_closed_when_telegram_bio_stays_sta
     with pytest.raises(MarketplaceProfilePreparationError, match="did not save"):
         await prepare_account_for_sale(db, account, rng=random.Random(12))
 
+    assert account.bio == "seller bio"
+    db.flush.assert_not_awaited()
+
+
+async def test_prepare_account_for_sale_returns_rate_limit_error_for_bio_verification(
+    monkeypatch, tmp_path
+):
+    from telethon.errors import FloodWaitError
+
+    account = make_account()
+    db = FakeDatabase()
+
+    class RateLimitedVerificationClient(FakeClient):
+        async def __call__(self, request):
+            self.requests.append(request)
+            if type(request).__name__ == "GetFullUserRequest":
+                raise FloodWaitError(request=request, capture=10)
+            return await super().__call__(request)
+
+    client = RateLimitedVerificationClient([[]])
+    photo_path = tmp_path / "account-id.jpg"
+    monkeypatch.setattr(marketplace_profile_service, "decrypt", lambda _: "session")
+    monkeypatch.setattr(
+        marketplace_profile_service.client_pool, "get", AsyncMock(return_value=client)
+    )
+    monkeypatch.setattr("app.services.account_service._photo_path", lambda _: str(photo_path))
+
+    with pytest.raises(MarketplaceProfilePreparationRateLimitError) as exc_info:
+        await prepare_account_for_sale(db, account, rng=random.Random(12))
+
+    assert exc_info.value.seconds == 10
     assert account.bio == "seller bio"
     db.flush.assert_not_awaited()
 

@@ -20,7 +20,10 @@ from app.schemas.marketplace import (
     AccountAuditLogResponse,
 )
 from app.services import marketplace_service
-from app.services.marketplace_profile_service import MarketplaceProfilePreparationTimeoutError
+from app.services.marketplace_profile_service import (
+    MarketplaceProfilePreparationRateLimitError,
+    MarketplaceProfilePreparationTimeoutError,
+)
 from app.utils.sanitize import sanitize_exception
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,6 @@ async def get_marketplace_pricing(
     """Retrieve current buy and sell prices for Telegram accounts."""
     buy_price, sell_price = await marketplace_service.get_marketplace_prices(db)
     return MarketplacePricingResponse(buy_price=buy_price, sell_price=sell_price)
-
 
 
 @router.get("/sell-eligible", response_model=list[AccountResponse])
@@ -66,6 +68,13 @@ async def sell_accounts(
         await db.commit()
         await marketplace_service.schedule_post_sale_cleanup(account_ids)
         return MarketplaceSellResponse(total_listed=total_listed)
+    except MarketplaceProfilePreparationRateLimitError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=429,
+            detail=sanitize_exception(exc),
+            headers={"Retry-After": str(exc.seconds)},
+        )
     except MarketplaceProfilePreparationTimeoutError as exc:
         await db.rollback()
         raise HTTPException(status_code=504, detail=sanitize_exception(exc))
@@ -115,10 +124,16 @@ async def buy_account(
 
         # Reconnect outside of database transaction
         from app.services.session_manager import session_manager
+
         try:
             await session_manager.attach_and_reconnect(db, account)
         except Exception as exc:
-            logger.error("Failed to auto-reconnect purchased account %s (%s): %s", account.id, account.phone, exc)
+            logger.error(
+                "Failed to auto-reconnect purchased account %s (%s): %s",
+                account.id,
+                account.phone,
+                exc,
+            )
 
         return MarketplaceBuyResponse(
             id=account.id,
@@ -151,10 +166,16 @@ async def cancel_sell_account(
 
         # Reconnect outside of database transaction
         from app.services.session_manager import session_manager
+
         try:
             await session_manager.attach_and_reconnect(db, account)
         except Exception as exc:
-            logger.error("Failed to auto-reconnect cancelled sale account %s (%s): %s", account.id, account.phone, exc)
+            logger.error(
+                "Failed to auto-reconnect cancelled sale account %s (%s): %s",
+                account.id,
+                account.phone,
+                exc,
+            )
 
         return account
     except ValueError as exc:
@@ -182,5 +203,3 @@ async def get_marketplace_history(
     )
     logs = list(result.scalars().all())
     return logs
-
-
