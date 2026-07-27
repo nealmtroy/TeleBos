@@ -7,8 +7,10 @@ WORKDIR /app
 # Install build tools needed for native modules (better-sqlite3, etc.)
 RUN apk add --no-cache python3 make g++
 
-COPY package.json ./
-RUN npm install
+# Install exactly the dependency graph committed to the repository. This avoids
+# re-resolving optional Better Auth adapter peers during each image build.
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # ── Build ────────────────────────────────────────────────────────────────────
 FROM deps AS builder

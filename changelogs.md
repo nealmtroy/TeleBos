@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-27
+- **[072d31df](https://github.com/nealmtroy/TeleBos/commit/072d31df)**: chore: add quality tooling and consolidate documentation
 - **[96c56671](https://github.com/nealmtroy/TeleBos/commit/96c56671)**: fix(accounts): surface DuplicateAccountError message instead of masking it
 
 ## 2026-07-24
