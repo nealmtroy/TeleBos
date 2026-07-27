@@ -116,139 +116,103 @@ async def sell_accounts(
     user: User,
     account_ids: list[str],  # just account IDs — price is auto-determined
 ) -> int:
-    """List accounts for sale with owner-configured prefix pricing.
+    """List accounts only after their Telegram profiles are safe for transfer.
 
-    The sell price is automatically determined by matching the account's
-    telegram_id against TelegramIdPrefixPrice (owner sets prices by
-    telegram_id prefix). Does NOT credit the seller's balance immediately.
-
-    Returns the number of accounts listed.
+    Telegram profile changes are external, forward-only side effects: they may
+    remain applied if a later account in the batch fails. The database listing
+    itself is fail-closed and is rolled back by the API unless every requested
+    account finishes preparation successfully.
     """
     if not account_ids:
         raise ValueError("At least one account is required.")
 
-    # Cache the price lookup function
-    from app.services.user_account_price_service import resolve_telegram_id_price
-
-    processed = 0
-
+    account_uuids: list[UUID] = []
     for acc_id_str in account_ids:
         try:
-            acc_uuid = UUID(acc_id_str)
-        except ValueError:
-            raise ValueError(f"Invalid account ID format: {acc_id_str}")
+            account_uuids.append(UUID(acc_id_str))
+        except ValueError as exc:
+            raise ValueError(f"Invalid account ID format: {acc_id_str}") from exc
 
-        account = await db.get(TelegramAccount, acc_uuid)
-        if not account or account.user_id != user.id:
-            raise ValueError(f"Account not found or not owned by you: {acc_id_str}")
+    if len(set(account_uuids)) != len(account_uuids):
+        raise ValueError("Each account can only be listed once per request.")
 
+    result = await db.execute(
+        select(TelegramAccount)
+        .where(
+            TelegramAccount.id.in_(account_uuids),
+            TelegramAccount.user_id == user.id,
+        )
+        .with_for_update()
+    )
+    accounts_by_id = {account.id: account for account in result.scalars().all()}
+    if len(accounts_by_id) != len(account_uuids):
+        raise ValueError("One or more accounts were not found or are not owned by you.")
+
+    accounts = [accounts_by_id[account_id] for account_id in account_uuids]
+    for account in accounts:
         if account.for_sale or account.is_sold:
             raise ValueError(f"Account is already listed for sale or sold: {account.phone}")
 
-        # Determine the sell price from telegram_id prefix
-        sell_price = await resolve_telegram_id_price(db, account)
+    from app.services.marketplace_profile_service import prepare_account_for_sale
+    from app.services.user_account_price_service import resolve_telegram_id_price
 
-        # 1. Stop all active/paused/pending automation for this account
-
-        # Broadcast Jobs
-        active_broadcasts = await db.execute(
-            select(BroadcastJob).where(
-                BroadcastJob.status.in_(["running", "paused", "pending"])
-            )
+    reserved_usernames: set[str] = set()
+    prices: dict[UUID, int] = {}
+    for account in accounts:
+        prices[account.id] = await resolve_telegram_id_price(db, account)
+        await prepare_account_for_sale(
+            db,
+            account,
+            reserved_usernames=reserved_usernames,
         )
-        for job in active_broadcasts.scalars().all():
+
+    active_broadcasts = await db.execute(
+        select(BroadcastJob).where(BroadcastJob.status.in_(["running", "paused", "pending"]))
+    )
+    active_invites = await db.execute(
+        select(InviteJob).where(InviteJob.status.in_(["running", "paused", "pending"]))
+    )
+    broadcast_jobs = active_broadcasts.scalars().all()
+    invite_jobs = active_invites.scalars().all()
+
+    from app.services.event_relay import event_relay
+    from app.services.invite_service import _running_invite_tasks
+
+    for account in accounts:
+        for job in broadcast_jobs:
             if str(account.id) in job.account_ids:
                 job.status = "cancelled"
-
-        # Invite Jobs
-        active_invites = await db.execute(
-            select(InviteJob).where(
-                InviteJob.status.in_(["running", "paused", "pending"])
-            )
-        )
-        for job in active_invites.scalars().all():
+        for job in invite_jobs:
             if str(account.id) in job.account_ids:
                 job.status = "cancelled"
-                from app.services.invite_service import _running_invite_tasks
                 task = _running_invite_tasks.get(str(job.id))
                 if task:
                     task.cancel()
 
-        # Update profile branding & delete profile photos on Telegram
-        from app.utils.encryption import decrypt
-        try:
-            session_str = decrypt(account.session_string)
-            client = await client_pool.get(str(account.id), session_str)
-            if client:
-                # 1. Delete all profile photos on Telegram
-                from telethon.tl.functions.photos import GetUserPhotosRequest, DeletePhotosRequest
-                try:
-                    photos_res = await client(GetUserPhotosRequest(user_id=await client.get_me(), offset=0, max_id=0, limit=100))
-                    if photos_res.photos:
-                        await client(DeletePhotosRequest(id=photos_res.photos))
-                except Exception as photo_err:
-                    logger.error("Failed to delete profile photos on Telegram for account %s: %s", account.phone, photo_err)
-
-                # 2. Update name and bio on Telegram
-                from telethon.tl.functions.account import UpdateProfileRequest
-                await client(UpdateProfileRequest(
-                    first_name=account.first_name or "User",
-                    last_name="by Telebos",
-                    about="https://t.me/telebos_official",
-                ))
-
-                # 3. Delete local cached profile photo
-                from app.services.account_service import _photo_path
-                import os
-                photo_path = _photo_path(str(account.id))
-                if os.path.exists(photo_path):
-                    try:
-                        os.remove(photo_path)
-                    except Exception as err:
-                        logger.warning("Failed to remove local cached photo for account %s: %s", account.phone, err)
-
-                # 4. Update DB cache
-                account.last_name = "by Telebos"
-                account.bio = "https://t.me/telebos_official"
-                account.profile_photo_path = None
-                account.photo_version += 1
-
-                logger.info("Successfully updated profile branding and deleted photos for account %s", account.phone)
-            else:
-                logger.warning("Could not connect to Telegram client to update profile for account %s", account.phone)
-        except Exception as e:
-            logger.error("Failed to update profile on Telegram during marketplace listing for account %s: %s", account.phone, e)
-
-        # 2. Mark account as for_sale with owner-configured price
+        sell_price = prices[account.id]
         account.for_sale = True
         account.is_sold = False
-        account.sell_price = sell_price  # Use owner-configured price
-        account.seller_id = user.id  # Track who will get paid
+        account.sell_price = sell_price
+        account.seller_id = user.id
         account.is_active = False
         account.auto_reply_enabled = False
         account.sale_listed_at = datetime.now(timezone.utc)
 
-        # 3. Detach event relay and remove client session from memory pool
-        from app.services.event_relay import event_relay
         await event_relay.detach(str(account.id))
         await client_pool.remove(str(account.id))
-
-        # 4. Write audit log
-        audit = AccountAuditLog(
-            user_id=user.id,
-            account_id=account.id,
-            action="list_for_sale",
-            price=sell_price,
-            phone=account.phone,
-            telegram_id=account.telegram_id,
+        db.add(
+            AccountAuditLog(
+                user_id=user.id,
+                account_id=account.id,
+                action="list_for_sale",
+                price=sell_price,
+                phone=account.phone,
+                telegram_id=account.telegram_id,
+            )
         )
-        db.add(audit)
-
-        # NOTE: No balance credit — seller gets paid when account is purchased
-        processed += 1
 
     await db.flush()
-    return processed
+    return len(accounts)
 
 
 async def get_stock_categories(db: AsyncSession) -> list[dict]:
