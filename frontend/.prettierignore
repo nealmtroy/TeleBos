@@ -1,0 +1,13 @@
+node_modules/
+.next/
+coverage/
+.impeccable/
+package-lock.json
+components.json
+next-env.d.ts
+next.config.js
+postcss.config.js
+setup-db.mjs
+src/
+tailwind.config.ts
+tsconfig.json

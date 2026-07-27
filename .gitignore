@@ -36,6 +36,8 @@ yarn-error.log*
 .pytest_cache/
 .coverage
 htmlcov/
+coverage/
+.ruff_cache/
 .mypy_cache/
 .playwright-mcp/
 testing/
@@ -58,13 +60,11 @@ celerybeat-schedule
 .claude/skills/
 .claude/settings.local.json
 .impeccable/
+# Local AI-skill installation state; never version-controlled
 skills-lock.json
 
 # Local tsconfig build info
 tsconfig.tsbuildinfo
-
-# Product Requirement Document (PRD)
-PRD.md
 
 # Temporary/Local services config
 buzzerpanel_services.txt

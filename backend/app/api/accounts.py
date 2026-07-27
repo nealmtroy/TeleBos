@@ -590,7 +590,7 @@ async def bulk_update_auto_reply(
         select(TelegramAccount).where(
             TelegramAccount.id.in_(payload.account_ids),
             TelegramAccount.user_id == user.id,
-            TelegramAccount.for_sale == False,
+            TelegramAccount.for_sale.is_(False),
         )
     )
     accounts = result.scalars().all()

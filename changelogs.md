@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-27
+- **[96c56671](https://github.com/nealmtroy/TeleBos/commit/96c56671)**: fix(accounts): surface DuplicateAccountError message instead of masking it
+
 ## 2026-07-24
 - **[e037d7dd](https://github.com/nealmtroy/TeleBos/commit/e037d7dd)**: security(frontend): fix nested dependencies vulnerabilities via overrides
 - **[6f647568](https://github.com/nealmtroy/TeleBos/commit/6f647568)**: feat(frontend): integrate standard shadcn Date Range Picker and clean up radix-ui dependencies

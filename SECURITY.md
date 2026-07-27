@@ -37,12 +37,12 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 - **`get_current_user` dependency**: Validates the Better Auth session token against the database's `session` table directly in FastAPI backend, verifying expiration and linking to an active user.
 - **Password hashing**: Password hashes are managed securely by Better Auth in the PostgreSQL database.
 - **Account ownership check**: Every account/device/chat endpoint verifies `user_id` matches the authenticated user before returning data
-- **Role system**: `User.role` field (default `"operator"`) — currently stored but not enforced in route guards
+- **Role system**: `User.role` defaults to `basic`; supported role values are `basic`, `pro`, `premium`, and `owner`. `require_role()` enforces allowed-role lists on privileged endpoints, including owner-only administration and pro/premium/owner account operations.
 
 ### Data Protection
 - **Session encryption**: All Telegram session strings encrypted with Fernet symmetric cipher before DB storage
 - **2FA password encryption**: Stored encrypted in the same manner for auto-login during reconnection
-- **Key fallback behavior**: If `ENCRYPTION_KEY` is invalid/missing, a new key is auto-generated — this will make existing encrypted data unreadable (logged as warning)
+- **Fail-closed key handling**: Known default secrets are rejected by `get_settings()`. An invalid or missing Fernet key raises `RuntimeError` when cipher setup is attempted; the application does not silently generate a replacement key.
 - **No plaintext secrets in code**: `.env` files are gitignored; `.env.example` contains placeholder values
 
 ### Transport Security
@@ -57,36 +57,43 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 - **Per-group logging**: Every delivery attempt logged with status, error type, duration, and text preview
 
 ### WebSocket Security
-- **WebSocket Authentication**: Connections to `/ws/broadcast/{job_id}`, `/ws/chats/{account_id}`, and `/ws/invite/{job_id}` must authenticate by sending a Better Auth session token as the first WS message or via cookies (`better-auth.session_token`).
-- **Ownership Verification**: After authenticating, the backend enforces an ownership check verifying that the authenticated user owns the respective job or account.
-- **Connection Limits**: Limits the number of concurrent connections per channel to prevent socket exhaustion.
-- **Mitigation**: Channel IDs are UUIDs (unguessable).
+- **WebSocket Authentication**: Connections to `/ws/broadcast/{job_id}`, `/ws/chats/{account_id}`, and `/ws/invite/{job_id}` authenticate with a Better Auth session token as the first WS message or via the `better-auth.session_token` cookie.
+- **Ownership Verification**: After authentication, the backend verifies that the user owns the requested job or account.
+- **Connection Limits**: Per-channel limits reduce socket exhaustion risk.
+
+### Account-Scoped API Authorization
+- Dashboard requests authenticate through Better Auth. Privileged routes use `require_role()`; owner-only administration and pro/premium/owner operations are guarded by allowed-role lists.
+- Account-scoped message, media, forwarding, reaction, pin, poll, sticker, and GIF operations resolve the requested account against the authenticated user before calling Telethon-backed services.
+- Some download routes accept the documented alternate token/header mechanism. Avoid placing long-lived credentials in URLs.
+- **Public exceptions**: account and chat-photo retrieval routes are currently public/cached. They are not proof that every photo route validates ownership or a signed token; treat their exposure as an explicit design/security decision.
+
+### API Documentation Boundaries
+- Browser/dashboard traffic uses Better Auth session credentials.
+- The interactive API documentation and OpenAPI schema are served at `/api/docs` and `/api/openapi.json`; consult the running backend for the current published contract.
 
 ## Security Gaps & Recommendations
 
 ### High Priority
 
-1. **Rate limiting on auth endpoints** — `/send-code` and login/registration routes have no brute-force protection. Add IP-based or account-based rate limiting.
+1. **Encryption key backup and rotation** — `ENCRYPTION_KEY` is intentionally fail-closed, so it must be backed up securely. Rotating it still requires a planned re-encryption migration for stored session strings.
 
-2. **Encryption key backup** — The fallback auto-generation of a new encryption key silently corrupts existing data. Document that `ENCRYPTION_KEY` must be backed up. Consider validating it at startup and refusing to start if DB contains encrypted data that the current key cannot decrypt.
+2. **Structured audit coverage** — Expand dedicated audit events for sensitive actions such as account login, 2FA changes, profile edits, and broadcast starts so incident review is not limited to operational logs.
+
+3. **Public photo-route exposure** — Some account/chat photo retrieval routes are intentionally public and cached. The signed-token utility exists, but public route behavior must not be represented as universal ownership enforcement. Decide whether these routes should remain public or require validated short-lived tokens before expanding photo exposure.
 
 ### Medium Priority
 
-3. **Audit logging** — No logging of sensitive actions (account login, 2FA changes, profile edits, broadcast starts). Add structured audit events to a dedicated table for compliance and incident response.
+4. **Service-to-service transport** — PostgreSQL and Redis are unencrypted on the internal Docker network. This is acceptable for a single-host deployment; multi-host deployments should use TLS or an equivalent protected network boundary.
 
-4. **Input validation on file uploads** — Profile photo upload checks `content_type.startswith("image/")` but doesn't validate file size, dimensions, or re-encode the image. Malicious images (e.g., SVG with JS, zip bombs) could be uploaded.
+5. **Upload hardening review** — Keep validating uploaded image content, size limits, and safe serving behavior as supported formats evolve; reject executable/script content and avoid treating client MIME types as sufficient proof of safety.
 
-5. **Celery task authentication** — Broadcast/invite jobs are accepted from any authenticated user. Ensure task parameters are validated server-side (currently done in services).
+6. **Task parameter validation** — Keep authorization and ownership validation at the request/service boundary before broadcast or invite jobs are queued; add regression coverage when new task parameters are introduced.
 
 ### Low Priority
 
-8. **TLS between services** — PostgreSQL and Redis connections are unencrypted on the internal Docker network. Acceptable for single-host deployments. For multi-host, add client certificates or TLS.
+7. **Session and token lifecycle review** — Periodically verify Better Auth session/refresh-token behavior against the configured plugin/version and rotate/revoke credentials through the documented incident process.
 
-9. **Admin vs operator separation** — The `role` field exists on `User` but isn't enforced. Implement role-based access for administrative actions (viewing all users, system-wide settings).
-
-10. **Refresh token rotation** — Refresh tokens don't rotate on each use. If a refresh token is stolen, it can be used repeatedly for 7 days. Implement refresh token rotation (issue a new refresh token each time and invalidate the old one).
-
-11. **Key rotation** — No support for encryption key rotation. Rotating `ENCRYPTION_KEY` requires re-encrypting all stored session strings.
+8. **Authorization coverage review** — `require_role()` is active for privileged routes; periodically audit new owner/pro/premium endpoints to ensure they use both role and account-ownership dependencies where applicable.
 
 ## Data Flow Security
 

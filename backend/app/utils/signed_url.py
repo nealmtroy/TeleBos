@@ -58,7 +58,7 @@ def parse_photo_token(token: str, account_id: str) -> str | None:
 
     # Verify HMAC signature
     expected_sig = hmac.new(
-        get_settings().JWT_SECRET_KEY.encode(),
+        get_settings().APP_SECRET_KEY.encode(),
         f"{account_id}:{user_id}:{expiry}".encode(),
         hashlib.sha256,
     ).hexdigest()[:16]

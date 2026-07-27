@@ -127,7 +127,7 @@ async def get_admin_stats(
     # Total connected accounts (phone_verified = True)
     ta_count_result = await db.execute(
         select(func.count(TelegramAccount.id)).where(
-            TelegramAccount.phone_verified == True
+            TelegramAccount.phone_verified.is_(True)
         )
     )
     total_accounts_connected = ta_count_result.scalar() or 0
@@ -135,8 +135,8 @@ async def get_admin_stats(
     # Active accounts (phone_verified = True and is_active = True)
     ta_active_result = await db.execute(
         select(func.count(TelegramAccount.id)).where(
-            TelegramAccount.phone_verified == True,
-            TelegramAccount.is_active == True,
+            TelegramAccount.phone_verified.is_(True),
+            TelegramAccount.is_active.is_(True),
         )
     )
     accounts_active = ta_active_result.scalar() or 0
@@ -144,9 +144,9 @@ async def get_admin_stats(
     # Selling accounts (phone_verified = True and is_active = True and for_sale = True)
     ta_selling_result = await db.execute(
         select(func.count(TelegramAccount.id)).where(
-            TelegramAccount.phone_verified == True,
-            TelegramAccount.is_active == True,
-            TelegramAccount.for_sale == True,
+            TelegramAccount.phone_verified.is_(True),
+            TelegramAccount.is_active.is_(True),
+            TelegramAccount.for_sale.is_(True),
         )
     )
     accounts_selling = ta_selling_result.scalar() or 0
@@ -154,8 +154,8 @@ async def get_admin_stats(
     # Expired accounts (phone_verified = True and is_active = False)
     ta_expired_result = await db.execute(
         select(func.count(TelegramAccount.id)).where(
-            TelegramAccount.phone_verified == True,
-            TelegramAccount.is_active == False,
+            TelegramAccount.phone_verified.is_(True),
+            TelegramAccount.is_active.is_(False),
         )
     )
     accounts_expired = ta_expired_result.scalar() or 0
