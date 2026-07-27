@@ -26,8 +26,9 @@ class FakeDatabase:
 
 
 class FakeClient:
-    def __init__(self, photo_batches):
+    def __init__(self, photo_batches, bio_values=None):
         self.photo_batches = iter(photo_batches)
+        self.bio_values = iter(bio_values or [OFFICIAL_MARKETPLACE_BIO] * 3)
         self.requests = []
 
     async def get_me(self):
@@ -38,6 +39,8 @@ class FakeClient:
         request_name = type(request).__name__
         if request_name == "GetUserPhotosRequest":
             return SimpleNamespace(photos=next(self.photo_batches))
+        if request_name == "GetFullUserRequest":
+            return SimpleNamespace(full_user=SimpleNamespace(about=next(self.bio_values)))
         return SimpleNamespace()
 
 
@@ -112,6 +115,7 @@ async def test_prepare_account_for_sale_updates_profile_username_and_all_photos(
     assert profile_request.last_name.endswith(" by Telebos")
     assert username_request.username == identity.username
     assert profile_request.last_name.removesuffix(" by Telebos").lower() in identity.username
+    assert request_names.count("GetFullUserRequest") == 2
     assert request_names.count("DeletePhotosRequest") == 2
     assert not photo_path.exists()
     assert account.first_name == identity.first_name
@@ -122,6 +126,50 @@ async def test_prepare_account_for_sale_updates_profile_username_and_all_photos(
     assert account.profile_photo_id is None
     assert account.photo_version == 5
     db.flush.assert_awaited_once()
+
+
+async def test_prepare_account_for_sale_retries_when_telegram_bio_is_stale(monkeypatch, tmp_path):
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient(
+        [[]], bio_values=["old bio", OFFICIAL_MARKETPLACE_BIO, OFFICIAL_MARKETPLACE_BIO]
+    )
+    photo_path = tmp_path / "account-id.jpg"
+
+    monkeypatch.setattr(marketplace_profile_service, "decrypt", lambda _: "session")
+    monkeypatch.setattr(
+        marketplace_profile_service.client_pool, "get", AsyncMock(return_value=client)
+    )
+    monkeypatch.setattr("app.services.account_service._photo_path", lambda _: str(photo_path))
+
+    await prepare_account_for_sale(db, account, rng=random.Random(12))
+
+    request_names = [type(request).__name__ for request in client.requests]
+    assert request_names.count("UpdateProfileRequest") == 2
+    assert request_names.count("GetFullUserRequest") == 3
+    assert account.bio == OFFICIAL_MARKETPLACE_BIO
+    db.flush.assert_awaited_once()
+
+
+async def test_prepare_account_for_sale_fails_closed_when_telegram_bio_stays_stale(
+    monkeypatch, tmp_path
+):
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient([[]], bio_values=["old bio", "still old"])
+    photo_path = tmp_path / "account-id.jpg"
+
+    monkeypatch.setattr(marketplace_profile_service, "decrypt", lambda _: "session")
+    monkeypatch.setattr(
+        marketplace_profile_service.client_pool, "get", AsyncMock(return_value=client)
+    )
+    monkeypatch.setattr("app.services.account_service._photo_path", lambda _: str(photo_path))
+
+    with pytest.raises(MarketplaceProfilePreparationError, match="did not save"):
+        await prepare_account_for_sale(db, account, rng=random.Random(12))
+
+    assert account.bio == "seller bio"
+    db.flush.assert_not_awaited()
 
 
 async def test_prepare_account_for_sale_fails_closed_when_client_is_unavailable(monkeypatch):

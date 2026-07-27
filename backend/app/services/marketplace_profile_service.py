@@ -8,7 +8,8 @@ import os
 import random
 import time
 from dataclasses import dataclass
-from typing import Awaitable, TypeVar
+from collections.abc import Awaitable
+from typing import TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,7 @@ MAX_PHOTO_DELETE_BATCHES = 100
 CLIENT_ACQUISITION_TIMEOUT_SECONDS = 20
 TELEGRAM_RPC_TIMEOUT_SECONDS = 10
 PROFILE_PREPARATION_TIMEOUT_SECONDS = 45
+BIO_VERIFICATION_RETRY_DELAY_SECONDS = 0.25
 
 T = TypeVar("T")
 
@@ -45,12 +47,25 @@ class SaleProfileIdentity:
     username: str
 
 
+def _remaining_timeout(deadline: float, limit: float) -> float:
+    """Return the remaining bounded time for one operation."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise MarketplaceProfilePreparationTimeoutError(
+            "Telegram profile preparation timed out. The account was not listed; please try again."
+        )
+    return min(limit, remaining)
+
+
 async def _with_timeout(
-    awaitable: Awaitable[T], *, operation: str, account_id: str
+    awaitable: Awaitable[T], *, operation: str, account_id: str, deadline: float
 ) -> T:
-    """Await one Telegram operation with a bounded marketplace deadline."""
+    """Await one Telegram operation without exceeding the sale deadline."""
     try:
-        return await asyncio.wait_for(awaitable, timeout=TELEGRAM_RPC_TIMEOUT_SECONDS)
+        return await asyncio.wait_for(
+            awaitable,
+            timeout=_remaining_timeout(deadline, TELEGRAM_RPC_TIMEOUT_SECONDS),
+        )
     except asyncio.TimeoutError as exc:
         logger.warning(
             "Marketplace profile preparation timed out during %s for account %s",
@@ -62,11 +77,11 @@ async def _with_timeout(
         ) from exc
 
 
-async def _get_sale_client(account: TelegramAccount):
+async def _get_sale_client(account: TelegramAccount, *, deadline: float):
     try:
         return await asyncio.wait_for(
             client_pool.get(str(account.id), decrypt(account.session_string)),
-            timeout=CLIENT_ACQUISITION_TIMEOUT_SECONDS,
+            timeout=_remaining_timeout(deadline, CLIENT_ACQUISITION_TIMEOUT_SECONDS),
         )
     except asyncio.TimeoutError as exc:
         logger.warning("Marketplace client acquisition timed out for account %s", account.id)
@@ -75,11 +90,80 @@ async def _get_sale_client(account: TelegramAccount):
         ) from exc
 
 
-async def _delete_all_profile_photos(client, account_id: str) -> None:
+async def _verify_official_bio(client, account_id: str, *, deadline: float) -> bool:
+    """Read Telegram's authoritative profile payload and confirm the sale bio."""
+    from telethon.tl.functions.users import GetFullUserRequest
+
+    full = await _with_timeout(
+        client(GetFullUserRequest("me")),
+        operation="verify profile bio",
+        account_id=account_id,
+        deadline=deadline,
+    )
+    return getattr(getattr(full, "full_user", None), "about", None) == OFFICIAL_MARKETPLACE_BIO
+
+
+async def _apply_and_verify_official_profile(
+    client,
+    *,
+    first_name: str,
+    last_name: str,
+    account_id: str,
+    deadline: float,
+) -> None:
+    """Set the official profile and retry once if Telegram does not persist its bio."""
+    from telethon.errors import FloodWaitError, RPCError
+    from telethon.tl.functions.account import UpdateProfileRequest
+
+    for attempt in range(2):
+        try:
+            await _with_timeout(
+                client(
+                    UpdateProfileRequest(
+                        first_name=first_name,
+                        last_name=last_name,
+                        about=OFFICIAL_MARKETPLACE_BIO,
+                    )
+                ),
+                operation="update profile",
+                account_id=account_id,
+                deadline=deadline,
+            )
+        except FloodWaitError as exc:
+            raise MarketplaceProfilePreparationError(
+                f"Telegram is rate limiting this account. Try again after {exc.seconds} seconds."
+            ) from exc
+        except RPCError as exc:
+            logger.warning("Failed to sanitize Telegram profile for %s: %s", account_id, exc)
+            raise MarketplaceProfilePreparationError(
+                "Unable to update the Telegram profile. Please try again."
+            ) from exc
+
+        if await _verify_official_bio(client, account_id, deadline=deadline):
+            return
+        if attempt == 0:
+            await asyncio.sleep(
+                min(
+                    BIO_VERIFICATION_RETRY_DELAY_SECONDS,
+                    _remaining_timeout(deadline, BIO_VERIFICATION_RETRY_DELAY_SECONDS),
+                )
+            )
+
+    raise MarketplaceProfilePreparationError(
+        "Telegram did not save the official bio. The account was not listed; please try again."
+    )
+
+
+async def _delete_all_profile_photos(client, account_id: str, *, deadline: float) -> None:
     """Delete every Telegram profile photo, not only the first result page."""
     from telethon.tl.functions.photos import DeletePhotosRequest, GetUserPhotosRequest
 
-    me = await _with_timeout(client.get_me(), operation="get current user", account_id=account_id)
+    me = await _with_timeout(
+        client.get_me(),
+        operation="get current user",
+        account_id=account_id,
+        deadline=deadline,
+    )
     if not me:
         raise MarketplaceProfilePreparationError("Telegram account is disconnected. Please re-login.")
 
@@ -88,6 +172,7 @@ async def _delete_all_profile_photos(client, account_id: str) -> None:
             client(GetUserPhotosRequest(user_id=me, offset=0, max_id=0, limit=100)),
             operation="list profile photos",
             account_id=account_id,
+            deadline=deadline,
         )
         photos = result.photos
         if not photos:
@@ -96,6 +181,7 @@ async def _delete_all_profile_photos(client, account_id: str) -> None:
             client(DeletePhotosRequest(id=photos)),
             operation="delete profile photos",
             account_id=account_id,
+            deadline=deadline,
         )
 
     raise MarketplaceProfilePreparationError("Unable to remove all Telegram profile photos.")
@@ -107,42 +193,26 @@ async def _prepare_account_for_sale(
     *,
     rng: random.Random | random.SystemRandom | None,
     reserved_usernames: set[str] | None,
+    deadline: float,
 ) -> SaleProfileIdentity:
-    from telethon.errors import (
-        FloodWaitError,
-        RPCError,
-        UsernameInvalidError,
-        UsernameOccupiedError,
-    )
-    from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
+    from telethon.errors import FloodWaitError, RPCError, UsernameInvalidError, UsernameOccupiedError
+    from telethon.tl.functions.account import UpdateUsernameRequest
 
     random_source = rng or random.SystemRandom()
     first_name, surname = choose_indonesian_full_name(random_source)
     last_name = f"{surname} by Telebos"
     account_id = str(account.id)
-    client = await _get_sale_client(account)
+    client = await _get_sale_client(account, deadline=deadline)
     if client is None:
         raise MarketplaceProfilePreparationError("Telegram account is disconnected. Please re-login.")
 
-    try:
-        await _with_timeout(
-            client(
-                UpdateProfileRequest(
-                    first_name=first_name,
-                    last_name=last_name,
-                    about=OFFICIAL_MARKETPLACE_BIO,
-                )
-            ),
-            operation="update profile",
-            account_id=account_id,
-        )
-    except FloodWaitError as exc:
-        raise MarketplaceProfilePreparationError(
-            f"Telegram is rate limiting this account. Try again after {exc.seconds} seconds."
-        ) from exc
-    except RPCError as exc:
-        logger.warning("Failed to sanitize Telegram profile for %s: %s", account.id, exc)
-        raise MarketplaceProfilePreparationError("Unable to update the Telegram profile. Please try again.") from exc
+    await _apply_and_verify_official_profile(
+        client,
+        first_name=first_name,
+        last_name=last_name,
+        account_id=account_id,
+        deadline=deadline,
+    )
 
     username = None
     for candidate in generate_username_candidates(
@@ -157,6 +227,7 @@ async def _prepare_account_for_sale(
                 client(UpdateUsernameRequest(username=candidate)),
                 operation="update username",
                 account_id=account_id,
+                deadline=deadline,
             )
         except UsernameOccupiedError:
             continue
@@ -178,7 +249,7 @@ async def _prepare_account_for_sale(
         )
 
     try:
-        await _delete_all_profile_photos(client, account_id)
+        await _delete_all_profile_photos(client, account_id, deadline=deadline)
         from app.services.account_service import _photo_path
 
         photo_path = _photo_path(account_id)
@@ -199,6 +270,11 @@ async def _prepare_account_for_sale(
     except Exception as exc:
         logger.warning("Failed to remove Telegram profile photos for %s: %s", account.id, exc)
         raise MarketplaceProfilePreparationError("Unable to remove Telegram profile photos. Please try again.") from exc
+
+    if not await _verify_official_bio(client, account_id, deadline=deadline):
+        raise MarketplaceProfilePreparationError(
+            "Telegram bio changed before listing. The account was not listed; please try again."
+        )
 
     account.first_name = first_name
     account.last_name = last_name
@@ -228,6 +304,7 @@ async def prepare_account_for_sale(
     returns an application error before an upstream proxy can time out.
     """
     started_at = time.monotonic()
+    deadline = started_at + PROFILE_PREPARATION_TIMEOUT_SECONDS
     try:
         return await asyncio.wait_for(
             _prepare_account_for_sale(
@@ -235,6 +312,7 @@ async def prepare_account_for_sale(
                 account,
                 rng=rng,
                 reserved_usernames=reserved_usernames,
+                deadline=deadline,
             ),
             timeout=PROFILE_PREPARATION_TIMEOUT_SECONDS,
         )
