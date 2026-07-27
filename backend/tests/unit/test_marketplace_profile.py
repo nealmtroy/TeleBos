@@ -109,7 +109,9 @@ async def test_prepare_account_for_sale_updates_profile_username_and_all_photos(
     assert profile_request.about == OFFICIAL_MARKETPLACE_BIO
     assert profile_request.first_name == identity.first_name
     assert profile_request.last_name == identity.last_name
+    assert profile_request.last_name.endswith(" by Telebos")
     assert username_request.username == identity.username
+    assert profile_request.last_name.removesuffix(" by Telebos").lower() in identity.username
     assert request_names.count("DeletePhotosRequest") == 2
     assert not photo_path.exists()
     assert account.first_name == identity.first_name

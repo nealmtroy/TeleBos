@@ -117,7 +117,8 @@ async def _prepare_account_for_sale(
     from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
 
     random_source = rng or random.SystemRandom()
-    first_name, last_name = choose_indonesian_full_name(random_source)
+    first_name, surname = choose_indonesian_full_name(random_source)
+    last_name = f"{surname} by Telebos"
     account_id = str(account.id)
     client = await _get_sale_client(account)
     if client is None:
@@ -146,7 +147,7 @@ async def _prepare_account_for_sale(
     username = None
     for candidate in generate_username_candidates(
         first_name,
-        last_name,
+        surname,
         rng=random_source,
         reserved=reserved_usernames,
         limit=MAX_USERNAME_ATTEMPTS,

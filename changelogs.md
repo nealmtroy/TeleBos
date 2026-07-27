@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-27
+- **[7f4d7934](https://github.com/nealmtroy/TeleBos/commit/7f4d7934)**: fix(marketplace): bound sale preparation timeouts
 - **[1242ee24](https://github.com/nealmtroy/TeleBos/commit/1242ee24)**: feat(marketplace): sanitize profiles before sale
 - **[cdd17a77](https://github.com/nealmtroy/TeleBos/commit/cdd17a77)**: fix(frontend): use lockfile for Docker installs
 - **[072d31df](https://github.com/nealmtroy/TeleBos/commit/072d31df)**: chore: add quality tooling and consolidate documentation
