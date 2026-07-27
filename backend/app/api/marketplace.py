@@ -20,6 +20,7 @@ from app.schemas.marketplace import (
     AccountAuditLogResponse,
 )
 from app.services import marketplace_service
+from app.services.marketplace_profile_service import MarketplaceProfilePreparationTimeoutError
 from app.utils.sanitize import sanitize_exception
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,11 @@ async def sell_accounts(
         account_ids = [str(aid) for aid in payload.account_ids]
         total_listed = await marketplace_service.sell_accounts(db, current_user, account_ids)
         await db.commit()
+        await marketplace_service.schedule_post_sale_cleanup(account_ids)
         return MarketplaceSellResponse(total_listed=total_listed)
+    except MarketplaceProfilePreparationTimeoutError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=504, detail=sanitize_exception(exc))
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

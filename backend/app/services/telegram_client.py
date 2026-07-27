@@ -36,6 +36,7 @@ class TelegramClientPool:
         self._locks: dict[str, asyncio.Lock] = {}
         # dict[account_id, {"client": TelegramClient, "last_accessed": float}]
         self._clients: dict[str, dict[str, Any]] = {}
+        self._cleanup_task: asyncio.Task[None] | None = None
 
     async def _cleanup_stale_clients(self) -> None:
         """Disconnect and remove clients that haven't been accessed recently,
@@ -140,9 +141,11 @@ class TelegramClientPool:
 
     async def get(self, account_id: str, session_string: str) -> TelegramClient | None:
         """Return an existing client or create a new one from a session string."""
-        await self._cleanup_stale_clients()
+        # Idle cleanup may query Telegram and the database. It must never delay
+        # an interactive operation such as marketplace profile preparation.
+        if self._cleanup_task is None or self._cleanup_task.done():
+            self._cleanup_task = asyncio.create_task(self._cleanup_stale_clients())
 
-        import asyncio
         if account_id not in self._locks:
             self._locks[account_id] = asyncio.Lock()
             
@@ -289,41 +292,54 @@ class TelegramClientPool:
         except Exception as e:
             logger.error("Failed to handle expired session for account %s: %s", account_id, e)
 
-    async def remove(self, account_id: str) -> None:
-        """Disconnect and remove a client from the pool."""
-        data = self._clients.pop(account_id, None)
-        if data is not None and data["client"]:
-            # Save the latest updates state to the DB before disconnecting
-            try:
-                client = data["client"]
-                if client.is_connected():
-                    from telethon.tl.functions.updates import GetStateRequest
-                    state = await client(GetStateRequest())
-                    from app.database import async_session_factory
-                    from app.models.telegram_account import TelegramAccount
-                    from sqlalchemy import update
-                    import uuid
-                    async with async_session_factory() as db:
-                        await db.execute(
-                            update(TelegramAccount)
-                            .where(TelegramAccount.id == uuid.UUID(account_id))
-                            .values(pts=state.pts, qts=state.qts, date=state.date)
-                        )
-                        await db.commit()
-            except Exception as e:
-                logger.debug("Failed to save update state on remove for account %s: %s", account_id, e)
+    async def remove(self, account_id: str, *, save_state: bool = True) -> None:
+        """Evict a client and disconnect it with bounded best-effort cleanup.
 
-            # Detach event handlers first to prevent memory leak
+        Marketplace listings pass ``save_state=False`` after committing so an
+        optional Telegram state snapshot cannot hold the HTTP response open.
+        """
+        lock = self._locks.setdefault(account_id, asyncio.Lock())
+        async with lock:
+            data = self._clients.pop(account_id, None)
+            if data is None or not data["client"]:
+                return
+            client = data["client"]
+
+            # Detach without asking the pool for the client again: it has already
+            # been evicted above, so this stays entirely local and non-blocking.
             try:
                 from app.services.event_relay import event_relay
-                await event_relay.detach(account_id)
-            except Exception as e:
-                logger.warning("Error detaching event handlers during remove for account %s: %s", account_id, e)
+
+                event_relay.detach_client(account_id, client)
+            except Exception as exc:
+                logger.warning("Error detaching event handlers during remove for account %s: %s", account_id, exc)
+
+            if save_state:
+                try:
+                    state = client.session.get_update_state(0)
+                    if state:
+                        from app.database import async_session_factory
+                        from app.models.telegram_account import TelegramAccount
+                        from sqlalchemy import update
+                        import uuid
+
+                        async with async_session_factory() as db:
+                            await asyncio.wait_for(
+                                db.execute(
+                                    update(TelegramAccount)
+                                    .where(TelegramAccount.id == uuid.UUID(account_id))
+                                    .values(pts=state.pts, qts=state.qts, date=state.date)
+                                ),
+                                timeout=2.0,
+                            )
+                            await asyncio.wait_for(db.commit(), timeout=2.0)
+                except Exception as exc:
+                    logger.debug("Failed to save update state on remove for account %s: %s", account_id, exc)
 
             try:
-                await asyncio.wait_for(data["client"].disconnect(), timeout=2.0)
-            except Exception:
-                pass
+                await asyncio.wait_for(client.disconnect(), timeout=2.0)
+            except Exception as exc:
+                logger.debug("Failed to disconnect client %s during removal: %s", account_id, exc)
 
     async def get_connected_clients(self) -> dict[str, TelegramClient]:
         """Return dict of still-connected clients."""

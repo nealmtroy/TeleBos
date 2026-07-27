@@ -139,17 +139,24 @@ class TelegramEventRelay:
         logger.info("Event handlers attached for account %s", account_id)
         return True
 
-    async def detach(self, account_id: str) -> None:
-        """Remove all event handlers for an account."""
+    def detach_client(self, account_id: str, client) -> None:
+        """Remove handlers using an already-held client without pool I/O."""
         handlers = self._handlers.pop(account_id, None)
         self._tg_id_map.pop(account_id, None)
         if handlers is None:
             return
+        for handler in handlers:
+            client.remove_event_handler(handler)
+        logger.info("Event handlers detached for account %s", account_id)
+
+    async def detach(self, account_id: str) -> None:
+        """Remove all event handlers for an account."""
         client = (await client_pool.get_connected_clients()).get(account_id)
         if client:
-            for handler in handlers:
-                client.remove_event_handler(handler)
-        logger.info("Event handlers detached for account %s", account_id)
+            self.detach_client(account_id, client)
+            return
+        self._handlers.pop(account_id, None)
+        self._tg_id_map.pop(account_id, None)
 
     # ── Event handlers ──────────────────────────────────────────────────────
 

@@ -78,20 +78,34 @@ export function useSellEligibleAccounts() {
   });
 }
 
+export const MARKETPLACE_SELL_TIMEOUT_MS = 55_000;
+
+export function isMarketplaceSellUnknownOutcome(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  const code = (error as { code?: string })?.code;
+  return status === 504 || code === "ECONNABORTED";
+}
+
 export function useSellAccounts() {
   const queryClient = useQueryClient();
+  const reconcileMarketplaceState = () => {
+    queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    queryClient.invalidateQueries({ queryKey: ["marketplace", "sell-eligible"] });
+    queryClient.invalidateQueries({ queryKey: ["marketplace", "stock"] });
+    queryClient.invalidateQueries({ queryKey: ["marketplace", "history"] });
+  };
+
   return useMutation({
     mutationFn: async (accountIds: string[]) => {
-      const { data } = await api.post("/marketplace/sell", {
-        account_ids: accountIds,
-      });
+      const { data } = await api.post(
+        "/marketplace/sell",
+        { account_ids: accountIds },
+        { timeout: MARKETPLACE_SELL_TIMEOUT_MS }
+      );
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["marketplace", "sell-eligible"] });
-      queryClient.invalidateQueries({ queryKey: ["marketplace", "stock"] });
-    },
+    onSuccess: reconcileMarketplaceState,
+    onError: reconcileMarketplaceState,
   });
 }
 

@@ -9,7 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import api from "@/lib/api";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
-import { useSellAccounts, useMarketplacePricing, useCancelSellAccount } from "@/hooks/use-marketplace";
+import {
+  isMarketplaceSellUnknownOutcome,
+  useSellAccounts,
+  useMarketplacePricing,
+  useCancelSellAccount,
+} from "@/hooks/use-marketplace";
+import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/store/auth-store";
 
 
@@ -52,6 +58,7 @@ function CopyableId({ id }: { id: number | null }) {
 
 export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const _ = useT();
+  const { toast } = useToast();
   useProfileSync(account.id);
   const { data: stats, isLoading: statsLoading, refetch } = useAccountStats(account.id);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -72,10 +79,21 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
     setSelling(true);
     try {
       await sellAccountsMutation.mutateAsync([account.id]);
-      await fetchMe();
+      void fetchMe();
       setSellOpen(false);
     } catch (err) {
       console.error(err);
+      const isUnknownOutcome = isMarketplaceSellUnknownOutcome(err);
+      toast({
+        variant: "error",
+        title: isUnknownOutcome ? "Sale status needs confirmation" : "Unable to sell account",
+        description: isUnknownOutcome
+          ? "Telegram may have finished updating this account. We refreshed your accounts—check its sale status before trying again."
+          : "The account was not listed. Please try again.",
+      });
+      if (isUnknownOutcome) {
+        setSellOpen(false);
+      }
     } finally {
       setSelling(false);
     }

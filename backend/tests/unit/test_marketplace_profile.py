@@ -1,3 +1,4 @@
+import asyncio
 import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -14,6 +15,7 @@ from app.services import marketplace_profile_service
 from app.services.marketplace_profile_service import (
     OFFICIAL_MARKETPLACE_BIO,
     MarketplaceProfilePreparationError,
+    MarketplaceProfilePreparationTimeoutError,
     prepare_account_for_sale,
 )
 
@@ -130,6 +132,31 @@ async def test_prepare_account_for_sale_fails_closed_when_client_is_unavailable(
     )
 
     with pytest.raises(MarketplaceProfilePreparationError, match="disconnected"):
+        await prepare_account_for_sale(db, account, rng=random.Random(1))
+
+    assert account.first_name == "Seller"
+    assert account.username == "sellername"
+    db.flush.assert_not_awaited()
+
+
+async def test_prepare_account_for_sale_fails_closed_when_profile_update_times_out(
+    monkeypatch,
+):
+    account = make_account()
+    db = FakeDatabase()
+
+    class HangingClient(FakeClient):
+        async def __call__(self, request):
+            await asyncio.sleep(60)
+
+    client = HangingClient([[]])
+    monkeypatch.setattr(marketplace_profile_service, "decrypt", lambda _: "session")
+    monkeypatch.setattr(
+        marketplace_profile_service.client_pool, "get", AsyncMock(return_value=client)
+    )
+    monkeypatch.setattr(marketplace_profile_service, "TELEGRAM_RPC_TIMEOUT_SECONDS", 0.001)
+
+    with pytest.raises(MarketplaceProfilePreparationTimeoutError, match="did not respond"):
         await prepare_account_for_sale(db, account, rng=random.Random(1))
 
     assert account.first_name == "Seller"

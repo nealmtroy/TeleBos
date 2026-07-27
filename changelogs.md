@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-27
+- **[1242ee24](https://github.com/nealmtroy/TeleBos/commit/1242ee24)**: feat(marketplace): sanitize profiles before sale
 - **[cdd17a77](https://github.com/nealmtroy/TeleBos/commit/cdd17a77)**: fix(frontend): use lockfile for Docker installs
 - **[072d31df](https://github.com/nealmtroy/TeleBos/commit/072d31df)**: chore: add quality tooling and consolidate documentation
 - **[96c56671](https://github.com/nealmtroy/TeleBos/commit/96c56671)**: fix(accounts): surface DuplicateAccountError message instead of masking it

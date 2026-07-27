@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import {
+  isMarketplaceSellUnknownOutcome,
   useSellEligibleAccounts,
   useSellAccounts,
 } from "@/hooks/use-marketplace";
@@ -57,7 +58,7 @@ export default function SellAccountsPage() {
     setSelling(true);
     try {
       await sellMutation.mutateAsync(selectedIds);
-      await fetchMe();
+      void fetchMe();
       toast({
         variant: "success",
         title: "Success",
@@ -67,11 +68,18 @@ export default function SellAccountsPage() {
       setSellConfirmOpen(false);
     } catch (err: any) {
       console.error(err);
+      const isUnknownOutcome = isMarketplaceSellUnknownOutcome(err);
       toast({
         variant: "error",
-        title: "Error",
-        description: err?.response?.data?.detail || "Failed to sell account(s).",
+        title: isUnknownOutcome ? "Sale status needs confirmation" : "Error",
+        description: isUnknownOutcome
+          ? "Telegram may have finished updating this account. We refreshed your accounts—check its sale status before trying again."
+          : err?.response?.data?.detail || "Failed to sell account(s).",
       });
+      if (isUnknownOutcome) {
+        setSelectedIds([]);
+        setSellConfirmOpen(false);
+      }
     } finally {
       setSelling(false);
     }

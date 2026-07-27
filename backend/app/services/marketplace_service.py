@@ -1,5 +1,6 @@
 """Marketplace service logic — buy and sell Telegram accounts, manage stock."""
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from uuid import UUID
@@ -175,7 +176,6 @@ async def sell_accounts(
     broadcast_jobs = active_broadcasts.scalars().all()
     invite_jobs = active_invites.scalars().all()
 
-    from app.services.event_relay import event_relay
     from app.services.invite_service import _running_invite_tasks
 
     for account in accounts:
@@ -198,8 +198,6 @@ async def sell_accounts(
         account.auto_reply_enabled = False
         account.sale_listed_at = datetime.now(timezone.utc)
 
-        await event_relay.detach(str(account.id))
-        await client_pool.remove(str(account.id))
         db.add(
             AccountAuditLog(
                 user_id=user.id,
@@ -213,6 +211,20 @@ async def sell_accounts(
 
     await db.flush()
     return len(accounts)
+
+
+async def _post_sale_cleanup(account_id: str) -> None:
+    """Evict and disconnect a sold client without delaying the sale response."""
+    try:
+        await client_pool.remove(account_id, save_state=False)
+    except Exception as exc:
+        logger.warning("Post-sale cleanup failed for account %s: %s", account_id, exc)
+
+
+async def schedule_post_sale_cleanup(account_ids: list[str]) -> None:
+    """Schedule best-effort client cleanup after the listing transaction commits."""
+    for account_id in account_ids:
+        asyncio.create_task(_post_sale_cleanup(account_id))
 
 
 async def get_stock_categories(db: AsyncSession) -> list[dict]:
