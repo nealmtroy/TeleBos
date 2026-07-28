@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useAccount, getPhotoUrl, useDeleteAccount, useCheckSpam, useProfileSync } from "@/hooks/use-accounts";
+import { useAccount, useDeleteAccount, useCheckSpam, useProfileSync } from "@/hooks/use-accounts";
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
@@ -14,27 +14,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SpamAppealDialog } from "@/components/accounts/spam-appeal-dialog";
 import { useCancelSellAccount } from "@/hooks/use-marketplace";
 import { useAuthStore } from "@/store/auth-store";
-
-function ProfilePhoto({ account }: { account: { id: string; first_name: string | null; phone: string; photo_version?: number } }) {
-  const [error, setError] = useState(false);
-  const initials = (account.first_name?.[0] || account.phone?.slice(-2) || "T").toUpperCase();
-  const photoUrl = getPhotoUrl(account.id, account.photo_version);
-
-  if (error) {
-    return (
-      <span className="text-primary-700 text-2xl font-bold">{initials}</span>
-    );
-  }
-
-  return (
-    <img
-      src={photoUrl}
-      alt=""
-      className="w-full h-full object-cover"
-      onError={() => setError(true)}
-    />
-  );
-}
+import { AccountAvatar } from "@/components/accounts/account-avatar";
 
 export default function AccountDetailPage() {
   const _ = useT();
@@ -161,9 +141,17 @@ export default function AccountDetailPage() {
       {/* Profile card */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-start gap-4">
-          <div className="w-20 h-20 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <ProfilePhoto account={account} />
-          </div>
+          <AccountAvatar
+            accountId={account.id}
+            telegramId={account.telegram_id}
+            firstName={account.first_name}
+            phone={account.phone}
+            colorId={account.color_id}
+            hasProfilePhoto={account.has_profile_photo}
+            photoVersion={account.photo_version}
+            size="xl"
+            className="size-20 text-2xl"
+          />
           <div className="flex-1 space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>

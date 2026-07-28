@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useAccount, getPhotoUrl, useUploadProfilePhoto, useDeleteProfilePhoto, useUpdateAutoReply } from "@/hooks/use-accounts";
+import { useAccount, useUploadProfilePhoto, useDeleteProfilePhoto, useUpdateAutoReply } from "@/hooks/use-accounts";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
 import { ArrowLeft, Camera, Trash2, Loader2, Globe, ShieldCheck, Key, Bell, UserCog, Lock, Users, Phone, MessageSquare, Mail } from "lucide-react";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { AccountAvatar } from "@/components/accounts/account-avatar";
 
 import {
   invalidateTwoFAAccountQueries,
@@ -59,8 +60,6 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
   const uploadMutation = useUploadProfilePhoto();
   const deleteMutation = useDeleteProfilePhoto();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [msg, setMsg] = useState("");
-  const [photoKey, setPhotoKey] = useState(Date.now());
   const [deletePhotoOpen, setDeletePhotoOpen] = useState(false);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -69,7 +68,6 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
     try {
       await uploadMutation.mutateAsync({ accountId, file });
       toast({ variant: "success", description: _("accountSettings.photoUpdated") });
-      setPhotoKey(Date.now());
     } catch (err: any) {
       toast({ variant: "error", description: err?.response?.data?.detail || _("accountSettings.uploadFailed") });
     }
@@ -80,52 +78,26 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
     try {
       await deleteMutation.mutateAsync(accountId);
       toast({ variant: "success", description: _("accountSettings.photoDeleted") });
-      setPhotoKey(Date.now());
     } catch (err: any) {
       toast({ variant: "error", description: err?.response?.data?.detail || _("accountSettings.deleteFailed") });
     }
   }
 
-  // Try to show photo; fallback to initials on error
-  const photoUrl = getPhotoUrl(accountId, account?.photo_version);
-
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.profilePhoto")}</h2>
       <div className="flex items-center gap-6">
-        <div className="relative">
-          <img
-            src={photoUrl}
-            alt="Profile"
-            className="w-20 h-20 rounded-full object-cover border border-gray-200 bg-gray-100"
-            onError={(e) => {
-              // Fallback to initials on error (no photo)
-              const target = e.currentTarget;
-              target.style.display = "none";
-              const parent = target.parentElement;
-              if (parent) {
-                const fallback = parent.querySelector<HTMLDivElement>(".initials-fallback");
-                if (fallback) fallback.style.display = "flex";
-              }
-            }}
-            onLoad={(e) => {
-              // Photo loaded successfully — hide fallback
-              const target = e.currentTarget;
-              target.style.display = "block";
-              const parent = target.parentElement;
-              if (parent) {
-                const fallback = parent.querySelector<HTMLDivElement>(".initials-fallback");
-                if (fallback) fallback.style.display = "none";
-              }
-            }}
-          />
-          <div
-            className="initials-fallback w-20 h-20 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xl font-bold border border-gray-200"
-            style={{ display: "none" }}
-          >
-            {(account?.first_name || "T")[0].toUpperCase()}
-          </div>
-        </div>
+        <AccountAvatar
+          accountId={accountId}
+          telegramId={account?.telegram_id}
+          firstName={account?.first_name}
+          phone={account?.phone}
+          colorId={account?.color_id}
+          hasProfilePhoto={account?.has_profile_photo}
+          photoVersion={account?.photo_version}
+          size="xl"
+          className="size-20 text-xl border border-gray-200"
+        />Japgollyassistant to=functions.Edit ’winijson  微信天天彩票ែក{
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <button
