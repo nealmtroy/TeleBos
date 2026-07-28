@@ -547,6 +547,7 @@ async def list_public_chats_index(
             online_count=r.online_count,
             invite_link=r.invite_link,
             account_id=str(r.account_id) if r.account_id else None,
+            color_id=getattr(r, "color_id", None),
         ))
 
     return ChatListResponse(chats=chats, total=total, page=page, page_size=page_size)

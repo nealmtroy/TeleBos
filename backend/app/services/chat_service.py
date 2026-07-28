@@ -49,6 +49,9 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 last_msg = d.message.text or "[non-text message]" if d.message.text else ""
                 last_time = d.message.date
 
+            peer_color_obj = getattr(d.entity, "color", None)
+            color_id = getattr(peer_color_obj, "color", None) if peer_color_obj else None
+
             values.append({
                 "id": uuid.uuid4(),
                 "account_id": account.id,
@@ -56,6 +59,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "title": d.name or d.title or "Unknown",
                 "username": getattr(d.entity, "username", None),
                 "type": chat_type_val,
+                "color_id": color_id,
                 "unread_count": d.unread_count or 0,
                 "last_message": last_msg,
                 "last_message_date": last_time,
@@ -87,6 +91,9 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                     last_msg = d.message.text or "[non-text message]" if d.message.text else ""
                     last_time = d.message.date
 
+                peer_color_obj = getattr(d.entity, "color", None)
+                color_id = getattr(peer_color_obj, "color", None) if peer_color_obj else None
+
                 values.append({
                     "id": uuid.uuid4(),
                     "account_id": account.id,
@@ -94,6 +101,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                     "title": d.name or d.title or "Unknown",
                     "username": getattr(d.entity, "username", None),
                     "type": chat_type_val,
+                    "color_id": color_id,
                     "unread_count": d.unread_count or 0,
                     "last_message": last_msg,
                     "last_message_date": last_time,
@@ -128,6 +136,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "title": stmt.excluded.title,
                 "username": stmt.excluded.username,
                 "type": stmt.excluded.type,
+                "color_id": stmt.excluded.color_id,
                 "unread_count": stmt.excluded.unread_count,
                 "last_message": stmt.excluded.last_message,
                 "last_message_date": stmt.excluded.last_message_date,
@@ -332,6 +341,7 @@ async def get_dialogs(
             "online_count": c.online_count,
             "invite_link": c.invite_link,
             "account_id": str(c.account_id) if c.account_id else None,
+            "color_id": c.color_id,
         })
 
     return page_dialogs, total

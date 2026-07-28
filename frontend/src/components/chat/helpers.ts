@@ -11,7 +11,7 @@ import {
   Phone,
 } from "lucide-react";
 
-export function getAvatarGradient(peerId: number) {
+export function getAvatarGradient(peerId: number, colorId?: number | null) {
   const colors = [
     "from-red-400 to-red-600",
     "from-orange-400 to-orange-600",
@@ -22,6 +22,10 @@ export function getAvatarGradient(peerId: number) {
     "from-violet-400 to-violet-600",
     "from-pink-400 to-pink-600",
   ];
+  if (colorId !== undefined && colorId !== null) {
+    const idx = Math.abs(colorId) % colors.length;
+    return colors[idx];
+  }
   const idx = Math.abs(peerId) % colors.length;
   return colors[idx];
 }

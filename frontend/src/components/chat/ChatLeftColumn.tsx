@@ -50,7 +50,10 @@ const AVATAR_COLORS = [
   { top: "#FF8AAC", bottom: "#D95574" },
 ];
 
-function getChatAvatarColor(chatId: number) {
+function getChatAvatarColor(chatId: number, colorId?: number | null) {
+  if (colorId !== undefined && colorId !== null) {
+    return AVATAR_COLORS[Math.abs(colorId) % AVATAR_COLORS.length];
+  }
   return AVATAR_COLORS[Math.abs(chatId) % AVATAR_COLORS.length];
 }
 
@@ -712,7 +715,7 @@ export function ChatLeftColumn({
                     ? { top: "#9AD164", bottom: "#46BA43" }
                     : isChannel
                     ? { top: "#B694F9", bottom: "#6C61DF" }
-                    : getChatAvatarColor(chat.chat_id);
+                    : getChatAvatarColor(chat.chat_id, (chat as any).color_id);
 
                   return (
                     <div
