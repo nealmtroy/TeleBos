@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-28
+- **[8fc5c281](https://github.com/nealmtroy/TeleBos/commit/8fc5c281)**: feat(chat): support Telegram peer color and default fallback for avatars
 - **[4b5df2c9](https://github.com/nealmtroy/TeleBos/commit/4b5df2c9)**: fix(accounts): synchronize Telegram 2FA status
 - **[d1e9fdb4](https://github.com/nealmtroy/TeleBos/commit/d1e9fdb4)**: fix(frontend): refresh account caches after 2FA changes
 - **[beced2ab](https://github.com/nealmtroy/TeleBos/commit/beced2ab)**: fix(marketplace): avoid profile verification floods
