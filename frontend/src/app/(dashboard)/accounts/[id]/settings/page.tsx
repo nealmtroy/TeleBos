@@ -14,6 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import {
   invalidateTwoFAAccountQueries,
@@ -28,18 +31,25 @@ export default function AccountSettingsPage() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href={`/accounts/${id}`} className="p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft className="h-5 w-5 text-gray-500" />
+    <div className="mx-auto max-w-3xl space-y-5 pb-8">
+      <header className="flex items-start gap-3 border-b border-border pb-5">
+        <Link
+          href={`/accounts/${id}`}
+          aria-label="Back to account"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <ArrowLeft className="size-4" />
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("accountSettings.title")}</h1>
-          <p className="text-sm text-gray-500">
-            {account?.first_name || "Account"} — {account?.phone || "Telegram"} {user?.email ? <span className="text-gray-400">· {user.email}</span> : null}
+        <div className="min-w-0">
+          <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground">
+            {_("accountSettings.title")}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {account?.first_name || "Account"} · {account?.phone || "Telegram"}
+            {user?.email ? <span> · {user.email}</span> : null}
           </p>
         </div>
-      </div>
+      </header>
 
       <PhotoUpload accountId={id} account={account} />
       <ProfileEditor accountId={id} account={account} />
@@ -122,14 +132,20 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
               {_("accountSettings.delete")}
             </button>
           </div>
+          <Label htmlFor="profile-photo-upload" className="sr-only">
+            {_("accountSettings.changePhoto")}
+          </Label>
           <input
+            id="profile-photo-upload"
+            name="profile_photo"
             ref={fileInputRef}
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="hidden"
+            aria-describedby="profile-photo-hint"
+            className="sr-only"
           />
-          <p className="text-xs text-gray-400">{_("accountSettings.photoHint")}</p>
+          <p id="profile-photo-hint" className="text-xs text-muted-foreground">{_("accountSettings.photoHint")}</p>
         </div>
       </div>
 
@@ -157,7 +173,7 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
   const [lastName, setLastName] = useState(account?.last_name || "");
   const [username, setUsername] = useState(account?.username || "");
   const [bio, setBio] = useState(account?.bio || "");
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   // Sync state when account data loads/changes
   useEffect(() => {
@@ -178,11 +194,11 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      setMsg(_("accountSettings.profileUpdated"));
-      setTimeout(() => setMsg(""), 3000);
+      setMsg({ kind: "success", text: _("accountSettings.profileUpdated") });
+      setTimeout(() => setMsg(null), 3000);
     },
     onError: (err: any) => {
-      setMsg(err?.response?.data?.detail || _("accountSettings.updateFailed"));
+      setMsg({ kind: "error", text: err?.response?.data?.detail || _("accountSettings.updateFailed") });
     },
   });
 
@@ -190,37 +206,44 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.profile")}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">{_("accountSettings.firstName")}</label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-first-name">{_("accountSettings.firstName")}</Label>
+          <Input
+            id="profile-first-name"
+            name="first_name"
+            autoComplete="given-name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           />
         </div>
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">{_("accountSettings.lastName")}</label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-last-name">{_("accountSettings.lastName")}</Label>
+          <Input
+            id="profile-last-name"
+            name="last_name"
+            autoComplete="family-name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           />
         </div>
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">{_("accountSettings.username")}</label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-username">{_("accountSettings.username")}</Label>
+          <Input
+            id="profile-username"
+            name="username"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
             placeholder={_("accountSettings.usernamePlaceholder")}
           />
         </div>
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">{_("accountSettings.bio")}</label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-bio">{_("accountSettings.bio")}</Label>
+          <Input
+            id="profile-bio"
+            name="bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           />
         </div>
       </div>
@@ -234,12 +257,11 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
         </button>
         {msg && (
           <span
-            className={cn(
-              "text-sm",
-              msg.startsWith("Profile") ? "text-green-600" : "text-red-500"
-            )}
+            role={msg.kind === "error" ? "alert" : "status"}
+            aria-live={msg.kind === "error" ? "assertive" : "polite"}
+            className={cn("text-sm", msg.kind === "success" ? "text-green-600" : "text-red-500")}
           >
-            {msg}
+            {msg.text}
           </span>
         )}
       </div>
@@ -288,19 +310,25 @@ const PRIVACY_OPTIONS = [
 ];
 
 function PrivacySelect({
+  id,
+  name,
   value,
   onChange,
   _,
 }: {
+  id: string;
+  name: string;
   value: string;
   onChange: (value: string) => void;
   _: (key: string, params?: any) => string;
 }) {
   return (
     <select
+      id={id}
+      name={name}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white min-w-[130px]"
+      className="min-w-[130px] rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
     >
       {PRIVACY_OPTIONS.map((opt) => (
         <option key={opt.value} value={opt.value}>
@@ -397,8 +425,12 @@ function PrivacySettings({ accountId }: { accountId: string }) {
                   key={item.key}
                   className="flex items-center justify-between py-1"
                 >
-                  <span className="text-sm text-gray-700">{_(item.label)}</span>
+                  <Label htmlFor={`privacy-${item.key}`} className="text-sm font-normal text-foreground">
+                    {_(item.label)}
+                  </Label>
                   <PrivacySelect
+                    id={`privacy-${item.key}`}
+                    name={`privacy_${item.key}`}
                     value={getValue(item.key)}
                     onChange={(v) => handleChange(item.key, v)}
                     _={_}
@@ -558,42 +590,52 @@ function TwoFASettings({ accountId }: { accountId: string }) {
 
       {!twofa?.enabled ? (
         /* ── Enable 2FA ────────────────────────── */
-        <div className="flex gap-2">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={_("accountSettings.new2faPassword")}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-          />
-          <button
-            onClick={() => mutation.mutate({ action: "enable", password })}
-            disabled={!password || mutation.isPending}
-            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition shrink-0"
-          >
-            {_("accountSettings.enable2fa")}
-          </button>
+        <div className="space-y-1.5">
+          <Label htmlFor="twofa-enable-password">{_("accountSettings.new2faPassword")}</Label>
+          <div className="flex gap-2">
+            <Input
+              id="twofa-enable-password"
+              name="twofa_enable_password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="flex-1"
+            />
+            <button
+              onClick={() => mutation.mutate({ action: "enable", password })}
+              disabled={!password || mutation.isPending}
+              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition shrink-0"
+            >
+              {_("accountSettings.enable2fa")}
+            </button>
+          </div>
         </div>
       ) : (
         <>
           {tab === "main" && (
             /* ── Main 2FA actions ──────────────── */
             <div className="space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={_("accountSettings.current2faPassword")}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                />
-                <button
-                  onClick={() => mutation.mutate({ action: "disable", password })}
-                  disabled={!password || mutation.isPending}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-300 transition shrink-0"
-                >
-                  {_("accountSettings.disable2fa")}
-                </button>
+              <div className="space-y-1.5">
+                <Label htmlFor="twofa-disable-password">{_("accountSettings.current2faPassword")}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="twofa-disable-password"
+                    name="twofa_disable_password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="flex-1"
+                  />
+                  <button
+                    onClick={() => mutation.mutate({ action: "disable", password })}
+                    disabled={!password || mutation.isPending}
+                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-300 transition shrink-0"
+                  >
+                    {_("accountSettings.disable2fa")}
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
@@ -621,7 +663,7 @@ function TwoFASettings({ accountId }: { accountId: string }) {
 
               {twofa?.hint && (
                 <div className="pt-2 border-t border-gray-100">
-                  <label className="text-sm text-gray-700 block mb-1">{_("accountSettings.passwordHint")}</label>
+                  <p className="mb-1 text-sm font-medium text-foreground">{_("accountSettings.passwordHint")}</p>
                   <p className="text-sm text-gray-500">{twofa.hint}</p>
                 </div>
               )}
@@ -631,27 +673,18 @@ function TwoFASettings({ accountId }: { accountId: string }) {
           {tab === "change" && (
             /* ── Change Password ───────────────── */
             <div className="space-y-3">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={_("accountSettings.current2faPassword")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-              />
-              <input
-                type="password"
-                value={newPass}
-                onChange={(e) => setNewPass(e.target.value)}
-                placeholder={_("accountSettings.newPassword")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-              />
-              <input
-                type="password"
-                value={confirmPass}
-                onChange={(e) => setConfirmPass(e.target.value)}
-                placeholder={_("accountSettings.confirmPassword")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-              />
+              <div className="space-y-1.5">
+                <Label htmlFor="twofa-change-current-password">{_("accountSettings.current2faPassword")}</Label>
+                <Input id="twofa-change-current-password" name="twofa_current_password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="twofa-change-new-password">{_("accountSettings.newPassword")}</Label>
+                <Input id="twofa-change-new-password" name="twofa_new_password" type="password" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="twofa-change-confirm-password">{_("accountSettings.confirmPassword")}</Label>
+                <Input id="twofa-change-confirm-password" name="twofa_confirm_password" type="password" autoComplete="new-password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} />
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -688,20 +721,14 @@ function TwoFASettings({ accountId }: { accountId: string }) {
                 </div>
               ) : (
                 <>
-                  <input
-                    type="text"
-                    value={recoveryCode}
-                    onChange={(e) => setRecoveryCode(e.target.value)}
-                    placeholder={_("accountSettings.recoveryCode")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                  />
-                  <input
-                    type="password"
-                    value={newPass}
-                    onChange={(e) => setNewPass(e.target.value)}
-                    placeholder={_("accountSettings.newPassword")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                  />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="twofa-recovery-code">{_("accountSettings.recoveryCode")}</Label>
+                    <Input id="twofa-recovery-code" name="twofa_recovery_code" type="text" autoComplete="one-time-code" value={recoveryCode} onChange={(e) => setRecoveryCode(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="twofa-recovery-new-password">{_("accountSettings.newPassword")}</Label>
+                    <Input id="twofa-recovery-new-password" name="twofa_recovery_new_password" type="password" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => mutation.mutate({ action: "recover", recovery_code: recoveryCode, new_password: newPass })}
@@ -724,20 +751,14 @@ function TwoFASettings({ accountId }: { accountId: string }) {
             <div className="space-y-3">
               {!emailNeedsConfirm ? (
                 <>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={_("accountSettings.current2faPassword")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                  />
-                  <input
-                    type="email"
-                    value={recoveryEmail}
-                    onChange={(e) => setRecoveryEmail(e.target.value)}
-                    placeholder={_("accountSettings.recoveryEmailPlaceholder")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                  />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="twofa-recovery-email-password">{_("accountSettings.current2faPassword")}</Label>
+                    <Input id="twofa-recovery-email-password" name="twofa_recovery_email_password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="twofa-recovery-email">{_("accountSettings.recoveryEmail")}</Label>
+                    <Input id="twofa-recovery-email" name="twofa_recovery_email" type="email" autoComplete="email" value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} placeholder={_("accountSettings.recoveryEmailPlaceholder")} />
+                  </div>
                   {twofa?.unconfirmed_email_pattern && (
                     <p className="text-xs text-amber-600">
                       {twofa.unconfirmed_email_pattern} — {_("accountSettings.waitingConfirmation")}
@@ -761,13 +782,10 @@ function TwoFASettings({ accountId }: { accountId: string }) {
                   <p className="text-sm text-gray-500">
                     {_("accountSettings.recoveryEmailConfirmInfo")}
                   </p>
-                  <input
-                    type="text"
-                    value={emailConfirmCode}
-                    onChange={(e) => setEmailConfirmCode(e.target.value)}
-                    placeholder={_("accountSettings.verificationCode")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                  />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="twofa-recovery-email-confirmation-code">{_("accountSettings.verificationCode")}</Label>
+                    <Input id="twofa-recovery-email-confirmation-code" name="twofa_recovery_email_confirmation_code" type="text" autoComplete="one-time-code" value={emailConfirmCode} onChange={(e) => setEmailConfirmCode(e.target.value)} />
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => mutation.mutate({ action: "confirm-email", code: emailConfirmCode })}
@@ -872,42 +890,52 @@ function LoginEmailSettings({ accountId }: { accountId: string }) {
       <p className="text-sm text-gray-500 mb-3">{_("accountSettings.changeLoginEmailDesc")}</p>
 
       {step === "idle" ? (
-        <div className="flex gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={_("accountSettings.newLoginEmail")}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-          />
-          <button
-            onClick={() => sendMutation.mutate(email)}
-            disabled={!email || sendMutation.isPending}
-            className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 transition shrink-0"
-          >
-            {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : _("accountSettings.sendVerificationCode")}
-          </button>
+        <div className="space-y-1.5">
+          <Label htmlFor="login-email">{_("accountSettings.newLoginEmail")}</Label>
+          <div className="flex gap-2">
+            <Input
+              id="login-email"
+              name="login_email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="flex-1"
+            />
+            <button
+              onClick={() => sendMutation.mutate(email)}
+              disabled={!email || sendMutation.isPending}
+              className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 transition shrink-0"
+            >
+              {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : _("accountSettings.sendVerificationCode")}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-gray-500">
             Code sent to <strong>{email}</strong>
           </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={_("accountSettings.verificationCode")}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-            />
-            <button
-              onClick={() => verifyMutation.mutate()}
-              disabled={!code || verifyMutation.isPending}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition shrink-0"
-            >
-              {verifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : _("accountSettings.verifyEmail")}
-            </button>
+          <div className="space-y-1.5">
+            <Label htmlFor="login-email-verification-code">{_("accountSettings.verificationCode")}</Label>
+            <div className="flex gap-2">
+              <Input
+                id="login-email-verification-code"
+                name="login_email_verification_code"
+                type="text"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="flex-1"
+              />
+              <button
+                onClick={() => verifyMutation.mutate()}
+                disabled={!code || verifyMutation.isPending}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition shrink-0"
+              >
+                {verifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : _("accountSettings.verifyEmail")}
+              </button>
+            </div>
           </div>
           <button
             onClick={() => { setStep("idle"); setEmail(""); setCode(""); }}
@@ -961,33 +989,39 @@ function AutoReplySettings({ accountId, account }: { accountId: string; account:
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.autoReply")}</h2>
-      <p className="text-sm text-gray-500 mb-4">
+      <p id="auto-reply-description" className="text-sm text-gray-500 mb-4">
         {_("accountSettings.autoReplyDesc")}
       </p>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <label className="relative inline-flex items-center cursor-pointer">
+          <Label htmlFor="auto-reply-enabled" className="relative inline-flex cursor-pointer items-center">
             <input
+              id="auto-reply-enabled"
+              name="auto_reply_enabled"
               type="checkbox"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
-              className="sr-only peer"
+              aria-describedby="auto-reply-description"
+              className="peer sr-only"
             />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-          </label>
-          <span className="text-sm text-gray-700">
+            <span className="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-primary peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-checked:after:translate-x-full after:absolute after:start-0.5 after:size-5 after:rounded-full after:border after:border-border after:bg-background after:transition-transform" />
+            <span className="sr-only">{_("accountSettings.autoReply")}</span>
+          </Label>
+          <span className="text-sm text-foreground">
             {enabled ? _("accountSettings.autoReplyOn") : _("accountSettings.autoReplyOff")}
           </span>
         </div>
 
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">{_("accountSettings.replyMessage")}</label>
-          <textarea
+        <div className="space-y-1.5">
+          <Label htmlFor="auto-reply-text">{_("accountSettings.replyMessage")}</Label>
+          <Textarea
+            id="auto-reply-text"
+            name="auto_reply_text"
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             placeholder={_("accountSettings.replyMessagePlaceholder")}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none"
+            className="resize-none"
             disabled={!enabled}
           />
         </div>

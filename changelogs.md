@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-28
+- **[01291ac8](https://github.com/nealmtroy/TeleBos/commit/01291ac8)**: fix(settings): clean up junk text in AccountAvatar and add aria-label
 - **[bc3b4225](https://github.com/nealmtroy/TeleBos/commit/bc3b4225)**: fix(avatar): avoid missing photo requests on account pages
 - **[39089753](https://github.com/nealmtroy/TeleBos/commit/39089753)**: feat(avatar): cache Telegram avatar metadata
 - **[b34bd092](https://github.com/nealmtroy/TeleBos/commit/b34bd092)**: style(chat): change fallback avatars background from gradients to flat colors
