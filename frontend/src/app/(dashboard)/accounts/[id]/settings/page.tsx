@@ -97,7 +97,8 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
           photoVersion={account?.photo_version}
           size="xl"
           className="size-20 text-xl border border-gray-200"
-        />Japgollyassistant to=functions.Edit ’winijson  微信天天彩票ែក{
+          aria-label="Profile photo"
+        />
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <button
