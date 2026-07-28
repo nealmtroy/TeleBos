@@ -37,7 +37,9 @@ def _auth(db, user, account_id):
 
 
 @router.get("/privacy", response_model=PrivacySettingsResponse)
-async def get_privacy(account_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+async def get_privacy(
+    account_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)
+):
     account = await _auth(db, user, account_id)
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -94,9 +96,10 @@ async def get_2fa_status(
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
-    # Sync DB field with live Telegram status so the account card stays accurate
-    if result.get("enabled") != account.twofa_enabled:
-        account.twofa_enabled = result.get("enabled", False)
+    # Only successful Telegram checks may change the persisted cache. A fallback
+    # response preserves the last known value when Telegram is temporarily unavailable.
+    if result["live_checked"] and result["enabled"] != account.twofa_enabled:
+        account.twofa_enabled = result["enabled"]
         await db.flush()
 
     return TwoFAStatusResponse(**result)
@@ -215,7 +218,9 @@ async def change_2fa_password(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        await settings_service.change_2fa_password(account, payload.old_password, payload.new_password)
+        await settings_service.change_2fa_password(
+            account, payload.old_password, payload.new_password
+        )
         await db.flush()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

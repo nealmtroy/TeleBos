@@ -15,6 +15,7 @@ from app.models.user import User
 from app.services.telegram_client import client_pool
 from app.utils.encryption import encrypt, decrypt
 from app.utils.session_converter import convert_to_telethon
+from app.services.twofa_service import get_live_2fa_status
 
 class DuplicateAccountError(Exception):
     """Raised when trying to add a Telegram account that already exists in the system.
@@ -291,14 +292,8 @@ async def verify_code(
     if not me or not me.id:
         raise ValueError("Gagal mengambil informasi profil Telegram.")
 
-    # Check live 2FA status from Telegram
-    twofa_enabled = False
-    try:
-        from telethon.tl.functions.account import GetPasswordRequest
-        pwd = await unauth_client(GetPasswordRequest())
-        twofa_enabled = pwd.has_password
-    except Exception:
-        pass
+    # A failed lookup is unknown, not evidence that 2FA is disabled.
+    live_twofa_status = await get_live_2fa_status(unauth_client)
 
     if db is not None and me.id:
         existing = await db.execute(
@@ -326,7 +321,9 @@ async def verify_code(
                 existing_acc.first_name = me.first_name
                 existing_acc.last_name = me.last_name
                 existing_acc.username = me.username
-                existing_acc.twofa_enabled = twofa_enabled
+                existing_acc.phone_verified = True
+                if live_twofa_status is not None:
+                    existing_acc.twofa_enabled = live_twofa_status["enabled"]
                 if twofa_password:
                     existing_acc.twofa_password = encrypt(twofa_password)
                 existing_acc.is_active = True
@@ -349,7 +346,7 @@ async def verify_code(
         last_name=me.last_name,
         username=me.username,
         telegram_id=me.id,
-        twofa_enabled=twofa_enabled,
+        twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
     )
     if twofa_password:
         account.twofa_password = encrypt(twofa_password)
@@ -399,6 +396,7 @@ async def login_with_session(
         if not await test_client.is_user_authorized():
             raise ValueError("Session string is invalid or expired")
         me = await test_client.get_me()
+        live_twofa_status = await get_live_2fa_status(test_client)
     finally:
         try:
             await test_client.disconnect()
@@ -434,6 +432,9 @@ async def login_with_session(
                 existing_acc.first_name = me.first_name
                 existing_acc.last_name = me.last_name
                 existing_acc.username = me.username
+                existing_acc.phone_verified = True
+                if live_twofa_status is not None:
+                    existing_acc.twofa_enabled = live_twofa_status["enabled"]
                 existing_acc.is_active = True
                 existing_acc.for_sale = False
                 # Preserve is_sold flag — purchased accounts must not be re-listed
@@ -466,7 +467,7 @@ async def login_with_session(
         last_name=me.last_name,
         username=me.username,
         telegram_id=me.id,
-        twofa_enabled=False,
+        twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
     )
     db.add(account)
     await db.flush()

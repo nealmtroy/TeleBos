@@ -14,7 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 
-import { invalidateTwoFAAccountQueries } from "./two-fa-settings";
+import {
+  invalidateTwoFAAccountQueries,
+  synchronizeAccountTwoFAStatus,
+} from "./two-fa-settings";
 
 export default function AccountSettingsPage() {
   const _ = useT();
@@ -469,6 +472,7 @@ function TwoFASettings({ accountId }: { accountId: string }) {
   const qc = useQueryClient();
   const { data: twofa, isLoading } = useQuery<{
     enabled: boolean;
+    live_checked: boolean;
     has_recovery: boolean | null;
     hint: string | null;
     login_email_pattern: string | null;
@@ -480,6 +484,12 @@ function TwoFASettings({ accountId }: { accountId: string }) {
       return data;
     },
   });
+
+  useEffect(() => {
+    if (twofa) {
+      synchronizeAccountTwoFAStatus(qc, accountId, twofa.enabled, twofa.live_checked);
+    }
+  }, [accountId, qc, twofa]);
 
   const [password, setPassword] = useState("");
   const [newPass, setNewPass] = useState("");
@@ -854,8 +864,8 @@ function LoginEmailSettings({ accountId }: { accountId: string }) {
     mutationFn: async () => {
       await api.post(`/accounts/${accountId}/login-email/verify`, { email, code });
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["2fa", accountId] });
+    onSuccess: async () => {
+      await invalidateTwoFAAccountQueries(qc, accountId);
       setMsg(_("accountSettings.done"));
       setEmail("");
       setCode("");

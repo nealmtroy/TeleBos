@@ -33,6 +33,7 @@ class PrivacySettingsUpdate(BaseModel):
 
 class TwoFAStatusResponse(BaseModel):
     enabled: bool
+    live_checked: bool = True
     has_recovery: bool | None = None
     hint: str | None = None
     login_email_pattern: str | None = None

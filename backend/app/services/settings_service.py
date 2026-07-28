@@ -72,6 +72,7 @@ async def get_privacy_settings(account: TelegramAccount) -> dict:
 
     try:
         from telethon.tl.functions.contacts import GetContactsRequest
+
         contacts = await client(GetContactsRequest(0))
         settings["suggest_frequent_contacts"] = True  # default
     except Exception:
@@ -90,6 +91,7 @@ def _parse_privacy_rule(rule) -> str:
         PrivacyValueAllowContacts,
         PrivacyValueAllowCloseFriends,
     )
+
     if isinstance(rule, PrivacyValueAllowAll):
         return "everybody"
     if isinstance(rule, PrivacyValueDisallowAll):
@@ -160,6 +162,7 @@ async def update_privacy_settings(account: TelegramAccount, updates: dict) -> di
     if "suggest_frequent_contacts" in updates:
         try:
             from telethon.tl.functions.contacts import ResetSavedRequest
+
             if not updates["suggest_frequent_contacts"]:
                 await client(ResetSavedRequest())
         except Exception as exc:
@@ -176,6 +179,7 @@ async def delete_synced_contacts(account: TelegramAccount) -> None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     from telethon.tl.functions.contacts import ResetSavedRequest
+
     await client(ResetSavedRequest())
 
 
@@ -183,24 +187,21 @@ async def delete_synced_contacts(account: TelegramAccount) -> None:
 
 
 async def get_2fa_status(account: TelegramAccount) -> dict:
-    """Check if 2FA is enabled and return password-related info."""
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    """Return live Telegram 2FA details without downgrading a cached value on error."""
+    from app.services.twofa_service import get_account_live_2fa_status
 
-    try:
-        from telethon.tl.functions.account import GetPasswordRequest
-        pwd = await client(GetPasswordRequest())
-        return {
-            "enabled": pwd.has_password,
-            "has_recovery": pwd.has_recovery,
-            "hint": pwd.hint or None,
-            "login_email_pattern": pwd.login_email_pattern or None,
-            "unconfirmed_email_pattern": pwd.email_unconfirmed_pattern or None,
-        }
-    except Exception:
-        return {"enabled": False}
+    status = await get_account_live_2fa_status(account)
+    if status is not None:
+        return {**status, "live_checked": True}
+
+    return {
+        "enabled": account.twofa_enabled,
+        "has_recovery": None,
+        "hint": None,
+        "login_email_pattern": None,
+        "unconfirmed_email_pattern": None,
+        "live_checked": False,
+    }
 
 
 async def enable_2fa(account: TelegramAccount, password: str) -> None:
@@ -232,9 +233,7 @@ async def disable_2fa(account: TelegramAccount, password: str) -> None:
     account.twofa_enabled = False
 
 
-async def set_2fa_email(
-    account: TelegramAccount, password: str, email: str
-) -> dict:
+async def set_2fa_email(account: TelegramAccount, password: str, email: str) -> dict:
     """Set recovery email for 2FA.
 
     Uses the raw Telethon API for fine-grained control over the
@@ -305,7 +304,9 @@ async def confirm_2fa_email(account: TelegramAccount, code: str) -> None:
     await client(ConfirmPasswordEmailRequest(code))
 
 
-async def change_2fa_password(account: TelegramAccount, old_password: str, new_password: str) -> None:
+async def change_2fa_password(
+    account: TelegramAccount, old_password: str, new_password: str
+) -> None:
     """Change the 2FA password."""
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -327,12 +328,14 @@ async def request_2fa_recovery(account: TelegramAccount) -> dict:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     from telethon.tl.functions.account import GetPasswordRequest
+
     pwd = await client(GetPasswordRequest())
 
     if not pwd.has_recovery:
         raise RuntimeError("No recovery email is set for this account.")
 
     from telethon.tl.functions.auth import RequestPasswordRecoveryRequest
+
     result = await client(RequestPasswordRecoveryRequest())
     return {
         "email_pattern": result.email_pattern,
@@ -348,6 +351,7 @@ async def recover_2fa(account: TelegramAccount, recovery_code: str, new_password
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     from telethon.tl.functions.auth import RecoverPasswordRequest
+
     await client(RecoverPasswordRequest(code=recovery_code, new_settings=None))
     # Now set a new password (no current_password since we just recovered)
     await client.edit_2fa(new_password=new_password)

@@ -90,6 +90,7 @@ from telethon.errors import SessionPasswordNeededError
 from app.services.telegram_client import client_pool
 from app.utils.encryption import encrypt
 from app.services.account_service import check_account_limit, DuplicateAccountError
+from app.services.twofa_service import get_account_live_2fa_status, get_live_2fa_status
 from app.models.telegram_account import TelegramAccount
 import uuid
 
@@ -116,7 +117,8 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             first_name = me.first_name
             last_name = me.last_name
             username = me.username
-            
+            live_twofa_status = await get_live_2fa_status(client)
+
             # 3. Check role limits
             await check_account_limit(db, user)
             
@@ -142,7 +144,11 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             account.first_name = first_name
             account.last_name = last_name
             account.username = username
-            
+            account.telegram_id = me.id
+            account.phone_verified = True
+            if live_twofa_status is not None:
+                account.twofa_enabled = live_twofa_status["enabled"]
+
             # Encrypt session
             session_str = client.session.save()
             account.session_string = encrypt(session_str)
@@ -249,7 +255,8 @@ async def qr_login_2fa(
         first_name = me.first_name
         last_name = me.last_name
         username = me.username
-        
+        live_twofa_status = await get_live_2fa_status(client)
+
         await check_account_limit(db, user)
         
         acc_result = await db.execute(
@@ -266,6 +273,8 @@ async def qr_login_2fa(
                 id=uuid.uuid4(),
                 user_id=user.id,
                 phone=phone,
+                phone_verified=True,
+                twofa_enabled=True,
                 is_active=True,
             )
             db.add(account)
@@ -273,7 +282,11 @@ async def qr_login_2fa(
         account.first_name = first_name
         account.last_name = last_name
         account.username = username
-        
+        account.telegram_id = me.id
+        account.phone_verified = True
+        if live_twofa_status is not None:
+            account.twofa_enabled = live_twofa_status["enabled"]
+
         # Encrypt session
         session_str = client.session.save()
         account.session_string = encrypt(session_str)
@@ -516,6 +529,12 @@ async def get_account(
     account = await account_service.get_account(db, account_id, str(user.id), allow_for_sale=True)
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    live_twofa_status = await get_account_live_2fa_status(account)
+    if live_twofa_status is not None and live_twofa_status["enabled"] != account.twofa_enabled:
+        account.twofa_enabled = live_twofa_status["enabled"]
+        await db.flush()
+
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
     return account
