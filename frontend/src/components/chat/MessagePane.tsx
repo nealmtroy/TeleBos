@@ -655,10 +655,10 @@ export function MessagePane({
           <div
             className={cn(
               "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none rounded-full",
-              chatType === "user" && `bg-gradient-to-br ${getAvatarGradient(chatId)}`,
-              (chatType === "group" || chatType === "supergroup") && "bg-gradient-to-br from-emerald-500 to-teal-600",
-              chatType === "channel" && "bg-gradient-to-br from-violet-500 to-purple-600",
-              chatType === "bot" && "bg-gradient-to-br from-amber-500 to-orange-600"
+              chatType === "user" && getAvatarGradient(chatId),
+              (chatType === "group" || chatType === "supergroup") && "bg-emerald-500",
+              chatType === "channel" && "bg-violet-500",
+              chatType === "bot" && "bg-orange-500"
             )}
             style={{ display: isAuthenticated && accountId ? "none" : "flex" }}
           >

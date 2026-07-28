@@ -41,13 +41,13 @@ import { AccountSwitcher } from "./AccountSwitcher";
 
 // Telegram-style avatar colors (matching tweb)
 const AVATAR_COLORS = [
-  { top: "#FF845E", bottom: "#D45246" },
-  { top: "#FEBB5B", bottom: "#F68136" },
-  { top: "#B694F9", bottom: "#6C61DF" },
-  { top: "#9AD164", bottom: "#46BA43" },
-  { top: "#53EDD6", bottom: "#28C9B7" },
-  { top: "#5CAFFA", bottom: "#408ACF" },
-  { top: "#FF8AAC", bottom: "#D95574" },
+  { top: "#D45246", bottom: "#D45246" },
+  { top: "#F68136", bottom: "#F68136" },
+  { top: "#6C61DF", bottom: "#6C61DF" },
+  { top: "#46BA43", bottom: "#46BA43" },
+  { top: "#28C9B7", bottom: "#28C9B7" },
+  { top: "#408ACF", bottom: "#408ACF" },
+  { top: "#D95574", bottom: "#D95574" },
 ];
 
 function getChatAvatarColor(chatId: number, colorId?: number | null) {
@@ -708,13 +708,13 @@ export function ChatLeftColumn({
                   const isChannel = chat.chat_type === "channel";
 
                   const avatarColor = isSavedMessages || isTelegram
-                    ? { top: "#5CAFFA", bottom: "#408ACF" }
+                    ? { top: "#408ACF", bottom: "#408ACF" }
                     : isBot
-                    ? { top: "#FEBB5B", bottom: "#F68136" }
+                    ? { top: "#F68136", bottom: "#F68136" }
                     : isGroup
-                    ? { top: "#9AD164", bottom: "#46BA43" }
+                    ? { top: "#46BA43", bottom: "#46BA43" }
                     : isChannel
-                    ? { top: "#B694F9", bottom: "#6C61DF" }
+                    ? { top: "#6C61DF", bottom: "#6C61DF" }
                     : getChatAvatarColor(chat.chat_id, (chat as any).color_id);
 
                   return (
