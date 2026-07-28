@@ -74,14 +74,8 @@ async def get_chat_photo(
     cached_path = os.path.join(chat_photos_dir, f"{chat_id}.jpg")
 
     def get_fallback_svg_response(initials: str = "", is_group: bool = True):
-        from fastapi import Response
-        from app.utils.avatar_generator import generate_avatar_svg
-        svg_data = generate_avatar_svg(str(chat_id), initials=initials, is_group=is_group)
-        return Response(
-            content=svg_data,
-            media_type="image/svg+xml",
-            headers={"Cache-Control": "public, max-age=3600"},
-        )
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="No profile photo")
 
     # Serve from cache if it exists
     if os.path.exists(cached_path):
