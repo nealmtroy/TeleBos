@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 
+import { invalidateTwoFAAccountQueries } from "./two-fa-settings";
+
 export default function AccountSettingsPage() {
   const _ = useT();
   const params = useParams();
@@ -544,8 +546,8 @@ function TwoFASettings({ accountId }: { accountId: string }) {
           break;
       }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["2fa", accountId] });
+    onSuccess: async () => {
+      await invalidateTwoFAAccountQueries(qc, accountId);
       setMsg(_("accountSettings.done"));
       resetMsg();
     },
@@ -564,7 +566,7 @@ function TwoFASettings({ accountId }: { accountId: string }) {
         <span
           className={cn(
             "px-2 py-0.5 rounded-full text-xs font-medium",
-            twofa?.enabled ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-500"
+            twofa?.enabled ? "bg-primary-600 text-white" : "border border-gray-300 bg-white text-gray-700"
           )}
         >
           {twofa?.enabled ? _("accountSettings.enabled") : _("accountSettings.disabled")}
