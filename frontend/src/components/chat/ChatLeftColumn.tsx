@@ -715,7 +715,7 @@ export function ChatLeftColumn({
                     ? { top: "#46BA43", bottom: "#46BA43" }
                     : isChannel
                     ? { top: "#6C61DF", bottom: "#6C61DF" }
-                    : getChatAvatarColor(chat.chat_id, (chat as any).color_id);
+                    : getChatAvatarColor(chat.chat_id, chat.color_id);
 
                   return (
                     <div
@@ -751,20 +751,20 @@ export function ChatLeftColumn({
                           <ShieldCheck style={{ width: 22, height: 22, color: "#fff" }} />
                         ) : (
                           <>
-                            {isAuthenticated && selectedAccount && (
+                            {isAuthenticated && selectedAccount && chat.photo_version != null && (
                               <img
-                                src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                  const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                                  if (fb) fb.style.display = "flex";
+                                src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo?v=${chat.photo_version}`}
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                  const fallback = event.currentTarget.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = "flex";
                                 }}
                                 alt=""
                               />
                             )}
                             <span
                               style={{
-                                display: isAuthenticated && selectedAccount ? "none" : "flex",
+                                display: isAuthenticated && selectedAccount && chat.photo_version != null ? "none" : "flex",
                                 width: "100%",
                                 height: "100%",
                                 alignItems: "center",

@@ -10,6 +10,8 @@ export interface ChatItem {
   is_archived?: boolean;
   is_pinned?: boolean;
   is_muted?: boolean;
+  color_id?: number | null;
+  photo_version?: number | null;
 }
 
 export interface FolderItem {

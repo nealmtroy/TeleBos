@@ -25,8 +25,11 @@ interface Account {
   first_name: string | null;
   last_name: string | null;
   username: string | null;
+  telegram_id: number | null;
   is_active: boolean;
   photo_version: number;
+  has_profile_photo?: boolean;
+  color_id: number | null;
 }
 
 export default function DashboardPage() {
@@ -211,8 +214,11 @@ export default function DashboardPage() {
                   >
                     <AccountAvatar
                       accountId={acc.id}
+                      telegramId={acc.telegram_id}
                       firstName={acc.first_name}
                       phone={acc.phone}
+                      colorId={acc.color_id}
+                      hasProfilePhoto={acc.has_profile_photo}
                       photoVersion={acc.photo_version}
                       size="lg"
                     />

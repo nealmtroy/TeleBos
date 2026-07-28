@@ -349,8 +349,11 @@ export default function NewBroadcastPage() {
                     />
                     <AccountAvatar
                       accountId={acc.id}
+                      telegramId={acc.telegram_id}
                       firstName={acc.first_name}
                       phone={acc.phone}
+                      colorId={acc.color_id}
+                      hasProfilePhoto={acc.has_profile_photo}
                       photoVersion={acc.photo_version}
                       size="md"
                     />

@@ -398,6 +398,10 @@ def _run_migrations(connection):
                 "ADD COLUMN profile_photo_id BIGINT DEFAULT NULL"
             )
         )
+    if "color_id" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN color_id INTEGER DEFAULT NULL")
+        )
 
     # ── Marketplace columns on telegram_accounts ──────────────────────────
     if "for_sale" not in acct_cols:
@@ -716,6 +720,14 @@ def _run_migrations(connection):
     if "invite_link" not in chat_cols:
         connection.execute(
             text("ALTER TABLE telegram_chats ADD COLUMN invite_link VARCHAR(500) DEFAULT NULL")
+        )
+    if "photo_version" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN photo_version BIGINT DEFAULT NULL")
+        )
+    if "color_id" not in chat_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_chats ADD COLUMN color_id INTEGER DEFAULT NULL")
         )
 
     # ── Account folders ──────────────────────────────────────────────────

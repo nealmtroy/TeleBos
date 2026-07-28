@@ -1,3 +1,5 @@
+export { getChatPhotoUrl } from "@/lib/avatar";
+
 import {
   Image,
   Video,
@@ -20,14 +22,9 @@ export function getAvatarGradient(peerId: number, colorId?: number | null) {
     "bg-teal-500",
     "bg-blue-500",
     "bg-violet-500",
-    "bg-pink-500",
   ];
-  if (colorId !== undefined && colorId !== null) {
-    const idx = Math.abs(colorId) % colors.length;
-    return colors[idx];
-  }
-  const idx = Math.abs(peerId) % colors.length;
-  return colors[idx];
+  const value = colorId ?? peerId;
+  return colors[Math.abs(value) % colors.length];
 }
 
 export const MEDIA_ICONS: Record<string, any> = {

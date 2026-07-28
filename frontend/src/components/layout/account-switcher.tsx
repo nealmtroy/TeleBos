@@ -13,8 +13,11 @@ function Avatar({ account, size = "sm" }: { account: Account; size?: "sm" | "md"
   return (
     <AccountAvatar
       accountId={account.id}
+      telegramId={account.telegram_id}
       firstName={account.first_name}
       phone={account.phone}
+      colorId={account.color_id}
+      hasProfilePhoto={account.has_profile_photo}
       photoVersion={account.photo_version}
       size={size === "sm" ? "sm" : "lg"}
       className={dim}

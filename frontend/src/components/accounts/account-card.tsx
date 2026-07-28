@@ -156,8 +156,11 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         <div className="flex items-start gap-3">
           <AccountAvatar
             accountId={account.id}
+            telegramId={account.telegram_id}
             firstName={account.first_name}
             phone={account.phone}
+            colorId={account.color_id}
+            hasProfilePhoto={account.has_profile_photo}
             photoVersion={account.photo_version}
             size="xl"
           />

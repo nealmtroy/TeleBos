@@ -753,10 +753,14 @@ async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: 
                 with open(photo_path, "wb") as f:
                     f.write(data)
                 account.profile_photo_path = photo_path
+                photo = getattr(me, "photo", None)
+                account.profile_photo_id = getattr(photo, "photo_id", None) if photo else None
             else:
                 account.profile_photo_path = None
+                account.profile_photo_id = None
         else:
             account.profile_photo_path = None
+            account.profile_photo_id = None
         account.photo_version += 1
         await db.flush()
     finally:
@@ -784,6 +788,7 @@ async def delete_photo(db: AsyncSession, account: TelegramAccount) -> None:
         os.remove(photo_path)
 
     account.profile_photo_path = None
+    account.profile_photo_id = None
     account.photo_version += 1
     await db.flush()
 

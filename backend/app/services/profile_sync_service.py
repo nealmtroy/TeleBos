@@ -88,6 +88,13 @@ async def sync_account_profile(
             changes[field] = {"old": db_value, "new": tg_value}
             setattr(account, field, tg_value)
 
+    # ── Compare accent color ─────────────────────────────────────────────
+    peer_color = getattr(me, "color", None)
+    tg_color_id = getattr(peer_color, "color", None) if peer_color else None
+    if tg_color_id != account.color_id:
+        changes["color_id"] = {"old": account.color_id, "new": tg_color_id}
+        account.color_id = tg_color_id
+
     # ── Compare profile photo ────────────────────────────────────────────
     tg_photo_id: int | None = None
     if me.photo and hasattr(me.photo, "photo_id"):

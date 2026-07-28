@@ -613,6 +613,10 @@ class TelegramEventRelay:
             async with async_session_factory() as db:
                 try:
                     access_hash = getattr(chat, "access_hash", None)
+                    peer_color = getattr(chat, "color", None)
+                    photo = getattr(chat, "photo", None)
+                    color_id = getattr(peer_color, "color", None) if peer_color else None
+                    photo_version = getattr(photo, "photo_id", None) if photo else None
                     # Build upsert statement
                     stmt = insert(TelegramChat).values(
                         id=uuid.uuid4(),
@@ -625,6 +629,8 @@ class TelegramEventRelay:
                         last_message=last_msg,
                         last_message_date=last_time,
                         photo_url=None,
+                        color_id=color_id,
+                        photo_version=photo_version,
                         access_hash=access_hash,
                         is_active=True,
                         is_creator=is_creator,
@@ -634,6 +640,8 @@ class TelegramEventRelay:
                         "title": title,
                         "username": username,
                         "access_hash": access_hash,
+                        "color_id": stmt.excluded.color_id,
+                        "photo_version": stmt.excluded.photo_version,
                         "last_message": stmt.excluded.last_message,
                         "last_message_date": stmt.excluded.last_message_date,
                         "is_active": True,
@@ -764,6 +772,11 @@ class TelegramEventRelay:
         if chat_type_val in ("group", "supergroup", "channel"):
             return
 
+        peer_color = getattr(chat, "color", None)
+        photo = getattr(chat, "photo", None)
+        color_id = getattr(peer_color, "color", None) if peer_color else None
+        photo_version = getattr(photo, "photo_id", None) if photo else None
+
         async with self._db_sem:
             async with async_session_factory() as db:
                 try:
@@ -777,6 +790,8 @@ class TelegramEventRelay:
                         unread_count=0,
                         last_message=None,
                         last_message_date=None,
+                        color_id=color_id,
+                        photo_version=photo_version,
                         is_active=True,
                         is_creator=is_creator,
                     )
@@ -786,6 +801,8 @@ class TelegramEventRelay:
                             "title": stmt.excluded.title,
                             "username": stmt.excluded.username,
                             "type": stmt.excluded.type,
+                            "color_id": stmt.excluded.color_id,
+                            "photo_version": stmt.excluded.photo_version,
                             "is_active": True,
                             "is_creator": stmt.excluded.is_creator,
                             "updated_at": func.now(),

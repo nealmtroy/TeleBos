@@ -17,6 +17,17 @@ from app.utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 
+
+def _avatar_metadata(entity: Any) -> dict[str, int | None]:
+    """Extract Telegram peer-color and photo identity without downloading media."""
+    peer_color = getattr(entity, "color", None)
+    photo = getattr(entity, "photo", None)
+    return {
+        "color_id": getattr(peer_color, "color", None) if peer_color else None,
+        "photo_version": getattr(photo, "photo_id", None) if photo else None,
+    }
+
+
 async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
     """Sync groups, channels, supergroups, and user chats into local DB."""
     session_str = decrypt(account.session_string)
@@ -49,8 +60,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 last_msg = d.message.text or "[non-text message]" if d.message.text else ""
                 last_time = d.message.date
 
-            peer_color_obj = getattr(d.entity, "color", None)
-            color_id = getattr(peer_color_obj, "color", None) if peer_color_obj else None
+            avatar_metadata = _avatar_metadata(d.entity)
 
             values.append({
                 "id": uuid.uuid4(),
@@ -59,7 +69,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "title": d.name or d.title or "Unknown",
                 "username": getattr(d.entity, "username", None),
                 "type": chat_type_val,
-                "color_id": color_id,
+                **avatar_metadata,
                 "unread_count": d.unread_count or 0,
                 "last_message": last_msg,
                 "last_message_date": last_time,
@@ -91,8 +101,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                     last_msg = d.message.text or "[non-text message]" if d.message.text else ""
                     last_time = d.message.date
 
-                peer_color_obj = getattr(d.entity, "color", None)
-                color_id = getattr(peer_color_obj, "color", None) if peer_color_obj else None
+                avatar_metadata = _avatar_metadata(d.entity)
 
                 values.append({
                     "id": uuid.uuid4(),
@@ -101,7 +110,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                     "title": d.name or d.title or "Unknown",
                     "username": getattr(d.entity, "username", None),
                     "type": chat_type_val,
-                    "color_id": color_id,
+                    **avatar_metadata,
                     "unread_count": d.unread_count or 0,
                     "last_message": last_msg,
                     "last_message_date": last_time,
@@ -137,6 +146,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "username": stmt.excluded.username,
                 "type": stmt.excluded.type,
                 "color_id": stmt.excluded.color_id,
+                "photo_version": stmt.excluded.photo_version,
                 "unread_count": stmt.excluded.unread_count,
                 "last_message": stmt.excluded.last_message,
                 "last_message_date": stmt.excluded.last_message_date,
@@ -272,6 +282,7 @@ async def get_dialogs(
                             "title": d.name or d.title or "Unknown",
                             "username": getattr(d.entity, "username", None),
                             "type": chat_type_val,
+                            **_avatar_metadata(d.entity),
                             "unread_count": d.unread_count or 0,
                             "last_message": last_msg,
                             "last_message_date": last_time,
@@ -289,6 +300,8 @@ async def get_dialogs(
                                 "title": stmt_insert.excluded.title,
                                 "username": stmt_insert.excluded.username,
                                 "type": stmt_insert.excluded.type,
+                                "color_id": stmt_insert.excluded.color_id,
+                                "photo_version": stmt_insert.excluded.photo_version,
                                 "unread_count": stmt_insert.excluded.unread_count,
                                 "last_message": stmt_insert.excluded.last_message,
                                 "last_message_date": stmt_insert.excluded.last_message_date,
@@ -342,6 +355,7 @@ async def get_dialogs(
             "invite_link": c.invite_link,
             "account_id": str(c.account_id) if c.account_id else None,
             "color_id": c.color_id,
+            "photo_version": c.photo_version,
         })
 
     return page_dialogs, total
@@ -794,6 +808,7 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
                 "title": d.name or d.title or "Unknown",
                 "username": getattr(d.entity, "username", None),
                 "type": chat_type_val,
+                **_avatar_metadata(d.entity),
                 "unread_count": d.unread_count or 0,
                 "last_message": last_msg,
                 "last_message_date": last_time,
@@ -825,6 +840,8 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
                     "title": stmt.excluded.title,
                     "username": stmt.excluded.username,
                     "type": stmt.excluded.type,
+                    "color_id": stmt.excluded.color_id,
+                    "photo_version": stmt.excluded.photo_version,
                     "unread_count": stmt.excluded.unread_count,
                     "last_message": stmt.excluded.last_message,
                     "last_message_date": stmt.excluded.last_message_date,

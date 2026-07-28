@@ -52,53 +52,68 @@ router = APIRouter(tags=["media"])
 async def get_chat_photo(
     account_id: str,
     chat_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a chat's profile photo.
+    """Serve a versioned chat photo from an account-scoped local cache.
 
-    Public endpoint — chat photos are cached locally by chat_id to avoid redundant Telegram API downloads.
-    The account_id is used to identify which Telethon client to use for downloading.
+    Chat sync persists Telegram's photo ID as ``photo_version``. A missing
+    version is a known no-photo state, so the endpoint can return a fallback
+    response without opening a Telethon connection or writing sentinel files.
     """
     import os
-    from fastapi.responses import FileResponse
-    from fastapi import HTTPException
 
-    # Define chat photos cache directory
+    from fastapi.responses import FileResponse, Response
+    from sqlalchemy import select
+
+    from app.models.telegram_account import TelegramAccount
+    from app.models.telegram_chat import TelegramChat
+    from app.services.telegram_client import client_pool
+    from app.services.chat_service import resolve_chat_entity
+    from app.utils.encryption import decrypt
+
+    account_result = await db.execute(
+        select(TelegramAccount).where(
+            TelegramAccount.id == account_id,
+            TelegramAccount.for_sale.is_(False),
+        )
+    )
+    account = account_result.scalar_one_or_none()
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    chat_result = await db.execute(
+        select(TelegramChat).where(
+            TelegramChat.account_id == account.id,
+            TelegramChat.chat_id == chat_id,
+            TelegramChat.is_active.is_(True),
+        )
+    )
+    chat = chat_result.scalar_one_or_none()
+    if chat is None or chat.photo_version is None:
+        raise HTTPException(status_code=404, detail="No profile photo")
+
+    photo_version = chat.photo_version
+    etag = f'W/"{account.id}-{chat_id}-{photo_version}"'
+    headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "ETag": etag,
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+
     chat_photos_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         "uploads",
         "chat_photos",
+        str(account.id),
+        str(chat_id),
     )
     os.makedirs(chat_photos_dir, exist_ok=True)
-    
-    cached_path = os.path.join(chat_photos_dir, f"{chat_id}.jpg")
+    cached_path = os.path.join(chat_photos_dir, f"{photo_version}.jpg")
 
-    def get_fallback_svg_response(initials: str = "", is_group: bool = True):
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="No profile photo")
-
-    # Serve from cache if it exists
-    if os.path.exists(cached_path):
-        if os.path.getsize(cached_path) == 0:
-            return get_fallback_svg_response(is_group=(chat_id < 0))
-        return FileResponse(cached_path, media_type="image/jpeg")
-
-    # If not cached, download using Telethon client
-    from app.utils.encryption import decrypt
-    from app.services.telegram_client import client_pool
-    from app.models.telegram_account import TelegramAccount
-    from sqlalchemy import select
-
-    # Just need any account that has this ID to get its session string
-    result = await db.execute(
-        select(TelegramAccount).where(
-            TelegramAccount.id == account_id,
-            TelegramAccount.for_sale == False,
-        )
-    )
-    account = result.scalar_one_or_none()
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
+    if os.path.exists(cached_path) and os.path.getsize(cached_path) > 0:
+        return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
 
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -106,39 +121,23 @@ async def get_chat_photo(
         raise HTTPException(status_code=400, detail="Account is disconnected")
 
     try:
-        from app.services.chat_service import resolve_chat_entity
         entity = await resolve_chat_entity(client, account.id, chat_id)
-
-        # Get initials if available from chat entity
-        title = getattr(entity, "title", None)
-        first_name = getattr(entity, "first_name", None)
-        last_name = getattr(entity, "last_name", None)
-        
-        initials = ""
-        is_group = chat_id < 0
-        if title:
-            words = title.strip().split()
-            initials = "".join(w[0] for w in words if w)[:2].upper()
-            is_group = True
-        elif first_name or last_name:
-            from app.utils.avatar_generator import get_initials
-            initials = get_initials(first_name, last_name)
-            is_group = False
-
-        # Use download_big=False to fetch small thumbnail (typically 160x160/80x80)
-        # to save massive bandwidth and storage.
-        photo_result = await client.download_profile_photo(entity, file=cached_path, download_big=False)
-        if not photo_result or not os.path.exists(cached_path):
-            # Write a 0-byte file to cache the "no photo" state and avoid hitting Telegram again
-            with open(cached_path, "wb") as f:
-                pass
-            return get_fallback_svg_response(initials=initials, is_group=is_group)
-        
-        return FileResponse(cached_path, media_type="image/jpeg")
+        photo_result = await client.download_profile_photo(
+            entity, file=cached_path, download_big=False
+        )
+        if not photo_result or not os.path.exists(cached_path) or os.path.getsize(cached_path) == 0:
+            if os.path.exists(cached_path):
+                os.remove(cached_path)
+            # Telegram can remove a photo between dialog sync and the cache miss.
+            # Clear the stale metadata so subsequent UI refreshes render locally.
+            chat.photo_version = None
+            await db.flush()
+            raise HTTPException(status_code=404, detail="No profile photo")
+        return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
+    except HTTPException:
+        raise
     except Exception as exc:
-        if isinstance(exc, HTTPException) and exc.status_code != 404:
-            raise exc
-        return get_fallback_svg_response(is_group=(chat_id < 0))
+        raise HTTPException(status_code=404, detail="No profile photo") from exc
 
 
 @router.get("/accounts/{account_id}/chats/{chat_id}/messages/{message_id}/media")

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text, func, ForeignKey, BigInteger
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func, ForeignKey, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,7 @@ class TelegramAccount(Base):
     profile_photo_path: Mapped[str | None] = mapped_column(String(500))
     photo_version: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     profile_photo_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
+    color_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
 
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     twofa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -80,6 +81,11 @@ class TelegramAccount(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    @property
+    def has_profile_photo(self) -> bool:
+        """Whether Telegram reports a current profile photo for this account."""
+        return self.profile_photo_id is not None
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="accounts", foreign_keys=[user_id])

@@ -18,6 +18,8 @@ export interface ChatItem {
   online_count?: number | null;
   invite_link?: string | null;
   account_id?: string | null;
+  color_id?: number | null;
+  photo_version?: number | null;
 }
 
 export function useChats(

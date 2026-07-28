@@ -25,6 +25,7 @@ class ChatItem(BaseModel):
     invite_link: str | None = None
     account_id: str | None = None
     color_id: int | None = None
+    photo_version: int | None = None
 
 
 class ChatListResponse(BaseModel):

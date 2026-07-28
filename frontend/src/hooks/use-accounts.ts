@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { getAccountPhotoUrl } from "@/lib/avatar";
 
 export interface Account {
   id: string;
@@ -13,6 +14,8 @@ export interface Account {
   bio: string | null;
   profile_photo_path: string | null;
   photo_version: number;
+  has_profile_photo?: boolean;
+  color_id: number | null;
   phone_verified: boolean;
   twofa_enabled: boolean;
   is_active: boolean;
@@ -42,11 +45,7 @@ export interface ApiError {
 // Even when version is 0 the URL is stable (it only changes on upload/delete),
 // so we never need legacy cache-busting with t=Date.now().
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
-
-export function getPhotoUrl(accountId: string, version?: number) {
-  return `${baseUrl}/accounts/${accountId}/photo?v=${version ?? 0}`;
-}
+export const getPhotoUrl = getAccountPhotoUrl;
 
 export function useAccounts() {
   return useQuery<Account[]>({
