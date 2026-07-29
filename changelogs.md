@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-07-30
+- **[e43dd647](https://github.com/nealmtroy/TeleBos/commit/e43dd647)**: feat(public): redesign landing and auth experience
 - **[6977e797](https://github.com/nealmtroy/TeleBos/commit/6977e797)**: fix(marketplace): preserve price when cancelling sale
 
 ## 2026-07-29
