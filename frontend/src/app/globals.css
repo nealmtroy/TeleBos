@@ -92,6 +92,124 @@
 }
 
 @layer utilities {
+  .public-theme {
+    --public-canvas: #000000;
+    --public-border: #292d30;
+    --public-text: #ffffff;
+    --public-body: #f0f0f0;
+    --public-muted: #a1a4a5;
+    --public-subtle: #6e727a;
+    --public-accent: #2AABEE;
+    --public-accent-strong: #2AABEE;
+    --public-success: #3ad389;
+    --public-warning: #ffca16;
+    --public-danger: #ff9592;
+    --public-radius-control: 6px;
+    --public-radius-card: 16px;
+    --public-max-width: 1200px;
+    min-height: 100vh;
+    background: var(--public-canvas);
+    color: var(--public-body);
+    color-scheme: dark;
+    font-family: var(--font-public-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .public-theme h1,
+  .public-theme h2,
+  .public-theme h3 {
+    text-wrap: balance;
+  }
+
+  .public-theme p {
+    text-wrap: pretty;
+  }
+
+  .public-display {
+    font-family: var(--font-public-display), Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .public-mono {
+    font-family: var(--font-public-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .public-focus {
+    outline: none;
+  }
+
+  .public-focus:focus-visible {
+    box-shadow: 0 0 0 2px #000000, 0 0 0 4px var(--public-accent-strong);
+  }
+
+  .public-sculpture-stage {
+    display: grid;
+    min-height: 27rem;
+    place-items: center;
+    perspective: 1100px;
+  }
+
+  .public-sculpture {
+    position: relative;
+    width: 13rem;
+    height: 13rem;
+    transform-style: preserve-3d;
+    animation: public-sculpture-drift 22s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  }
+
+  .public-sculpture-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid var(--public-border);
+    background: var(--public-canvas);
+    padding: 1rem;
+    color: var(--public-muted);
+    font-family: var(--font-public-mono), ui-monospace, monospace;
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    backface-visibility: hidden;
+  }
+
+  .public-sculpture-front { transform: translateZ(6.5rem); }
+  .public-sculpture-back { transform: rotateY(180deg) translateZ(6.5rem); }
+  .public-sculpture-right { transform: rotateY(90deg) translateZ(6.5rem); }
+  .public-sculpture-left { transform: rotateY(-90deg) translateZ(6.5rem); }
+  .public-sculpture-top { transform: rotateX(90deg) translateZ(6.5rem); }
+  .public-sculpture-bottom { transform: rotateX(-90deg) translateZ(6.5rem); }
+
+  .public-sculpture-front::before,
+  .public-sculpture-front::after {
+    content: "";
+    position: absolute;
+    border: 1px solid var(--public-border);
+  }
+
+  .public-sculpture-front::before {
+    inset: 28%;
+    border-color: var(--public-accent);
+  }
+
+  .public-sculpture-front::after {
+    left: 50%;
+    top: 28%;
+    bottom: 28%;
+    border-width: 0 0 0 1px;
+  }
+
+  .public-sculpture-axis {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 19rem;
+    height: 1px;
+    background: var(--public-border);
+    transform: translate3d(-50%, -50%, 0) rotateZ(-35deg);
+  }
+
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -101,6 +219,11 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+}
+
+@keyframes public-sculpture-drift {
+  0% { transform: rotateX(-18deg) rotateY(-28deg) rotateZ(1deg); }
+  100% { transform: rotateX(-12deg) rotateY(26deg) rotateZ(-2deg); }
 }
 
 /* Sheet / Dialog Animations */
@@ -164,4 +287,40 @@
 [data-state="closed"].data-\[state\=closed\]\:slide-out-to-right {
   animation-name: slideOutToRight;
   animation-duration: 250ms;
+}
+
+@media (max-width: 639px) {
+  .public-sculpture-stage {
+    min-height: 22rem;
+  }
+
+  .public-sculpture {
+    width: 10rem;
+    height: 10rem;
+    animation: none;
+    transform: rotateX(-16deg) rotateY(-24deg);
+  }
+
+  .public-sculpture-front { transform: translateZ(5rem); }
+  .public-sculpture-back { transform: rotateY(180deg) translateZ(5rem); }
+  .public-sculpture-right { transform: rotateY(90deg) translateZ(5rem); }
+  .public-sculpture-left { transform: rotateY(-90deg) translateZ(5rem); }
+  .public-sculpture-top { transform: rotateX(90deg) translateZ(5rem); }
+  .public-sculpture-bottom { transform: rotateX(-90deg) translateZ(5rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-sculpture {
+    animation: none !important;
+    transform: rotateX(-16deg) rotateY(-24deg);
+  }
+
+  .public-theme *,
+  .public-theme *::before,
+  .public-theme *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

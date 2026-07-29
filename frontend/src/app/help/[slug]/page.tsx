@@ -2,226 +2,82 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useT } from "@/lib/i18n";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
-import { getHelpSectionBySlug, getAdjacentSections } from "@/data/help-sections";
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronLeft,
-  BookOpen,
-  Smartphone,
-  Send,
-  Bot,
-  UserPlus,
-  Shield,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
 
-const iconMap: Record<string, React.ElementType> = {
-  "getting-started": BookOpen,
-  accounts: Smartphone,
-  broadcast: Send,
-  "auto-reply": Bot,
-  "member-invite": UserPlus,
-  troubleshooting: Shield,
-  tips: Sparkles,
-};
+import { PublicFooter } from "@/components/public/public-footer";
+import { PublicShell } from "@/components/public/public-shell";
+import { publicButtonClass } from "@/components/public/public-ui";
+import { Navbar5 } from "@/components/ui/navbar-5";
+import { getAdjacentSections, getHelpSectionBySlug } from "@/data/help-sections";
+import { useT } from "@/lib/i18n";
 
 export default function HelpDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
   const _ = useT();
-
   const section = getHelpSectionBySlug(slug);
   const { prev, next } = section ? getAdjacentSections(section.key) : { prev: null, next: null };
-  const Icon = section ? iconMap[section.key] : null;
 
-  // Invalid slug
   if (!section) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center px-4">
-          <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="h-8 w-8 text-gray-400" />
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">
-            Help topic not found
-          </h1>
-          <p className="text-gray-500 text-sm mb-6">
-            The page you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Link
-            href="/help"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Help
-          </Link>
+      <PublicShell mainClassName="flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <BookOpen className="mx-auto h-10 w-10 text-[#6e727a]" aria-hidden="true" />
+          <h1 className="public-display mt-6 text-4xl text-white">{_("help.topicNotFound")}</h1>
+          <p className="mt-4 text-[#a1a4a5]">{_("help.topicNotFoundDesc")}</p>
+          <Link href="/help" className={`${publicButtonClass} mt-8`}><ArrowLeft className="h-4 w-4" aria-hidden="true" />{_("help.backToHelp")}</Link>
         </div>
-      </div>
+      </PublicShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link
-              href="/"
-              className="flex items-center text-gray-900 font-bold"
-            >
-              <span>{_("help.title")}</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher />
-              <Link
-                href="/help"
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                {_("landing.navHome")}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Breadcrumb */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-2 text-sm text-gray-400">
-            <Link href="/help" className="hover:text-gray-700 transition">
-              {_("help.title")}
-            </Link>
-            <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
-            <span className="text-gray-700 font-medium">
-              {_(section.titleKey)}
-            </span>
-          </div>
-        </div>
+    <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
+      <div className="border-b border-[#292d30]">
+        <nav aria-label="Breadcrumb" className="mx-auto flex max-w-[960px] items-center gap-2 px-4 py-4 text-sm sm:px-6 lg:px-8">
+          <Link href="/help" className="public-focus rounded-[6px] text-[#a1a4a5] hover:text-white">{_("help.title")}</Link>
+          <ChevronRight className="h-3.5 w-3.5 text-[#464a4d]" aria-hidden="true" />
+          <span className="text-[#f0f0f0]">{_(section.titleKey)}</span>
+        </nav>
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          {/* Section header */}
-          <div className="p-6 sm:p-8 border-b border-gray-100">
-            <div className="flex items-center gap-4 mb-4">
-              {Icon && (
-                <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
-                  <Icon className="h-6 w-6 text-primary-600" />
-                </div>
-              )}
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  {_(section.titleKey)}
-                </h1>
-                <p className="mt-1.5 text-gray-500">{_(section.descKey)}</p>
-              </div>
-            </div>
-          </div>
+      <article className="mx-auto max-w-[960px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+        <header className="border-b border-[#292d30] pb-10">
+          <p className="public-mono text-xs text-[#2AABEE]">{_("help.title")}</p>
+          <h1 className="public-display mt-5 text-5xl leading-none text-white sm:text-7xl">{_(section.titleKey)}</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[#a1a4a5]">{_(section.descKey)}</p>
+        </header>
 
-          {/* Content items */}
-          <div className="p-6 sm:p-8">
-            <div className="space-y-6">
-              {section.contentKeys.map((key, i) => (
-                <div key={key} className="flex gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-50 text-primary-600 text-sm font-bold flex items-center justify-center mt-0.5">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="text-gray-600 leading-relaxed">{_(key)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <ol className="divide-y divide-[#292d30]">
+          {section.contentKeys.map((key, index) => (
+            <li key={key} className="grid gap-4 py-8 sm:grid-cols-[3rem_1fr]">
+              <span className="public-mono text-sm text-[#2AABEE]">{String(index + 1).padStart(2, "0")}</span>
+              <p className="max-w-3xl leading-8 text-[#f0f0f0]">{_(key)}</p>
+            </li>
+          ))}
+        </ol>
 
-        {/* Prev / Next navigation */}
-        <div className="mt-8 flex items-center justify-between gap-4">
+        <nav aria-label="Adjacent help topics" className="mt-10 grid gap-4 sm:grid-cols-2">
           {prev ? (
-            <Link
-              href={`/help/${prev.slug}`}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-gray-200 hover:border-primary-200 hover:shadow-sm transition text-left group flex-1 max-w-xs"
-            >
-              <ArrowLeft className="h-4 w-4 text-gray-400 group-hover:text-primary-600 transition flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs text-gray-400">Previous</p>
-                <p className="text-sm font-medium text-gray-700 group-hover:text-primary-700 transition truncate">
-                  {_(prev.titleKey)}
-                </p>
-              </div>
+            <Link href={`/help/${prev.slug}`} className="public-focus rounded-[16px] border border-[#292d30] p-5 hover:border-[#2AABEE]">
+              <p className="public-mono text-xs text-[#6e727a]">{_("help.previous")}</p>
+              <p className="mt-2 flex items-center gap-2 text-sm text-white"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{_(prev.titleKey)}</p>
             </Link>
-          ) : (
-            <div className="flex-1" />
+          ) : <span />}
+          {next && (
+            <Link href={`/help/${next.slug}`} className="public-focus rounded-[16px] border border-[#292d30] p-5 text-right hover:border-[#2AABEE]">
+              <p className="public-mono text-xs text-[#6e727a]">{_("help.next")}</p>
+              <p className="mt-2 flex items-center justify-end gap-2 text-sm text-white">{_(next.titleKey)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></p>
+            </Link>
           )}
+        </nav>
 
-          {next ? (
-            <Link
-              href={`/help/${next.slug}`}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-gray-200 hover:border-primary-200 hover:shadow-sm transition text-right group flex-1 max-w-xs"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-400">Next</p>
-                <p className="text-sm font-medium text-gray-700 group-hover:text-primary-700 transition truncate">
-                  {_(next.titleKey)}
-                </p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-primary-600 transition flex-shrink-0" />
-            </Link>
-          ) : (
-            <div className="flex-1" />
-          )}
-        </div>
-
-        {/* Still stuck */}
-        <div className="mt-10 bg-gradient-to-br from-primary-50 to-indigo-50 rounded-2xl border border-primary-100 p-6 sm:p-8 text-center">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {_("help.stillStuck")}
-          </h3>
-          <p className="mt-2 text-gray-500 text-sm max-w-lg mx-auto">
-            {_("help.stillStuckDesc")}
-          </p>
-          <Link
-            href="https://github.com/yourusername/telebo/issues"
-            target="_blank"
-            className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition shadow-sm"
-          >
-            GitHub Issues
-          </Link>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-400">{_("landing.footerCopyright")}</p>
-          <div className="flex items-center gap-4 text-sm">
-            <Link
-              href="/"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navHome")}
-            </Link>
-            <Link
-              href="/privacy"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navPrivacy")}
-            </Link>
-            <Link
-              href="/tos"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navTos")}
-            </Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+        <section className="mt-10 rounded-[16px] border border-[#292d30] p-7 text-center">
+          <h2 className="text-xl font-medium text-white">{_("help.stillStuck")}</h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[#a1a4a5]">{_("help.stillStuckDesc")}</p>
+          <a href="https://github.com/yourusername/telebo/issues" target="_blank" rel="noopener noreferrer" className={`${publicButtonClass} mt-6`}>{_("help.githubIssues")}</a>
+        </section>
+      </article>
+    </PublicShell>
   );
 }

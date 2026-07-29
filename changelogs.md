@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-30
+- **[6977e797](https://github.com/nealmtroy/TeleBos/commit/6977e797)**: fix(marketplace): preserve price when cancelling sale
+
 ## 2026-07-29
 - **[c3487c08](https://github.com/nealmtroy/TeleBos/commit/c3487c08)**: fix(settings): improve form accessibility
 
