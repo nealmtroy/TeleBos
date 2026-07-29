@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-07-29
+- **[c3487c08](https://github.com/nealmtroy/TeleBos/commit/c3487c08)**: fix(settings): improve form accessibility
+
 ## 2026-07-28
 - **[01291ac8](https://github.com/nealmtroy/TeleBos/commit/01291ac8)**: fix(settings): clean up junk text in AccountAvatar and add aria-label
 - **[bc3b4225](https://github.com/nealmtroy/TeleBos/commit/bc3b4225)**: fix(avatar): avoid missing photo requests on account pages

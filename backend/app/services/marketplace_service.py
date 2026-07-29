@@ -420,6 +420,14 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
     if account.seller_id != user.id and account.user_id != user.id:
         raise ValueError("You do not own this account listing.")
 
+    # Preserve the listing price in the audit before clearing it. Legacy listings
+    # without a stored price use the current account pricing rules as a fallback.
+    cancel_price = account.sell_price
+    if cancel_price is None:
+        from app.services.user_account_price_service import resolve_telegram_id_price
+
+        cancel_price = await resolve_telegram_id_price(db, account)
+
     # Revert marketplace settings & make account active again
     account.for_sale = False
     account.is_active = True
@@ -431,6 +439,7 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
         user_id=user.id,
         account_id=account.id,
         action="cancel_sale",
+        price=cancel_price,
         phone=account.phone,
         telegram_id=account.telegram_id,
     )
