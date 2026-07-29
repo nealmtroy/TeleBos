@@ -1,109 +1,41 @@
 "use client";
 
-import Link from "next/link";
+import { Shield } from "lucide-react";
+
+import { PublicFooter } from "@/components/public/public-footer";
+import { PublicShell } from "@/components/public/public-shell";
+import { Navbar5 } from "@/components/ui/navbar-5";
 import { useT } from "@/lib/i18n";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
-import { ArrowLeft, Shield } from "lucide-react";
 
 export default function PrivacyPage() {
   const _ = useT();
-
   const sections = [
-    {
-      title: _("privacy.section1Title"),
-      desc: _("privacy.section1Desc"),
-    },
-    {
-      title: _("privacy.section2Title"),
-      desc: _("privacy.section2Desc"),
-    },
-    {
-      title: _("privacy.section3Title"),
-      desc: _("privacy.section3Desc"),
-    },
-    {
-      title: _("privacy.section4Title"),
-      desc: _("privacy.section4Desc"),
-    },
-    {
-      title: _("privacy.section5Title"),
-      desc: _("privacy.section5Desc"),
-    },
-    {
-      title: _("privacy.section6Title"),
-      desc: _("privacy.section6Desc"),
-    },
+    { title: _("privacy.section1Title"), description: _("privacy.section1Desc") },
+    { title: _("privacy.section2Title"), description: _("privacy.section2Desc") },
+    { title: _("privacy.section3Title"), description: _("privacy.section3Desc") },
+    { title: _("privacy.section4Title"), description: _("privacy.section4Desc") },
+    { title: _("privacy.section5Title"), description: _("privacy.section5Desc") },
+    { title: _("privacy.section6Title"), description: _("privacy.section6Desc") },
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm font-medium">TeleBos</span>
-            </Link>
-            <LanguageSwitcher />
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        {/* Hero */}
-        <div className="mb-12">
-          <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center mb-6">
-            <Shield className="h-6 w-6 text-primary-600" />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-            {_("privacy.title")}
-          </h1>
-          <p className="text-sm text-gray-400">{_("privacy.lastUpdated")}</p>
-        </div>
-
-        {/* Intro */}
-        <p className="text-gray-600 leading-relaxed mb-12 text-lg">
-          {_("privacy.intro")}
-        </p>
-
-        {/* Sections */}
-        <div className="space-y-10">
-          {sections.map((section, i) => (
-            <div key={i}>
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                {i + 1}. {section.title}
-              </h2>
-              <p className="text-gray-600 leading-relaxed">{section.desc}</p>
-            </div>
+    <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
+      <article className="mx-auto max-w-[880px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <header className="border-b border-[#292d30] pb-12">
+          <Shield className="h-8 w-8 text-[#2AABEE]" aria-hidden="true" />
+          <h1 className="public-display mt-7 text-5xl leading-none text-white sm:text-7xl">{_("privacy.title")}</h1>
+          <p className="public-mono mt-5 text-xs text-[#6e727a]">{_("privacy.lastUpdated")}</p>
+          <p className="mt-8 max-w-3xl text-lg leading-8 text-[#a1a4a5]">{_("privacy.intro")}</p>
+        </header>
+        <ol className="divide-y divide-[#292d30]">
+          {sections.map((section, index) => (
+            <li key={section.title} className="grid gap-4 py-9 sm:grid-cols-[3rem_1fr]">
+              <span className="public-mono text-sm text-[#2AABEE]">{String(index + 1).padStart(2, "0")}</span>
+              <div><h2 className="text-xl font-medium text-white">{section.title}</h2><p className="mt-4 leading-8 text-[#a1a4a5]">{section.description}</p></div>
+            </li>
           ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-400">{_("landing.footerCopyright")}</p>
-          <div className="flex items-center gap-4 text-sm">
-            <Link
-              href="/"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navHome")}
-            </Link>
-            <Link
-              href="/tos"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navTos")}
-            </Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+        </ol>
+      </article>
+    </PublicShell>
   );
 }

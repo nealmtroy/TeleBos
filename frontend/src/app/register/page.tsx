@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuthStore } from "@/store/auth-store";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+
+import { PublicCheckbox } from "@/components/public/public-checkbox";
+import { PublicFooter } from "@/components/public/public-footer";
+import { PublicShell } from "@/components/public/public-shell";
+import { PublicInput, publicButtonClass } from "@/components/public/public-ui";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { useT } from "@/lib/i18n";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const register = useAuthStore((s) => s.register);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const register = useAuthStore((state) => state.register);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const _ = useT();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -21,149 +26,50 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard");
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  useEffect(() => { if (!isLoading && isAuthenticated) router.replace("/dashboard"); }, [isAuthenticated, isLoading, router]);
+  if (isLoading) return <LoadingState />;
   if (isAuthenticated) return null;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!agree) {
-      setError(_("register.mustAgree"));
-      return;
-    }
-    setError("");
-    setSuccess("");
-    setLoading(true);
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!agree) { setError(_("register.mustAgree")); return; }
+    setError(""); setSuccess(""); setLoading(true);
     try {
       await register(email, password, name);
-      // If email verification is required, they won't be automatically logged in
-      const isAuthed = useAuthStore.getState().isAuthenticated;
-      if (isAuthed) {
-        setSuccess(_("register.accountCreated"));
-        setTimeout(() => router.push("/dashboard"), 1500);
-      } else {
-        setSuccess("Registrasi berhasil! Silakan periksa email Anda untuk memverifikasi akun sebelum masuk.");
-        setTimeout(() => router.push("/login"), 4000);
-      }
-    } catch (err: any) {
-      setError(
-        err?.message || _("register.registrationFailed")
-      );
-    } finally {
-      setLoading(false);
-    }
+      if (useAuthStore.getState().isAuthenticated) { setSuccess(_("register.accountCreated")); setTimeout(() => router.push("/dashboard"), 1500); }
+      else { setSuccess(_("register.verificationRequired")); setTimeout(() => router.push("/login"), 4000); }
+    } catch (err: any) { setError(err?.message || _("register.registrationFailed")); }
+    finally { setLoading(false); }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-sm border">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">{_("register.createAccount")}</h2>
-          <p className="mt-2 text-gray-500">{_("register.getStarted")}</p>
+    <PublicShell footer={<PublicFooter compact />} mainClassName="flex min-h-screen items-center justify-center px-4 py-16 sm:px-8">
+      <div className="w-full max-w-lg">
+        <div className="mb-8 flex items-center justify-between gap-4"><Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]"><BrandLogo size="md" priority /></Link><Link href="/login" className="public-focus rounded-[6px] text-sm text-[#a1a4a5] hover:text-white">{_("register.signIn")}</Link></div>
+        <div className="rounded-[16px] border border-[#292d30] p-6 sm:p-9">
+          <h1 className="public-display text-5xl leading-none text-white">{_("register.createAccount")}</h1>
+          <p className="mt-4 text-[#a1a4a5]">{_("register.getStarted")}</p>
+          <form onSubmit={handleSubmit} className="mt-9 space-y-5">
+            {error && <div role="alert" aria-live="polite" className="rounded-[6px] border border-[#ff9592] p-4 text-sm text-[#ff9592]">{error}</div>}
+            {success && <div role="status" aria-live="polite" className="rounded-[6px] border border-[#3ad389] p-4 text-sm text-[#3ad389]">{success}</div>}
+            <div><label htmlFor="name" className="mb-2 block text-sm font-medium text-[#f0f0f0]">{_("register.fullNameLabel")}</label><PublicInput id="name" name="name" type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={_("register.fullNamePlaceholder")} /></div>
+            <div><label htmlFor="register-email" className="mb-2 block text-sm font-medium text-[#f0f0f0]">{_("register.emailLabel")}</label><PublicInput id="register-email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={_("register.emailPlaceholder")} /></div>
+            <div><label htmlFor="register-password" className="mb-2 block text-sm font-medium text-[#f0f0f0]">{_("register.passwordLabel")}</label><PublicInput id="register-password" name="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={_("register.passwordPlaceholder")} /></div>
+            <div className="flex items-start gap-3 rounded-[6px] border border-[#292d30] p-4">
+              <PublicCheckbox id="agree" name="agree" checked={agree} onChange={(event) => setAgree(event.target.checked)} aria-describedby="agreement-description" />
+              <div id="agreement-description" className="text-sm leading-6 text-[#a1a4a5]">
+                <label htmlFor="agree" className="cursor-pointer text-[#f0f0f0]">{_("register.agreePrefix")}</label>{" "}
+                <Link href="/privacy" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">{_("landing.navPrivacy")}</Link>{" "}
+                {_("register.agreeAnd")}{" "}
+                <Link href="/tos" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">{_("landing.navTos")}</Link>
+              </div>
+            </div>
+            <button type="submit" disabled={loading} aria-busy={loading} className={`${publicButtonClass} w-full border-white`}>{loading ? _("register.creatingAccount") : _("register.createAccount")}</button>
+          </form>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-              {success}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{_("register.fullNameLabel")}</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder={_("register.fullNamePlaceholder")}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{_("register.emailLabel")}</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder={_("register.emailPlaceholder")}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{_("register.passwordLabel")}</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder={_("register.passwordPlaceholder")}
-            />
-          </div>
-
-          {/* Agree checkbox */}
-          <div className="flex items-start gap-3">
-            <input
-              id="agree"
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => setAgree(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
-            />
-            <label htmlFor="agree" className="text-sm text-gray-500 leading-relaxed cursor-pointer select-none">
-              {_("register.agreePrefix")}{" "}
-              <Link href="/privacy" className="text-primary-600 hover:underline font-medium">
-                {_("landing.navPrivacy")}
-              </Link>
-              {" "}{_("register.agreeAnd")}{" "}
-              <Link href="/tos" className="text-primary-600 hover:underline font-medium">
-                {_("landing.navTos")}
-              </Link>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={cn(
-              "w-full py-2.5 rounded-lg text-white font-medium transition",
-              loading
-                ? "bg-primary-400 cursor-not-allowed"
-                : "bg-primary-600 hover:bg-primary-700"
-            )}
-          >
-            {loading ? _("register.creatingAccount") : _("register.createAccount")}
-          </button>
-
-          <p className="text-center text-sm text-gray-500">
-            {_("register.alreadyHaveAccount")}{" "}
-            <Link href="/login" className="text-primary-600 hover:underline font-medium">
-              {_("register.signIn")}
-            </Link>
-          </p>
-        </form>
       </div>
-    </div>
+    </PublicShell>
   );
 }
+
+function LoadingState() { return <div className="public-theme flex min-h-screen items-center justify-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-[#292d30] border-t-[#2AABEE]" role="status"><span className="sr-only">Loading</span></div></div>; }

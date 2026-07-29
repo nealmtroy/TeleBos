@@ -43,6 +43,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { motion, AnimatePresence } from "framer-motion";
 
 const broadcastSubItems = [
@@ -356,9 +357,10 @@ export function Sidebar() {
         {/* Header (Title only) */}
         <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0 relative overflow-hidden">
           {sidebarOpen && (
-            <span className="text-xl font-bold text-white tracking-tight animate-in fade-in slide-in-from-left-2 duration-200">
-              TeleBos
-            </span>
+            <BrandLogo
+              size="md"
+              className="animate-in fade-in slide-in-from-left-2 duration-200"
+            />
           )}
           {/* Close button (mobile) */}
           <button

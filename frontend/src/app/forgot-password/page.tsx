@@ -2,106 +2,98 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { useT } from "@/lib/i18n";
+
+import { PublicFooter } from "@/components/public/public-footer";
+import { PublicShell } from "@/components/public/public-shell";
+import { PublicInput, publicButtonClass } from "@/components/public/public-ui";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { authClient } from "@/lib/auth-client";
+import { useT } from "@/lib/i18n";
 
 export default function ForgotPasswordPage() {
   const _ = useT();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setLoading(true);
 
     try {
-      // Always show the success state regardless of the API response.
-      // The server returns a uniform 200 for all emails to prevent user
-      // enumeration (vuln-0006).  We still attempt the call so the reset
-      // email is actually sent when the account exists.
+      // Keep a uniform response for every address to prevent account enumeration.
       await authClient.requestPasswordReset({
         email,
         redirectTo: `${window.location.origin}/reset-password`,
       });
-      setSent(true);
     } catch {
-      // Silently show success even on error — the server may reject with
-      // a non-200 status in edge cases, but we must not disclose whether
-      // the email exists.
-      setSent(true);
+      // The visible outcome intentionally remains identical when the request fails.
     } finally {
+      setSent(true);
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-sm border">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">Reset password</h2>
-          <p className="mt-2 text-gray-500">
-            Enter your email and we&apos;ll send you a reset link
-          </p>
+    <PublicShell
+      footer={<PublicFooter compact />}
+      mainClassName="flex min-h-screen items-center justify-center px-4 py-16 sm:px-8"
+    >
+      <div className="w-full max-w-lg">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]">
+            <BrandLogo size="md" priority />
+          </Link>
+          <Link href="/login" className="public-focus rounded-[6px] text-sm text-[#a1a4a5] hover:text-white">
+            {_("forgotPassword.backToLogin")}
+          </Link>
         </div>
 
-        {sent ? (
-          <div className="text-center space-y-4">
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-              Check your email for the reset link
-            </div>
-            <Link
-              href="/login"
-              className="text-primary-600 hover:underline font-medium text-sm"
-            >
-              Back to login
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
+        <div className="rounded-[16px] border border-[#292d30] p-6 sm:p-9">
+          <h1 className="public-display text-5xl leading-none text-white">{_("forgotPassword.title")}</h1>
+          <p className="mt-4 leading-7 text-[#a1a4a5]">{_("forgotPassword.subtitle")}</p>
+
+          {sent ? (
+            <div className="mt-9 space-y-6">
+              <div role="status" aria-live="polite" className="rounded-[6px] border border-[#3ad389] p-4 text-sm leading-6 text-[#3ad389]">
+                {_("forgotPassword.success")}
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={cn(
-                "w-full py-2.5 rounded-lg text-white font-medium transition",
-                loading
-                  ? "bg-primary-400 cursor-not-allowed"
-                  : "bg-primary-600 hover:bg-primary-700"
-              )}
-            >
-              {loading ? "Sending..." : "Send reset link"}
-            </button>
-
-            <p className="text-center text-sm text-gray-500">
-              Remember your password?{" "}
-              <Link href="/login" className="text-primary-600 hover:underline font-medium">
-                Sign in
+              <Link href="/login" className={`${publicButtonClass} w-full border-white`}>
+                {_("forgotPassword.backToLogin")}
               </Link>
-            </p>
-          </form>
-        )}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-9 space-y-5">
+              <div>
+                <label htmlFor="forgot-email" className="mb-2 block text-sm font-medium text-[#f0f0f0]">
+                  {_("forgotPassword.emailLabel")}
+                </label>
+                <PublicInput
+                  id="forgot-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={_("forgotPassword.emailPlaceholder")}
+                />
+              </div>
+
+              <button type="submit" disabled={loading} aria-busy={loading} className={`${publicButtonClass} w-full border-white`}>
+                {loading ? _("forgotPassword.sending") : _("forgotPassword.sendLink")}
+              </button>
+
+              <p className="text-center text-sm text-[#a1a4a5]">
+                {_("forgotPassword.rememberPassword")} {" "}
+                <Link href="/login" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">
+                  {_("login.signIn")}
+                </Link>
+              </p>
+            </form>
+          )}
+        </div>
       </div>
-    </div>
+    </PublicShell>
   );
 }

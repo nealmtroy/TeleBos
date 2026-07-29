@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+import { helpSections } from "@/data/help-sections";
+
 export const dynamic = "force-dynamic";
 
 const siteUrl = process.env.NEXT_PUBLIC_URL || "https://telebos.app";
@@ -38,5 +40,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    ...helpSections.map((section) => ({
+      url: `${baseUrl}/help/${section.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
   ];
 }

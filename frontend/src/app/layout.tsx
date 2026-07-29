@@ -1,9 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+const publicDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-public-display",
+  weight: ["400"],
+});
+const publicMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-public-mono",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_URL || "https://telebos.app";
 
@@ -83,7 +95,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${publicDisplay.variable} ${publicMono.variable}`}
+    >
       <head>
         {/* Content-Security-Policy — defense in depth.
              Note: frame-ancestors and X-Frame-Options only work in HTTP headers

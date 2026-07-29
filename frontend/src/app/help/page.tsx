@@ -2,20 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useT } from "@/lib/i18n";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { ArrowRight, BookOpen, Bot, Search, Send, Shield, Smartphone, Sparkles, UserPlus } from "lucide-react";
+
+import { PublicFooter } from "@/components/public/public-footer";
+import { PublicShell } from "@/components/public/public-shell";
+import { PublicInput, publicButtonClass } from "@/components/public/public-ui";
+import { Navbar5 } from "@/components/ui/navbar-5";
 import { helpSections } from "@/data/help-sections";
-import {
-  Search,
-  ArrowRight,
-  BookOpen,
-  Smartphone,
-  Send,
-  Bot,
-  UserPlus,
-  Shield,
-  Sparkles,
-} from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 const iconMap: Record<string, React.ElementType> = {
   "getting-started": BookOpen,
@@ -30,190 +24,81 @@ const iconMap: Record<string, React.ElementType> = {
 export default function HelpPage() {
   const _ = useT();
   const [searchQuery, setSearchQuery] = useState("");
-
   const filteredSections = helpSections.filter((section) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    const title = _(section.titleKey).toLowerCase();
-    const desc = _(section.descKey).toLowerCase();
-    const content = section.contentKeys
-      .map((k) => _(k).toLowerCase())
-      .join(" ");
-    return title.includes(q) || desc.includes(q) || content.includes(q);
+    return [_(section.titleKey), _(section.descKey), ...section.contentKeys.map((key) => _(key))]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link
-              href="/"
-              className="flex items-center text-gray-900 font-bold"
-            >
-              <span>{_("help.title")}</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher />
-              <Link
-                href="/login"
-                className="text-sm text-gray-500 hover:text-gray-900 transition"
-              >
-                {_("landing.signIn")}
-              </Link>
-            </div>
+    <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
+      <section className="border-b border-[#292d30]">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <p className="public-mono text-xs text-[#2AABEE]">{_("help.apiTitle")}</p>
+          <h1 className="public-display mt-5 text-5xl leading-none text-white sm:text-7xl">{_("help.title")}</h1>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-[#a1a4a5]">{_("help.desc")}</p>
+          <div className="relative mt-9 max-w-xl">
+            <label htmlFor="help-search" className="sr-only">{_("help.searchLabel")}</label>
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6e727a]" aria-hidden="true" />
+            <PublicInput id="help-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={_("help.searchPlaceholder")} className="pl-12" />
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Hero */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
-            {_("help.title")}
-          </h1>
-          <p className="mt-3 text-lg text-gray-500">{_("help.desc")}</p>
-
-          {/* Search */}
-          <div className="mt-8 relative max-w-xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search help articles..."
-              className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm transition bg-white"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Quick nav pills */}
-      <div className="bg-white border-b border-gray-200 sticky top-16 z-40 overflow-x-auto">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 py-3">
+      <nav aria-label="Help topics" className="border-b border-[#292d30]">
+        <div className="no-scrollbar mx-auto flex max-w-[1200px] gap-2 overflow-x-auto px-4 py-4 sm:px-6 lg:px-8">
           {helpSections.map((section) => {
             const Icon = iconMap[section.key];
             return (
-              <Link
-                key={section.key}
-                href={`/help/${section.slug}`}
-                className="inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-primary-100 hover:text-primary-700 transition shrink-0"
-              >
-                {Icon && <Icon className="h-3.5 w-3.5" />}
+              <Link key={section.key} href={`/help/${section.slug}`} className="public-focus inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[6px] border border-[#292d30] px-3 text-xs text-[#a1a4a5] hover:border-[#f0f0f0] hover:text-white">
+                {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
                 {_(section.titleKey)}
               </Link>
             );
           })}
         </div>
-      </div>
+      </nav>
 
-      {/* Card grid */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <Link
-          href="/help/api"
-          className="group mb-5 flex items-center justify-between rounded-2xl border border-primary-100 bg-primary-50/60 p-5 transition hover:border-primary-200 hover:bg-primary-50"
-        >
+      <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+        <Link href="/help/api" className="public-focus group mb-7 flex items-center justify-between rounded-[16px] border border-[#292d30] p-5 transition-colors duration-150 hover:border-[#2AABEE]">
           <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-primary-600 shadow-sm">
-              <BookOpen className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 group-hover:text-primary-700">API Documentation</h2>
-              <p className="mt-1 text-sm text-gray-600">Integrate other websites with the scoped TeleBos API.</p>
-            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-[6px] border border-[#292d30] text-[#2AABEE]"><BookOpen className="h-5 w-5" aria-hidden="true" /></div>
+            <div><h2 className="font-medium text-white">{_("help.apiTitle")}</h2><p className="mt-1 text-sm text-[#a1a4a5]">{_("help.apiDescription")}</p></div>
           </div>
-          <ArrowRight className="h-4 w-4 text-primary-400 transition group-hover:translate-x-1 group-hover:text-primary-600" />
+          <ArrowRight className="h-4 w-4 text-[#6e727a] group-hover:text-[#2AABEE]" aria-hidden="true" />
         </Link>
 
         {filteredSections.length === 0 ? (
-          <div className="text-center py-20">
-            <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">
-              No results found for &ldquo;{searchQuery}&rdquo;
-            </p>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-2 text-sm text-primary-600 hover:underline"
-            >
-              Clear search
-            </button>
+          <div className="rounded-[16px] border border-[#292d30] py-20 text-center">
+            <Search className="mx-auto mb-4 h-10 w-10 text-[#464a4d]" aria-hidden="true" />
+            <p className="text-lg text-[#a1a4a5]">{_("help.noResults", { query: searchQuery })}</p>
+            <button type="button" onClick={() => setSearchQuery("")} className="public-focus mt-4 rounded-[6px] text-sm text-[#2AABEE] hover:text-white">{_("help.clearSearch")}</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filteredSections.map((section) => {
               const Icon = iconMap[section.key];
               return (
-                <Link
-                  key={section.key}
-                  href={`/help/${section.slug}`}
-                  className="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-primary-100 hover:shadow-lg hover:shadow-primary-50 transition-all duration-300 p-6"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-primary-50 group-hover:bg-primary-100 flex items-center justify-center mb-4 transition-colors">
-                    {Icon && <Icon className="h-5.5 w-5.5 text-primary-600" />}
-                  </div>
-                  <h2 className="text-lg font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">
-                    {_(section.titleKey)}
-                  </h2>
-                  <p className="mt-1.5 text-sm text-gray-500 leading-relaxed line-clamp-2">
-                    {_(section.descKey)}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">
-                      {section.contentKeys.length} articles
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
-                  </div>
+                <Link key={section.key} href={`/help/${section.slug}`} className="public-focus group rounded-[16px] border border-[#292d30] p-6 transition-colors duration-150 hover:border-[#2AABEE]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-[6px] border border-[#292d30] text-[#2AABEE]">{Icon && <Icon className="h-5 w-5" aria-hidden="true" />}</div>
+                  <h2 className="mt-5 text-lg font-medium text-white">{_(section.titleKey)}</h2>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#a1a4a5]">{_(section.descKey)}</p>
+                  <div className="mt-5 flex items-center justify-between"><span className="public-mono text-xs text-[#6e727a]">{_("help.articleCount", { count: section.contentKeys.length })}</span><ArrowRight className="h-4 w-4 text-[#464a4d] group-hover:text-[#2AABEE]" aria-hidden="true" /></div>
                 </Link>
               );
             })}
           </div>
         )}
 
-        {/* Still stuck */}
-        <div className="mt-12 bg-gradient-to-br from-primary-50 to-indigo-50 rounded-2xl border border-primary-100 p-6 sm:p-8 text-center">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {_("help.stillStuck")}
-          </h3>
-          <p className="mt-2 text-gray-500 text-sm max-w-lg mx-auto">
-            {_("help.stillStuckDesc")}
-          </p>
-          <Link
-            href="https://github.com/yourusername/telebo/issues"
-            target="_blank"
-            className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition shadow-sm"
-          >
-            GitHub Issues
-          </Link>
-        </div>
+        <section className="mt-12 rounded-[16px] border border-[#292d30] p-7 text-center sm:p-9">
+          <h2 className="text-xl font-medium text-white">{_("help.stillStuck")}</h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[#a1a4a5]">{_("help.stillStuckDesc")}</p>
+          <a href="https://github.com/yourusername/telebo/issues" target="_blank" rel="noopener noreferrer" className={`${publicButtonClass} mt-6`}>{_("help.githubIssues")}</a>
+        </section>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-400">{_("landing.footerCopyright")}</p>
-          <div className="flex items-center gap-4 text-sm">
-            <Link
-              href="/"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navHome")}
-            </Link>
-            <Link
-              href="/privacy"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navPrivacy")}
-            </Link>
-            <Link
-              href="/tos"
-              className="text-gray-500 hover:text-gray-700 transition"
-            >
-              {_("landing.navTos")}
-            </Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </PublicShell>
   );
 }

@@ -9,10 +9,10 @@ import {
   LayoutDashboard,
   Search,
   ArrowLeft,
-  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export default function NotFoundPage() {
   const _ = useT();
@@ -34,12 +34,10 @@ export default function NotFoundPage() {
           <div className="flex items-center h-16">
             <Link
               href="/"
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+              className="flex items-center"
+              aria-label="TeleBos home"
             >
-              <Bot className="h-5 w-5" />
-              <span className="text-sm font-semibold tracking-tight">
-                TeleBos
-              </span>
+              <BrandLogo size="sm" />
             </Link>
           </div>
         </div>
