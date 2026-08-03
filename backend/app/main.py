@@ -1115,6 +1115,8 @@ async def lifespan(app: FastAPI):
     await redis_client.close()
 
     await session_manager.stop()
+    from app.services.telegram_client import client_pool
+    await client_pool.stop()
     await engine.dispose()
 
 

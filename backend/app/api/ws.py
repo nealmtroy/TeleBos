@@ -265,9 +265,11 @@ async def ws_chats(websocket: WebSocket, account_id: str):
     if not await manager.connect(channel, websocket):
         return
 
-    # Trigger Lazy Connection on-demand
+    # Ensure only one bounded, coalesced connection attempt per account. Awaiting
+    # here keeps failures owned by the WebSocket request instead of leaving a
+    # detached task behind after the socket disconnects.
     from app.services.session_manager import session_manager
-    asyncio.create_task(session_manager.ensure_connected_on_demand(account_id))
+    await session_manager.ensure_connected_on_demand(account_id)
 
     try:
         while True:

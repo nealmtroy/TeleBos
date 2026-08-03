@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-03
+- **[a33192f2](https://github.com/nealmtroy/TeleBos/commit/a33192f2)**: fix(twofa): cache Telegram status updates
 - **[18f4840e](https://github.com/nealmtroy/TeleBos/commit/18f4840e)**: fix(accounts): keep Next page exports valid
 - **[6b859994](https://github.com/nealmtroy/TeleBos/commit/6b859994)**: feat(accounts): improve account management UI
 - **[8d0a7233](https://github.com/nealmtroy/TeleBos/commit/8d0a7233)**: Merge pull request #2 from nealmtroy/feat/telegram-email-login-flow

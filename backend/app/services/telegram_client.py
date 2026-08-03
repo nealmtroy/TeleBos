@@ -37,6 +37,11 @@ class TelegramClientPool:
         # dict[account_id, {"client": TelegramClient, "last_accessed": float}]
         self._clients: dict[str, dict[str, Any]] = {}
         self._cleanup_task: asyncio.Task[None] | None = None
+        # Bound account connection/restore work across different accounts. Each
+        # connection can perform Telegram I/O and briefly use the DB; without a
+        # global bound, a reconnect storm can exhaust the shared pool.
+        self._connect_semaphore = asyncio.Semaphore(3)
+        self._catch_up_tasks: set[asyncio.Task[Any]] = set()
 
     async def _cleanup_stale_clients(self) -> None:
         """Disconnect and remove clients that haven't been accessed recently,
@@ -141,6 +146,11 @@ class TelegramClientPool:
 
     async def get(self, account_id: str, session_string: str) -> TelegramClient | None:
         """Return an existing client or create a new one from a session string."""
+        async with self._connect_semaphore:
+            return await self._get_impl(account_id, session_string)
+
+    async def _get_impl(self, account_id: str, session_string: str) -> TelegramClient | None:
+        """Create a client while the cross-account connection gate is held."""
         # Idle cleanup may query Telegram and the database. It must never delay
         # an interactive operation such as marketplace profile preparation.
         if self._cleanup_task is None or self._cleanup_task.done():
@@ -215,41 +225,69 @@ class TelegramClientPool:
                             select(
                                 TelegramAccount.pts,
                                 TelegramAccount.qts,
-                                TelegramAccount.date
+                                TelegramAccount.date,
                             ).where(TelegramAccount.id == uuid.UUID(account_id))
                         )
                         row = res.first()
-                        if row and row[0] is not None:
-                            pts, qts, date = row
-                            from telethon.tl.types.updates import State
-                            import datetime
-                            
-                            # Convert date to timezone-aware datetime if needed
-                            date_dt = date
-                            if isinstance(date, (int, float)):
-                                date_dt = datetime.datetime.fromtimestamp(date, tz=datetime.timezone.utc)
-                            elif date is None:
-                                date_dt = datetime.datetime.now(datetime.timezone.utc)
-                                
-                            client.session.set_update_state(0, State(pts=pts, qts=qts, date=date_dt, seq=0, unread_count=0))
-                            logger.info("Restored updates state (pts=%s, qts=%s, date=%s) for account %s", pts, qts, date_dt, account_id)
-                            
-                            # Catch up missed updates asynchronously
-                            asyncio.create_task(client.catch_up())
-                        else:
-                            # First time: query current state and save to DB
-                            try:
-                                from telethon.tl.functions.updates import GetStateRequest
-                                state = await client(GetStateRequest())
+
+                    if row and row[0] is not None:
+                        pts, qts, date = row
+                        from telethon.tl.types.updates import State
+                        import datetime
+
+                        date_dt = date
+                        if isinstance(date, (int, float)):
+                            date_dt = datetime.datetime.fromtimestamp(
+                                date, tz=datetime.timezone.utc
+                            )
+                        elif date is None:
+                            date_dt = datetime.datetime.now(datetime.timezone.utc)
+
+                        client.session.set_update_state(
+                            0,
+                            State(
+                                pts=pts,
+                                qts=qts,
+                                date=date_dt,
+                                seq=0,
+                                unread_count=0,
+                            ),
+                        )
+                        logger.info(
+                            "Restored updates state (pts=%s, qts=%s, date=%s) for account %s",
+                            pts,
+                            qts,
+                            date_dt,
+                            account_id,
+                        )
+                        catch_up_task = asyncio.create_task(client.catch_up())
+                        self._catch_up_tasks.add(catch_up_task)
+                        catch_up_task.add_done_callback(self._catch_up_tasks.discard)
+                    else:
+                        # Never hold a DB connection while waiting on Telegram.
+                        try:
+                            from telethon.tl.functions.updates import GetStateRequest
+
+                            state = await client(GetStateRequest())
+                            async with async_session_factory() as db:
                                 await db.execute(
                                     update(TelegramAccount)
                                     .where(TelegramAccount.id == uuid.UUID(account_id))
                                     .values(pts=state.pts, qts=state.qts, date=state.date)
                                 )
                                 await db.commit()
-                                logger.info("Saved initial updates state (pts=%s, qts=%s) for account %s", state.pts, state.qts, account_id)
-                            except Exception as save_state_err:
-                                logger.debug("Failed to save initial update state for account %s: %s", account_id, save_state_err)
+                            logger.info(
+                                "Saved initial updates state (pts=%s, qts=%s) for account %s",
+                                state.pts,
+                                state.qts,
+                                account_id,
+                            )
+                        except Exception as save_state_err:
+                            logger.debug(
+                                "Failed to save initial update state for account %s: %s",
+                                account_id,
+                                save_state_err,
+                            )
                 except Exception as restore_exc:
                     logger.warning("Failed to restore update state for account %s: %s", account_id, restore_exc)
 
@@ -340,6 +378,18 @@ class TelegramClientPool:
                 await asyncio.wait_for(client.disconnect(), timeout=2.0)
             except Exception as exc:
                 logger.debug("Failed to disconnect client %s during removal: %s", account_id, exc)
+
+    async def stop(self) -> None:
+        """Cancel pool-owned background work and disconnect all cached clients."""
+        if self._cleanup_task and not self._cleanup_task.done():
+            self._cleanup_task.cancel()
+            await asyncio.gather(self._cleanup_task, return_exceptions=True)
+        for task in list(self._catch_up_tasks):
+            task.cancel()
+        if self._catch_up_tasks:
+            await asyncio.gather(*list(self._catch_up_tasks), return_exceptions=True)
+        for account_id in list(self._clients):
+            await self.remove(account_id, save_state=False)
 
     async def get_connected_clients(self) -> dict[str, TelegramClient]:
         """Return dict of still-connected clients."""

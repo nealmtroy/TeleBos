@@ -17,6 +17,57 @@ logger = logging.getLogger(__name__)
 
 _sync_semaphore = asyncio.Semaphore(3)  # Limit concurrent full syncs on startup
 
+# Connection work includes Telegram network I/O and short DB lookups. Keep it
+# below the database pool capacity so reconnect storms cannot starve API/WS auth.
+_connect_semaphore = asyncio.Semaphore(3)
+
+# One in-flight connection and sync per account. WebSocket reconnects commonly
+# arrive in bursts and must share idempotent work instead of spawning duplicates.
+_connect_tasks: dict[str, asyncio.Task[bool]] = {}
+_connect_task_lock = asyncio.Lock()
+_sync_tasks: dict[str, asyncio.Task[None]] = {}
+_tracked_tasks: set[asyncio.Task[object]] = set()
+_shutdown = False
+
+
+async def _cancel_tracked_tasks() -> None:
+    for task in list(_tracked_tasks):
+        task.cancel()
+    if _tracked_tasks:
+        await asyncio.gather(*list(_tracked_tasks), return_exceptions=True)
+    _connect_tasks.clear()
+    _sync_tasks.clear()
+
+
+def _track_task(task: asyncio.Task[object]) -> asyncio.Task[object]:
+    _tracked_tasks.add(task)
+
+    def _done(completed: asyncio.Task[object]) -> None:
+        _tracked_tasks.discard(completed)
+        if not completed.cancelled():
+            try:
+                completed.exception()
+            except Exception:
+                logger.exception("Tracked session-manager task cleanup failed")
+
+    task.add_done_callback(_done)
+    return task
+
+
+def _schedule_sync(account_id: str) -> None:
+    existing = _sync_tasks.get(account_id)
+    if existing and not existing.done():
+        return
+    task = asyncio.create_task(_background_chat_sync(account_id))
+    _sync_tasks[account_id] = task
+    _track_task(task)
+
+    def _clear(completed: asyncio.Task[None]) -> None:
+        if _sync_tasks.get(account_id) is completed:
+            _sync_tasks.pop(account_id, None)
+
+    task.add_done_callback(_clear)
+
 
 async def _background_chat_sync(account_id: str) -> None:
     """Run profile, chat, and folder synchronization in the background using a fresh DB session."""
@@ -96,14 +147,18 @@ class SessionManager:
 
     async def start(self) -> None:
         """Start the periodic health check loop."""
+        global _shutdown
         if self._running:
             return
+        _shutdown = False
         self._running = True
         self._task = asyncio.create_task(self._health_loop())
         logger.info("Session manager started")
 
     async def stop(self) -> None:
-        """Stop the health check loop and detach all event handlers."""
+        """Stop the health check loop and all manager-owned background work."""
+        global _shutdown
+        _shutdown = True
         self._running = False
         if self._task:
             self._task.cancel()
@@ -111,6 +166,8 @@ class SessionManager:
                 await self._task
             except asyncio.CancelledError:
                 pass
+
+        await _cancel_tracked_tasks()
 
         # Detach event relay from all accounts
         clients = await client_pool.get_connected_clients()
@@ -231,27 +288,95 @@ class SessionManager:
         return False
 
     async def ensure_connected_on_demand(self, account_id: str) -> bool:
-        """Ensure an account is connected and its event relay is attached (on-demand)."""
+        """Ensure an account is connected, coalescing duplicate requests."""
+        if _shutdown:
+            return False
         clients = await client_pool.get_connected_clients()
         if account_id in clients:
             return True
 
-        logger.info("Lazy Connection: connecting account %s on-demand", account_id)
+        owner = False
+        async with _connect_task_lock:
+            task = _connect_tasks.get(account_id)
+            if task is None or task.done():
+                task = asyncio.create_task(self._connect_account(account_id))
+                _connect_tasks[account_id] = task
+                _track_task(task)
+                owner = True
+
+        try:
+            return await task
+        finally:
+            if owner:
+                async with _connect_task_lock:
+                    if _connect_tasks.get(account_id) is task:
+                        _connect_tasks.pop(account_id, None)
+
+    async def _connect_account(self, account_id: str) -> bool:
+        """Load an account in a short session, then connect outside that session."""
         from app.database import async_session_factory
         import uuid
+
+        logger.info("Lazy Connection: connecting account %s on-demand", account_id)
         try:
             async with async_session_factory() as db:
                 result = await db.execute(
                     select(TelegramAccount).where(
                         TelegramAccount.id == uuid.UUID(account_id),
-                        TelegramAccount.is_active.is_(True)
+                        TelegramAccount.is_active.is_(True),
                     )
                 )
                 account = result.scalar_one_or_none()
-                if account:
-                    return await self.attach_and_reconnect(db, account)
+                if account is None:
+                    return False
+                account_id_value = str(account.id)
+                session_string = account.session_string
+                account_snapshot = {
+                    "id": account_id_value,
+                    "is_active": account.is_active,
+                    "session_string": session_string,
+                    "telegram_id": account.telegram_id,
+                    "phone": account.phone,
+                    "user_id": account.user_id,
+                }
         except Exception as exc:
-            logger.error("Failed to connect account %s on-demand: %s", account_id, exc)
+            logger.error("Failed to load account %s on-demand: %s", account_id, exc)
+            return False
+
+        if not account_snapshot["is_active"] or not account_snapshot["session_string"]:
+            return False
+        try:
+            async with _connect_semaphore:
+                session_str = decrypt(account_snapshot["session_string"])
+                if not session_str:
+                    return False
+                client = await client_pool.get(account_id_value, session_str)
+                if client is None:
+                    return False
+                if account_snapshot["telegram_id"] is None:
+                    try:
+                        me = await client.get_me()
+                        if me and me.id:
+                            async with async_session_factory() as db:
+                                result = await db.execute(
+                                    select(TelegramAccount).where(TelegramAccount.id == uuid.UUID(account_id_value))
+                                )
+                                current = result.scalar_one_or_none()
+                                if current and current.telegram_id is None:
+                                    current.telegram_id = me.id
+                                    await db.commit()
+                    except Exception as exc:
+                        logger.warning("Account %s: failed to populate telegram_id: %s", account_id_value, exc)
+
+                success = await event_relay.attach(account_id_value, session_str)
+                if success:
+                    logger.info("Account %s connected + event handlers attached", account_id_value)
+                    _schedule_sync(account_id_value)
+                return success
+        except Exception as exc:
+            logger.error("Error connecting account %s on-demand: %s", account_id_value, exc)
+            return False
+
         return False
 
     async def _check_connections(self) -> None:
@@ -320,112 +445,54 @@ class SessionManager:
         for account_id in lazy_disconnect_ids:
             await client_pool.remove(account_id)
 
-        # Phase 3: Short DB session for reconnecting stale accounts
-        if stale_ids:
+        # Phase 3: Reconnect stale accounts. The account check is short-lived;
+        # Telegram connection and handler attachment happen after it closes.
+        for account_id in stale_ids:
             try:
+                should_reconnect = False
                 async with async_session_factory() as db:
-                    for account_id in stale_ids:
-                        try:
-                            result = await db.execute(
-                                select(TelegramAccount).where(
-                                    TelegramAccount.id == account_id,
-                                    TelegramAccount.is_active.is_(True),
-                                )
-                            )
-                            account = result.scalar_one_or_none()
-                            if account is None:
-                                continue
-
-                            # Only reconnect if required
-                            has_auto_reply = account.auto_reply_enabled
-                            has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
-                            has_active_job = await self.is_account_in_active_job(db, account_id)
-
-                            if has_auto_reply or has_active_ws or has_active_job:
-                                await self.attach_and_reconnect(db, account)
-                        except Exception as exc:
-                            logger.error("Failed to auto-reconnect account %s: %s", account_id, exc)
+                    result = await db.execute(
+                        select(TelegramAccount).where(
+                            TelegramAccount.id == account_id,
+                            TelegramAccount.is_active.is_(True),
+                        )
+                    )
+                    account = result.scalar_one_or_none()
+                    if account:
+                        should_reconnect = (
+                            account.auto_reply_enabled
+                            or ws_manager._connections.get(f"chats:{account_id}") is not None
+                            or await self.is_account_in_active_job(db, account_id)
+                        )
+                if should_reconnect:
+                    await self.ensure_connected_on_demand(account_id)
             except Exception as exc:
-                logger.warning("DB session error during stale reconnect: %s", exc)
+                logger.error("Failed to auto-reconnect account %s: %s", account_id, exc)
 
-    async def attach_and_reconnect(
-        self, db: AsyncSession, account: TelegramAccount
-    ) -> bool:
-        """Load a specific account, reconnect, and attach event handlers.
-
-        Returns True if successful.
-        """
-        if not account.is_active or not account.session_string:
-            return False
-
-        try:
-            session_str = decrypt(account.session_string)
-            if not session_str:
-                raise ValueError("Decrypted session string is empty")
-        except Exception as exc:
-            logger.error(
-                "Failed to decrypt session string for account %s (%s). "
-                "This usually happens if the ENCRYPTION_KEY was changed. "
-                "Deactivating account. Error: %s",
-                account.id,
-                account.phone,
-                exc,
-            )
-            # Deactivating account
-            try:
-                from app.services.account_service import move_to_expired_folder
-                await move_to_expired_folder(db, account.id, account.user_id)
-                await db.commit()
-            except Exception as folder_exc:
-                logger.error("Failed to deactivate account %s: %s", account.id, folder_exc)
-                account.is_active = False
-                await db.commit()
-            return False
-
-        try:
-            client = await client_pool.get(str(account.id), session_str)
-            if client is None:
-                return False
-
-            # Populate telegram_id if missing (e.g. accounts created before this field existed)
-            if account.telegram_id is None:
-                try:
-                    me = await client.get_me()
-                    if me and me.id:
-                        account.telegram_id = me.id
-                        logger.info("Account %s: populated telegram_id=%s", account.id, me.id)
-                        await db.commit()
-                except Exception as exc:
-                    logger.warning("Account %s: failed to get telegram_id: %s", account.id, exc)
-
-            # Attach event relay handlers
-            success = await event_relay.attach(str(account.id), session_str)
-            if success:
-                logger.info("Account %s connected + event handlers attached", account.id)
-                asyncio.create_task(_background_chat_sync(str(account.id)))
-
-            return success
-        except Exception as exc:
-            logger.error("Error connecting/attaching account %s (%s): %s", account.id, account.phone, exc)
-            return False
+    async def attach_and_reconnect(self, db: AsyncSession, account: TelegramAccount) -> bool:
+        """Connect an account without holding the caller's DB session during I/O."""
+        return await self._connect_account(str(account.id))
 
     async def reconnect_all(self, db: AsyncSession) -> int:
-        """Reconnect only active accounts with auto-reply enabled on startup (Lazy Connection)."""
+        """Reconnect active auto-reply accounts without pinning ``db`` during I/O."""
         result = await db.execute(
-            select(TelegramAccount).where(
+            select(TelegramAccount.id).where(
                 TelegramAccount.is_active.is_(True),
-                TelegramAccount.auto_reply_enabled.is_(True)
+                TelegramAccount.auto_reply_enabled.is_(True),
             )
         )
-        accounts = list(result.scalars().all())
+        account_ids = [str(account_id) for account_id in result.scalars().all()]
         success = 0
-        for account in accounts:
-            try:
-                if await self.attach_and_reconnect(db, account):
-                    success += 1
-            except Exception as exc:
-                logger.error("Unhandled error reconnecting account %s (%s): %s", account.id, account.phone, exc)
-        logger.info("Lazy reconnect complete. Reconnected %d of %d active accounts (auto-reply enabled)", success, len(accounts))
+        for account_id in account_ids:
+            if not self._running:
+                break
+            if await self._connect_account(account_id):
+                success += 1
+        logger.info(
+            "Lazy reconnect complete. Reconnected %d of %d active accounts (auto-reply enabled)",
+            success,
+            len(account_ids),
+        )
         return success
 
 

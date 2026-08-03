@@ -53,7 +53,9 @@ def test_email_code_metadata_exposes_only_presentation_fields():
 
 
 def test_setup_email_metadata_keeps_flow_actionable():
-    metadata = sent_code_metadata(SimpleNamespace(type=SentCodeTypeSetUpEmailRequired(), next_type=None, timeout=None))
+    metadata = sent_code_metadata(
+        SimpleNamespace(type=SentCodeTypeSetUpEmailRequired(), next_type=None, timeout=None)
+    )
 
     assert metadata["stage"] == "setup_email"
     assert metadata["google_signin_allowed"] is True
