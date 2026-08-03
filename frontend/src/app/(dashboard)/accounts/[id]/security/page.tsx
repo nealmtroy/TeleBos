@@ -9,7 +9,7 @@ import {
   LoginEmailSettings,
   PrivacySettings,
   TwoFASettings,
-} from "../settings/page";
+} from "@/components/accounts/account-settings-page";
 
 export default function AccountSecurityPage() {
   const _ = useT();

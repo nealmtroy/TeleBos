@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-03
+- **[6b859994](https://github.com/nealmtroy/TeleBos/commit/6b859994)**: feat(accounts): improve account management UI
 - **[8d0a7233](https://github.com/nealmtroy/TeleBos/commit/8d0a7233)**: Merge pull request #2 from nealmtroy/feat/telegram-email-login-flow
 - **[03699816](https://github.com/nealmtroy/TeleBos/commit/03699816)**: @ feat(auth): telegram email-login flow with server-authoritative state
 
