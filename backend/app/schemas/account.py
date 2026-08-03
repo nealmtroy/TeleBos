@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 from typing import Any
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 import logging
 
@@ -15,17 +15,51 @@ class SendCodeRequest(BaseModel):
 
 
 class VerifyCodeRequest(BaseModel):
-    phone: str
-    code: str = Field(min_length=5, max_length=5)
-    phone_code_hash: str
-    twofa_password: str | None = None
+    login_id: str = Field(min_length=1, max_length=64)
+    code: str = Field(min_length=1, max_length=64)
+    twofa_password: str | None = Field(default=None, max_length=512)
+
+
+class LoginIdRequest(BaseModel):
+    login_id: str = Field(min_length=1, max_length=64)
+
+
+class SetupLoginEmailRequest(LoginIdRequest):
+    email: EmailStr = Field(max_length=254)
+
+
+class VerifySetupLoginEmailRequest(LoginIdRequest):
+    code: str = Field(min_length=1, max_length=64)
+
+
+class VerifyTwoFARequest(LoginIdRequest):
+    twofa_password: str = Field(min_length=1, max_length=512)
 
 
 class SendCodeResponse(BaseModel):
-    phone_code_hash: str
-    timeout: int | None = 120
-    next_action: str = "enter_code"
+    login_id: str
+    stage: str
+    delivery_type: str | None = None
+    next_delivery_type: str | None = None
+    timeout: int | None = None
+    code_length: int | None = None
+    input_mode: str | None = None
+    input_pattern: str | None = None
     email_pattern: str | None = None
+    reset_available_period: int | None = None
+    reset_pending_date: int | None = None
+    setup_url: str | None = None
+    google_signin_allowed: bool = False
+    apple_signin_allowed: bool = False
+
+
+class SetupLoginEmailResponse(BaseModel):
+    login_id: str
+    stage: str = "setup_email_code"
+    email_pattern: str | None = None
+    code_length: int | None = None
+    input_mode: str = "alphanumeric"
+    timeout: int | None = None
 
 
 class VerifyCodeResponse(BaseModel):

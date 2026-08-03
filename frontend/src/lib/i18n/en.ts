@@ -245,6 +245,12 @@ const en: Dict = {
     failedSendOtp: "Failed to send OTP",
     failedVerify: "Failed to verify code",
     failedUpload: "Failed to upload session",
+    setupEmailRequired: "Telegram requires you to set up a login email before continuing.",
+    setupEmailLabel: "Telegram login email",
+    setupEmailSendCode: "Send email code",
+    setupEmailCodePrompt: "Enter the code sent to your email",
+    deliveryCodePrompt: "Enter the code from {delivery}",
+    thirdPartySigninUnavailable: "Telegram reported third-party sign-in availability. It is not available in TeleBos yet.",
   },
 
   // ── Account Detail ──────────────────────────────────────────────────────

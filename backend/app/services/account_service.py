@@ -2,6 +2,7 @@
 
 import logging
 import os
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
@@ -156,47 +157,122 @@ async def check_account_hint(phone: str) -> dict[str, Any] | None:
             pass
 
 
-async def start_login(phone: str) -> tuple[Any, str, int, str, str | None]:
-    """
-    Send the OTP code to the given phone number.
+@dataclass(frozen=True)
+class LoginStartResult:
+    client: Any
+    phone_code_hash: str
+    sent_code: dict[str, Any]
 
-    Returns:
-        Tuple of (client, phone_code_hash, timeout_seconds, next_action, email_pattern).
 
-    The caller must keep the client reference to later call verify_code.
-    """
+def _type_name(value: Any) -> str | None:
+    if value is None:
+        return None
+    name = type(value).__name__.removeprefix("SentCodeType").removeprefix("CodeType")
+    return name.replace("Sms", "sms_").replace("Email", "email_").replace("Fragment", "fragment_").replace("Firebase", "firebase_").replace("Missed", "missed_").replace("Flash", "flash_").replace("App", "app").lower().strip("_") or "unknown"
+
+
+def sent_code_metadata(result: Any) -> dict[str, Any]:
+    """Normalize public, server-selected auth.SentCode metadata for the UI."""
+    sent_type = getattr(result, "type", None)
+    delivery_type = _type_name(sent_type)
+    is_setup = type(sent_type).__name__ == "SentCodeTypeSetUpEmailRequired"
+    length = getattr(sent_type, "length", None)
+    pattern = getattr(sent_type, "pattern", None)
+    input_mode = "numeric"
+    if delivery_type in {"sms_word", "sms_phrase"}:
+        input_mode = "alphabetic"
+    elif pattern:
+        input_mode = "pattern"
+    elif delivery_type == "email_code":
+        input_mode = "alphanumeric"
+
+    return {
+        "stage": "setup_email" if is_setup else "enter_code",
+        "delivery_type": delivery_type,
+        "next_delivery_type": _type_name(getattr(result, "next_type", None)),
+        "timeout": getattr(result, "timeout", None),
+        "code_length": length,
+        "input_mode": input_mode if length or pattern else None,
+        "input_pattern": pattern,
+        "email_pattern": getattr(sent_type, "email_pattern", None),
+        "reset_available_period": getattr(sent_type, "reset_available_period", None),
+        "reset_pending_date": getattr(sent_type, "reset_pending_date", None),
+        "setup_url": getattr(sent_type, "url", None) if is_setup else None,
+        "google_signin_allowed": bool(getattr(sent_type, "google_signin_allowed", False)),
+        "apple_signin_allowed": bool(getattr(sent_type, "apple_signin_allowed", False)),
+    }
+
+
+async def start_login(phone: str) -> LoginStartResult:
+    """Create an unauthenticated client and ask Telegram to select delivery."""
     client = await client_pool.create_unauth_client(phone)
     try:
         result = await client.send_code_request(phone)
-        phone_code_hash = result.phone_code_hash
-        timeout = getattr(result, "timeout", None)
-        if timeout is None:
-            timeout = 120
-
-        next_action = "enter_code"
-        email_pattern = None
-
-        from telethon.tl.types.auth import (
-            SentCodeTypeEmailCode,
-            SentCodeTypeSetUpEmailRequired,
+        return LoginStartResult(
+            client=client,
+            phone_code_hash=result.phone_code_hash,
+            sent_code=sent_code_metadata(result),
         )
-
-        if isinstance(result.type, SentCodeTypeSetUpEmailRequired):
-            raise ValueError(
-                "Akun ini memerlukan pengaturan email verifikasi. Silakan buka aplikasi resmi Telegram di HP/Desktop Anda "
-                "terlebih dahulu untuk menyelesaikan pengaturan email verifikasi yang diminta, lalu ulangi proses login di sini."
-            )
-        elif isinstance(result.type, SentCodeTypeEmailCode):
-            next_action = "enter_email_code"
-            email_pattern = getattr(result.type, "email_pattern", None)
-
-        return client, phone_code_hash, timeout, next_action, email_pattern
     except Exception:
         try:
             await client.disconnect()
         except Exception:
             pass
         raise
+
+
+async def resend_login_code(client: Any, phone: str, phone_code_hash: str) -> tuple[str, dict[str, Any]]:
+    """Ask Telegram to progress the current server-authoritative login flow."""
+    from telethon.tl.functions.auth import ResendCodeRequest
+
+    result = await client(ResendCodeRequest(phone_number=phone, phone_code_hash=phone_code_hash))
+    return result.phone_code_hash, sent_code_metadata(result)
+
+
+async def send_login_setup_email(client: Any, phone: str, phone_code_hash: str, email: str) -> dict[str, Any]:
+    """Send a login-email setup confirmation using the pending phone login."""
+    from telethon.tl.functions.account import SendVerifyEmailCodeRequest
+    from telethon.tl.types import EmailVerifyPurposeLoginSetup
+
+    result = await client(SendVerifyEmailCodeRequest(
+        purpose=EmailVerifyPurposeLoginSetup(phone_number=phone, phone_code_hash=phone_code_hash),
+        email=email,
+    ))
+    return {
+        "stage": "setup_email_code",
+        "email_pattern": getattr(result, "email_pattern", None),
+        "code_length": getattr(result, "length", None),
+        "timeout": getattr(result, "timeout", None),
+        "input_mode": "alphanumeric",
+    }
+
+
+async def verify_login_setup_email(client: Any, phone: str, phone_code_hash: str, code: str) -> tuple[str, dict[str, Any]]:
+    """Verify login-email setup and return Telegram's next auth.SentCode."""
+    from telethon.tl.functions.account import VerifyEmailRequest
+    from telethon.tl.types import EmailVerificationCode, EmailVerifyPurposeLoginSetup
+
+    verified = await client(VerifyEmailRequest(
+        purpose=EmailVerifyPurposeLoginSetup(phone_number=phone, phone_code_hash=phone_code_hash),
+        verification=EmailVerificationCode(code=code),
+    ))
+    sent_code = getattr(verified, "sent_code", None)
+    if sent_code is None:
+        raise RuntimeError("Telegram did not return a login code after email verification.")
+    return sent_code.phone_code_hash, sent_code_metadata(sent_code)
+
+
+def validate_login_code(code: str, metadata: dict[str, Any]) -> None:
+    expected_length = metadata.get("code_length")
+    if expected_length is not None and len(code) != expected_length:
+        raise ValueError("Panjang kode verifikasi tidak sesuai.")
+    mode = metadata.get("input_mode")
+    if mode == "numeric" and not code.isdigit():
+        raise ValueError("Kode verifikasi harus berupa angka.")
+    if mode == "alphabetic" and not code.isalpha():
+        raise ValueError("Kode verifikasi harus berupa huruf.")
+    if len(code) > 64:
+        raise ValueError("Kode verifikasi tidak valid.")
 
 
 async def verify_code(
@@ -283,7 +359,35 @@ async def verify_code(
             else:
                 raise
 
-    # Save the session string
+    return await finalize_authenticated_login(unauth_client, phone, twofa_password, db, user)
+
+
+async def verify_twofa(
+    unauth_client: Any,
+    phone: str,
+    twofa_password: str,
+    db: AsyncSession | None = None,
+    user: User | None = None,
+) -> tuple[TelegramAccount | None, bool, str | None]:
+    """Finish a pending login after Telegram requested a 2FA password."""
+    try:
+        await unauth_client.sign_in(password=twofa_password)
+    except Exception as exc:
+        from telethon.errors import PasswordHashInvalidError
+        if isinstance(exc, PasswordHashInvalidError) or "PASSWORD_HASH_INVALID" in str(exc):
+            raise ValueError("Password V2L/2FA salah. Silakan coba lagi.") from exc
+        raise
+    return await finalize_authenticated_login(unauth_client, phone, twofa_password, db, user)
+
+
+async def finalize_authenticated_login(
+    unauth_client: Any,
+    phone: str,
+    twofa_password: str | None = None,
+    db: AsyncSession | None = None,
+    user: User | None = None,
+) -> tuple[TelegramAccount | None, bool, str | None]:
+    """Persist an already-authorized unauthenticated client as a TeleBos account."""
     session_string = ""
     if isinstance(unauth_client.session, type(unauth_client.session)):
         session_string = unauth_client.session.save()

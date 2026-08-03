@@ -245,6 +245,12 @@ export interface Dict {
     failedSendOtp: string;
     failedVerify: string;
     failedUpload: string;
+    setupEmailRequired: string;
+    setupEmailLabel: string;
+    setupEmailSendCode: string;
+    setupEmailCodePrompt: string;
+    deliveryCodePrompt: string;
+    thirdPartySigninUnavailable: string;
   };
 
   // Account Detail
