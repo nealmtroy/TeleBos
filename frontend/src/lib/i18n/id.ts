@@ -245,6 +245,12 @@ const id: Dict = {
     failedSendOtp: "Gagal mengirim OTP",
     failedVerify: "Gagal memverifikasi kode",
     failedUpload: "Gagal mengunggah sesi",
+    setupEmailRequired: "Telegram meminta Anda menyiapkan email login sebelum melanjutkan.",
+    setupEmailLabel: "Email login Telegram",
+    setupEmailSendCode: "Kirim kode email",
+    setupEmailCodePrompt: "Masukkan kode yang dikirim ke email Anda",
+    deliveryCodePrompt: "Masukkan kode dari {delivery}",
+    thirdPartySigninUnavailable: "Telegram melaporkan opsi sign-in pihak ketiga. Opsi tersebut belum tersedia di TeleBos.",
   },
 
   // ── Detail Akun ─────────────────────────────────────────────────────────

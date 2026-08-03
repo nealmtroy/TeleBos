@@ -102,7 +102,8 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 ```
 User → Frontend → POST /send-code → Backend creates unauth Telethon client, sends OTP
                                            │
-                                    Client stored in memory map (phone → client)
+                        Client, phone-code hash, and metadata stay in short-lived server memory
+                        Browser receives only an opaque, owner-scoped login ID and safe display metadata
                                            │
 User enters code → POST /verify-code → Backend signs in, encrypts session string, saves to DB
                                            │

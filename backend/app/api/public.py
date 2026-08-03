@@ -12,7 +12,15 @@ from app.models.telegram_account import TelegramAccount
 from app.models.user import User
 import time
 from fastapi import Request
-from app.api.accounts import _pending_logins
+from app.api.accounts import (
+    cancel_login as account_cancel_login,
+    resend_code as account_resend_code,
+    send_code as account_send_code,
+    setup_login_email as account_setup_login_email,
+    verify_code as account_verify_code,
+    verify_setup_login_email as account_verify_setup_login_email,
+    verify_twofa as account_verify_twofa,
+)
 from app.schemas.api_key import PublicAccountResponse, PublicUserResponse
 from app.schemas.account import (
     SendCodeRequest,
@@ -20,6 +28,11 @@ from app.schemas.account import (
     VerifyCodeRequest,
     VerifyCodeResponse,
     UploadSessionRequest,
+    LoginIdRequest,
+    SetupLoginEmailRequest,
+    VerifySetupLoginEmailRequest,
+    VerifyTwoFARequest,
+    SetupLoginEmailResponse,
 )
 from app.services import account_service
 from app.services.uptimerobot_status import uptimerobot_service
@@ -118,25 +131,37 @@ async def public_send_code(
     payload: SendCodeRequest,
     user: User = Depends(get_api_principal),
 ):
-    ip = request.client.host if request.client else "unknown"
-    phone = payload.phone
-    uid = str(user.id)
-    if not await rate_limiter.check(f"send_code:ip:{ip}") or not await rate_limiter.check(f"send_code:phone:{phone}"):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many verification attempts. Please try again later.",
-        )
-    try:
-        client, phone_code_hash, timeout, next_action, email_pattern = await account_service.start_login(payload.phone)
-        _pending_logins.setdefault(uid, {})[payload.phone] = (client, time.time())
-        return SendCodeResponse(
-            phone_code_hash=phone_code_hash,
-            timeout=timeout,
-            next_action=next_action,
-            email_pattern=email_pattern
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    return await account_send_code(request, payload, user)
+
+
+@router.post(
+    "/accounts/resend-code",
+    response_model=SendCodeResponse,
+    summary="Resend code for a pending Telegram login",
+    dependencies=[Depends(require_api_scope("accounts:write"))],
+)
+async def public_resend_code(request: Request, payload: LoginIdRequest, user: User = Depends(get_api_principal)):
+    return await account_resend_code(request, payload, user)
+
+
+@router.post(
+    "/accounts/setup-email",
+    response_model=SetupLoginEmailResponse,
+    summary="Start required Telegram login-email setup",
+    dependencies=[Depends(require_api_scope("accounts:write"))],
+)
+async def public_setup_email(request: Request, payload: SetupLoginEmailRequest, user: User = Depends(get_api_principal)):
+    return await account_setup_login_email(request, payload, user)
+
+
+@router.post(
+    "/accounts/setup-email/verify",
+    response_model=SendCodeResponse,
+    summary="Verify required Telegram login-email setup",
+    dependencies=[Depends(require_api_scope("accounts:write"))],
+)
+async def public_verify_setup_email(request: Request, payload: VerifySetupLoginEmailRequest, user: User = Depends(get_api_principal)):
+    return await account_verify_setup_login_email(request, payload, user)
 
 
 @router.post(
@@ -151,77 +176,22 @@ async def public_verify_code(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_api_principal),
 ):
-    ip = request.client.host if request.client else "unknown"
-    if not await rate_limiter.check(f"verify_code:ip:{ip}") or not await rate_limiter.check(f"verify_code:phone:{payload.phone}"):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many verification attempts. Please try again later.",
-        )
+    return await account_verify_code(request, payload, db, user)
 
-    uid = str(user.id)
-    phone_map = _pending_logins.get(uid)
-    if phone_map is None or payload.phone not in phone_map:
-        raise HTTPException(status_code=400, detail="No pending login for this phone")
-    client, _ = phone_map[payload.phone]
 
-    try:
-        account, requires_2fa, v2l_hint = await account_service.verify_code(
-            client, payload.phone, payload.code, payload.phone_code_hash, payload.twofa_password,
-            db=db, user=user,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
-    except Exception as exc:
-        phone_map = _pending_logins.get(uid)
-        if phone_map:
-            phone_map.pop(payload.phone, None)
-            if not phone_map:
-                del _pending_logins[uid]
-        try:
-            await client.disconnect()
-        except Exception:
-            pass
-        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
-
-    if requires_2fa:
-        return VerifyCodeResponse(
-            account_id="",
-            phone=payload.phone,
-            first_name=None,
-            last_name=None,
-            username=None,
-            requires_2fa=True,
-            v2l_hint=v2l_hint,
-        )
-
-    phone_map = _pending_logins.get(uid)
-    if phone_map:
-        phone_map.pop(payload.phone, None)
-        if not phone_map:
-            del _pending_logins[uid]
-    try:
-        await client.disconnect()
-    except Exception:
-        pass
-
-    if account is None:
-        raise HTTPException(status_code=400, detail="Login failed")
-
-    account.user_id = user.id
-    db.add(account)
-    await db.commit()
-    await db.refresh(account)
-
-    from app.services.session_manager import session_manager
-    await session_manager.attach_and_reconnect(db, account)
-
-    return VerifyCodeResponse(
-        account_id=str(account.id),
-        phone=account.phone,
-        first_name=account.first_name,
-        last_name=account.last_name,
-        username=account.username,
-    )
+@router.post(
+    "/accounts/verify-2fa",
+    response_model=VerifyCodeResponse,
+    summary="Finish pending Telegram login with 2FA password",
+    dependencies=[Depends(require_api_scope("accounts:write"))],
+)
+async def public_verify_twofa(
+    request: Request,
+    payload: VerifyTwoFARequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_api_principal),
+):
+    return await account_verify_twofa(request, payload, db, user)
 
 
 @router.post(
@@ -269,20 +239,7 @@ async def public_upload_session(
     dependencies=[Depends(require_api_scope("accounts:write"))],
 )
 async def public_cancel_login(
-    payload: SendCodeRequest,
+    payload: LoginIdRequest,
     user: User = Depends(get_api_principal),
 ):
-    uid = str(user.id)
-    phone_map = _pending_logins.get(uid)
-    if phone_map:
-        entry = phone_map.pop(payload.phone, None)
-        if not phone_map:
-            del _pending_logins[uid]
-        if entry:
-            client, _ = entry
-            try:
-                await client.disconnect()
-            except Exception as e:
-                pass
-            return {"message": "Login cancelled"}
-    return {"message": "No pending login for this phone"}
+    return await account_cancel_login(payload, user)

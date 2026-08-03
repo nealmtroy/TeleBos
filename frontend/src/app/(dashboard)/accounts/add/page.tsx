@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ShieldAlert, Loader2, RefreshCw, Lock, Eye, EyeOff, Smartphone, KeyRound } from "lucide-react";
+import { TelegramLoginFlow } from "@/components/accounts/telegram-login-flow";
 import { useT } from "@/lib/i18n";
 
 export default function AddAccountPage() {
@@ -46,7 +47,7 @@ export default function AddAccountPage() {
 
         <div className="p-6">
           {tab === "otp" ? (
-            <OTPLoginForm />
+            <TelegramLoginFlow />
           ) : tab === "qr" ? (
             <QRLoginForm />
           ) : (

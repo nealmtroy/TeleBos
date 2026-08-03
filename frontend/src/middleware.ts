@@ -11,8 +11,6 @@ const PUBLIC_PATHS = [
   "/tos",
   "/help",
   "/api/auth",
-  "/api/v1/accounts/send-code",     // OTP flow — unauthenticated
-  "/api/v1/accounts/verify-code",
   "/api/v1/health",
   "/_next/static",
   "/favicon.ico",
