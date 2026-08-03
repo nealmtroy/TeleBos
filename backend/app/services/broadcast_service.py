@@ -45,24 +45,27 @@ async def _refresh_job_safe(db: AsyncSession, job: BroadcastJob) -> BroadcastJob
         return job
     except InvalidRequestError:
         from sqlalchemy import inspect
+
         state = inspect(job)
         job_id = state.identity[0] if state and state.identity else None
         if not job_id:
-            logger.warning("BroadcastJob detached from session and has no identity, cannot re-fetch")
+            logger.warning(
+                "BroadcastJob detached from session and has no identity, cannot re-fetch"
+            )
             return None
 
         logger.warning("BroadcastJob %s detached from session, re-fetching", job_id)
         from app.database import async_session_factory
+
         async with async_session_factory() as fresh_db:
-            result = await fresh_db.execute(
-                select(BroadcastJob).where(BroadcastJob.id == job_id)
-            )
+            result = await fresh_db.execute(select(BroadcastJob).where(BroadcastJob.id == job_id))
             fresh_job = result.scalar_one_or_none()
             if fresh_job is None:
                 return None
         # Merge back into the original session so subsequent state changes
         # are tracked as expected.
         return await db.merge(fresh_job)
+
 
 async def _interruptible_sleep(job_id: str, seconds: float) -> bool:
     """Sleep for `seconds`, but wake up immediately if _wake_job is called.
@@ -91,9 +94,7 @@ async def _interruptible_sleep(job_id: str, seconds: float) -> bool:
 
 async def get_group_lists(db: AsyncSession, user: User) -> list[GroupList]:
     result = await db.execute(
-        select(GroupList)
-        .where(GroupList.user_id == user.id)
-        .order_by(GroupList.updated_at.desc())
+        select(GroupList).where(GroupList.user_id == user.id).order_by(GroupList.updated_at.desc())
     )
     return list(result.scalars().all())
 
@@ -106,7 +107,9 @@ async def create_group_list(db: AsyncSession, user: User, name: str, items: list
     return gl
 
 
-async def update_group_list(db: AsyncSession, gl_id: str, user_id: str, name: str | None, items: list | None) -> GroupList:
+async def update_group_list(
+    db: AsyncSession, gl_id: str, user_id: str, name: str | None, items: list | None
+) -> GroupList:
     result = await db.execute(
         select(GroupList).where(GroupList.id == gl_id, GroupList.user_id == user_id)
     )
@@ -132,9 +135,7 @@ async def delete_group_list(db: AsyncSession, gl_id: str, user_id: str) -> None:
     # Nullify FK on broadcast_jobs that reference this group list to avoid
     # IntegrityError (ForeignKeyViolationError) on delete.
     await db.execute(
-        update(BroadcastJob)
-        .where(BroadcastJob.group_list_id == gl.id)
-        .values(group_list_id=None)
+        update(BroadcastJob).where(BroadcastJob.group_list_id == gl.id).values(group_list_id=None)
     )
     await db.delete(gl)
 
@@ -144,9 +145,7 @@ async def delete_group_list(db: AsyncSession, gl_id: str, user_id: str) -> None:
 
 async def get_text_lists(db: AsyncSession, user: User) -> list[TextList]:
     result = await db.execute(
-        select(TextList)
-        .where(TextList.user_id == user.id)
-        .order_by(TextList.updated_at.desc())
+        select(TextList).where(TextList.user_id == user.id).order_by(TextList.updated_at.desc())
     )
     return list(result.scalars().all())
 
@@ -159,7 +158,9 @@ async def create_text_list(db: AsyncSession, user: User, name: str, texts: list)
     return tl
 
 
-async def update_text_list(db: AsyncSession, tl_id: str, user_id: str, name: str | None, texts: list | None) -> TextList:
+async def update_text_list(
+    db: AsyncSession, tl_id: str, user_id: str, name: str | None, texts: list | None
+) -> TextList:
     result = await db.execute(
         select(TextList).where(TextList.id == tl_id, TextList.user_id == user_id)
     )
@@ -185,9 +186,7 @@ async def delete_text_list(db: AsyncSession, tl_id: str, user_id: str) -> None:
     # Nullify FK on broadcast_jobs that reference this text list to avoid
     # IntegrityError (ForeignKeyViolationError) on delete.
     await db.execute(
-        update(BroadcastJob)
-        .where(BroadcastJob.text_list_id == tl.id)
-        .values(text_list_id=None)
+        update(BroadcastJob).where(BroadcastJob.text_list_id == tl.id).values(text_list_id=None)
     )
     await db.delete(tl)
 
@@ -215,6 +214,7 @@ async def start_broadcast(
         raise ValueError("At least one account is required")
 
     from app.services.account_service import get_account
+
     valid_account_ids = []
     for acc_id in account_ids:
         account = await get_account(db, acc_id, str(user.id))
@@ -281,11 +281,11 @@ async def start_broadcast(
     return job
 
 
-
 def _wake_job(job_id: str) -> None:
     ev = _job_events.get(job_id)
     if ev:
         ev.set()
+
 
 async def get_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob | None:
     result = await db.execute(
@@ -294,9 +294,7 @@ async def get_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob |
     return result.scalar_one_or_none()
 
 
-async def get_jobs_for_user(
-    db: AsyncSession, user_id: str, limit: int = 20
-) -> list[BroadcastJob]:
+async def get_jobs_for_user(db: AsyncSession, user_id: str, limit: int = 20) -> list[BroadcastJob]:
     result = await db.execute(
         select(BroadcastJob)
         .where(BroadcastJob.user_id == user_id)
@@ -318,9 +316,7 @@ async def update_job_status(db: AsyncSession, job: BroadcastJob, status: str) ->
 async def delete_job(db: AsyncSession, job_id: str, user_id: str) -> None:
     """Delete a broadcast job and its logs. Only terminal-status jobs can be deleted."""
     result = await db.execute(
-        select(BroadcastJob).where(
-            BroadcastJob.id == job_id, BroadcastJob.user_id == user_id
-        )
+        select(BroadcastJob).where(BroadcastJob.id == job_id, BroadcastJob.user_id == user_id)
     )
     job = result.scalar_one_or_none()
     if job is None:
@@ -334,9 +330,7 @@ async def delete_job(db: AsyncSession, job_id: str, user_id: str) -> None:
 async def retry_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob:
     """Reset and re-queue a terminal broadcast job with the same parameters."""
     result = await db.execute(
-        select(BroadcastJob).where(
-            BroadcastJob.id == job_id, BroadcastJob.user_id == user_id
-        )
+        select(BroadcastJob).where(BroadcastJob.id == job_id, BroadcastJob.user_id == user_id)
     )
     job = result.scalar_one_or_none()
     if job is None:
@@ -406,6 +400,7 @@ async def _push_broadcast(job_id: str, event_type: str, data: dict) -> None:
     """Push a real-time event to WebSocket clients subscribed to this job."""
     try:
         from app.api.ws import manager
+
         await manager.broadcast(
             f"broadcast:{job_id}",
             {"type": event_type, **data},
@@ -414,26 +409,27 @@ async def _push_broadcast(job_id: str, event_type: str, data: dict) -> None:
         logger.warning("WS push failed for job %s: %s", job_id, push_exc)
 
 
-async def _account_for_log(account_id: str, db: AsyncSession | None = None) -> TelegramAccount | None:
+async def _account_for_log(
+    account_id: str, db: AsyncSession | None = None
+) -> TelegramAccount | None:
     """Fetch a TelegramAccount by id-string for log labeling."""
     import uuid as _uuid
+
     try:
         acc_uuid = _uuid.UUID(account_id)
     except (ValueError, TypeError):
         return None
 
     if db is not None:
-        res = await db.execute(
-            select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
-        )
+        res = await db.execute(select(TelegramAccount).where(TelegramAccount.id == acc_uuid))
         return res.scalar_one_or_none()
 
     from app.database import async_session_factory
+
     async with async_session_factory() as fresh_db:
-        res = await fresh_db.execute(
-            select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
-        )
+        res = await fresh_db.execute(select(TelegramAccount).where(TelegramAccount.id == acc_uuid))
         return res.scalar_one_or_none()
+
 
 def _invite_hash(target: str) -> str | None:
     text = target.strip()
@@ -461,7 +457,7 @@ def _public_target(target: str) -> str:
     text = target.strip()
     for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
         if text.startswith(prefix):
-            text = text[len(prefix):]
+            text = text[len(prefix) :]
             break
     return text.lstrip("@").split("?", 1)[0].strip("/")
 
@@ -476,7 +472,10 @@ def _chatlist_peers(invite) -> list:
 
 
 async def _join_and_resolve_chatlist(client, target: str) -> list:
-    from telethon.tl.functions.chatlists import CheckChatlistInviteRequest, JoinChatlistInviteRequest
+    from telethon.tl.functions.chatlists import (
+        CheckChatlistInviteRequest,
+        JoinChatlistInviteRequest,
+    )
 
     slug = _chatlist_slug(target)
     if not slug:
@@ -513,31 +512,32 @@ async def check_send_permission(client, entity) -> tuple[bool, str | None]:
     """
     from telethon.tl.types import Channel, Chat
     from telethon.errors import UserNotParticipantError
+
     try:
         if not isinstance(entity, (Channel, Chat)):
             return True, None
-            
-        permissions = await client.get_permissions(entity, 'me')
-        
+
+        permissions = await client.get_permissions(entity, "me")
+
         if permissions.has_left:
             return False, "You are not a participant in this chat"
-            
-        if getattr(entity, 'broadcast', False):
+
+        if getattr(entity, "broadcast", False):
             if permissions.is_creator or (permissions.is_admin and permissions.post_messages):
                 return True, None
             else:
                 return False, "Only admins can write in this group"
-                
-        default_banned_rights = getattr(entity, 'default_banned_rights', None)
+
+        default_banned_rights = getattr(entity, "default_banned_rights", None)
         if default_banned_rights and default_banned_rights.send_messages:
             if not (permissions.is_admin or permissions.is_creator):
                 return False, "Only admins can write in this group"
-                
+
         if permissions.is_banned:
-            banned_rights = getattr(permissions.participant, 'banned_rights', None)
+            banned_rights = getattr(permissions.participant, "banned_rights", None)
             if banned_rights and banned_rights.send_messages:
                 return False, "You are muted in this group"
-                
+
         return True, None
     except UserNotParticipantError:
         return False, "You are not a participant in this chat"
@@ -577,11 +577,16 @@ async def _join_and_resolve_target(client, target: str, job_id_str: str | None =
                                 entity = dialog.entity
                                 break
                     if not entity:
-                        raise ValueError(f"Already a participant but could not find private chat with title '{expected_title}' in dialogs")
+                        raise ValueError(
+                            f"Already a participant but could not find private chat with title '{expected_title}' in dialogs"
+                        )
                     break
                 except FloodWaitError as e:
                     if e.seconds <= 30:
-                        logger.warning("Flood wait error joining private group! Waiting %s seconds...", e.seconds)
+                        logger.warning(
+                            "Flood wait error joining private group! Waiting %s seconds...",
+                            e.seconds,
+                        )
                         if job_id_str:
                             completed = await _interruptible_sleep(job_id_str, e.seconds)
                             if not completed:
@@ -608,7 +613,9 @@ async def _join_and_resolve_target(client, target: str, job_id_str: str | None =
                 raise
             except FloodWaitError as e:
                 if e.seconds <= 30:
-                    logger.warning("Flood wait error joining public group! Waiting %s seconds...", e.seconds)
+                    logger.warning(
+                        "Flood wait error joining public group! Waiting %s seconds...", e.seconds
+                    )
                     if job_id_str:
                         completed = await _interruptible_sleep(job_id_str, e.seconds)
                         if not completed:
@@ -650,25 +657,31 @@ async def _join_and_resolve_target(client, target: str, job_id_str: str | None =
     if isinstance(entity, Channel):
         dbr = getattr(entity, "default_banned_rights", None)
         if dbr and (getattr(dbr, "send_messages", False) or getattr(dbr, "send_plain", False)):
-            raise ValueError(
-                f"CHAT_WRITE_FORBIDDEN: Admin-only chat detected — {target}"
-            )
+            raise ValueError(f"CHAT_WRITE_FORBIDDEN: Admin-only chat detected — {target}")
 
     return entity
 
 
-async def _broadcast_entities_for_target(client, target: str, job_id_str: str | None = None) -> list:
+async def _broadcast_entities_for_target(
+    client, target: str, job_id_str: str | None = None
+) -> list:
     if _chatlist_slug(target):
         entities = await _join_and_resolve_chatlist(client, target)
         if entities:
             # Filter out admin-only entities from chatlists
             from telethon.tl.types import Channel
+
             filtered = []
             for ent in entities:
                 if isinstance(ent, Channel):
                     dbr = getattr(ent, "default_banned_rights", None)
-                    if dbr and (getattr(dbr, "send_messages", False) or getattr(dbr, "send_plain", False)):
-                        logger.info("Skipping admin-only chat in chatlist: %s", getattr(ent, "title", target))
+                    if dbr and (
+                        getattr(dbr, "send_messages", False) or getattr(dbr, "send_plain", False)
+                    ):
+                        logger.info(
+                            "Skipping admin-only chat in chatlist: %s",
+                            getattr(ent, "title", target),
+                        )
                         continue
                 filtered.append(ent)
             return filtered if filtered else entities  # fallback to original if all filtered
@@ -700,29 +713,21 @@ async def execute_broadcast(job_id: str):
     # Helper to check and retrieve the current status of the job using a fresh session
     async def _get_current_status(jid):
         async with async_session_factory() as sdb:
-            res = await sdb.execute(
-                select(BroadcastJob.status).where(BroadcastJob.id == jid)
-            )
+            res = await sdb.execute(select(BroadcastJob.status).where(BroadcastJob.id == jid))
             return res.scalar_one_or_none()
 
     try:
-        # ── Initial Setup (runs in a short-lived DB session) ──
+        # ── Initial setup: copy DB data before any Telegram/network I/O ──
+        # Never hold a checked-out DB connection while connecting accounts.
         async with async_session_factory() as db:
-            result = await db.execute(
-                select(BroadcastJob).where(BroadcastJob.id == job_uuid)
-            )
+            result = await db.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
             job_orm = result.scalar_one_or_none()
-            if job_orm is None:
-                return
-            # If already cancelled/completed before execution starts
-            if job_orm.status in ("cancelled", "completed"):
+            if job_orm is None or job_orm.status in ("cancelled", "completed"):
                 return
 
-            # Ensure status is running
             job_orm.status = "running"
             await db.commit()
 
-            # Copy required parameters into memory
             loop_enabled = job_orm.loop_enabled
             delay_randomized = job_orm.delay_randomized
             delay_per_group = job_orm.delay_per_group
@@ -730,97 +735,119 @@ async def execute_broadcast(job_id: str):
             log_destination = job_orm.log_destination
             mode = job_orm.mode
             custom_text = job_orm.custom_text
-            account_ids = list(job_orm.account_ids)
+            account_ids = list(job_orm.account_ids or [])
             sent = job_orm.sent_count
             failed = job_orm.fail_count
             total_groups = job_orm.total_groups
+            group_list_id = job_orm.group_list_id
+            text_list_id = job_orm.text_list_id
 
-            await _push_broadcast(job_id_str, "status", {
-                "status": "running",
-                "total": total_groups,
-                "sent": sent,
-                "failed": failed,
-            })
-
-            # Load group list
-            gl_result = await db.execute(
-                select(GroupList).where(GroupList.id == job_orm.group_list_id)
-            )
+            gl_result = await db.execute(select(GroupList).where(GroupList.id == group_list_id))
             group_list = gl_result.scalar_one_or_none()
             if not group_list or not account_ids:
                 job_orm.status = "failed"
                 await db.commit()
-                await _push_broadcast(job_id_str, "error", {
-                    "status": "failed",
-                    "message": "Group list or accounts not configured properly",
-                })
+                await _push_broadcast(
+                    job_id_str,
+                    "error",
+                    {
+                        "status": "failed",
+                        "message": "Group list or accounts not configured properly",
+                    },
+                )
                 return
-            items = list(group_list.items)
+            items = list(group_list.items or [])
             group_list_name = group_list.name
 
-            # Load texts
             texts = []
-            if job_orm.text_list_id:
-                tl_result = await db.execute(
-                    select(TextList).where(TextList.id == job_orm.text_list_id)
-                )
+            if text_list_id:
+                tl_result = await db.execute(select(TextList).where(TextList.id == text_list_id))
                 text_list = tl_result.scalar_one_or_none()
                 if text_list and text_list.texts:
                     texts = list(text_list.texts)
             if mode == "single_text" and custom_text:
                 texts = [custom_text]
 
-            # Load active accounts
-            active_accounts = []
-            settings = get_settings()
-
+            account_snapshots = []
             for acc_id_str in account_ids:
                 try:
                     acc_uuid = _uuid.UUID(acc_id_str)
-                except ValueError:
+                except (ValueError, TypeError):
                     continue
                 acc_result = await db.execute(
                     select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
                 )
                 account = acc_result.scalar_one_or_none()
                 if not account or account.for_sale or not account.is_active:
-                    logger.warning("Account %s is not active or listed for sale, skipping", acc_id_str)
+                    logger.warning(
+                        "Account %s is not active or listed for sale, skipping", acc_id_str
+                    )
                     continue
-
-                try:
-                    session_str = decrypt(account.session_string)
-                    client = await client_pool.get(acc_id_str, session_str)
-                    if not client:
-                        logger.warning("Account %s not authorized/pool failure, skipping", acc_id_str)
-                        continue
-
-                    active_accounts.append({
+                account_snapshots.append(
+                    {
                         "account_id": acc_id_str,
                         "account_name": f"{account.first_name or ''} ({account.phone or ''})",
-                        "client": client,
-                        "cooldown_until": 0.0,
-                        "join_cooldown_until": 0.0
-                    })
-                except Exception as connect_exc:
-                    logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
+                        "session_string": account.session_string,
+                    }
+                )
 
-            if not active_accounts:
-                job_orm.status = "failed"
-                await db.commit()
-                await _push_broadcast(job_id_str, "error", {
-                    "status": "failed",
-                    "message": "No authorized Telegram accounts could be connected",
-                })
-                return
-
-            # Query current max cycle to support resuming correctly
             cycle_res = await db.execute(
                 select(func.max(BroadcastLog.cycle_number)).where(BroadcastLog.job_id == job_uuid)
             )
             max_cycle = cycle_res.scalar()
             cycle_count = max_cycle if max_cycle is not None else 0
 
-        # Setup is complete and db session is closed.
+        await _push_broadcast(
+            job_id_str,
+            "status",
+            {
+                "status": "running",
+                "total": total_groups,
+                "sent": sent,
+                "failed": failed,
+            },
+        )
+
+        # Account connection is deliberately outside the setup DB session.
+        active_accounts = []
+        for snapshot in account_snapshots:
+            acc_id_str = snapshot["account_id"]
+            try:
+                session_str = decrypt(snapshot["session_string"])
+                client = await client_pool.get(acc_id_str, session_str)
+                if client:
+                    active_accounts.append(
+                        {
+                            "account_id": acc_id_str,
+                            "account_name": snapshot["account_name"],
+                            "client": client,
+                            "cooldown_until": 0.0,
+                            "join_cooldown_until": 0.0,
+                        }
+                    )
+                else:
+                    logger.warning("Account %s not authorized/pool failure, skipping", acc_id_str)
+            except Exception as connect_exc:
+                logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
+
+        if not active_accounts:
+            async with async_session_factory() as db:
+                result = await db.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                db_job = result.scalar_one_or_none()
+                if db_job:
+                    db_job.status = "failed"
+                    await db.commit()
+            await _push_broadcast(
+                job_id_str,
+                "error",
+                {
+                    "status": "failed",
+                    "message": "No authorized Telegram accounts could be connected",
+                },
+            )
+            return
+
+        # Setup is complete and no DB session is held during the broadcast loop.
         current_acc_idx = 0
         joined_pool: dict = {}
         pending_pool: dict = {}
@@ -843,8 +870,10 @@ async def execute_broadcast(job_id: str):
                     selected_acc = None
                     now_ts = time.time()
                     ready_accs = [
-                        a for a in active_accounts 
-                        if now_ts >= a["cooldown_until"] and now_ts >= a.get("join_cooldown_until", 0.0)
+                        a
+                        for a in active_accounts
+                        if now_ts >= a["cooldown_until"]
+                        and now_ts >= a.get("join_cooldown_until", 0.0)
                     ]
                     if not ready_accs:
                         still_pending[pkey] = pitem
@@ -856,7 +885,9 @@ async def execute_broadcast(job_id: str):
                     for offset in range(len(active_accounts)):
                         i_idx = (current_acc_idx + offset) % len(active_accounts)
                         candidate = active_accounts[i_idx]
-                        if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
+                        if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get(
+                            "join_cooldown_until", 0.0
+                        ):
                             selected_acc = candidate
                             current_acc_idx = (i_idx + 1) % len(active_accounts)
                             break
@@ -867,14 +898,20 @@ async def execute_broadcast(job_id: str):
 
                     client = selected_acc["client"]
                     try:
-                        entities_retry = await _broadcast_entities_for_target(client, pitem["group_identifier"], job_id_str)
+                        entities_retry = await _broadcast_entities_for_target(
+                            client, pitem["group_identifier"], job_id_str
+                        )
                         if entities_retry:
                             joined_pool[pkey] = entities_retry
                             newly_joined.append(pkey)
-                            await _push_broadcast(job_id_str, "pending_joined", {
-                                "group": pitem["group_identifier"],
-                                "message": f"Retry join successful for {pitem['group_identifier']}",
-                            })
+                            await _push_broadcast(
+                                job_id_str,
+                                "pending_joined",
+                                {
+                                    "group": pitem["group_identifier"],
+                                    "message": f"Retry join successful for {pitem['group_identifier']}",
+                                },
+                            )
                         else:
                             still_pending[pkey] = pitem
                     except Exception as resolve_exc:
@@ -903,7 +940,9 @@ async def execute_broadcast(job_id: str):
                     if current_status is None or current_status == "cancelled":
                         break
                     while current_status == "paused":
-                        await _interruptible_sleep(job_id_str, 86400) # Sleep indefinitely until woken
+                        await _interruptible_sleep(
+                            job_id_str, 86400
+                        )  # Sleep indefinitely until woken
                         current_status = await _get_current_status(job_uuid)
                         if current_status is None or current_status == "cancelled":
                             break
@@ -925,7 +964,9 @@ async def execute_broadcast(job_id: str):
                             for offset in range(len(active_accounts)):
                                 i_idx = (current_acc_idx + offset) % len(active_accounts)
                                 candidate = active_accounts[i_idx]
-                                if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get("join_cooldown_until", 0.0):
+                                if now_ts >= candidate[
+                                    "cooldown_until"
+                                ] and now_ts >= candidate.get("join_cooldown_until", 0.0):
                                     selected_acc = candidate
                                     current_acc_idx = (i_idx + 1) % len(active_accounts)
                                     break
@@ -945,10 +986,14 @@ async def execute_broadcast(job_id: str):
                     earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
                     wait_sec = max(1.0, earliest_ready_time - now_ts)
 
-                    await _push_broadcast(job_id_str, "flood_wait", {
-                        "wait_seconds": int(wait_sec),
-                        "message": f"All accounts on cooldown. Waiting {int(wait_sec)}s...",
-                    })
+                    await _push_broadcast(
+                        job_id_str,
+                        "flood_wait",
+                        {
+                            "wait_seconds": int(wait_sec),
+                            "message": f"All accounts on cooldown. Waiting {int(wait_sec)}s...",
+                        },
+                    )
 
                     await _interruptible_sleep(job_id_str, wait_sec)
 
@@ -968,10 +1013,14 @@ async def execute_broadcast(job_id: str):
                             db_job.fail_count = failed
                             db_job.completed_at = datetime.now(timezone.utc)
                             await db_fail.commit()
-                    await _push_broadcast(job_id_str, "error", {
-                        "status": "failed",
-                        "message": "All Telegram accounts have been limited or failed. Job stopped.",
-                    })
+                    await _push_broadcast(
+                        job_id_str,
+                        "error",
+                        {
+                            "status": "failed",
+                            "message": "All Telegram accounts have been limited or failed. Job stopped.",
+                        },
+                    )
                     break
 
                 client = selected_acc["client"]
@@ -994,7 +1043,7 @@ async def execute_broadcast(job_id: str):
                     group_identifier = group_identifier[:2000] + "…"
 
                 start_time = time.time()
-                
+
                 # Pick text
                 if texts:
                     chosen_text = random.choice(texts)
@@ -1008,11 +1057,13 @@ async def execute_broadcast(job_id: str):
                 log_group_id = None
 
                 # If we need to resolve/join, but the selected account is on join cooldown
-                if cached_entity is None and time.time() < selected_acc.get("join_cooldown_until", 0.0):
+                if cached_entity is None and time.time() < selected_acc.get(
+                    "join_cooldown_until", 0.0
+                ):
                     log_status = "error"
                     log_err_type = "join_cooldown"
                     log_err_msg = "Skipped join: account is on join limit/cooldown"
-                    
+
                     pending_pool[pkey] = {
                         "group_identifier": group_identifier,
                         "item_type": item_type,
@@ -1026,10 +1077,12 @@ async def execute_broadcast(job_id: str):
                         )
                         db_job = job_res.scalar_one_or_none()
                         if db_job:
-                            db_job.progress = int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                            db_job.progress = (
+                                int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                            )
                             db_job.sent_count = sent
                             db_job.fail_count = failed
-                        
+
                         db_log = BroadcastLog(
                             job_id=job_uuid,
                             cycle_number=current_cycle,
@@ -1044,24 +1097,34 @@ async def execute_broadcast(job_id: str):
                         fresh_db.add(db_log)
                         await fresh_db.commit()
 
-                    await _push_broadcast(job_id_str, "progress", {
-                        "current": idx + 1,
-                        "total": len(items),
-                        "progress": int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0,
-                        "sent": sent,
-                        "failed": failed,
-                        "cycle": current_cycle,
-                        "status": current_status,
-                    })
-                    await _push_broadcast(job_id_str, "log", {
-                        "group": group_identifier,
-                        "status": log_status,
-                        "error_type": log_err_type,
-                        "text": chosen_text,
-                        "cycle": current_cycle,
-                        "account_id_used": acc_id_str,
-                        "account_name": acc_name,
-                    })
+                    await _push_broadcast(
+                        job_id_str,
+                        "progress",
+                        {
+                            "current": idx + 1,
+                            "total": len(items),
+                            "progress": int(((idx + 1) / len(items)) * 100)
+                            if len(items) > 0
+                            else 0,
+                            "sent": sent,
+                            "failed": failed,
+                            "cycle": current_cycle,
+                            "status": current_status,
+                        },
+                    )
+                    await _push_broadcast(
+                        job_id_str,
+                        "log",
+                        {
+                            "group": group_identifier,
+                            "status": log_status,
+                            "error_type": log_err_type,
+                            "text": chosen_text,
+                            "cycle": current_cycle,
+                            "account_id_used": acc_id_str,
+                            "account_name": acc_name,
+                        },
+                    )
                     continue
 
                 entities = None
@@ -1069,14 +1132,25 @@ async def execute_broadcast(job_id: str):
                     if cached_entity is not None:
                         entities = cached_entity
                     else:
-                        entities = await _broadcast_entities_for_target(client, group_identifier, job_id_str)
+                        entities = await _broadcast_entities_for_target(
+                            client, group_identifier, job_id_str
+                        )
                         if not entities:
-                            raise ValueError(f"Could not resolve any entities for: {group_identifier}")
+                            raise ValueError(
+                                f"Could not resolve any entities for: {group_identifier}"
+                            )
 
                 except Exception as resolve_exc:
                     err_type, err_msg = classify_telegram_error(resolve_exc)
 
-                    if err_type in ("flood", "peer_flood", "slowmode", "must_join_discussion", "guest_restricted", "send_restricted"):
+                    if err_type in (
+                        "flood",
+                        "peer_flood",
+                        "slowmode",
+                        "must_join_discussion",
+                        "guest_restricted",
+                        "send_restricted",
+                    ):
                         pending_pool[pkey] = {
                             "group_identifier": group_identifier,
                             "item_type": item_type,
@@ -1127,7 +1201,11 @@ async def execute_broadcast(job_id: str):
                                     except telethon.errors.UserNotParticipantError as unpe:
                                         if retry_attempt == 0:
                                             try:
-                                                await client(telethon.errors.channels.JoinChannelRequest(entity))
+                                                await client(
+                                                    telethon.errors.channels.JoinChannelRequest(
+                                                        entity
+                                                    )
+                                                )
                                                 await asyncio.sleep(2)
                                                 continue
                                             except Exception as join_err:
@@ -1135,8 +1213,15 @@ async def execute_broadcast(job_id: str):
                                         raise
                                     except telethon.errors.SlowModeWaitError as e:
                                         if e.seconds <= 30:
-                                            logger.warning("Slow mode active (job %s, account %s): waiting %s seconds to retry...", job_id_str, acc_id_str, e.seconds)
-                                            completed = await _interruptible_sleep(job_id_str, e.seconds)
+                                            logger.warning(
+                                                "Slow mode active (job %s, account %s): waiting %s seconds to retry...",
+                                                job_id_str,
+                                                acc_id_str,
+                                                e.seconds,
+                                            )
+                                            completed = await _interruptible_sleep(
+                                                job_id_str, e.seconds
+                                            )
                                             if not completed:
                                                 raise
                                             if retry_attempt == 0:
@@ -1144,8 +1229,15 @@ async def execute_broadcast(job_id: str):
                                         raise
                                     except telethon.errors.FloodWaitError as e:
                                         if e.seconds <= 30:
-                                            logger.warning("Flood wait active (job %s, account %s): waiting %s seconds to retry...", job_id_str, acc_id_str, e.seconds)
-                                            completed = await _interruptible_sleep(job_id_str, e.seconds)
+                                            logger.warning(
+                                                "Flood wait active (job %s, account %s): waiting %s seconds to retry...",
+                                                job_id_str,
+                                                acc_id_str,
+                                                e.seconds,
+                                            )
+                                            completed = await _interruptible_sleep(
+                                                job_id_str, e.seconds
+                                            )
                                             if not completed:
                                                 raise
                                             if retry_attempt == 0:
@@ -1153,17 +1245,34 @@ async def execute_broadcast(job_id: str):
                                         raise
                                     except (ConnectionError, TimeoutError, OSError) as net_exc:
                                         if retry_attempt == 0:
-                                            logger.warning("Transient error sending message (job %s, account %s): %s. Retrying once...", job_id_str, acc_id_str, net_exc)
+                                            logger.warning(
+                                                "Transient error sending message (job %s, account %s): %s. Retrying once...",
+                                                job_id_str,
+                                                acc_id_str,
+                                                net_exc,
+                                            )
                                             await asyncio.sleep(2)
                                             if not client.is_connected():
-                                                logger.info("Client %s disconnected, attempting reconnect...", acc_id_str)
+                                                logger.info(
+                                                    "Client %s disconnected, attempting reconnect...",
+                                                    acc_id_str,
+                                                )
                                                 try:
                                                     await client.connect()
                                                     if not await client.is_user_authorized():
-                                                        raise ValueError("Session expired after disconnect")
-                                                    logger.info("Client %s reconnected successfully", acc_id_str)
+                                                        raise ValueError(
+                                                            "Session expired after disconnect"
+                                                        )
+                                                    logger.info(
+                                                        "Client %s reconnected successfully",
+                                                        acc_id_str,
+                                                    )
                                                 except Exception as reconnect_exc:
-                                                    logger.error("Failed to reconnect client %s: %s", acc_id_str, reconnect_exc)
+                                                    logger.error(
+                                                        "Failed to reconnect client %s: %s",
+                                                        acc_id_str,
+                                                        reconnect_exc,
+                                                    )
                                                     raise
                                             continue
                                         raise
@@ -1198,7 +1307,14 @@ async def execute_broadcast(job_id: str):
                         log_err_msg = err_msg
                         failed += 1
 
-                        if err_type in ("admin_only", "banned", "invalid_username", "invalid_link", "private_channel", "muted"):
+                        if err_type in (
+                            "admin_only",
+                            "banned",
+                            "invalid_username",
+                            "invalid_link",
+                            "private_channel",
+                            "muted",
+                        ):
                             permanent_failures_pool.add(pkey)
 
                         if err_type == "flood":
@@ -1218,15 +1334,20 @@ async def execute_broadcast(job_id: str):
                             selected_acc["cooldown_until"] = time.time() + wait
 
                         if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
-                            await _push_broadcast(job_id_str, "account_failed", {
-                                "account": acc_name,
-                                "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
-                            })
+                            await _push_broadcast(
+                                job_id_str,
+                                "account_failed",
+                                {
+                                    "account": acc_name,
+                                    "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
+                                },
+                            )
                             from app.services.telegram_client import client_pool
                             from app.services.event_relay import event_relay
+
                             await event_relay.detach(acc_id_str)
                             await client_pool.remove(acc_id_str)
-                            
+
                             async with async_session_factory() as db_session:
                                 acc = await _account_for_log(acc_id_str, db_session)
                                 if acc:
@@ -1243,10 +1364,12 @@ async def execute_broadcast(job_id: str):
                     )
                     db_job = job_res.scalar_one_or_none()
                     if db_job:
-                        db_job.progress = int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                        db_job.progress = (
+                            int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                        )
                         db_job.sent_count = sent
                         db_job.fail_count = failed
-                    
+
                     db_log = BroadcastLog(
                         job_id=job_uuid,
                         cycle_number=current_cycle,
@@ -1263,24 +1386,32 @@ async def execute_broadcast(job_id: str):
                     fresh_db.add(db_log)
                     await fresh_db.commit()
 
-                await _push_broadcast(job_id_str, "progress", {
-                    "current": idx + 1,
-                    "total": len(items),
-                    "progress": int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0,
-                    "sent": sent,
-                    "failed": failed,
-                    "cycle": current_cycle,
-                    "status": current_status,
-                })
-                await _push_broadcast(job_id_str, "log", {
-                    "group": group_identifier,
-                    "status": log_status,
-                    "error_type": log_err_type,
-                    "text": chosen_text,
-                    "cycle": current_cycle,
-                    "account_id_used": acc_id_str,
-                    "account_name": acc_name,
-                })
+                await _push_broadcast(
+                    job_id_str,
+                    "progress",
+                    {
+                        "current": idx + 1,
+                        "total": len(items),
+                        "progress": int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0,
+                        "sent": sent,
+                        "failed": failed,
+                        "cycle": current_cycle,
+                        "status": current_status,
+                    },
+                )
+                await _push_broadcast(
+                    job_id_str,
+                    "log",
+                    {
+                        "group": group_identifier,
+                        "status": log_status,
+                        "error_type": log_err_type,
+                        "text": chosen_text,
+                        "cycle": current_cycle,
+                        "account_id_used": acc_id_str,
+                        "account_name": acc_name,
+                    },
+                )
 
                 # Delay between groups (use flood-controlled delay if larger)
                 if delay_randomized:
@@ -1298,8 +1429,12 @@ async def execute_broadcast(job_id: str):
 
             # Auto stop broadcast job if there are no valid groups
             if len(permanent_failures_pool) >= len(items) and len(items) > 0:
-                logger.warning("Broadcast Job %s has been stopped because there is no valid group", job_id_str)
-                log_msg = f"Broadcast Job {job_id_str} has been stopped because there is no valid group"
+                logger.warning(
+                    "Broadcast Job %s has been stopped because there is no valid group", job_id_str
+                )
+                log_msg = (
+                    f"Broadcast Job {job_id_str} has been stopped because there is no valid group"
+                )
                 async with async_session_factory() as db_stop:
                     result = await db_stop.execute(
                         select(BroadcastJob).where(BroadcastJob.id == job_uuid)
@@ -1309,37 +1444,45 @@ async def execute_broadcast(job_id: str):
                         db_job.status = "failed"
                         db_job.completed_at = datetime.now(timezone.utc)
                         await db_stop.commit()
-                        
+
                         # Send stopped notification to logging destination
                         try:
                             from app.services.broadcast_log_sender import send_job_log_message
+
                             sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
                             await send_job_log_message(
-                                client=sender["client"],
-                                job=db_job,
-                                message=log_msg
+                                client=sender["client"], job=db_job, message=log_msg
                             )
                         except Exception as log_exc:
                             logger.warning("Failed to send job stopped log: %s", log_exc)
-                
-                await _push_broadcast(job_id_str, "error", {
-                    "status": "failed",
-                    "message": "Broadcast Job has been stopped because there is no valid group",
-                })
+
+                await _push_broadcast(
+                    job_id_str,
+                    "error",
+                    {
+                        "status": "failed",
+                        "message": "Broadcast Job has been stopped because there is no valid group",
+                    },
+                )
                 break
 
             if is_looping:
                 cycle_count += 1
-                await _push_broadcast(job_id_str, "cycle_complete", {
-                    "cycle": cycle_count,
-                    "sent": sent,
-                    "failed": failed,
-                    "status": "running",
-                })
+                await _push_broadcast(
+                    job_id_str,
+                    "cycle_complete",
+                    {
+                        "cycle": cycle_count,
+                        "sent": sent,
+                        "failed": failed,
+                        "status": "running",
+                    },
+                )
 
                 # Send per-cycle log summary via the broadcasting account itself
                 try:
                     from app.services.broadcast_log_sender import send_cycle_summary
+
                     async with async_session_factory() as db_summary:
                         cycle_logs = await get_job_logs(
                             db_summary, job_id_str, {"cycle": cycle_count}, limit=9999
@@ -1377,17 +1520,31 @@ async def execute_broadcast(job_id: str):
                 if delay_after_all > 0:
                     logger.info(
                         "Job %s cycle %d complete (sent=%d failed=%d), waiting %ds before next cycle",
-                        job_id_str, cycle_count, sent, failed, delay_after_all,
+                        job_id_str,
+                        cycle_count,
+                        sent,
+                        failed,
+                        delay_after_all,
                     )
                     end_time = time.time() + delay_after_all
                     while time.time() < end_time:
                         current_status = await _get_current_status(job_uuid)
-                        if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                        if current_status is None or current_status in (
+                            "cancelled",
+                            "completed",
+                            "failed",
+                        ):
                             break
                         while current_status == "paused":
-                            await _interruptible_sleep(job_id_str, 86400) # Sleep indefinitely until woken
+                            await _interruptible_sleep(
+                                job_id_str, 86400
+                            )  # Sleep indefinitely until woken
                             current_status = await _get_current_status(job_uuid)
-                            if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                            if current_status is None or current_status in (
+                                "cancelled",
+                                "completed",
+                                "failed",
+                            ):
                                 break
 
                         if current_status in ("cancelled", "completed", "failed"):
@@ -1418,16 +1575,21 @@ async def execute_broadcast(job_id: str):
                     db_job_complete.fail_count = failed
                     db_job_complete.completed_at = datetime.now(timezone.utc)
                     await db_complete.commit()
-                    
-                    await _push_broadcast(job_id_str, "completed", {
-                        "total": len(items),
-                        "sent": sent,
-                        "failed": failed,
-                    })
+
+                    await _push_broadcast(
+                        job_id_str,
+                        "completed",
+                        {
+                            "total": len(items),
+                            "sent": sent,
+                            "failed": failed,
+                        },
+                    )
 
                     # Send final cycle summary via the broadcasting account
                     try:
                         from app.services.broadcast_log_sender import send_cycle_summary
+
                         final_cycle = (cycle_count or 0) + 1
                         cycle_logs = await get_job_logs(
                             db_complete, job_id_str, {"cycle": final_cycle}, limit=9999
@@ -1440,9 +1602,7 @@ async def execute_broadcast(job_id: str):
                             i.get("value", ""): i.get("type", "username") for i in items
                         }
                         if active_accounts:
-                            sender = active_accounts[
-                                (current_acc_idx - 1) % len(active_accounts)
-                            ]
+                            sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
                             await send_cycle_summary(
                                 client=sender["client"],
                                 job=db_job_complete,
@@ -1468,19 +1628,21 @@ async def execute_broadcast(job_id: str):
                 if job_err:
                     job_err.status = "failed"
                     await db_err.commit()
-                await _push_broadcast(job_id_str, "error", {
-                    "status": "failed",
-                    "message": str(exc),
-                })
+                await _push_broadcast(
+                    job_id_str,
+                    "error",
+                    {
+                        "status": "failed",
+                        "message": str(exc),
+                    },
+                )
         except Exception:
             pass
 
 
 async def resume_running_broadcasts_on_startup(db: AsyncSession) -> int:
     """Find all broadcast jobs with status 'running' and resume them in the background."""
-    result = await db.execute(
-        select(BroadcastJob).where(BroadcastJob.status == "running")
-    )
+    result = await db.execute(select(BroadcastJob).where(BroadcastJob.status == "running"))
     jobs = result.scalars().all()
     count = 0
     for job in jobs:
@@ -1501,4 +1663,3 @@ async def resume_running_broadcasts_on_startup(db: AsyncSession) -> int:
         count += 1
     logger.info("Resumed %d running broadcast jobs on startup", count)
     return count
-

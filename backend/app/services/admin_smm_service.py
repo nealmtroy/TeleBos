@@ -54,13 +54,15 @@ async def get_panel_profile() -> dict:
 # ── Services ─────────────────────────────────────────────────────────────────
 
 
-async def sync_services(db: AsyncSession) -> int:
-    """Fetch all services from the SMM panel and upsert into smm_services.
+async def fetch_services() -> list[dict]:
+    """Fetch services without holding a database session."""
+    return await smm_api.get_services()
 
-    Returns:
-        Number of services upserted.
-    """
-    services = await smm_api.get_services()
+
+async def sync_services(db: AsyncSession, services: list[dict] | None = None) -> int:
+    """Upsert SMM services, optionally using data fetched before opening ``db``."""
+    if services is None:
+        services = await fetch_services()
     if not services:
         return 0
 
@@ -126,7 +128,6 @@ async def sync_services(db: AsyncSession) -> int:
 
     await db.flush()
     return count
-
 
 
 async def get_services(
@@ -303,9 +304,7 @@ async def get_order_detail(db: AsyncSession, order_id: str) -> dict | None:
         return None
 
     # Get user email
-    user_result = await db.execute(
-        select(User.email).where(User.id == order.user_id)
-    )
+    user_result = await db.execute(select(User.email).where(User.id == order.user_id))
     user_email = user_result.scalar() or ""
 
     return {
@@ -454,7 +453,9 @@ async def get_smm_stats(db: AsyncSession) -> dict:
     pending_orders = pending_result.scalar() or 0
 
     # Revenue
-    revenue_result = await db.execute(select(func.sum(Order.total_price)).where(Order.status == "Success"))
+    revenue_result = await db.execute(
+        select(func.sum(Order.total_price)).where(Order.status == "Success")
+    )
     total_revenue = revenue_result.scalar() or 0
 
     # Unique users

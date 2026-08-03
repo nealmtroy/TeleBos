@@ -29,14 +29,25 @@ async def call_smm_api(action: str, extra_params: dict | None = None) -> dict[st
     if extra_params:
         params.update(extra_params)
 
-    logger.info("SMM API call: action=%s params=%s", action, {k: v for k, v in params.items() if k not in ("api_key", "secret_key")})
+    logger.info(
+        "SMM API call: action=%s params=%s",
+        action,
+        {k: v for k, v in params.items() if k not in ("api_key", "secret_key")},
+    )
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             response = await client.post(settings.SMM_API_URL, json=params)
             response.raise_for_status()
             data = response.json()
-            logger.info("SMM API response for action=%s: %s", action, data)
+            payload = data.get("data") if isinstance(data, dict) else None
+            item_count = len(payload) if isinstance(payload, list) else None
+            logger.info(
+                "SMM API response: action=%s status=%s items=%s",
+                action,
+                data.get("status") if isinstance(data, dict) else None,
+                item_count,
+            )
             return data
         except httpx.HTTPError as e:
             logger.error("SMM API HTTP error for action=%s: %s", action, e)
@@ -48,7 +59,9 @@ async def get_services() -> list[dict[str, Any]]:
     result = await call_smm_api("services2")  # services2 includes speed column
     if result.get("status") and isinstance(result.get("data"), list):
         return result["data"]
-    logger.warning("Failed to fetch services: %s", result.get("data", {}).get("msg", "Unknown error"))
+    logger.warning(
+        "Failed to fetch services: %s", result.get("data", {}).get("msg", "Unknown error")
+    )
     return []
 
 
@@ -56,8 +69,7 @@ async def get_telegram_services() -> list[dict[str, Any]]:
     """Filter services to only Telegram and Telegram Reactions categories."""
     all_services = await get_services()
     telegram_services = [
-        s for s in all_services
-        if s.get("category", "").lower().startswith("telegram")
+        s for s in all_services if s.get("category", "").lower().startswith("telegram")
     ]
     return telegram_services
 

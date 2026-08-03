@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-08-04
+- **[8ec82c09](https://github.com/nealmtroy/TeleBos/commit/8ec82c09)**: fix: bound Telegram reconnect database pressure
+
 ## 2026-08-03
 - **[a33192f2](https://github.com/nealmtroy/TeleBos/commit/a33192f2)**: fix(twofa): cache Telegram status updates
 - **[18f4840e](https://github.com/nealmtroy/TeleBos/commit/18f4840e)**: fix(accounts): keep Next page exports valid

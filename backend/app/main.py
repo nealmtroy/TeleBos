@@ -44,14 +44,41 @@ public_api_bearer = HTTPBearer(
 )
 
 
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
-from app.api import auth, accounts, chats, contacts, devices, broadcast, ws, invite, system, admin, admin_smm, orders, redeem, marketplace, admin_account_prices, account_folders, messages, media, reactions, pins, group_admin, stickers, polls, forward, gifs, public, api_keys
+from app.api import (
+    auth,
+    accounts,
+    chats,
+    contacts,
+    devices,
+    broadcast,
+    ws,
+    invite,
+    system,
+    admin,
+    admin_smm,
+    orders,
+    redeem,
+    marketplace,
+    admin_account_prices,
+    account_folders,
+    messages,
+    media,
+    reactions,
+    pins,
+    group_admin,
+    stickers,
+    polls,
+    forward,
+    gifs,
+    public,
+    api_keys,
+)
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
 
@@ -171,10 +198,7 @@ class RealIPMiddleware:
                 x_forwarded_for = headers.get(b"x-forwarded-for")
                 if x_forwarded_for:
                     try:
-                        ips = [
-                            ip.strip()
-                            for ip in x_forwarded_for.decode("utf-8").split(",")
-                        ]
+                        ips = [ip.strip() for ip in x_forwarded_for.decode("utf-8").split(",")]
                         # Walk right-to-left: first non-trusted IP is the real client
                         for ip_str in reversed(ips):
                             if not _is_trusted_proxy(ip_str, self.trusted_cidrs):
@@ -198,7 +222,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # HSTS
         if app_settings.PRODUCTION:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
         else:
             # Short max-age in dev so it's not cached by browsers
             response.headers["Strict-Transport-Security"] = "max-age=300; includeSubDomains"
@@ -231,9 +257,7 @@ def _run_migrations(connection):
     # tokens at rest in the database.  Backfills existing sessions.
     session_cols = [c["name"] for c in inspector.get_columns("session")]
     if "token_hash" not in session_cols:
-        connection.execute(
-            text("ALTER TABLE session ADD COLUMN token_hash TEXT")
-        )
+        connection.execute(text("ALTER TABLE session ADD COLUMN token_hash TEXT"))
         connection.execute(
             text("CREATE INDEX IF NOT EXISTS idx_session_token_hash ON session(token_hash)")
         )
@@ -255,7 +279,9 @@ def _run_migrations(connection):
 
     if "loop_enabled" not in columns:
         connection.execute(
-            text("ALTER TABLE broadcast_jobs ADD COLUMN loop_enabled BOOLEAN DEFAULT false NOT NULL")
+            text(
+                "ALTER TABLE broadcast_jobs ADD COLUMN loop_enabled BOOLEAN DEFAULT false NOT NULL"
+            )
         )
 
     # ── Broadcast jobs multi-account & randomized delay migrations ────────
@@ -270,10 +296,14 @@ def _run_migrations(connection):
                     "WHERE account_id IS NOT NULL"
                 )
             )
-            connection.execute(text("ALTER TABLE broadcast_jobs ALTER COLUMN account_ids SET NOT NULL"))
+            connection.execute(
+                text("ALTER TABLE broadcast_jobs ALTER COLUMN account_ids SET NOT NULL")
+            )
             connection.execute(text("ALTER TABLE broadcast_jobs DROP COLUMN account_id"))
         else:
-            connection.execute(text("ALTER TABLE broadcast_jobs ALTER COLUMN account_ids SET NOT NULL"))
+            connection.execute(
+                text("ALTER TABLE broadcast_jobs ALTER COLUMN account_ids SET NOT NULL")
+            )
 
     if "delay_randomized" not in columns:
         connection.execute(
@@ -285,10 +315,7 @@ def _run_migrations(connection):
 
     if "log_destination" not in columns:
         connection.execute(
-            text(
-                "ALTER TABLE broadcast_jobs "
-                "ADD COLUMN log_destination VARCHAR(255) DEFAULT NULL"
-            )
+            text("ALTER TABLE broadcast_jobs ADD COLUMN log_destination VARCHAR(255) DEFAULT NULL")
         )
 
     # ── Broadcast logs migrations ───────────────────────────────────────
@@ -346,16 +373,15 @@ def _run_migrations(connection):
         )
     if "auto_reply_text" not in acct_cols:
         connection.execute(
-            text(
-                "ALTER TABLE telegram_accounts "
-                "ADD COLUMN auto_reply_text TEXT DEFAULT NULL"
-            )
+            text("ALTER TABLE telegram_accounts ADD COLUMN auto_reply_text TEXT DEFAULT NULL")
         )
 
     # ── Cached stats columns on telegram_accounts ──────────────────────────
     if "contacts_count" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN contacts_count BIGINT DEFAULT 0 NOT NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN contacts_count BIGINT DEFAULT 0 NOT NULL"
+            )
         )
     if "total_groups" not in acct_cols:
         connection.execute(
@@ -367,19 +393,27 @@ def _run_migrations(connection):
         )
     if "total_channels" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN total_channels BIGINT DEFAULT 0 NOT NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN total_channels BIGINT DEFAULT 0 NOT NULL"
+            )
         )
     if "owned_channels" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN owned_channels BIGINT DEFAULT 0 NOT NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN owned_channels BIGINT DEFAULT 0 NOT NULL"
+            )
         )
     if "stats_updated_at" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN stats_updated_at TIMESTAMPTZ DEFAULT NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN stats_updated_at TIMESTAMPTZ DEFAULT NULL"
+            )
         )
     if "groups_channels_synced_at" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN groups_channels_synced_at TIMESTAMPTZ DEFAULT NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN groups_channels_synced_at TIMESTAMPTZ DEFAULT NULL"
+            )
         )
 
     # ── Spam limit columns on telegram_accounts ──────────────────────────
@@ -392,10 +426,7 @@ def _run_migrations(connection):
         )
     if "spam_detail" not in acct_cols:
         connection.execute(
-            text(
-                "ALTER TABLE telegram_accounts "
-                "ADD COLUMN spam_detail TEXT DEFAULT NULL"
-            )
+            text("ALTER TABLE telegram_accounts ADD COLUMN spam_detail TEXT DEFAULT NULL")
         )
     if "spam_last_checked_at" not in acct_cols:
         connection.execute(
@@ -408,10 +439,7 @@ def _run_migrations(connection):
     # ── Profile photo ID for change detection ─────────────────────────────
     if "profile_photo_id" not in acct_cols:
         connection.execute(
-            text(
-                "ALTER TABLE telegram_accounts "
-                "ADD COLUMN profile_photo_id BIGINT DEFAULT NULL"
-            )
+            text("ALTER TABLE telegram_accounts ADD COLUMN profile_photo_id BIGINT DEFAULT NULL")
         )
     if "color_id" not in acct_cols:
         connection.execute(
@@ -429,7 +457,9 @@ def _run_migrations(connection):
         )
     if "seller_id" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN seller_id UUID REFERENCES users(id) ON DELETE SET NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN seller_id UUID REFERENCES users(id) ON DELETE SET NULL"
+            )
         )
     if "sold_at" not in acct_cols:
         connection.execute(
@@ -437,7 +467,9 @@ def _run_migrations(connection):
         )
     if "recovery_email" not in acct_cols:
         connection.execute(
-            text("ALTER TABLE telegram_accounts ADD COLUMN recovery_email VARCHAR(255) DEFAULT NULL")
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN recovery_email VARCHAR(255) DEFAULT NULL"
+            )
         )
 
     # ── Auto-reply logs table ───────────────────────────────────────────
@@ -456,8 +488,7 @@ def _run_migrations(connection):
         )
         connection.execute(
             text(
-                "CREATE INDEX ix_auto_reply_logs_sender "
-                "ON auto_reply_logs (account_id, sender_id)"
+                "CREATE INDEX ix_auto_reply_logs_sender ON auto_reply_logs (account_id, sender_id)"
             )
         )
 
@@ -491,13 +522,23 @@ def _run_migrations(connection):
     else:
         invite_jobs_cols = [c["name"] for c in inspector.get_columns("invite_jobs")]
         if "account_ids" not in invite_jobs_cols:
-            connection.execute(text("ALTER TABLE invite_jobs ADD COLUMN account_ids JSONB DEFAULT '[]'::jsonb"))
+            connection.execute(
+                text("ALTER TABLE invite_jobs ADD COLUMN account_ids JSONB DEFAULT '[]'::jsonb")
+            )
             if "account_id" in invite_jobs_cols:
-                connection.execute(text("UPDATE invite_jobs SET account_ids = jsonb_build_array(account_id::text) WHERE account_id IS NOT NULL"))
-                connection.execute(text("ALTER TABLE invite_jobs ALTER COLUMN account_ids SET NOT NULL"))
+                connection.execute(
+                    text(
+                        "UPDATE invite_jobs SET account_ids = jsonb_build_array(account_id::text) WHERE account_id IS NOT NULL"
+                    )
+                )
+                connection.execute(
+                    text("ALTER TABLE invite_jobs ALTER COLUMN account_ids SET NOT NULL")
+                )
                 connection.execute(text("ALTER TABLE invite_jobs DROP COLUMN account_id"))
             else:
-                connection.execute(text("ALTER TABLE invite_jobs ALTER COLUMN account_ids SET NOT NULL"))
+                connection.execute(
+                    text("ALTER TABLE invite_jobs ALTER COLUMN account_ids SET NOT NULL")
+                )
 
     # ── Invite logs table ─────────────────────────────────────────────
     if "invite_logs" not in tables:
@@ -518,12 +559,7 @@ def _run_migrations(connection):
                 ")"
             )
         )
-        connection.execute(
-            text(
-                "CREATE INDEX ix_invite_logs_job "
-                "ON invite_logs (job_id)"
-            )
-        )
+        connection.execute(text("CREATE INDEX ix_invite_logs_job ON invite_logs (job_id)"))
     else:
         invite_logs_cols = [c["name"] for c in inspector.get_columns("invite_logs")]
         if "account_id_used" not in invite_logs_cols:
@@ -551,16 +587,10 @@ def _run_migrations(connection):
             )
         )
         connection.execute(
-            text(
-                "CREATE INDEX ix_account_audit_logs_user_id "
-                "ON account_audit_logs (user_id)"
-            )
+            text("CREATE INDEX ix_account_audit_logs_user_id ON account_audit_logs (user_id)")
         )
         connection.execute(
-            text(
-                "CREATE INDEX ix_account_audit_logs_account_id "
-                "ON account_audit_logs (account_id)"
-            )
+            text("CREATE INDEX ix_account_audit_logs_account_id ON account_audit_logs (account_id)")
         )
 
     # ── Telegram ID prefix prices table ─────────────────────────────
@@ -589,7 +619,9 @@ def _run_migrations(connection):
         user_ba_cols = [c["name"] for c in inspector.get_columns("user")]
         if "failedLoginAttempts" not in user_ba_cols:
             connection.execute(
-                text('ALTER TABLE "user" ADD COLUMN "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0')
+                text(
+                    'ALTER TABLE "user" ADD COLUMN "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0'
+                )
             )
         if "lockedUntil" not in user_ba_cols:
             connection.execute(
@@ -609,9 +641,7 @@ def _run_migrations(connection):
         for col in inspector.get_columns("users")
     ):
         try:
-            connection.execute(
-                text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL")
-            )
+            connection.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))
         except Exception:
             # Column may already be nullable in some envs — ignore
             pass
@@ -680,7 +710,9 @@ def _run_migrations(connection):
 
     # ── Performance Indexes ───────────────────────────────────────────
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_telegram_accounts_user_id ON telegram_accounts (user_id)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_telegram_accounts_user_id ON telegram_accounts (user_id)"
+        )
     )
     connection.execute(
         text("CREATE INDEX IF NOT EXISTS ix_chat_folders_account_id ON chat_folders (account_id)")
@@ -698,16 +730,24 @@ def _run_migrations(connection):
         text("CREATE INDEX IF NOT EXISTS ix_invite_jobs_user_id ON invite_jobs (user_id)")
     )
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_sent ON broadcast_logs (job_id, sent_at)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_sent ON broadcast_logs (job_id, sent_at)"
+        )
     )
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_broadcast_logs_account_used ON broadcast_logs (account_id_used)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_account_used ON broadcast_logs (account_id_used)"
+        )
     )
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_invite_logs_job_invited ON invite_logs (job_id, invited_at)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_invite_logs_job_invited ON invite_logs (job_id, invited_at)"
+        )
     )
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_invite_logs_account_used ON invite_logs (account_id_used)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_invite_logs_account_used ON invite_logs (account_id_used)"
+        )
     )
 
     # ── Telegram chats: is_archived ──────────────────────────────────────
@@ -779,18 +819,20 @@ def _run_migrations(connection):
             )
         )
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_account_folder_members_folder ON account_folder_members (folder_id)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_account_folder_members_folder ON account_folder_members (folder_id)"
+        )
     )
     connection.execute(
-        text("CREATE INDEX IF NOT EXISTS ix_account_folder_members_account ON account_folder_members (account_id)")
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_account_folder_members_account ON account_folder_members (account_id)"
+        )
     )
 
     # ── User balance & role migrations ────────────────────────────────
     user_cols = [c["name"] for c in inspector.get_columns("users")]
     if "balance" not in user_cols:
-        connection.execute(
-            text("ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 0 NOT NULL")
-        )
+        connection.execute(text("ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 0 NOT NULL"))
     if "subscription_expires_at" not in user_cols:
         connection.execute(
             text("ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMPTZ DEFAULT NULL")
@@ -804,16 +846,22 @@ def _run_migrations(connection):
     if "smm_services" in tables:
         smm_cols = [c["name"] for c in inspector.get_columns("smm_services")]
         if "speed" in smm_cols:
-            col_type = next(c["type"] for c in inspector.get_columns("smm_services") if c["name"] == "speed")
+            col_type = next(
+                c["type"] for c in inspector.get_columns("smm_services") if c["name"] == "speed"
+            )
             # API returns long descriptions like "Jumlah Order Selesai ... 21 Hari 17 Jam 52 Menit"
             if hasattr(col_type, "length") and col_type.length == 50:
                 connection.execute(text("ALTER TABLE smm_services ALTER COLUMN speed TYPE TEXT"))
         # API prices can exceed 32-bit INTEGER (e.g. 225486227451)
         for col in ["original_price", "selling_price"]:
             if col in smm_cols:
-                col_type = next(c["type"] for c in inspector.get_columns("smm_services") if c["name"] == col)
+                col_type = next(
+                    c["type"] for c in inspector.get_columns("smm_services") if c["name"] == col
+                )
                 if str(col_type) == "INTEGER":
-                    connection.execute(text(f"ALTER TABLE smm_services ALTER COLUMN {col} TYPE BIGINT"))
+                    connection.execute(
+                        text(f"ALTER TABLE smm_services ALTER COLUMN {col} TYPE BIGINT")
+                    )
 
     # ── Orders table ─────────────────────────────────────────────────
     if "orders" not in tables:
@@ -841,19 +889,17 @@ def _run_migrations(connection):
                 ")"
             )
         )
-        connection.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_orders_user_id ON orders (user_id)")
-        )
-        connection.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_orders_status ON orders (status)")
-        )
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_orders_user_id ON orders (user_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_orders_status ON orders (status)"))
 
     # Migrate existing orders price columns if still INTEGER
     if "orders" in tables:
         orders_cols = [c["name"] for c in inspector.get_columns("orders")]
         for col in ["price", "total_price"]:
             if col in orders_cols:
-                col_type = next(c["type"] for c in inspector.get_columns("orders") if c["name"] == col)
+                col_type = next(
+                    c["type"] for c in inspector.get_columns("orders") if c["name"] == col
+                )
                 if str(col_type) == "INTEGER":
                     connection.execute(text(f"ALTER TABLE orders ALTER COLUMN {col} TYPE BIGINT"))
 
@@ -903,6 +949,7 @@ async def lifespan(app: FastAPI):
 
     # 1. Verify encryption key on startup
     from app.utils.encryption import _get_cipher
+
     try:
         _get_cipher()
     except Exception as e:
@@ -911,6 +958,7 @@ async def lifespan(app: FastAPI):
 
     # Ensure upload directories exist
     import os
+
     os.makedirs(os.path.join(os.path.dirname(__file__), "uploads", "profile_photos"), exist_ok=True)
 
     # Create tables (in production use Alembic)
@@ -927,15 +975,17 @@ async def lifespan(app: FastAPI):
     async with async_session_factory() as db:
         reconnected = await session_manager.reconnect_all(db)
         logger.info("Auto-reconnected %d accounts with real-time handlers", reconnected)
-        
+
         # Resume any running broadcast jobs
         from app.services.broadcast_service import resume_running_broadcasts_on_startup
+
         resumed = await resume_running_broadcasts_on_startup(db)
         logger.info("Auto-resumed %d running broadcast jobs", resumed)
 
         # Seed: ensure nealmtroy@gmail.com is owner
         from sqlalchemy import select
         from app.models.user import User
+
         result = await db.execute(select(User).where(User.email == "nealmtroy@gmail.com"))
         owner_user = result.scalar_one_or_none()
         if owner_user and owner_user.role != "owner":
@@ -945,19 +995,23 @@ async def lifespan(app: FastAPI):
 
     # Start UptimeRobot background refresh (10-minute interval)
     from app.services.uptimerobot_status import uptimerobot_service
+
     uptimerobot_service.start_background_refresh()
 
     # 2. Spawn background cleanup for pending logins
     import asyncio
     from app.api.accounts import clean_pending_logins_task
+
     cleanup_task = asyncio.create_task(clean_pending_logins_task())
 
     # 3. Spawn background stats updater (runs daily)
     from app.services.stats_service import background_stats_updater
+
     stats_updater_task = asyncio.create_task(background_stats_updater())
 
     # 4. Spawn cached 2FA metadata updater (runs every 6 hours)
     from app.services.twofa_sync_service import background_twofa_updater
+
     twofa_sync_task = asyncio.create_task(background_twofa_updater())
 
     # 5. Spawn profile sync background loop (checks every 5 minutes)
@@ -985,7 +1039,7 @@ async def lifespan(app: FastAPI):
                 from app.models.telegram_account import TelegramAccount
                 from datetime import datetime, timezone, timedelta
                 from sqlalchemy import select, or_
-                
+
                 async with async_session_factory() as db:
                     # Find active accounts that haven't been synced in the last hour
                     one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -993,12 +1047,12 @@ async def lifespan(app: FastAPI):
                         TelegramAccount.is_active == True,
                         or_(
                             TelegramAccount.groups_channels_synced_at.is_(None),
-                            TelegramAccount.groups_channels_synced_at < one_hour_ago
-                        )
+                            TelegramAccount.groups_channels_synced_at < one_hour_ago,
+                        ),
                     )
                     res = await db.execute(stmt)
                     accounts = res.scalars().all()
-                    
+
                 for acc in accounts:
                     try:
                         async with async_session_factory() as db_session:
@@ -1009,12 +1063,16 @@ async def lifespan(app: FastAPI):
                             if db_acc:
                                 await sync_groups_channels_to_db(db_acc, db_session)
                     except Exception as acc_exc:
-                        logger.warning("Failed background sync of groups/channels for account %s: %s", acc.id, acc_exc)
+                        logger.warning(
+                            "Failed background sync of groups/channels for account %s: %s",
+                            acc.id,
+                            acc_exc,
+                        )
                     # Pause between accounts to prevent hitting flood limits
                     await asyncio.sleep(15)
             except Exception as exc:
                 logger.warning("Groups & channels sync loop error: %s", exc)
-            
+
             # Check every 10 minutes
             await asyncio.sleep(600)
 
@@ -1022,7 +1080,7 @@ async def lifespan(app: FastAPI):
     logger.info("Groups & channels background sync task started (10-min check interval)")
 
     # 5. Spawn SMM services sync background loop (checks every 12 hours)
-    from app.services.admin_smm_service import sync_services
+    from app.services.admin_smm_service import fetch_services, sync_services
 
     async def _smm_services_sync_loop():
         """Periodically sync SMM services from the panel API."""
@@ -1030,11 +1088,12 @@ async def lifespan(app: FastAPI):
         await asyncio.sleep(10)
         while True:
             try:
+                logger.info("Background task: Syncing SMM services...")
+                services = await fetch_services()
                 async with async_session_factory() as db:
-                    logger.info("Background task: Syncing SMM services...")
-                    count = await sync_services(db)
+                    count = await sync_services(db, services)
                     await db.commit()
-                    logger.info("Background task: Synced %d SMM services.", count)
+                logger.info("Background task: Synced %d SMM services.", count)
             except Exception as exc:
                 logger.warning("Background SMM services sync loop error: %s", exc)
             # Sync every 12 hours (43200 seconds)
@@ -1112,13 +1171,14 @@ async def lifespan(app: FastAPI):
 
     # 4. Close Redis client connection
     from app.utils.redis import redis_client
+
     await redis_client.close()
 
     await session_manager.stop()
     from app.services.telegram_client import client_pool
+
     await client_pool.stop()
     await engine.dispose()
-
 
 
 app = FastAPI(
@@ -1131,7 +1191,10 @@ app = FastAPI(
     ),
     contact={"name": "TeleBos Support", "url": "https://telebos.app/help"},
     openapi_tags=[
-        {"name": "public-api", "description": "Stable, read-only endpoints for external integrations."},
+        {
+            "name": "public-api",
+            "description": "Stable, read-only endpoints for external integrations.",
+        },
         {"name": "api-keys", "description": "Create and revoke external integration keys."},
     ],
     # Keep documentation under /api so it works both through Next.js and
@@ -1170,24 +1233,28 @@ for origin in app_settings.CORS_ORIGINS:
     _allowed_hosts.append(f"{host}:3000")
 
 if "*" not in _allowed_hosts:
-    _allowed_hosts.extend([
-        "localhost", 
-        "127.0.0.1", 
-        "localhost:8000", 
-        "localhost:3000", 
-        "backend", 
-        "backend:8000",
-        "frontend",
-        "frontend:3000"
-    ])
+    _allowed_hosts.extend(
+        [
+            "localhost",
+            "127.0.0.1",
+            "localhost:8000",
+            "localhost:3000",
+            "backend",
+            "backend:8000",
+            "frontend",
+            "frontend:3000",
+        ]
+    )
     # Allow all hosts in debug/non-production to support arbitrary VPS IPs and tunnels seamlessly
     if app_settings.DEBUG or not app_settings.PRODUCTION:
         # Reject obviously spoofed Host headers but allow common tunnel services
         # to keep development ergonomic on arbitrary VPS IPs and tunnels.
-        _allowed_hosts.extend([
-            "*.trycloudflare.com",
-            "*.ngrok-free.app",
-        ])
+        _allowed_hosts.extend(
+            [
+                "*.trycloudflare.com",
+                "*.ngrok-free.app",
+            ]
+        )
 
 # Add RealIPMiddleware to parse correct client IPs when behind Cloudflare/reverse proxy
 app.add_middleware(RealIPMiddleware)
@@ -1199,7 +1266,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[
-        "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With",
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
         "x-better-auth-token",
     ],
 )
