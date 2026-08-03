@@ -256,7 +256,7 @@ const id: Dict = {
   // ── Detail Akun ─────────────────────────────────────────────────────────
   accountDetail: {
     profileSettings: "Profil & Pengaturan",
-    profileSettingsDesc: "Edit profil, privasi, dan 2FA",
+    profileSettingsDesc: "Edit profil dan otomatisasi akun",
     devices: "Perangkat",
     devicesDesc: "Lihat dan kelola sesi aktif",
     chats: "Obrolan",
@@ -266,6 +266,7 @@ const id: Dict = {
     phone: "Telepon",
     username: "Nama Pengguna",
     bio: "Bio",
+    loginEmail: "Email Login",
     status: "Status",
     twoFa: "2FA",
     added: "Ditambahkan",
@@ -767,6 +768,11 @@ const id: Dict = {
     unknownApp: "Aplikasi Tidak Diketahui",
     since: "Sejak {date}",
     thisDevice: "Perangkat Ini",
+    otherDevices: "Perangkat Lain",
+    sessionTerminated: "Sesi perangkat berhasil diakhiri",
+    terminateSessionFailed: "Gagal mengakhiri sesi perangkat",
+    otherSessionsTerminated: "Semua sesi lain berhasil diakhiri",
+    terminateOtherSessionsFailed: "Gagal mengakhiri sesi lain",
   },
 
   // ── Utilitas ────────────────────────────────────────────────────────────

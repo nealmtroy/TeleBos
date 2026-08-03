@@ -2,13 +2,14 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { useAccounts, useAccountsPaginated, type Account as AccountType } from "@/hooks/use-accounts";
+import { useAccounts, useAccountsPaginated } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountCard } from "@/components/accounts/account-card";
 import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
 import { FolderManagerDialog } from "@/components/accounts/folder-manager-dialog";
+import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { useRouter } from "next/navigation";
-import { Plus, FolderOpen, Info, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, FolderOpen, Info, Search, ChevronLeft, ChevronRight, Smartphone } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
@@ -82,6 +83,12 @@ export default function AccountsListPage() {
   const accounts = paginatedData?.accounts || [];
   const totalItems = paginatedData?.total || 0;
   const totalPages = paginatedData?.pages || 0;
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const accountLimit = ROLE_LIMITS[user?.role || "basic"] ?? 1;
   const atLimit = allAccounts.length >= accountLimit;
@@ -279,8 +286,11 @@ export default function AccountsListPage() {
       )}
 
       {/* Pagination Controls */}
-      {!isLoading && !error && totalItems > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-gray-200 mt-6">
+      {!isLoading && !error && totalItems > 0 && totalPages > 0 && (
+        <nav
+          aria-label="Account pagination"
+          className="mt-6 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between"
+        >
           <p className="text-sm text-gray-500">
             {_("accountsList.showingAccounts", {
               start: (page - 1) * 10 + 1,
@@ -288,42 +298,49 @@ export default function AccountsListPage() {
               total: totalItems,
             })}
           </p>
-          <div className="flex items-center gap-1.5 self-center sm:self-auto">
+          <div className="flex max-w-full items-center gap-1 self-start overflow-x-auto pb-1 sm:self-auto sm:overflow-visible sm:pb-0">
             <button
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
               disabled={page === 1}
-              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              aria-label={_("accountsList.prev")}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               title={_("accountsList.prev")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const pageNum = idx + 1;
-              return (
+            {generatePageNumbers(page, totalPages).map((pageNumber, index) =>
+              pageNumber === "…" ? (
+                <span key={`ellipsis-${index}`} aria-hidden="true" className="inline-flex size-9 shrink-0 items-center justify-center text-sm text-gray-400">
+                  …
+                </span>
+              ) : (
                 <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
+                  key={pageNumber}
+                  onClick={() => setPage(pageNumber)}
+                  aria-current={page === pageNumber ? "page" : undefined}
+                  aria-label={`Page ${pageNumber}`}
                   className={cn(
-                    "inline-flex items-center justify-center w-9 h-9 rounded-lg border text-sm font-medium transition",
-                    page === pageNum
-                      ? "bg-primary-600 border-primary-600 text-white shadow-sm"
-                      : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border text-sm font-medium transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    page === pageNumber
+                      ? "border-primary-600 bg-primary-600 text-white"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   )}
                 >
-                  {pageNum}
+                  {pageNumber}
                 </button>
-              );
-            })}
+              )
+            )}
             <button
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page === totalPages}
-              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              aria-label={_("accountsList.next")}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               title={_("accountsList.next")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-        </div>
+        </nav>
       )}
 
       {/* Folder Manager Dialog */}
@@ -335,5 +352,19 @@ export default function AccountsListPage() {
   );
 }
 
-import { CardSkeleton } from "@/components/ui/skeleton-cards";
-import { Smartphone } from "lucide-react";
+function generatePageNumbers(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+
+  const pages: (number | "…")[] = [1];
+  if (current > 3) pages.push("…");
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let pageNumber = start; pageNumber <= end; pageNumber += 1) {
+    pages.push(pageNumber);
+  }
+
+  if (current < total - 2) pages.push("…");
+  pages.push(total);
+  return pages;
+}

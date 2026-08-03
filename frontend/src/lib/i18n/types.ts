@@ -266,6 +266,7 @@ export interface Dict {
     phone: string;
     username: string;
     bio: string;
+    loginEmail: string;
     status: string;
     twoFa: string;
     added: string;
@@ -728,6 +729,11 @@ export interface Dict {
     unknownApp: string;
     since: string;
     thisDevice: string;
+    otherDevices: string;
+    sessionTerminated: string;
+    terminateSessionFailed: string;
+    otherSessionsTerminated: string;
+    terminateOtherSessionsFailed: string;
   };
 
   // Utils

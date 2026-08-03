@@ -2,10 +2,12 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useDeleteAccount, useCheckSpam, useProfileSync } from "@/hooks/use-accounts";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { Smartphone, Shield, Monitor, Settings, Trash2, ArrowLeft, RefreshCw, AlertTriangle, X } from "lucide-react";
+import { Smartphone, Shield, Monitor, Settings, ArrowLeft, RefreshCw, AlertTriangle, X, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +25,14 @@ export default function AccountDetailPage() {
   const id = params.id as string;
   useProfileSync(id);
   const { data: account, isLoading, error } = useAccount(id);
+  const { data: securityStatus } = useQuery<{ login_email_pattern: string | null }>({
+    queryKey: ["2fa", id],
+    queryFn: async () => {
+      const { data } = await api.get(`/accounts/${id}/2fa`);
+      return data;
+    },
+    enabled: !!id,
+  });
   const isRestricted = account ? (!account.is_active || account.for_sale) : false;
   const isExpired = account ? (!account.is_active && !account.for_sale) : false;
   const deleteMutation = useDeleteAccount();
@@ -116,7 +126,7 @@ export default function AccountDetailPage() {
     {
       label: _("accountDetail.security"),
       icon: Shield,
-      href: `/accounts/${id}/settings`,
+      href: `/accounts/${id}/security`,
       desc: _("accountDetail.securityDesc"),
     },
   ];
@@ -125,7 +135,11 @@ export default function AccountDetailPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Back + header */}
       <div className="flex items-center gap-3">
-        <Link href="/accounts" className="p-2 hover:bg-gray-100 rounded-lg">
+        <Link
+          href="/accounts"
+          aria-label={_("accountDetail.backToAccounts")}
+          className="rounded-lg p-2 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
           <ArrowLeft className="h-5 w-5 text-gray-500" />
         </Link>
         <div>
@@ -168,6 +182,15 @@ export default function AccountDetailPage() {
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.bio")}</span>
                 <p className="text-sm text-gray-900">
                   {account.bio || "—"}
+                </p>
+              </div>
+              <div>
+                <span className="inline-flex items-center gap-1 text-xs uppercase text-gray-400">
+                  <Mail className="size-3" />
+                  {_("accountDetail.loginEmail")}
+                </span>
+                <p className="truncate text-sm font-medium text-gray-900">
+                  {securityStatus?.login_email_pattern || "—"}
                 </p>
               </div>
               <div>

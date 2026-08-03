@@ -54,9 +54,6 @@ export default function AccountSettingsPage() {
       <PhotoUpload accountId={id} account={account} />
       <ProfileEditor accountId={id} account={account} />
       <AutoReplySettings accountId={id} account={account} />
-      <PrivacySettings accountId={id} />
-      <LoginEmailSettings accountId={id} />
-      <TwoFASettings accountId={id} />
       <DeleteContacts accountId={id} />
     </div>
   );
@@ -339,7 +336,7 @@ function PrivacySelect({
   );
 }
 
-function PrivacySettings({ accountId }: { accountId: string }) {
+export function PrivacySettings({ accountId }: { accountId: string }) {
   const _ = useT();
   const queryClient = useQueryClient();
   const [dirty, setDirty] = useState<Record<string, string>>({});
@@ -472,7 +469,7 @@ function PrivacySettings({ accountId }: { accountId: string }) {
 
 // ── 2FA Settings ────────────────────────────────────────────────────────────
 
-function TwoFASettings({ accountId }: { accountId: string }) {
+export function TwoFASettings({ accountId }: { accountId: string }) {
   const _ = useT();
   const qc = useQueryClient();
   const { data: twofa, isLoading } = useQuery<{
@@ -820,7 +817,7 @@ function TwoFASettings({ accountId }: { accountId: string }) {
 
 // ── Login Email (separate from 2FA) ────────────────────────────────────────
 
-function LoginEmailSettings({ accountId }: { accountId: string }) {
+export function LoginEmailSettings({ accountId }: { accountId: string }) {
   const _ = useT();
   const qc = useQueryClient();
   const { data: twofa } = useQuery<{ login_email_pattern: string | null }>({

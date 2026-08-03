@@ -256,7 +256,7 @@ const en: Dict = {
   // ── Account Detail ──────────────────────────────────────────────────────
   accountDetail: {
     profileSettings: "Profile & Settings",
-    profileSettingsDesc: "Edit profile, privacy, and 2FA",
+    profileSettingsDesc: "Edit profile and account automation",
     devices: "Devices",
     devicesDesc: "View and manage active sessions",
     chats: "Chats",
@@ -266,6 +266,7 @@ const en: Dict = {
     phone: "Phone",
     username: "Username",
     bio: "Bio",
+    loginEmail: "Login Email",
     status: "Status",
     twoFa: "2FA",
     added: "Added",
@@ -767,6 +768,11 @@ const en: Dict = {
     unknownApp: "Unknown App",
     since: "Since {date}",
     thisDevice: "This Device",
+    otherDevices: "Other Devices",
+    sessionTerminated: "Device session terminated successfully",
+    terminateSessionFailed: "Failed to terminate device session",
+    otherSessionsTerminated: "All other sessions terminated successfully",
+    terminateOtherSessionsFailed: "Failed to terminate other sessions",
   },
 
   // ── Utils ───────────────────────────────────────────────────────────────
