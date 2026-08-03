@@ -321,6 +321,21 @@ def _run_migrations(connection):
     # ── Telegram account columns (auto-reply, cached stats, spam) ────────
     acct_cols = [c["name"] for c in inspector.get_columns("telegram_accounts")]
 
+    # ── Cached 2FA metadata (safe masked values only) ─────────────────────
+    twofa_cache_columns = {
+        "twofa_has_recovery": "BOOLEAN DEFAULT NULL",
+        "twofa_hint": "VARCHAR(255) DEFAULT NULL",
+        "login_email_pattern": "VARCHAR(255) DEFAULT NULL",
+        "unconfirmed_email_pattern": "VARCHAR(255) DEFAULT NULL",
+        "twofa_status_synced_at": "TIMESTAMPTZ DEFAULT NULL",
+        "twofa_status_retry_at": "TIMESTAMPTZ DEFAULT NULL",
+    }
+    for column_name, definition in twofa_cache_columns.items():
+        if column_name not in acct_cols:
+            connection.execute(
+                text(f"ALTER TABLE telegram_accounts ADD COLUMN {column_name} {definition}")
+            )
+
     # ── Auto-reply columns on telegram_accounts ──────────────────────────
     if "auto_reply_enabled" not in acct_cols:
         connection.execute(
@@ -941,7 +956,11 @@ async def lifespan(app: FastAPI):
     from app.services.stats_service import background_stats_updater
     stats_updater_task = asyncio.create_task(background_stats_updater())
 
-    # 4. Spawn profile sync background loop (checks every 5 minutes)
+    # 4. Spawn cached 2FA metadata updater (runs every 6 hours)
+    from app.services.twofa_sync_service import background_twofa_updater
+    twofa_sync_task = asyncio.create_task(background_twofa_updater())
+
+    # 5. Spawn profile sync background loop (checks every 5 minutes)
     from app.services.profile_sync_service import sync_all_profiles
 
     async def _profile_sync_loop():
@@ -1049,6 +1068,12 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down TeleBos API...")
 
     # 3. Cancel background tasks
+    twofa_sync_task.cancel()
+    try:
+        await twofa_sync_task
+    except asyncio.CancelledError:
+        pass
+
     cleanup_task.cancel()
     try:
         await cleanup_task

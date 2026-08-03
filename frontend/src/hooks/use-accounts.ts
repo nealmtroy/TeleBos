@@ -89,6 +89,32 @@ export function useAccountsPaginated(params: {
   });
 }
 
+export interface AccountTwoFAStatus {
+  enabled: boolean;
+  live_checked: boolean;
+  has_recovery: boolean | null;
+  hint: string | null;
+  login_email_pattern: string | null;
+  unconfirmed_email_pattern: string | null;
+  synced_at: string | null;
+}
+
+export function useAccountTwoFAStatus(id: string) {
+  return useQuery<AccountTwoFAStatus>({
+    queryKey: ["2fa", id],
+    queryFn: async () => {
+      const { data } = await api.get(`/accounts/${id}/2fa`);
+      return data;
+    },
+    enabled: !!id,
+    staleTime: 6 * 60 * 60 * 1000,
+    gcTime: 12 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
+}
+
 export function useAccount(id: string) {
   return useQuery<Account>({
     queryKey: ["accounts", id],

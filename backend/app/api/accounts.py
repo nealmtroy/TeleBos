@@ -84,7 +84,7 @@ from telethon.errors import SessionPasswordNeededError
 from app.services.telegram_client import client_pool
 from app.utils.encryption import encrypt
 from app.services.account_service import check_account_limit, DuplicateAccountError
-from app.services.twofa_service import get_account_live_2fa_status, get_live_2fa_status
+from app.services.twofa_service import get_live_2fa_status
 from app.models.telegram_account import TelegramAccount
 import uuid
 
@@ -541,11 +541,6 @@ async def get_account(
     account = await account_service.get_account(db, account_id, str(user.id), allow_for_sale=True)
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
-
-    live_twofa_status = await get_account_live_2fa_status(account)
-    if live_twofa_status is not None and live_twofa_status["enabled"] != account.twofa_enabled:
-        account.twofa_enabled = live_twofa_status["enabled"]
-        await db.flush()
 
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)

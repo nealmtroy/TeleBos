@@ -1,5 +1,7 @@
 """Settings-related Pydantic schemas."""
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -33,11 +35,12 @@ class PrivacySettingsUpdate(BaseModel):
 
 class TwoFAStatusResponse(BaseModel):
     enabled: bool
-    live_checked: bool = True
+    live_checked: bool = False
     has_recovery: bool | None = None
     hint: str | None = None
     login_email_pattern: str | None = None
     unconfirmed_email_pattern: str | None = None
+    synced_at: datetime | None = None
 
 
 class TwoFAEnableRequest(BaseModel):

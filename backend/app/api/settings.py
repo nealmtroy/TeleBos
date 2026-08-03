@@ -96,12 +96,6 @@ async def get_2fa_status(
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
-    # Only successful Telegram checks may change the persisted cache. A fallback
-    # response preserves the last known value when Telegram is temporarily unavailable.
-    if result["live_checked"] and result["enabled"] != account.twofa_enabled:
-        account.twofa_enabled = result["enabled"]
-        await db.flush()
-
     return TwoFAStatusResponse(**result)
 
 
@@ -126,6 +120,8 @@ async def enable_2fa(
         await db.flush()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    from app.services.twofa_sync_service import broadcast_cached_twofa_status
+    await broadcast_cached_twofa_status(account)
     return {"message": "2FA enabled"}
 
 
@@ -150,6 +146,8 @@ async def disable_2fa(
         await db.flush()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    from app.services.twofa_sync_service import broadcast_cached_twofa_status
+    await broadcast_cached_twofa_status(account)
     return {"message": "2FA disabled"}
 
 

@@ -187,20 +187,15 @@ async def delete_synced_contacts(account: TelegramAccount) -> None:
 
 
 async def get_2fa_status(account: TelegramAccount) -> dict:
-    """Return live Telegram 2FA details without downgrading a cached value on error."""
-    from app.services.twofa_service import get_account_live_2fa_status
-
-    status = await get_account_live_2fa_status(account)
-    if status is not None:
-        return {**status, "live_checked": True}
-
+    """Return cached Telegram 2FA metadata without making a Telegram request."""
     return {
         "enabled": account.twofa_enabled,
-        "has_recovery": None,
-        "hint": None,
-        "login_email_pattern": None,
-        "unconfirmed_email_pattern": None,
         "live_checked": False,
+        "has_recovery": account.twofa_has_recovery,
+        "hint": account.twofa_hint,
+        "login_email_pattern": account.login_email_pattern,
+        "unconfirmed_email_pattern": account.unconfirmed_email_pattern,
+        "synced_at": account.twofa_status_synced_at,
     }
 
 

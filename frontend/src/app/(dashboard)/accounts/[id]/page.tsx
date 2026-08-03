@@ -1,9 +1,8 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useAccount, useDeleteAccount, useCheckSpam, useProfileSync } from "@/hooks/use-accounts";
-import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
+import { useAccount, useAccountTwoFAStatus, useDeleteAccount, useCheckSpam, useProfileSync } from "@/hooks/use-accounts";
+import { useTwoFAStatusSync } from "@/hooks/use-twofa-status-sync";
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
@@ -25,14 +24,8 @@ export default function AccountDetailPage() {
   const id = params.id as string;
   useProfileSync(id);
   const { data: account, isLoading, error } = useAccount(id);
-  const { data: securityStatus } = useQuery<{ login_email_pattern: string | null }>({
-    queryKey: ["2fa", id],
-    queryFn: async () => {
-      const { data } = await api.get(`/accounts/${id}/2fa`);
-      return data;
-    },
-    enabled: !!id,
-  });
+  const { data: securityStatus } = useAccountTwoFAStatus(id);
+  useTwoFAStatusSync(id);
   const isRestricted = account ? (!account.is_active || account.for_sale) : false;
   const isExpired = account ? (!account.is_active && !account.for_sale) : false;
   const deleteMutation = useDeleteAccount();

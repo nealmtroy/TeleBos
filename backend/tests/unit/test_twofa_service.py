@@ -31,39 +31,27 @@ async def test_get_live_2fa_status_returns_unknown_when_telegram_check_fails():
     assert await twofa_service.get_live_2fa_status(client) is None
 
 
-async def test_settings_status_preserves_cached_value_when_live_check_is_unknown(monkeypatch):
-    account = SimpleNamespace(twofa_enabled=True)
-    monkeypatch.setattr(twofa_service, "get_account_live_2fa_status", AsyncMock(return_value=None))
+async def test_settings_status_returns_persisted_cache_without_live_telegram_lookup(monkeypatch):
+    account = SimpleNamespace(
+        twofa_enabled=True,
+        twofa_has_recovery=True,
+        twofa_hint="safe hint",
+        login_email_pattern="sa***@example.com",
+        unconfirmed_email_pattern=None,
+        twofa_status_synced_at=None,
+    )
+    live_lookup = AsyncMock()
+    monkeypatch.setattr(twofa_service, "get_account_live_2fa_status", live_lookup)
 
     status = await settings_service.get_2fa_status(account)
 
     assert status == {
         "enabled": True,
-        "has_recovery": None,
-        "hint": None,
-        "login_email_pattern": None,
+        "has_recovery": True,
+        "hint": "safe hint",
+        "login_email_pattern": "sa***@example.com",
         "unconfirmed_email_pattern": None,
         "live_checked": False,
+        "synced_at": None,
     }
-
-
-async def test_settings_status_marks_successful_telegram_check_as_live(monkeypatch):
-    account = SimpleNamespace(twofa_enabled=False)
-    monkeypatch.setattr(
-        twofa_service,
-        "get_account_live_2fa_status",
-        AsyncMock(
-            return_value={
-                "enabled": True,
-                "has_recovery": False,
-                "hint": None,
-                "login_email_pattern": None,
-                "unconfirmed_email_pattern": None,
-            }
-        ),
-    )
-
-    status = await settings_service.get_2fa_status(account)
-
-    assert status["enabled"] is True
-    assert status["live_checked"] is True
+    live_lookup.assert_not_awaited()

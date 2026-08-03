@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useAccount, useUploadProfilePhoto, useDeleteProfilePhoto, useUpdateAutoReply } from "@/hooks/use-accounts";
+import { useAccount, useAccountTwoFAStatus, useUploadProfilePhoto, useDeleteProfilePhoto, useUpdateAutoReply } from "@/hooks/use-accounts";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
 import { ArrowLeft, Camera, Trash2, Loader2, Globe, ShieldCheck, Key, Bell, UserCog, Lock, Users, Phone, MessageSquare, Mail } from "lucide-react";
@@ -472,20 +472,7 @@ export function PrivacySettings({ accountId }: { accountId: string }) {
 export function TwoFASettings({ accountId }: { accountId: string }) {
   const _ = useT();
   const qc = useQueryClient();
-  const { data: twofa, isLoading } = useQuery<{
-    enabled: boolean;
-    live_checked: boolean;
-    has_recovery: boolean | null;
-    hint: string | null;
-    login_email_pattern: string | null;
-    unconfirmed_email_pattern: string | null;
-  }>({
-    queryKey: ["2fa", accountId],
-    queryFn: async () => {
-      const { data } = await api.get(`/accounts/${accountId}/2fa`);
-      return data;
-    },
-  });
+  const { data: twofa, isLoading } = useAccountTwoFAStatus(accountId);
 
   useEffect(() => {
     if (twofa) {
@@ -820,13 +807,7 @@ export function TwoFASettings({ accountId }: { accountId: string }) {
 export function LoginEmailSettings({ accountId }: { accountId: string }) {
   const _ = useT();
   const qc = useQueryClient();
-  const { data: twofa } = useQuery<{ login_email_pattern: string | null }>({
-    queryKey: ["2fa", accountId],
-    queryFn: async () => {
-      const { data } = await api.get(`/accounts/${accountId}/2fa`);
-      return data;
-    },
-  });
+  const { data: twofa } = useAccountTwoFAStatus(accountId);
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");

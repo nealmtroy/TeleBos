@@ -24,6 +24,13 @@ class TelegramAccount(Base):
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     session_string: Mapped[str] = mapped_column(Text, default="", nullable=False)
     twofa_password: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Safe, masked Telegram 2FA metadata cached by the background synchronizer.
+    twofa_has_recovery: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
+    twofa_hint: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    login_email_pattern: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    unconfirmed_email_pattern: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    twofa_status_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    twofa_status_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     # Profile info (cached from Telegram)
     first_name: Mapped[str | None] = mapped_column(String(255))

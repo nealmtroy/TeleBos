@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useAccount } from "@/hooks/use-accounts";
+import { useTwoFAStatusSync } from "@/hooks/use-twofa-status-sync";
 import { useT } from "@/lib/i18n";
 import {
   LoginEmailSettings,
@@ -16,6 +17,7 @@ export default function AccountSecurityPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: account } = useAccount(id);
+  useTwoFAStatusSync(id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-8">
