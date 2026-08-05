@@ -85,51 +85,10 @@ def _format_cycle_summary(
     return "\n".join(lines)
 
 
-async def _resolve_dest_entity(client: TelegramClient, target, force_fresh: bool = False):
-    """Resolve a destination to a Telethon entity, with bot /start fallback.
-
-    Bots require the user to have /started them before messages can be sent.
-    If the initial resolution fails (username not found in cache), we try
-    get_entity first, and if that also fails for a bot username, we send
-    /start to establish the dialog.
-    """
-    # Check module-level cache
-    me = await client.get_me()
-    cache_key = (me.id, str(target))
-    if not force_fresh and cache_key in _resolved_dest_cache:
-        return _resolved_dest_cache[cache_key]
-
-    entity = None
-    try:
-        entity = await client.get_entity(target)
-    except Exception:
-        # If target looks like a bot username, try /start to create the dialog
-        target_str = str(target).lstrip("@")
-        if target_str.lower().endswith("bot") or target_str.endswith("_bot"):
-            try:
-                from telethon.tl.functions.contacts import ResolveUsernameRequest
-                result = await client(ResolveUsernameRequest(target_str))
-                if result.users:
-                    entity = result.users[0]
-                    # Send /start to establish dialog so future sends work
-                    try:
-                        await client.send_message(entity, "/start")
-                        logger.info("Auto-started bot @%s for broadcast logging", target_str)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-    if entity:
-        _resolved_dest_cache[cache_key] = entity
-    return entity
-
-
 async def _send_message_safe(client: TelegramClient, target, message: str, **kwargs) -> None:
-    """Send a message to target, handling peer resolution, bot /start, and caching.
-    
-    If the initial attempt fails due to invalid peer, it clears the cache,
-    re-resolves the entity, sends /start (if it's a bot), and retries.
+    """Send a message to target, handling peer resolution and caching.
+
+    No bot starting or manual /start is performed here.
     """
     from telethon.errors import PeerIdInvalidError
 
@@ -140,7 +99,11 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
     entity = _resolved_dest_cache.get(cache_key)
     
     if not entity:
-        entity = await _resolve_dest_entity(client, target)
+        try:
+            entity = await client.get_entity(target)
+            _resolved_dest_cache[cache_key] = entity
+        except Exception:
+            pass
         
     if not entity:
         # Fallback to passing target directly to send_message, let Telethon handle it
@@ -155,31 +118,10 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
             target,
             exc,
         )
-        # Clear cache and force re-resolution
+        # Clear cache
         _resolved_dest_cache.pop(cache_key, None)
-        
-        # Re-resolve entity freshly
-        entity = await _resolve_dest_entity(client, target, force_fresh=True)
-        if not entity:
-            # Fallback to passing target directly
-            await client.send_message(target, message, **kwargs)
-            return
-
-        # If it's a bot, explicitly try to send /start first to establish dialog
-        is_bot = getattr(entity, "bot", False)
-        target_str = str(target).lstrip("@")
-        if not is_bot and (target_str.lower().endswith("bot") or target_str.endswith("_bot")):
-            is_bot = True
-
-        if is_bot:
-            try:
-                await client.send_message(entity, "/start")
-                logger.info("Sent /start to bot %s to establish dialog", target)
-            except Exception as start_exc:
-                logger.warning("Failed to send /start to bot %s: %s", target, start_exc)
-
-        # Retry sending the message. Let any exception from this attempt propagate to the caller.
-        await client.send_message(entity, message, **kwargs)
+        # Retry directly sending message, letting Telethon handle resolution
+        await client.send_message(target, message, **kwargs)
 
 
 async def send_cycle_summary(
