@@ -114,16 +114,50 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
             # Try to unblock and retry
             try:
                 from telethon.tl.functions.contacts import UnblockRequest
-                await client(UnblockRequest(id=target))
+                from telethon.tl.types import InputUser
+                target_str = str(target).lower()
+                if "teleboslogging_bot" in target_str:
+                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
+                else:
+                    await client(UnblockRequest(id=target))
                 logger.info("Unblocked target %s, retrying send_message", target)
                 await client.send_message(target, message, **kwargs)
                 return
             except Exception as unblock_exc:
                 logger.debug("Failed to unblock target %s: %s", target, unblock_exc)
             raise exc
+        except YouBlockedUserError as exc:
+            try:
+                from telethon.tl.functions.contacts import UnblockRequest
+                from telethon.tl.types import InputUser
+                target_str = str(target).lower()
+                if "teleboslogging_bot" in target_str:
+                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
+                else:
+                    await client(UnblockRequest(id=target))
+                logger.info("Unblocked target %s after YouBlockedUserError, retrying send_message", target)
+                await client.send_message(target, message, **kwargs)
+                return
+            except Exception as unblock_exc:
+                logger.debug("Failed to unblock target %s after YouBlockedUserError: %s", target, unblock_exc)
+                raise exc
 
     try:
         await client.send_message(entity, message, **kwargs)
+    except YouBlockedUserError as exc:
+        try:
+            from telethon.tl.functions.contacts import UnblockRequest
+            from telethon.tl.types import InputUser
+            target_str = str(target).lower()
+            if "teleboslogging_bot" in target_str:
+                await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
+            else:
+                await client(UnblockRequest(id=entity))
+            logger.info("Unblocked target entity %s after YouBlockedUserError, retrying send_message", target)
+            await client.send_message(entity, message, **kwargs)
+        except Exception as unblock_exc:
+            logger.debug("Failed to unblock target entity %s after YouBlockedUserError: %s", target, unblock_exc)
+            raise exc
     except (PeerIdInvalidError, ValueError) as exc:
         logger.info(
             "Failed to send to destination %s using cached/resolved entity. Clearing cache and retrying. Error: %s",
@@ -139,11 +173,30 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
             # Try to unblock and retry
             try:
                 from telethon.tl.functions.contacts import UnblockRequest
-                await client(UnblockRequest(id=target))
+                from telethon.tl.types import InputUser
+                target_str = str(target).lower()
+                if "teleboslogging_bot" in target_str:
+                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
+                else:
+                    await client(UnblockRequest(id=target))
                 logger.info("Unblocked target %s, retrying send_message after clearing cache", target)
                 await client.send_message(target, message, **kwargs)
             except Exception as unblock_exc:
                 logger.debug("Failed to unblock target %s: %s", target, unblock_exc)
+                raise retry_exc
+        except YouBlockedUserError as retry_exc:
+            try:
+                from telethon.tl.functions.contacts import UnblockRequest
+                from telethon.tl.types import InputUser
+                target_str = str(target).lower()
+                if "teleboslogging_bot" in target_str:
+                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
+                else:
+                    await client(UnblockRequest(id=target))
+                logger.info("Unblocked target %s after YouBlockedUserError retry, retrying send_message", target)
+                await client.send_message(target, message, **kwargs)
+            except Exception as unblock_exc:
+                logger.debug("Failed to unblock target %s after YouBlockedUserError retry: %s", target, unblock_exc)
                 raise retry_exc
 
 
