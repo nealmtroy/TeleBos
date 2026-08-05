@@ -79,3 +79,7 @@ backup/
 strix_runs/
 # Reference materials
 tweb_reference/
+
+# Graphify & AI scratch directory
+graphify-out/
+scratch/
