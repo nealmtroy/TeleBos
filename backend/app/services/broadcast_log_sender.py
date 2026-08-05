@@ -21,7 +21,10 @@ def _parse_dest(dest: str):
         return dest
     if dest.lstrip("-").isdigit():
         return int(dest)
-    return dest
+    if dest.startswith("+"):
+        return dest
+    # Automatically prepend @ for usernames
+    return f"@{dest}"
 
 def _format_cycle_summary(
     job_name: str,

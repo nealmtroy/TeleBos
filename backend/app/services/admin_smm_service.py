@@ -363,9 +363,9 @@ async def refresh_all_pending(db: AsyncSession) -> int:
         return 0
 
     import asyncio
-    from app.services.smm_service import smm_api
+    from app.services.smm_service import check_order_status
 
-    tasks = [smm_api.check_order_status(o.smm_order_id) for o in orders_to_check]
+    tasks = [check_order_status(o.smm_order_id) for o in orders_to_check]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     updated = 0
@@ -395,7 +395,7 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     """
     from datetime import datetime, timezone
     import asyncio
-    from app.services.smm_service import smm_api
+    from app.services.smm_service import check_order_status
 
     query = select(Order).where(
         Order.status.in_(["Pending", "Processing", "Partial", "In progress"])
@@ -437,7 +437,7 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     if not orders_to_check:
         return 0
 
-    tasks = [smm_api.check_order_status(o.smm_order_id) for o in orders_to_check]
+    tasks = [check_order_status(o.smm_order_id) for o in orders_to_check]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     updated = 0

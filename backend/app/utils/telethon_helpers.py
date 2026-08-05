@@ -80,16 +80,23 @@ async def join_and_resolve_chat(client: TelegramClient, target: str, job_id_str:
                         entity = updates.chats[0]
                     break
                 except UserAlreadyParticipantError:
-                    # Fallback: search dialogue list by name matching the invite title
-                    expected_title = getattr(invite_info, "title", None)
-                    if expected_title:
-                        async for dialog in client.iter_dialogs():
-                            if dialog.name == expected_title:
-                                entity = dialog.entity
-                                break
+                    # Fallback 1: try resolving target link directly
+                    try:
+                        entity = await client.get_entity(target)
+                    except Exception:
+                        pass
+
+                    if not entity:
+                        # Fallback 2: search dialogue list by name matching the invite title
+                        expected_title = getattr(invite_info, "title", None)
+                        if expected_title:
+                            async for dialog in client.iter_dialogs():
+                                if dialog.name == expected_title:
+                                    entity = dialog.entity
+                                    break
                     if not entity:
                         raise ValueError(
-                            f"Already a participant but could not find private chat with title '{expected_title}' in dialogs"
+                            f"Already a participant but could not resolve private chat with link or title '{expected_title}'"
                         )
                     break
                 except FloodWaitError as e:

@@ -164,7 +164,7 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
         return ("admin_only", "Admin privileges required to perform this action")
 
     if isinstance(exc, UserBannedInChannelError):
-        return ("banned", "User is banned from this group/channel")
+        return ("banned", "Account is restricted by Telegram Spambot or banned from this group/channel")
 
     if isinstance(exc, (UsernameInvalidError, UsernameNotOccupiedError)):
         return ("invalid_username", "Username does not exist or is invalid")
