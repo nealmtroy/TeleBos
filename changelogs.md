@@ -3,7 +3,8 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-05
-- **[6e5d8f4d](https://github.com/nealmtroy/TeleBos/commit/6e5d8f4d)**: fix(broadcast-logging): simplify safe message sending and remove manual bot start /start trigger
+- **[840d1d29](https://github.com/nealmtroy/TeleBos/commit/840d1d29)**: fix(broadcast-logging): add auto-unblocking logic to _send_message_safe to handle case where user account blocked the bot
+- **[6c532949](https://github.com/nealmtroy/TeleBos/commit/6c532949)**: fix(broadcast-logging): simplify safe message sending and remove manual bot start /start trigger
 - **[0793d64c](https://github.com/nealmtroy/TeleBos/commit/0793d64c)**: chore: add graphify-out and scratch to .gitignore
 - **[a6eacca7](https://github.com/nealmtroy/TeleBos/commit/a6eacca7)**: fix(broadcast/smm): resolve smm_api import bug, fix destination username parsing prefix, optimize private link participant resolution fallback, and improve spambot ban error message
 - **[451f7207](https://github.com/nealmtroy/TeleBos/commit/451f7207)**: refactor(reusability): centralize photo pathing, socket hook, connection pooling, group resolution, SMM concurrent polling, and event-driven sleep

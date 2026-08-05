@@ -107,8 +107,20 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
         
     if not entity:
         # Fallback to passing target directly to send_message, let Telethon handle it
-        await client.send_message(target, message, **kwargs)
-        return
+        try:
+            await client.send_message(target, message, **kwargs)
+            return
+        except (PeerIdInvalidError, ValueError) as exc:
+            # Try to unblock and retry
+            try:
+                from telethon.tl.functions.contacts import UnblockRequest
+                await client(UnblockRequest(id=target))
+                logger.info("Unblocked target %s, retrying send_message", target)
+                await client.send_message(target, message, **kwargs)
+                return
+            except Exception as unblock_exc:
+                logger.debug("Failed to unblock target %s: %s", target, unblock_exc)
+            raise exc
 
     try:
         await client.send_message(entity, message, **kwargs)
@@ -121,7 +133,18 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
         # Clear cache
         _resolved_dest_cache.pop(cache_key, None)
         # Retry directly sending message, letting Telethon handle resolution
-        await client.send_message(target, message, **kwargs)
+        try:
+            await client.send_message(target, message, **kwargs)
+        except (PeerIdInvalidError, ValueError) as retry_exc:
+            # Try to unblock and retry
+            try:
+                from telethon.tl.functions.contacts import UnblockRequest
+                await client(UnblockRequest(id=target))
+                logger.info("Unblocked target %s, retrying send_message after clearing cache", target)
+                await client.send_message(target, message, **kwargs)
+            except Exception as unblock_exc:
+                logger.debug("Failed to unblock target %s: %s", target, unblock_exc)
+                raise retry_exc
 
 
 async def send_cycle_summary(
