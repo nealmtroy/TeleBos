@@ -1061,7 +1061,7 @@ async def lifespan(app: FastAPI):
                             )
                             db_acc = acc_res.scalar_one_or_none()
                             if db_acc:
-                                await sync_groups_channels_to_db(db_acc, db_session)
+                                await sync_groups_channels_to_db(db_acc, db_session, skip_details=True)
                     except Exception as acc_exc:
                         logger.warning(
                             "Failed background sync of groups/channels for account %s: %s",

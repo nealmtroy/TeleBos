@@ -28,6 +28,70 @@ def _avatar_metadata(entity: Any) -> dict[str, int | None]:
     }
 
 
+async def _upsert_telegram_chats(db: AsyncSession, values: list[dict], preserve_details: bool = True) -> None:
+    """Helper to perform bulk upsert of TelegramChat records in chunks."""
+    if not values:
+        return
+        
+    chunk_size = 100
+    for i in range(0, len(values), chunk_size):
+        chunk = values[i : i + chunk_size]
+        stmt = insert(TelegramChat).values(chunk)
+        
+        update_dict = {
+            "title": stmt.excluded.title,
+            "username": stmt.excluded.username,
+            "type": stmt.excluded.type,
+            "color_id": stmt.excluded.color_id,
+            "photo_version": stmt.excluded.photo_version,
+            "unread_count": stmt.excluded.unread_count,
+            "last_message": stmt.excluded.last_message,
+            "last_message_date": stmt.excluded.last_message_date,
+            "access_hash": stmt.excluded.access_hash,
+            "is_active": True,
+            "is_creator": stmt.excluded.is_creator,
+            "is_archived": stmt.excluded.is_archived,
+            "is_pinned": stmt.excluded.is_pinned,
+            "is_muted": stmt.excluded.is_muted,
+            "updated_at": func.now(),
+        }
+        
+        if preserve_details:
+            update_dict["member_count"] = func.coalesce(stmt.excluded.member_count, TelegramChat.member_count)
+            update_dict["online_count"] = func.coalesce(stmt.excluded.online_count, TelegramChat.online_count)
+            update_dict["invite_link"] = func.coalesce(stmt.excluded.invite_link, TelegramChat.invite_link)
+        else:
+            update_dict["member_count"] = stmt.excluded.member_count
+            update_dict["online_count"] = stmt.excluded.online_count
+            update_dict["invite_link"] = stmt.excluded.invite_link
+            
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_telegram_chat_account_chat",
+            set_=update_dict
+        )
+        await db.execute(stmt)
+
+
+async def update_account_stats_from_db(account: TelegramAccount, db: AsyncSession) -> None:
+    """Recalculate groups and channels statistics from local DB and update the account model."""
+    stmt = select(
+        func.count().filter(TelegramChat.type.in_(["group", "supergroup"])).label("total_groups"),
+        func.count().filter(TelegramChat.type.in_(["group", "supergroup"]) & TelegramChat.is_creator).label("owned_groups"),
+        func.count().filter(TelegramChat.type == "channel").label("total_channels"),
+        func.count().filter((TelegramChat.type == "channel") & TelegramChat.is_creator).label("owned_channels"),
+    ).where(
+        TelegramChat.account_id == account.id,
+        TelegramChat.is_active == True,
+    )
+    res = await db.execute(stmt)
+    row = res.fetchone()
+    if row:
+        account.total_groups = row.total_groups
+        account.owned_groups = row.owned_groups
+        account.total_channels = row.total_channels
+        account.owned_channels = row.owned_channels
+
+
 async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
     """Sync groups, channels, supergroups, and user chats into local DB."""
     session_str = decrypt(account.session_string)
@@ -133,33 +197,7 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
         logger.info("No dialogs found for account %s to sync", account.id)
         return
 
-    # Bulk upsert using ON CONFLICT DO UPDATE
-    # Let's batch inserts in chunks of 100 to avoid giant SQL statements
-    chunk_size = 100
-    for i in range(0, len(values), chunk_size):
-        chunk = values[i : i + chunk_size]
-        stmt = insert(TelegramChat).values(chunk)
-        stmt = stmt.on_conflict_do_update(
-            constraint="uq_telegram_chat_account_chat",
-            set_={
-                "title": stmt.excluded.title,
-                "username": stmt.excluded.username,
-                "type": stmt.excluded.type,
-                "color_id": stmt.excluded.color_id,
-                "photo_version": stmt.excluded.photo_version,
-                "unread_count": stmt.excluded.unread_count,
-                "last_message": stmt.excluded.last_message,
-                "last_message_date": stmt.excluded.last_message_date,
-                "access_hash": stmt.excluded.access_hash,
-                "is_active": True,
-                "is_creator": stmt.excluded.is_creator,
-                "is_archived": stmt.excluded.is_archived,
-                "is_pinned": stmt.excluded.is_pinned,
-                "is_muted": stmt.excluded.is_muted,
-                "updated_at": func.now(),
-            }
-        )
-        await db.execute(stmt)
+    await _upsert_telegram_chats(db, values, preserve_details=True)
 
     # Mark other chats no longer present in sync as inactive (excluding groups/channels)
     if synced_chat_ids:
@@ -755,7 +793,7 @@ async def get_full_chat_details(client, entity, chat_type: str):
     return member_count, online_count, invite_link
 
 
-async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession) -> None:
+async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> None:
     """Fetch all groups and channels the account is joined to and cache in the DB."""
     import datetime as dt
     from sqlalchemy.dialects.postgresql import insert
@@ -798,7 +836,7 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
             member_count = None
             online_count = None
             invite_link = None
-            if is_active:
+            if is_active and not skip_details:
                 member_count, online_count, invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
 
             values.append({
@@ -829,35 +867,7 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
         raise RuntimeError(f"Telegram API error: {exc}")
 
     # Bulk upsert groups and channels
-    if values:
-        chunk_size = 100
-        for i in range(0, len(values), chunk_size):
-            chunk = values[i : i + chunk_size]
-            stmt = insert(TelegramChat).values(chunk)
-            stmt = stmt.on_conflict_do_update(
-                constraint="uq_telegram_chat_account_chat",
-                set_={
-                    "title": stmt.excluded.title,
-                    "username": stmt.excluded.username,
-                    "type": stmt.excluded.type,
-                    "color_id": stmt.excluded.color_id,
-                    "photo_version": stmt.excluded.photo_version,
-                    "unread_count": stmt.excluded.unread_count,
-                    "last_message": stmt.excluded.last_message,
-                    "last_message_date": stmt.excluded.last_message_date,
-                    "access_hash": stmt.excluded.access_hash,
-                    "is_active": True,
-                    "is_creator": stmt.excluded.is_creator,
-                    "is_archived": stmt.excluded.is_archived,
-                    "is_pinned": stmt.excluded.is_pinned,
-                    "is_muted": stmt.excluded.is_muted,
-                    "member_count": stmt.excluded.member_count,
-                    "online_count": stmt.excluded.online_count,
-                    "invite_link": stmt.excluded.invite_link,
-                    "updated_at": func.now(),
-                }
-            )
-            await db.execute(stmt)
+    await _upsert_telegram_chats(db, values, preserve_details=True)
 
     # Mark groups and channels that were not returned in this sync as inactive
     if synced_group_channel_ids:
@@ -877,22 +887,7 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession)
         )
 
     # Refresh cached counts on TelegramAccount model
-    count_stmt = select(
-        func.count().filter(TelegramChat.type.in_(["group", "supergroup"])).label("total_groups"),
-        func.count().filter(TelegramChat.type.in_(["group", "supergroup"]) & TelegramChat.is_creator).label("owned_groups"),
-        func.count().filter(TelegramChat.type == "channel").label("total_channels"),
-        func.count().filter((TelegramChat.type == "channel") & TelegramChat.is_creator).label("owned_channels"),
-    ).where(
-        TelegramChat.account_id == account.id,
-        TelegramChat.is_active == True,
-    )
-    res = await db.execute(count_stmt)
-    row = res.fetchone()
-    if row:
-        account.total_groups = row.total_groups
-        account.owned_groups = row.owned_groups
-        account.total_channels = row.total_channels
-        account.owned_channels = row.owned_channels
+    await update_account_stats_from_db(account, db)
 
     # Update synced_at timestamp
     account.groups_channels_synced_at = dt.datetime.now(dt.timezone.utc)
