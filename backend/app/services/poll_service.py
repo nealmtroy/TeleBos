@@ -13,6 +13,7 @@ from app.models.chat_folder import ChatFolder
 from app.models.telegram_chat import TelegramChat
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
+from app.utils.telethon_helpers import get_active_client
 from app.services.chat_service import resolve_chat_entity
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,7 @@ async def send_poll(
     is_quiz: bool = False,
     correct_option_idx: int | None = None
 ) -> dict:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     import random
@@ -61,10 +59,7 @@ async def send_poll(
 
 
 async def vote_poll(account: TelegramAccount, chat_id: int, msg_id: int, options: list[str]) -> None:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     from telethon.tl.functions.messages import SendVoteRequest

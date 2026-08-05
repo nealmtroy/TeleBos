@@ -16,6 +16,8 @@ from app.models.user import User
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 from app.utils.telegram_errors import classify_telegram_error
+from app.utils.telethon_helpers import get_active_client, join_and_resolve_chat
+from app.utils.async_helpers import interruptible_sleep, wake_job, clear_job_event
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,7 @@ async def start_invite(
             logger.exception("Background invite task %s crashed: %s", job_id_str, exc)
         finally:
             _running_invite_tasks.pop(job_id_str, None)
+            clear_job_event(job_id_str)
 
     task = asyncio.create_task(_safe_execute())
     _running_invite_tasks[job_id_str] = task
@@ -108,6 +111,7 @@ async def update_invite_job_status(db: AsyncSession, job: InviteJob, status: str
     if status in ("completed", "cancelled", "failed"):
         job.completed_at = datetime.now(timezone.utc)
     await db.flush()
+    wake_job(str(job.id))
 
 
 async def delete_invite_job(db: AsyncSession, job_id: str, user_id: str) -> None:
@@ -155,6 +159,7 @@ async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> Invit
             logger.exception("Background invite task %s crashed: %s", job_id_str, exc)
         finally:
             _running_invite_tasks.pop(job_id_str, None)
+            clear_job_event(job_id_str)
 
     task = asyncio.create_task(_safe_execute())
     _running_invite_tasks[job_id_str] = task
@@ -207,89 +212,12 @@ async def _push_invite(job_id: str, event_type: str, data: dict) -> None:
 
 
 async def _resolve_group(client, item_type: str, group_identifier: str, telethon_mod):
-    """Resolve a group entity from identifier.
-
-    Strategy:
-    1. Try get_entity() first — works if the account is ALREADY a member.
-    2. If not a member, try the invite link flow (join via ImportChatInviteRequest).
-    3. If all fail, return error.
-
-    Returns (entity, error_tuple_or_None).
-    """
-    entity = None
-
-    # ── Helper: extract a look-up key from any identifier type ────────────
-    def _extract_key(identifier: str) -> str:
-        """Extract a @-prefixed username or chat identifier from link/username/group_id."""
-        if "/" in identifier:
-            # It's a link — try to extract the last segment as name or hash
-            return identifier.split("/")[-1]
-        return identifier.lstrip("@")
-
-    # ── Step 1: Try get_entity() - works if already a member ──────────────
+    """Resolve a group entity using the unified join_and_resolve_chat helper."""
     try:
-        lookup_key = _extract_key(group_identifier)
-        entity = await client.get_entity(lookup_key)
-        if entity is not None:
-            return entity, None
-    except Exception:
-        entity = None  # not a member yet, fall through to invite-join
-
-    # ── Step 2: For links, try the invite / join flow ─────────────────────
-    if item_type == "link":
-        clean_url = group_identifier.rstrip("/")
-        invite_hash = clean_url.split("/")[-1] if "/" in clean_url else clean_url
-        invite_hash = invite_hash.lstrip("+")
-        try:
-            # Try to check the invite first (no side-effects)
-            try:
-                invite_info = await client(
-                    telethon_mod.tl.functions.messages.CheckChatInviteRequest(hash=invite_hash)
-                )
-                # If chat is already accessible from the check, use it
-                if isinstance(invite_info, telethon_mod.tl.types.ChatInviteAlready):
-                    entity = invite_info.chat
-                else:
-                    # Need to actually join to get the entity
-                    join_result = await client(
-                        telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash)
-                    )
-                    if hasattr(join_result, "chats") and join_result.chats:
-                        entity = join_result.chats[0]
-            except Exception:
-                # Check failed (probably expired/invalid) — try joining directly
-                try:
-                    join_result = await client(
-                        telethon_mod.tl.functions.messages.ImportChatInviteRequest(hash=invite_hash)
-                    )
-                    if hasattr(join_result, "chats") and join_result.chats:
-                        entity = join_result.chats[0]
-                except Exception as join_exc:
-                    return None, classify_telegram_error(join_exc)
-        except Exception as exc:
-            return None, classify_telegram_error(exc)
-
-    # ── Step 3: For username/group_id, fallback to get_entity variants ────
-    elif item_type == "username":
-        # get_entity already failed in step 1 — user isn't a member
-        try:
-            identifier = group_identifier.lstrip("@")
-            entity = await client.get_entity(identifier)
-            if entity:
-                return entity, None
-        except Exception as exc:
-            return None, classify_telegram_error(exc)
-
-    elif item_type == "group_id":
-        try:
-            numeric_id = int(group_identifier)
-            entity = await client.get_entity(numeric_id)
-            if entity:
-                return entity, None
-        except Exception as exc:
-            return None, classify_telegram_error(exc)
-
-    return entity, None
+        entity = await join_and_resolve_chat(client, group_identifier)
+        return entity, None
+    except Exception as exc:
+        return None, classify_telegram_error(exc)
 
 
 async def _scrape_participants(client, entity, telethon_mod, limit_per_group: int = 10000):
@@ -406,32 +334,7 @@ async def execute_invite(job_id: str):
                     continue
 
                 try:
-                    if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
-                        logger.warning(
-                            "Telegram API ID or Hash is unconfigured. Skipping account %s",
-                            acc_id_str,
-                        )
-                        continue
-                    session_str = decrypt(account.session_string)
-                    from app.utils.device_spoof import random_ios_device
-
-                    ios_params = random_ios_device()
-                    client = TelegramClient(
-                        StringSession(session_str),
-                        api_id=settings.TELEGRAM_API_ID,
-                        api_hash=settings.TELEGRAM_API_HASH,
-                        device_model=ios_params["device_model"],
-                        app_version=ios_params["app_version"],
-                        system_version=ios_params["system_version"],
-                        lang_code=ios_params["lang_code"],
-                        system_lang_code=ios_params["system_lang_code"],
-                    )
-                    await client.connect()
-                    if not await client.is_user_authorized():
-                        logger.warning("Account %s not authorized, skipping", acc_id_str)
-                        await client.disconnect()
-                        continue
-
+                    client = await get_active_client(account)
                     me = await client.get_me()
                     my_id = me.id if me else None
                     active_accounts.append(
@@ -734,7 +637,7 @@ async def execute_invite(job_id: str):
                     if job.status == "cancelled":
                         break
                     while job.status == "paused":
-                        await asyncio.sleep(1)
+                        await interruptible_sleep(job_id, 86400)
                         await db.refresh(job)
                         if job.status == "cancelled":
                             break
@@ -774,8 +677,8 @@ async def execute_invite(job_id: str):
                     )
 
                     # Sleep in increments of 1s so we can check cancel status
-                    for _ in range(int(wait_sec)):
-                        await asyncio.sleep(1)
+                    completed = await interruptible_sleep(job_id, wait_sec)
+                    if not completed:
                         await db.refresh(job)
                         if job.status == "cancelled":
                             break
@@ -1173,7 +1076,7 @@ async def execute_invite(job_id: str):
                         },
                     )
 
-                await asyncio.sleep(actual_delay)
+                await interruptible_sleep(job_id, actual_delay)
 
             # Mark completed
             await db.refresh(job)

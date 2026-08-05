@@ -51,18 +51,18 @@ export function useChatSocket(accountId: string | null) {
 }
 
 /**
- * Hook: subscribe to broadcast job progress.
+ * Hook: subscribe to generic job progress (broadcast or invite) via WebSocket.
  */
-export function useBroadcastSocket(jobId: string | null) {
+export function useJobSocket(jobType: "broadcast" | "invite", jobId: string | null) {
   const [connected, setConnected] = useState(false);
   const [progress, setProgress] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
+  const [phaseMessage, setPhaseMessage] = useState<string>("");
 
   useEffect(() => {
     if (!jobId) return;
 
-    const key = `broadcast:${jobId}`;
-    const ws = connectBroadcastSocket(jobId);
+    const ws = jobType === "broadcast" ? connectBroadcastSocket(jobId) : connectInviteSocket(jobId);
 
     const checkInterval = setInterval(() => {
       setConnected(ws.connected);
@@ -75,6 +75,8 @@ export function useBroadcastSocket(jobId: string | null) {
         setLogs((prev) => [...prev, data]);
       } else if (data.type === "completed" || data.type === "error") {
         setProgress(data);
+      } else if (data.message) {
+        setPhaseMessage(data.message);
       }
     };
 
@@ -84,9 +86,19 @@ export function useBroadcastSocket(jobId: string | null) {
       clearInterval(checkInterval);
       ws.off("all", handleEvent);
       setLogs([]);
+      setPhaseMessage("");
+      setProgress(null);
     };
-  }, [jobId]);
+  }, [jobId, jobType]);
 
+  return { connected, progress, logs, phaseMessage };
+}
+
+/**
+ * Hook: subscribe to broadcast job progress.
+ */
+export function useBroadcastSocket(jobId: string | null) {
+  const { connected, progress, logs } = useJobSocket("broadcast", jobId);
   return { connected, progress, logs };
 }
 
@@ -94,48 +106,6 @@ export function useBroadcastSocket(jobId: string | null) {
  * Hook: subscribe to invite job progress via WebSocket.
  */
 export function useInviteSocket(jobId: string | null) {
-  const [connected, setConnected] = useState(false);
-  const [progress, setProgress] = useState<any>(null);
-  const [logs, setLogs] = useState<any[]>([]);
-  const [phase, setPhase] = useState<string>("");
-  const [phaseMessage, setPhaseMessage] = useState<string>("");
-
-  useEffect(() => {
-    if (!jobId) return;
-
-    const ws = connectInviteSocket(jobId);
-
-    const checkInterval = setInterval(() => {
-      setConnected(ws.connected);
-    }, 500);
-
-    const handleEvent = (data: any) => {
-      if (data.type === "progress") {
-        setProgress(data);
-      } else if (data.type === "log") {
-        setLogs((prev) => [...prev, data]);
-      } else if (data.type === "phase") {
-        setPhase(data.phase || "");
-        setPhaseMessage(data.message || "");
-      } else if (data.type === "scrape_progress") {
-        setPhaseMessage(data.message || "");
-      } else if (data.type === "completed" || data.type === "error") {
-        setProgress(data);
-      } else if (data.type === "flood_wait" || data.type === "peer_flood" || data.type === "batch_delay") {
-        setPhaseMessage(data.message || "");
-      }
-    };
-
-    ws.on("all", handleEvent);
-
-    return () => {
-      clearInterval(checkInterval);
-      ws.off("all", handleEvent);
-      setLogs([]);
-      setPhase("");
-      setPhaseMessage("");
-    };
-  }, [jobId]);
-
-  return { connected, progress, logs, phase, phaseMessage };
+  const { connected, progress, logs, phaseMessage } = useJobSocket("invite", jobId);
+  return { connected, progress, logs, phase: "", phaseMessage };
 }

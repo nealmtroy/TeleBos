@@ -27,17 +27,10 @@ logger = logging.getLogger(__name__)
 _INTER_ACCOUNT_DELAY = 2.0  # seconds
 
 # Photo cache directory (same as account_service.py)
-_PHOTO_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "uploads", "profile_photos"
+from app.utils.photo_helper import (
+    ensure_photo_dir as _ensure_photo_dir,
+    get_photo_path as _photo_path,
 )
-
-
-def _ensure_photo_dir() -> None:
-    os.makedirs(_PHOTO_DIR, exist_ok=True)
-
-
-def _photo_path(account_id: str) -> str:
-    return os.path.join(_PHOTO_DIR, f"{account_id}.jpg")
 
 
 async def sync_account_profile(

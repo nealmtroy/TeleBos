@@ -13,6 +13,7 @@ from app.models.chat_folder import ChatFolder
 from app.models.telegram_chat import TelegramChat
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
+from app.utils.telethon_helpers import get_active_client
 from app.services.chat_service import resolve_chat_entity
 
 logger = logging.getLogger(__name__)
@@ -25,10 +26,7 @@ async def get_messages(
     Returns:
         Tuple of (messages_list, has_more).
     """
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
     me = await client.get_me()
@@ -269,10 +267,7 @@ async def send_message(
     reply_to: int | None = None,
 ) -> dict:
     """Send a text message to a chat."""
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
     msg = await client.send_message(entity, text, reply_to=reply_to)
@@ -293,10 +288,7 @@ async def send_media(
     reply_to: int | None = None,
 ) -> dict:
     """Send a media file (photo, video, document, etc.) to a chat."""
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
@@ -332,19 +324,13 @@ async def send_media(
 
 
 async def delete_messages(account: TelegramAccount, chat_id: int, message_ids: list[int], revoke: bool = True) -> None:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.delete_messages(entity, message_ids, revoke=revoke)
 
 
 async def edit_message(account: TelegramAccount, chat_id: int, message_id: int, text: str) -> dict:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     msg = await client.edit_message(entity, message_id, text)
     return {
@@ -358,10 +344,7 @@ async def edit_message(account: TelegramAccount, chat_id: int, message_id: int, 
 async def get_shared_media(
     account: TelegramAccount, chat_id: int, media_type: str | None = None, limit: int = 50, offset_id: int = 0
 ) -> tuple[list[dict], bool, int]:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
@@ -633,10 +616,7 @@ async def search_messages(
     date_from: int | None = None,
     date_to: int | None = None
 ) -> list:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     from telethon.tl.functions.messages import SearchRequest
@@ -695,10 +675,7 @@ async def search_messages(
 
 
 async def search_global_messages(account: TelegramAccount, query: str) -> list:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
         
     from telethon.tl.functions.messages import SearchGlobalRequest
     from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
@@ -720,10 +697,7 @@ async def search_global_messages(account: TelegramAccount, query: str) -> list:
 
 
 async def get_scheduled_messages(account: TelegramAccount, chat_id: int) -> list:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     from telethon.tl.functions.messages import GetScheduledHistoryRequest
@@ -741,10 +715,7 @@ async def send_scheduled_message(
     schedule_date: int,
     reply_to: int | None = None
 ) -> dict:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     import datetime
@@ -759,10 +730,7 @@ async def send_scheduled_message(
 
 
 async def delete_scheduled_messages(account: TelegramAccount, chat_id: int, message_ids: list[int]) -> None:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     from telethon.tl.functions.messages import DeleteScheduledMessagesRequest
@@ -770,10 +738,7 @@ async def delete_scheduled_messages(account: TelegramAccount, chat_id: int, mess
 
 
 async def send_voice_note(account: TelegramAccount, chat_id: int, file_path: str) -> dict:
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     
     res = await client.send_file(entity, file_path, voice_note=True)

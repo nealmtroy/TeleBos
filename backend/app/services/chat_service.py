@@ -14,6 +14,7 @@ from app.models.chat_folder import ChatFolder
 from app.models.telegram_chat import TelegramChat
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
+from app.utils.telethon_helpers import get_active_client
 
 logger = logging.getLogger(__name__)
 
@@ -94,10 +95,10 @@ async def update_account_stats_from_db(account: TelegramAccount, db: AsyncSessio
 
 async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
     """Sync groups, channels, supergroups, and user chats into local DB."""
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        logger.error("Failed to sync chats for account %s: Client is disconnected", account.id)
+    try:
+        client = await get_active_client(account)
+    except RuntimeError as exc:
+        logger.error("Failed to sync chats for account %s: %s", account.id, exc)
         return
 
     logger.info("Starting chat synchronization for account %s...", account.id)
@@ -458,8 +459,7 @@ async def get_dialog_stats(account: "TelegramAccount", db: AsyncSession) -> dict
     # Contacts count (best-effort from Telegram API)
     contacts_count = 0
     try:
-        session_str = decrypt(account.session_string)
-        client = await client_pool.get(str(account.id), session_str)
+        client = await get_active_client(account)
         if client is not None:
             from telethon.tl.functions.contacts import GetContactsRequest
             result = await client(GetContactsRequest(0))
@@ -798,10 +798,7 @@ async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession,
     import datetime as dt
     from sqlalchemy.dialects.postgresql import insert
 
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise RuntimeError("Account is disconnected. Please reconnect first.")
+    client = await get_active_client(account)
 
     logger.info("Starting groups & channels sync for account %s...", account.id)
 

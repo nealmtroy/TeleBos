@@ -347,7 +347,7 @@ async def refresh_order_status(db: AsyncSession, order: Order) -> Order:
 
 
 async def refresh_all_pending(db: AsyncSession) -> int:
-    """Refresh all pending/processing orders across all users.
+    """Refresh all pending/processing orders across all users concurrently.
 
     Returns:
         Number of orders refreshed.
@@ -358,13 +358,27 @@ async def refresh_all_pending(db: AsyncSession) -> int:
     result = await db.execute(query)
     orders = list(result.scalars().all())
 
+    orders_to_check = [o for o in orders if o.smm_order_id]
+    if not orders_to_check:
+        return 0
+
+    import asyncio
+    from app.services.smm_service import smm_api
+
+    tasks = [smm_api.check_order_status(o.smm_order_id) for o in orders_to_check]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
     updated = 0
-    for order in orders:
-        try:
-            await refresh_order_status(db, order)
+    for order, res in zip(orders_to_check, results):
+        if isinstance(res, Exception):
+            logger.error("Failed to check status for order %s: %s", order.id, res)
+            continue
+        if res.get("status"):
+            data = res.get("data", {})
+            order.status = data.get("status", order.status)
+            order.start_count = _parse_int(data.get("start_count"), order.start_count)
+            order.remains = _parse_int(data.get("remains"), order.remains)
             updated += 1
-        except Exception as e:
-            logger.error("Failed to refresh order %s: %s", order.id, e)
 
     if updated:
         await db.flush()
@@ -372,7 +386,7 @@ async def refresh_all_pending(db: AsyncSession) -> int:
 
 
 async def refresh_all_pending_smart(db: AsyncSession) -> int:
-    """Refresh pending/processing orders across all users with adaptive polling intervals.
+    """Refresh pending/processing orders across all users with adaptive polling intervals concurrently.
 
     This avoids flooding the SMM API by only checking orders based on their age:
     - Age < 15 min: Check every 2 minutes.
@@ -380,6 +394,8 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     - Age > 2 hours: Check every 15 minutes.
     """
     from datetime import datetime, timezone
+    import asyncio
+    from app.services.smm_service import smm_api
 
     query = select(Order).where(
         Order.status.in_(["Pending", "Processing", "Partial", "In progress"])
@@ -388,7 +404,7 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     orders = list(result.scalars().all())
 
     now = datetime.now(timezone.utc)
-    updated = 0
+    orders_to_check = []
 
     for order in orders:
         created_at = order.created_at
@@ -415,12 +431,26 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
             if last_check_minutes >= 15.0:
                 should_check = True
 
-        if should_check:
-            try:
-                await refresh_order_status(db, order)
-                updated += 1
-            except Exception as e:
-                logger.error("Failed to refresh order %s: %s", order.id, e)
+        if should_check and order.smm_order_id:
+            orders_to_check.append(order)
+
+    if not orders_to_check:
+        return 0
+
+    tasks = [smm_api.check_order_status(o.smm_order_id) for o in orders_to_check]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    updated = 0
+    for order, res in zip(orders_to_check, results):
+        if isinstance(res, Exception):
+            logger.error("Failed to check status for order %s: %s", order.id, res)
+            continue
+        if res.get("status"):
+            data = res.get("data", {})
+            order.status = data.get("status", order.status)
+            order.start_count = _parse_int(data.get("start_count"), order.start_count)
+            order.remains = _parse_int(data.get("remains"), order.remains)
+            updated += 1
 
     if updated:
         await db.flush()

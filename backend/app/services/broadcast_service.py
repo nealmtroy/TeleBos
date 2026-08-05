@@ -22,12 +22,23 @@ from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 from app.utils.telegram_errors import classify_telegram_error
+from app.utils.telethon_helpers import (
+    get_active_client,
+    parse_invite_hash as _invite_hash,
+    parse_public_target as _public_target,
+    join_and_resolve_chat as _join_and_resolve_target,
+)
 
 logger = logging.getLogger(__name__)
 
 # In-process task tracker for background broadcast jobs (replaces Celery)
 _running_tasks: dict[str, asyncio.Task] = {}
-_job_events: dict[str, asyncio.Event] = {}
+
+from app.utils.async_helpers import (
+    interruptible_sleep as _interruptible_sleep,
+    wake_job,
+    clear_job_event,
+)
 
 
 async def _refresh_job_safe(db: AsyncSession, job: BroadcastJob) -> BroadcastJob | None:
@@ -67,26 +78,7 @@ async def _refresh_job_safe(db: AsyncSession, job: BroadcastJob) -> BroadcastJob
         return await db.merge(fresh_job)
 
 
-async def _interruptible_sleep(job_id: str, seconds: float) -> bool:
-    """Sleep for `seconds`, but wake up immediately if _wake_job is called.
-    Returns True if sleep completed naturally, False if interrupted."""
-    if seconds <= 0:
-        return True
-
-    ev = _job_events.get(job_id)
-    if not ev:
-        ev = asyncio.Event()
-        _job_events[job_id] = ev
-
-    ev.clear()
-    try:
-        # Wait for either the timeout or the event to be set
-        await asyncio.wait_for(ev.wait(), timeout=seconds)
-        # If we get here, the event was set (interrupted)
-        return False
-    except asyncio.TimeoutError:
-        # If we get TimeoutError, it means the event was NOT set and time expired (natural completion)
-        return True
+# _interruptible_sleep is imported from app.utils.async_helpers
 
 
 # ── Group Lists ──────────────────────────────────────────────────────────────
@@ -273,7 +265,7 @@ async def start_broadcast(
             logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
         finally:
             _running_tasks.pop(job_id_str, None)
-            _job_events.pop(job_id_str, None)
+            clear_job_event(job_id_str)
 
     task = asyncio.create_task(_safe_execute())
     _running_tasks[job_id_str] = task
@@ -281,10 +273,9 @@ async def start_broadcast(
     return job
 
 
+# _wake_job is replaced by wake_job imported from app.utils.async_helpers
 def _wake_job(job_id: str) -> None:
-    ev = _job_events.get(job_id)
-    if ev:
-        ev.set()
+    wake_job(job_id)
 
 
 async def get_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob | None:
@@ -358,7 +349,7 @@ async def retry_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob
             logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
         finally:
             _running_tasks.pop(job_id_str, None)
-            _job_events.pop(job_id_str, None)
+            clear_job_event(job_id_str)
 
     task = asyncio.create_task(_safe_execute())
     _running_tasks[job_id_str] = task
@@ -431,15 +422,7 @@ async def _account_for_log(
         return res.scalar_one_or_none()
 
 
-def _invite_hash(target: str) -> str | None:
-    text = target.strip()
-    if "joinchat/" in text:
-        return text.split("joinchat/", 1)[1].split("?", 1)[0].strip("/")
-    if "t.me/+" in text:
-        return text.split("t.me/+", 1)[1].split("?", 1)[0].strip("/")
-    if text.startswith("+"):
-        return text[1:].split("?", 1)[0].strip("/")
-    return None
+# _invite_hash is imported from app.utils.telethon_helpers
 
 
 def _chatlist_slug(target: str) -> str | None:
@@ -453,13 +436,7 @@ def _chatlist_slug(target: str) -> str | None:
     return None
 
 
-def _public_target(target: str) -> str:
-    text = target.strip()
-    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
-        if text.startswith(prefix):
-            text = text[len(prefix) :]
-            break
-    return text.lstrip("@").split("?", 1)[0].strip("/")
+# _public_target is imported from app.utils.telethon_helpers
 
 
 def _chatlist_peers(invite) -> list:
@@ -546,120 +523,7 @@ async def check_send_permission(client, entity) -> tuple[bool, str | None]:
         return True, None
 
 
-async def _join_and_resolve_target(client, target: str, job_id_str: str | None = None):
-    from telethon.tl.functions.channels import JoinChannelRequest, GetFullChannelRequest
-    from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
-    from telethon.tl.types import ChatInviteAlready, ChatInvite, Channel
-    from telethon.errors import UserAlreadyParticipantError, InviteRequestSentError, FloodWaitError
-
-    invite = _invite_hash(target)
-    entity = None
-
-    if invite:
-        # Check invite link status before joining
-        invite_info = await client(CheckChatInviteRequest(invite))
-        if isinstance(invite_info, ChatInviteAlready):
-            entity = invite_info.chat
-        else:
-            for attempt in range(2):
-                try:
-                    updates = await client(ImportChatInviteRequest(invite))
-                    if getattr(updates, "chats", None):
-                        entity = updates.chats[0]
-                    break
-                except UserAlreadyParticipantError:
-                    # Fallback: if CheckChatInviteRequest did not return ChatInviteAlready
-                    # but we are already a participant, search dialogue list by name matching the invite title
-                    expected_title = getattr(invite_info, "title", None)
-                    if expected_title:
-                        async for dialog in client.iter_dialogs():
-                            if dialog.name == expected_title:
-                                entity = dialog.entity
-                                break
-                    if not entity:
-                        raise ValueError(
-                            f"Already a participant but could not find private chat with title '{expected_title}' in dialogs"
-                        )
-                    break
-                except FloodWaitError as e:
-                    if e.seconds <= 30:
-                        logger.warning(
-                            "Flood wait error joining private group! Waiting %s seconds...",
-                            e.seconds,
-                        )
-                        if job_id_str:
-                            completed = await _interruptible_sleep(job_id_str, e.seconds)
-                            if not completed:
-                                raise
-                        else:
-                            await asyncio.sleep(e.seconds)
-                        if attempt == 0:
-                            continue
-                    raise
-    else:
-        public = _public_target(target)
-        if public.lstrip("-").isdigit():
-            entity = await client.get_entity(int(public))
-        else:
-            entity = await client.get_entity(public)
-
-        for attempt in range(2):
-            try:
-                await client(JoinChannelRequest(entity))
-                break
-            except UserAlreadyParticipantError:
-                break
-            except InviteRequestSentError:
-                raise
-            except FloodWaitError as e:
-                if e.seconds <= 30:
-                    logger.warning(
-                        "Flood wait error joining public group! Waiting %s seconds...", e.seconds
-                    )
-                    if job_id_str:
-                        completed = await _interruptible_sleep(job_id_str, e.seconds)
-                        if not completed:
-                            raise
-                    else:
-                        await asyncio.sleep(e.seconds)
-                    if attempt == 0:
-                        continue
-                raise
-            except Exception:
-                if attempt == 1:
-                    # Fallback in case JoinChannelRequest fails for other reasons but entity is accessible
-                    pass
-
-    if not entity:
-        raise ValueError(f"Could not resolve or join target: {target}")
-
-    # If the resolved entity is a broadcast Channel, look for its linked discussion group
-    if isinstance(entity, Channel) and entity.broadcast:
-        try:
-            full_channel = await client(GetFullChannelRequest(entity))
-            discussion_chat_id = full_channel.full_chat.linked_chat_id
-            if discussion_chat_id:
-                discussion_entity = await client.get_entity(discussion_chat_id)
-                try:
-                    await client(JoinChannelRequest(discussion_entity))
-                except UserAlreadyParticipantError:
-                    pass
-                except Exception:
-                    pass
-                entity = discussion_entity
-        except Exception as e:
-            logger.warning("Failed to resolve/join discussion group for channel %s: %s", target, e)
-
-    # Proactive admin-only chat detection: if the group's default_banned_rights
-    # forbids send_messages (or send_plain for newer API layers), regular members
-    # cannot post.  Raise an error so the broadcast loop classifies this as
-    # "admin_only" and skips it without wasting an API call.
-    if isinstance(entity, Channel):
-        dbr = getattr(entity, "default_banned_rights", None)
-        if dbr and (getattr(dbr, "send_messages", False) or getattr(dbr, "send_plain", False)):
-            raise ValueError(f"CHAT_WRITE_FORBIDDEN: Admin-only chat detected — {target}")
-
-    return entity
+# _join_and_resolve_target is imported from app.utils.telethon_helpers
 
 
 async def _broadcast_entities_for_target(
@@ -813,20 +677,16 @@ async def execute_broadcast(job_id: str):
         for snapshot in account_snapshots:
             acc_id_str = snapshot["account_id"]
             try:
-                session_str = decrypt(snapshot["session_string"])
-                client = await client_pool.get(acc_id_str, session_str)
-                if client:
-                    active_accounts.append(
-                        {
-                            "account_id": acc_id_str,
-                            "account_name": snapshot["account_name"],
-                            "client": client,
-                            "cooldown_until": 0.0,
-                            "join_cooldown_until": 0.0,
-                        }
-                    )
-                else:
-                    logger.warning("Account %s not authorized/pool failure, skipping", acc_id_str)
+                client = await get_active_client(snapshot)
+                active_accounts.append(
+                    {
+                        "account_id": acc_id_str,
+                        "account_name": snapshot["account_name"],
+                        "client": client,
+                        "cooldown_until": 0.0,
+                        "join_cooldown_until": 0.0,
+                    }
+                )
             except Exception as connect_exc:
                 logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
 

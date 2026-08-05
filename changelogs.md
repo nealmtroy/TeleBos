@@ -3,7 +3,8 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-05
-- **[6c659f82](https://github.com/nealmtroy/TeleBos/commit/6c659f82)**: fix(broadcast): resolve logging bot PeerIdInvalidError and optimize groups_channels_sync_loop to prevent Telegram rate limit flood blocks
+- **[835e0608](https://github.com/nealmtroy/TeleBos/commit/835e0608)**: refactor(reusability): centralize photo pathing, socket hook, connection pooling, group resolution, SMM concurrent polling, and event-driven sleep
+- **[77854535](https://github.com/nealmtroy/TeleBos/commit/77854535)**: fix(broadcast): resolve logging bot PeerIdInvalidError and optimize groups_channels_sync_loop to prevent Telegram rate limit flood blocks
 
 ## 2026-08-04
 - **[a7e3b303](https://github.com/nealmtroy/TeleBos/commit/a7e3b303)**: perf(smm): fetch SMM API services outside database session to prevent pool exhaustion

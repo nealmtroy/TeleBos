@@ -940,19 +940,10 @@ async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
     return data
 
 
-_PHOTO_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "uploads", "profile_photos"
+from app.utils.photo_helper import (
+    ensure_photo_dir as _ensure_photo_dir,
+    get_photo_path as _photo_path,
 )
-
-
-def _ensure_photo_dir() -> None:
-    """Create the profile photos directory if it doesn't exist."""
-    os.makedirs(_PHOTO_DIR, exist_ok=True)
-
-
-def _photo_path(account_id: str) -> str:
-    """Return the local file path for an account's cached profile photo."""
-    return os.path.join(_PHOTO_DIR, f"{account_id}.jpg")
 
 
 async def remove_account(db: AsyncSession, account: TelegramAccount) -> None:
