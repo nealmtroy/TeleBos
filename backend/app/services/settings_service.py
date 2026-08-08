@@ -384,9 +384,17 @@ async def verify_login_email(account: TelegramAccount, email: str, code: str) ->
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
 
+    from telethon.errors import BadRequestError
     from telethon.tl.functions.account import VerifyEmailRequest
     from telethon.tl.types import EmailVerifyPurposeLoginChange, EmailVerificationCode
 
     purpose = EmailVerifyPurposeLoginChange()
     verification = EmailVerificationCode(code=code)
-    await client(VerifyEmailRequest(purpose=purpose, verification=verification))
+    try:
+        await client(VerifyEmailRequest(purpose=purpose, verification=verification))
+    except BadRequestError as exc:
+        if "EMAIL_NOT_ALLOWED" in str(exc):
+            raise ValueError(
+                "Telegram does not allow this email address. Use a different email provider and request a new verification code."
+            ) from exc
+        raise
