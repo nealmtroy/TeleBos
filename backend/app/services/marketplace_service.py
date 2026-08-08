@@ -16,6 +16,7 @@ from app.models.smm_setting import SmmSetting
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
 from app.services.telegram_client import client_pool
+from app.utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +226,79 @@ async def schedule_post_sale_cleanup(account_ids: list[str]) -> None:
     """Schedule best-effort client cleanup after the listing transaction commits."""
     for account_id in account_ids:
         asyncio.create_task(_post_sale_cleanup(account_id))
+
+
+async def validate_listing_session(db: AsyncSession, account_id: str) -> str:
+    """Validate a listed account without treating network errors as expiry.
+
+    ``invalid`` listings are immediately delisted. ``unknown`` is fail-closed
+    for purchases, but stays listed so a temporary Telegram outage cannot erase
+    the seller's listing.
+    """
+    try:
+        account_uuid = UUID(account_id)
+    except ValueError:
+        return "invalid"
+
+    result = await db.execute(
+        select(TelegramAccount.id, TelegramAccount.session_string, TelegramAccount.phone).where(
+            TelegramAccount.id == account_uuid,
+            TelegramAccount.for_sale.is_(True),
+            TelegramAccount.is_sold.is_(False),
+        )
+    )
+    row = result.one_or_none()
+    if row is None:
+        return "invalid"
+
+    # Release the read transaction before Telegram network I/O.
+    await db.rollback()
+    status = await client_pool.validate_session(str(row.id), decrypt(row.session_string), row.phone)
+    if status == "invalid":
+        await cancel_invalid_listing(db, str(row.id))
+    return status
+
+
+async def cancel_invalid_listing(db: AsyncSession, account_id: str) -> bool:
+    """Delist an expired Telegram session while preserving the seller's account row."""
+    try:
+        account_uuid = UUID(account_id)
+    except ValueError:
+        return False
+
+    result = await db.execute(
+        select(TelegramAccount)
+        .where(
+            TelegramAccount.id == account_uuid,
+            TelegramAccount.for_sale.is_(True),
+            TelegramAccount.is_sold.is_(False),
+        )
+        .with_for_update()
+    )
+    account = result.scalar_one_or_none()
+    if account is None:
+        return False
+
+    listed_price = account.sell_price or 0
+    seller_id = account.seller_id or account.user_id
+    account.for_sale = False
+    account.is_active = False
+    account.sell_price = None
+    account.seller_id = None
+    account.sale_listed_at = None
+    db.add(
+        AccountAuditLog(
+            user_id=seller_id,
+            account_id=account.id,
+            action="listing_invalid",
+            price=listed_price,
+            phone=account.phone,
+            telegram_id=account.telegram_id,
+        )
+    )
+    await db.flush()
+    logger.warning("Cancelled marketplace listing for account %s because its session is invalid", account.id)
+    return True
 
 
 async def get_stock_categories(db: AsyncSession) -> list[dict]:

@@ -3,7 +3,7 @@
 import logging
 import time
 import asyncio
-from typing import Any
+from typing import Any, Literal
 
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -148,6 +148,55 @@ class TelegramClientPool:
         """Return an existing client or create a new one from a session string."""
         async with self._connect_semaphore:
             return await self._get_impl(account_id, session_string)
+
+    async def validate_session(
+        self, account_id: str, session_string: str, phone: str | None = None
+    ) -> Literal["valid", "invalid", "unknown"]:
+        """Check a stored session without mutating pool or account state.
+
+        Marketplace checks must distinguish an expired Telegram authorization from
+        a transient network failure; only the former may cancel a listing.
+        """
+        if not session_string:
+            return "invalid"
+        if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
+            logger.error("Cannot validate account %s: Telegram API is unconfigured", account_id)
+            return "unknown"
+
+        client: TelegramClient | None = None
+        try:
+            async with self._connect_semaphore:
+                ios_params = deterministic_ios_device(account_id, phone=phone)
+                client = TelegramClient(
+                    StringSession(session_string),
+                    api_id=settings.TELEGRAM_API_ID,
+                    api_hash=settings.TELEGRAM_API_HASH,
+                    device_model=ios_params["device_model"],
+                    app_version=ios_params["app_version"],
+                    system_version=ios_params["system_version"],
+                    lang_code=ios_params["lang_code"],
+                    system_lang_code=ios_params["system_lang_code"],
+                    flood_sleep_threshold=0,
+                )
+                await asyncio.wait_for(client.connect(), timeout=15.0)
+                return "valid" if await client.is_user_authorized() else "invalid"
+        except (
+            AuthKeyUnregisteredError,
+            AuthKeyDuplicatedError,
+            SessionRevokedError,
+            UserDeactivatedBanError,
+        ) as exc:
+            logger.info("Marketplace session validation marked %s invalid: %s", account_id, exc)
+            return "invalid"
+        except Exception as exc:
+            logger.warning("Marketplace session validation could not verify %s: %s", account_id, exc)
+            return "unknown"
+        finally:
+            if client is not None:
+                try:
+                    await asyncio.wait_for(client.disconnect(), timeout=2.0)
+                except Exception:
+                    pass
 
     async def _get_impl(self, account_id: str, session_string: str) -> TelegramClient | None:
         """Create a client while the cross-account connection gate is held."""

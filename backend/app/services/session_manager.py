@@ -28,6 +28,7 @@ _connect_task_lock = asyncio.Lock()
 _sync_tasks: dict[str, asyncio.Task[None]] = {}
 _tracked_tasks: set[asyncio.Task[object]] = set()
 _shutdown = False
+MARKETPLACE_SESSION_CHECK_INTERVAL_SECONDS = 600
 
 
 async def _cancel_tracked_tasks() -> None:
@@ -144,6 +145,8 @@ class SessionManager:
         self._task: asyncio.Task | None = None
         self._last_spam_check = 0.0
         self._last_profile_sync = 0.0
+        self._last_marketplace_session_check = 0.0
+        self._marketplace_session_check_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start the periodic health check loop."""
@@ -196,7 +199,46 @@ class SessionManager:
             except Exception as exc:
                 logger.warning("Periodic spam check trigger error: %s", exc)
 
+            should_check_marketplace_sessions = (
+                self._marketplace_session_check_task is None
+                or self._marketplace_session_check_task.done()
+            ) and (
+                current_time - self._last_marketplace_session_check
+                >= MARKETPLACE_SESSION_CHECK_INTERVAL_SECONDS
+            )
+            if should_check_marketplace_sessions:
+                self._last_marketplace_session_check = current_time
+                task = asyncio.create_task(self._check_marketplace_listing_sessions())
+                self._marketplace_session_check_task = task
+                _track_task(task)
+
             await asyncio.sleep(30)  # Check every 30s
+
+    async def _check_marketplace_listing_sessions(self) -> None:
+        """Delist marketplace stock whose stored Telegram authorization expired."""
+        from app.database import async_session_factory
+        from app.services.marketplace_service import validate_listing_session
+
+        try:
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount.id).where(
+                        TelegramAccount.for_sale.is_(True),
+                        TelegramAccount.is_sold.is_(False),
+                    )
+                )
+                account_ids = [str(account_id) for account_id in result.scalars().all()]
+
+            for account_id in account_ids:
+                if not self._running:
+                    break
+                async with async_session_factory() as db:
+                    status = await validate_listing_session(db, account_id)
+                    if status == "invalid":
+                        await db.commit()
+                        await client_pool.remove(account_id, save_state=False)
+        except Exception as exc:
+            logger.exception("Marketplace listing session check failed: %s", exc)
 
     async def _check_all_accounts_spam(self) -> None:
         """Periodically check spam status for accounts that haven't been checked recently (e.g. 12 hours)."""

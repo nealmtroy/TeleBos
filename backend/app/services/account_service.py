@@ -405,14 +405,9 @@ async def finalize_authenticated_login(
         )
         existing_acc = existing.scalar_one_or_none()
         if existing_acc:
-            if existing_acc.for_sale or existing_acc.is_sold:
-                reason = (
-                    "sedang dijual"
-                    if existing_acc.for_sale
-                    else "telah dibeli"
-                )
+            if existing_acc.for_sale:
                 raise DuplicateAccountError(
-                    f"Akun Telegram ini {reason} di marketplace dan tidak dapat disambungkan kembali."
+                    "Akun Telegram ini sedang dijual di marketplace dan tidak dapat disambungkan kembali."
                 )
             if user is None or existing_acc.user_id != user.id:
                 raise DuplicateAccountError(
@@ -432,9 +427,6 @@ async def finalize_authenticated_login(
                     existing_acc.twofa_password = encrypt(twofa_password)
                 existing_acc.is_active = True
                 existing_acc.for_sale = False
-                # Preserve is_sold flag — purchased accounts must not be re-listed
-                if not existing_acc.is_sold:
-                    existing_acc.is_sold = False
                 await remove_from_expired_folder(db, existing_acc.id, existing_acc.user_id)
                 return existing_acc, False, None
 
@@ -520,10 +512,9 @@ async def login_with_session(
         )
         existing_acc = existing.scalar_one_or_none()
         if existing_acc:
-            if existing_acc.for_sale or existing_acc.is_sold:
-                reason = "dijual" if existing_acc.for_sale else "telah dibeli"
+            if existing_acc.for_sale:
                 raise ValueError(
-                    f"Akun Telegram (ID: {me.id}) sedang dalam proses {reason} di marketplace dan tidak dapat disambungkan kembali."
+                    f"Akun Telegram (ID: {me.id}) sedang dijual di marketplace dan tidak dapat disambungkan kembali."
                 )
             if existing_acc.user_id != user.id:
                 raise ValueError(
@@ -541,9 +532,6 @@ async def login_with_session(
                     existing_acc.twofa_enabled = live_twofa_status["enabled"]
                 existing_acc.is_active = True
                 existing_acc.for_sale = False
-                # Preserve is_sold flag — purchased accounts must not be re-listed
-                if not existing_acc.is_sold:
-                    existing_acc.is_sold = False
                 await remove_from_expired_folder(db, existing_acc.id, existing_acc.user_id)
                 await db.flush()
                 return existing_acc

@@ -119,6 +119,16 @@ async def buy_account(
     The seller will be credited the sale amount when the purchase completes.
     """
     try:
+        session_status = await marketplace_service.validate_listing_session(db, account_id)
+        if session_status == "invalid":
+            await db.commit()
+            raise HTTPException(
+                status_code=400,
+                detail="Account session is no longer valid and the listing was cancelled.",
+            )
+        if session_status == "unknown":
+            raise HTTPException(status_code=503, detail="Unable to verify the account session. Please try again shortly.")
+
         account = await marketplace_service.buy_account(db, current_user, account_id)
         await db.commit()
 
@@ -144,6 +154,9 @@ async def buy_account(
             username=account.username,
             created_at=account.created_at,
         )
+    except HTTPException:
+        await db.rollback()
+        raise
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

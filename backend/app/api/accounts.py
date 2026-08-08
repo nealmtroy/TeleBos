@@ -122,6 +122,10 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             )
             existing = acc_result.scalar_one_or_none()
             if existing:
+                if existing.for_sale:
+                    raise DuplicateAccountError(
+                        "Akun Telegram ini sedang dijual di marketplace dan tidak dapat disambungkan kembali."
+                    )
                 if existing.user_id != user.id:
                     raise DuplicateAccountError("Nomor HP ini sudah digunakan oleh pengguna lain.")
                 account = existing
@@ -258,6 +262,10 @@ async def qr_login_2fa(
         )
         existing = acc_result.scalar_one_or_none()
         if existing:
+            if existing.for_sale:
+                raise DuplicateAccountError(
+                    "Akun Telegram ini sedang dijual di marketplace dan tidak dapat disambungkan kembali."
+                )
             if existing.user_id != user.id:
                 raise DuplicateAccountError("Nomor HP ini sudah digunakan oleh pengguna lain.")
             account = existing

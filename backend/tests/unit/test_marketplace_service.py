@@ -125,3 +125,21 @@ async def test_cancel_legacy_listing_resolves_missing_price(monkeypatch):
     assert audit.price == 6000
     assert account.sell_price is None
     db.flush.assert_awaited_once()
+
+
+async def test_invalid_session_delists_account_without_reactivating_it():
+    owner_id = uuid.uuid4()
+    account = make_account(owner_id, for_sale=True, sell_price=5500)
+    db = FakeDatabase(account)
+
+    cancelled = await marketplace_service.cancel_invalid_listing(db, str(account.id))
+
+    assert cancelled is True
+    assert account.for_sale is False
+    assert account.is_active is False
+    assert account.sell_price is None
+    assert account.seller_id is None
+    audit = db.add.call_args.args[0]
+    assert audit.action == "listing_invalid"
+    assert audit.price == 5500
+    db.flush.assert_awaited_once()
