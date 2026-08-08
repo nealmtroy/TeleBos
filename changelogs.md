@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-08
+- **[4829c7cf](https://github.com/nealmtroy/TeleBos/commit/4829c7cf)**: feat: add order notifications
 - **[3501f1b1](https://github.com/nealmtroy/TeleBos/commit/3501f1b1)**: @ fix(marketplace): avoid MissingGreenlet when accessing User after dep
 - **[0b1fd028](https://github.com/nealmtroy/TeleBos/commit/0b1fd028)**: fix: validate marketplace account sessions
 

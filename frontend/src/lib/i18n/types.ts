@@ -1287,6 +1287,20 @@ export interface Dict {
     notificationStatusChangedMessage: string;
     notificationRefreshFailedTitle: string;
     notificationRefreshFailedMessage: string;
+    notificationSellListedTitle: string;
+    notificationSellListedMessage: string;
+    notificationSellPendingTitle: string;
+    notificationSellPendingMessage: string;
+    notificationSellFailedTitle: string;
+    notificationSellFailedMessage: string;
+    notificationBuySuccessTitle: string;
+    notificationBuySuccessMessage: string;
+    notificationBuyFailedTitle: string;
+    notificationBuyFailedMessage: string;
+    notificationSellCanceledTitle: string;
+    notificationSellCanceledMessage: string;
+    notificationSellCancelFailedTitle: string;
+    notificationSellCancelFailedMessage: string;
   };
 
   // Admin SMM
