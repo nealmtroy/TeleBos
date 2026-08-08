@@ -66,6 +66,18 @@ const id: Dict = {
     user: "Pengguna",
   },
 
+  notifications: {
+    open: "Buka notifikasi",
+    title: "Notifikasi",
+    unreadCount: "{count} belum dibaca",
+    allCaughtUp: "Semua sudah dibaca",
+    markAllRead: "Tandai semua dibaca",
+    clearAll: "Hapus semua notifikasi",
+    dismiss: "Tutup notifikasi",
+    emptyTitle: "Belum ada notifikasi",
+    emptyDescription: "Pembaruan penting tentang akun dan operasi Anda akan muncul di sini.",
+  },
+
   // ── Pemilih Akun ────────────────────────────────────────────────────────
   accountSwitcher: {
     selectAccount: "Pilih akun",
@@ -1266,6 +1278,16 @@ const id: Dict = {
     forSaleAlertDesc: "Akun ini saat ini terdaftar di marketplace. Anda tidak dapat mengelola atau menggunakan akun ini kecuali Anda membatalkan penjualan.",
     accountHistory: "Transaksi Akun",
     smmHistory: "Pesanan SMM",
+    notificationCreatedTitle: "Pesanan dibuat",
+    notificationCreatedMessage: "{service} telah dikirim dan menunggu diproses.",
+    notificationMassCreatedTitle: "Pesanan dibuat",
+    notificationMassCreatedMessage: "{count} pesanan telah dikirim dan menunggu diproses.",
+    notificationFailedTitle: "Pesanan tidak dapat dibuat",
+    notificationFailedMessage: "Periksa detail pesanan lalu coba lagi.",
+    notificationStatusChangedTitle: "Status pesanan diperbarui",
+    notificationStatusChangedMessage: "{service} sekarang berstatus {status}.",
+    notificationRefreshFailedTitle: "Status pesanan tidak dapat diperbarui",
+    notificationRefreshFailedMessage: "Coba perbarui status pesanan lagi sebentar lagi.",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

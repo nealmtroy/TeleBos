@@ -66,6 +66,18 @@ const en: Dict = {
     user: "User",
   },
 
+  notifications: {
+    open: "Open notifications",
+    title: "Notifications",
+    unreadCount: "{count} unread",
+    allCaughtUp: "You're all caught up",
+    markAllRead: "Mark all read",
+    clearAll: "Clear all notifications",
+    dismiss: "Dismiss notification",
+    emptyTitle: "No notifications yet",
+    emptyDescription: "Important updates about your accounts and operations will appear here.",
+  },
+
   // ── Account Switcher ────────────────────────────────────────────────────
   accountSwitcher: {
     selectAccount: "Select account",
@@ -1266,6 +1278,16 @@ const en: Dict = {
     forSaleAlertDesc: "This account is currently listed on the marketplace. You cannot manage or use this account unless you cancel the sale.",
     accountHistory: "Account Transactions",
     smmHistory: "SMM Orders",
+    notificationCreatedTitle: "Order created",
+    notificationCreatedMessage: "{service} has been submitted and is waiting for processing.",
+    notificationMassCreatedTitle: "Orders created",
+    notificationMassCreatedMessage: "{count} orders have been submitted and are waiting for processing.",
+    notificationFailedTitle: "Order could not be created",
+    notificationFailedMessage: "Review the order details and try again.",
+    notificationStatusChangedTitle: "Order status updated",
+    notificationStatusChangedMessage: "{service} is now {status}.",
+    notificationRefreshFailedTitle: "Order status could not be refreshed",
+    notificationRefreshFailedMessage: "Try refreshing the order status again in a moment.",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

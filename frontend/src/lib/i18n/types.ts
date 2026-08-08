@@ -66,6 +66,18 @@ export interface Dict {
     user: string;
   };
 
+  notifications: {
+    open: string;
+    title: string;
+    unreadCount: string;
+    allCaughtUp: string;
+    markAllRead: string;
+    clearAll: string;
+    dismiss: string;
+    emptyTitle: string;
+    emptyDescription: string;
+  };
+
   // Account Switcher
   accountSwitcher: {
     selectAccount: string;
@@ -1265,6 +1277,16 @@ export interface Dict {
     forSaleAlertDesc: string;
     accountHistory: string;
     smmHistory: string;
+    notificationCreatedTitle: string;
+    notificationCreatedMessage: string;
+    notificationMassCreatedTitle: string;
+    notificationMassCreatedMessage: string;
+    notificationFailedTitle: string;
+    notificationFailedMessage: string;
+    notificationStatusChangedTitle: string;
+    notificationStatusChangedMessage: string;
+    notificationRefreshFailedTitle: string;
+    notificationRefreshFailedMessage: string;
   };
 
   // Admin SMM

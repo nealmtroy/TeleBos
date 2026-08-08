@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { NotificationCenter } from "@/components/layout/notification-center";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function Navbar() {
@@ -94,6 +95,8 @@ export function Navbar() {
         </button>
 
         <div className="flex-1" />
+
+        <NotificationCenter />
 
         {/* Language Switcher */}
         <LanguageSwitcher />
