@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-08
+- **[31c5249b](https://github.com/nealmtroy/TeleBos/commit/31c5249b)**: fix: handle Telegram login email rejection
 - **[f5c7ec87](https://github.com/nealmtroy/TeleBos/commit/f5c7ec87)**: feat: notify marketplace account transactions
 - **[4829c7cf](https://github.com/nealmtroy/TeleBos/commit/4829c7cf)**: feat: add order notifications
 - **[3501f1b1](https://github.com/nealmtroy/TeleBos/commit/3501f1b1)**: @ fix(marketplace): avoid MissingGreenlet when accessing User after dep

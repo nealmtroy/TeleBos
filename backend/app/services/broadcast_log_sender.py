@@ -86,11 +86,8 @@ def _format_cycle_summary(
 
 
 async def _send_message_safe(client: TelegramClient, target, message: str, **kwargs) -> None:
-    """Send a message to target, handling peer resolution and caching.
-
-    No bot starting or manual /start is performed here.
-    """
-    from telethon.errors import PeerIdInvalidError
+    """Send a message to target, starting a configured log bot when needed."""
+    from telethon.errors import PeerIdInvalidError, YouBlockedUserError
 
     me = await client.get_me()
     cache_key = (me.id, str(target))
@@ -105,99 +102,24 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
         except Exception:
             pass
         
-    if not entity:
-        # Fallback to passing target directly to send_message, let Telethon handle it
-        try:
-            await client.send_message(target, message, **kwargs)
-            return
-        except (PeerIdInvalidError, ValueError) as exc:
-            # Try to unblock and retry
-            try:
-                from telethon.tl.functions.contacts import UnblockRequest
-                from telethon.tl.types import InputUser
-                target_str = str(target).lower()
-                if "teleboslogging_bot" in target_str:
-                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
-                else:
-                    await client(UnblockRequest(id=target))
-                logger.info("Unblocked target %s, retrying send_message", target)
-                await client.send_message(target, message, **kwargs)
-                return
-            except Exception as unblock_exc:
-                logger.debug("Failed to unblock target %s: %s", target, unblock_exc)
-            raise exc
-        except YouBlockedUserError as exc:
-            try:
-                from telethon.tl.functions.contacts import UnblockRequest
-                from telethon.tl.types import InputUser
-                target_str = str(target).lower()
-                if "teleboslogging_bot" in target_str:
-                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
-                else:
-                    await client(UnblockRequest(id=target))
-                logger.info("Unblocked target %s after YouBlockedUserError, retrying send_message", target)
-                await client.send_message(target, message, **kwargs)
-                return
-            except Exception as unblock_exc:
-                logger.debug("Failed to unblock target %s after YouBlockedUserError: %s", target, unblock_exc)
-                raise exc
-
     try:
-        await client.send_message(entity, message, **kwargs)
-    except YouBlockedUserError as exc:
-        try:
-            from telethon.tl.functions.contacts import UnblockRequest
-            from telethon.tl.types import InputUser
-            target_str = str(target).lower()
-            if "teleboslogging_bot" in target_str:
-                await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
-            else:
-                await client(UnblockRequest(id=entity))
-            logger.info("Unblocked target entity %s after YouBlockedUserError, retrying send_message", target)
-            await client.send_message(entity, message, **kwargs)
-        except Exception as unblock_exc:
-            logger.debug("Failed to unblock target entity %s after YouBlockedUserError: %s", target, unblock_exc)
-            raise exc
-    except (PeerIdInvalidError, ValueError) as exc:
-        logger.info(
-            "Failed to send to destination %s using cached/resolved entity. Clearing cache and retrying. Error: %s",
-            target,
-            exc,
-        )
-        # Clear cache
+        await client.send_message(entity or target, message, **kwargs)
+    except (PeerIdInvalidError, ValueError, YouBlockedUserError) as exc:
         _resolved_dest_cache.pop(cache_key, None)
-        # Retry directly sending message, letting Telethon handle resolution
+        is_bot = bool(getattr(entity, "bot", False)) or str(target).lower().lstrip("@").endswith("bot")
+        if not is_bot:
+            raise exc
         try:
-            await client.send_message(target, message, **kwargs)
-        except (PeerIdInvalidError, ValueError) as retry_exc:
-            # Try to unblock and retry
-            try:
-                from telethon.tl.functions.contacts import UnblockRequest
-                from telethon.tl.types import InputUser
-                target_str = str(target).lower()
-                if "teleboslogging_bot" in target_str:
-                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
-                else:
-                    await client(UnblockRequest(id=target))
-                logger.info("Unblocked target %s, retrying send_message after clearing cache", target)
-                await client.send_message(target, message, **kwargs)
-            except Exception as unblock_exc:
-                logger.debug("Failed to unblock target %s: %s", target, unblock_exc)
-                raise retry_exc
-        except YouBlockedUserError as retry_exc:
-            try:
-                from telethon.tl.functions.contacts import UnblockRequest
-                from telethon.tl.types import InputUser
-                target_str = str(target).lower()
-                if "teleboslogging_bot" in target_str:
-                    await client(UnblockRequest(id=InputUser(user_id=8433414493, access_hash=0)))
-                else:
-                    await client(UnblockRequest(id=target))
-                logger.info("Unblocked target %s after YouBlockedUserError retry, retrying send_message", target)
-                await client.send_message(target, message, **kwargs)
-            except Exception as unblock_exc:
-                logger.debug("Failed to unblock target %s after YouBlockedUserError retry: %s", target, unblock_exc)
-                raise retry_exc
+            # Telegram only permits a user account to message a bot after it has
+            # started that bot. Sending /start creates the required dialog.
+            await client.send_message(target, "/start")
+            logger.info("Started log bot %s, retrying cycle log delivery", target)
+            entity = await client.get_entity(target)
+            _resolved_dest_cache[cache_key] = entity
+            await client.send_message(entity, message, **kwargs)
+        except Exception as start_exc:
+            logger.debug("Failed to start log bot %s: %s", target, start_exc)
+            raise exc
 
 
 async def send_cycle_summary(
