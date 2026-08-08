@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-08-08
+- **[0b1fd028](https://github.com/nealmtroy/TeleBos/commit/0b1fd028)**: fix: validate marketplace account sessions
+
 ## 2026-08-05
 - **[e26b483c](https://github.com/nealmtroy/TeleBos/commit/e26b483c)**: fix(broadcast-logging): handle YouBlockedUserError when sending messages and trigger automatic unblocking
 - **[0e760d77](https://github.com/nealmtroy/TeleBos/commit/0e760d77)**: fix(broadcast-logging): add auto-unblocking logic to _send_message_safe to handle case where user account blocked the bot

@@ -92,7 +92,8 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
                 TelegramAccount.for_sale == False,
                 TelegramAccount.is_sold == False,
             )
-        ).order_by(TelegramAccount.created_at.desc())
+        )
+        .order_by(TelegramAccount.created_at.desc())
     )
     accounts = list(result.scalars().all())
 
@@ -297,7 +298,9 @@ async def cancel_invalid_listing(db: AsyncSession, account_id: str) -> bool:
         )
     )
     await db.flush()
-    logger.warning("Cancelled marketplace listing for account %s because its session is invalid", account.id)
+    logger.warning(
+        "Cancelled marketplace listing for account %s because its session is invalid", account.id
+    )
     return True
 
 
@@ -349,13 +352,15 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
     for acc in accounts:
         prefix, _ = get_country_code_and_name(acc.phone)
         if prefix == country_code:
-            matched.append({
-                "id": acc.id,
-                "telegram_id": acc.telegram_id,
-                "twofa_enabled": acc.twofa_enabled,
-                "recovery_email_available": acc.recovery_email is not None,
-                "sell_price": acc.sell_price,
-            })
+            matched.append(
+                {
+                    "id": acc.id,
+                    "telegram_id": acc.telegram_id,
+                    "twofa_enabled": acc.twofa_enabled,
+                    "recovery_email_available": acc.recovery_email is not None,
+                    "sell_price": acc.sell_price,
+                }
+            )
 
     return matched
 
@@ -376,14 +381,24 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     except ValueError:
         raise ValueError("Invalid account ID format.")
 
+    # Capture the buyer's UUID up-front. We deliberately avoid touching the
+    # ORM instance's attributes past this point because the request-scoped
+    # dependency session may not be the same transaction as ``db`` and
+    # attribute access would trigger lazy loading.
+    buyer_id = user.id
+
     # Select the account with a row-level write lock (FOR UPDATE)
-    stmt = select(TelegramAccount).where(
-        and_(
-            TelegramAccount.id == acc_uuid,
-            TelegramAccount.for_sale == True,
-            TelegramAccount.is_sold == False,
+    stmt = (
+        select(TelegramAccount)
+        .where(
+            and_(
+                TelegramAccount.id == acc_uuid,
+                TelegramAccount.for_sale == True,
+                TelegramAccount.is_sold == False,
+            )
         )
-    ).with_for_update()
+        .with_for_update()
+    )
 
     result = await db.execute(stmt)
     account = result.scalar_one_or_none()
@@ -391,11 +406,12 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     if not account:
         raise ValueError("Account is no longer available for purchase.")
 
-    # Identify the seller (who gets credited)
+    # Identify the seller (who gets credited). The TelegramAccount row is
+    # locked, so attribute access here is safe inside this transaction.
     seller_id = account.seller_id or account.user_id
 
     # Prevent self-purchasing: a seller cannot buy their own listed account
-    if user.id == seller_id:
+    if buyer_id == seller_id:
         raise ValueError("You cannot purchase your own listed account.")
 
     # Use the account's own sell_price; fallback to default
@@ -405,30 +421,32 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     # The user object from get_current_user is loaded without FOR UPDATE,
     # so concurrent purchases could all see the same pre-deduction balance.
     locked_buyer_result = await db.execute(
-        select(User).where(User.id == user.id).with_for_update()
+        select(User).where(User.id == buyer_id).with_for_update()
     )
-    user = locked_buyer_result.scalar_one()
+    buyer = locked_buyer_result.scalar_one()
 
-    if user.balance < buy_price:
+    if buyer.balance < buy_price:
         raise ValueError("Insufficient balance to buy this account.")
 
     # 1. Debit buyer's balance
-    user.balance -= buy_price
+    buyer.balance -= buy_price
 
     # 2. Credit seller's balance
-    seller_result = await db.execute(
-        select(User).where(User.id == seller_id).with_for_update()
-    )
+    seller_result = await db.execute(select(User).where(User.id == seller_id).with_for_update())
     seller = seller_result.scalar_one_or_none()
     if seller:
         seller.balance += buy_price
     else:
         # If seller no longer exists, the platform keeps the balance
         # (e.g. user was deleted). Just skip the credit.
-        logger.warning("Seller %s not found for account %s — keeping balance as platform revenue", seller_id, account_id)
+        logger.warning(
+            "Seller %s not found for account %s — keeping balance as platform revenue",
+            seller_id,
+            account_id,
+        )
 
     # 3. Update ownership and flags
-    account.user_id = user.id
+    account.user_id = buyer_id
     account.for_sale = False
     account.is_sold = True
     account.sold_at = datetime.now(timezone.utc)
@@ -447,7 +465,7 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     db.add(audit_seller)
 
     audit_buyer = AccountAuditLog(
-        user_id=user.id,
+        user_id=buyer_id,
         account_id=account.id,
         action="buy",
         price=buy_price,
@@ -457,6 +475,10 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     db.add(audit_buyer)
 
     await db.flush()
+
+    # Keep the returned ORM object's PK in sync with the locked buyer row so
+    # the caller does not need to touch the request-scoped ``user`` instance.
+    account.user_id = buyer.id
 
     return account
 
@@ -477,13 +499,17 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
         raise ValueError("Invalid account ID format.")
 
     # Select the account with a write lock
-    stmt = select(TelegramAccount).where(
-        and_(
-            TelegramAccount.id == acc_uuid,
-            TelegramAccount.for_sale == True,
-            TelegramAccount.is_sold == False,
+    stmt = (
+        select(TelegramAccount)
+        .where(
+            and_(
+                TelegramAccount.id == acc_uuid,
+                TelegramAccount.for_sale == True,
+                TelegramAccount.is_sold == False,
+            )
         )
-    ).with_for_update()
+        .with_for_update()
+    )
 
     result = await db.execute(stmt)
     account = result.scalar_one_or_none()

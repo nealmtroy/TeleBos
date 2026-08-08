@@ -118,6 +118,11 @@ async def buy_account(
 
     The seller will be credited the sale amount when the purchase completes.
     """
+    # Detach the dependency-provided user from its session before the service
+    # layer opens its own FOR UPDATE locks. Subsequent attribute access on the
+    # ORM instance would otherwise trigger lazy loading on the wrong
+    # greenlet/transaction.
+    db.expunge(current_user)
     try:
         session_status = await marketplace_service.validate_listing_session(db, account_id)
         if session_status == "invalid":
@@ -127,7 +132,10 @@ async def buy_account(
                 detail="Account session is no longer valid and the listing was cancelled.",
             )
         if session_status == "unknown":
-            raise HTTPException(status_code=503, detail="Unable to verify the account session. Please try again shortly.")
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to verify the account session. Please try again shortly.",
+            )
 
         account = await marketplace_service.buy_account(db, current_user, account_id)
         await db.commit()
