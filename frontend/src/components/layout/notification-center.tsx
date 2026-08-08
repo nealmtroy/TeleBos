@@ -92,7 +92,7 @@ export function NotificationCenter() {
       {open && (
         <section
           aria-label={_("notifications.title")}
-          className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+          className="fixed inset-x-3 top-[4.5rem] z-50 flex max-h-[calc(100dvh-5.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(32rem,calc(100dvh-6rem))] sm:w-96"
         >
           <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div>
@@ -134,7 +134,7 @@ export function NotificationCenter() {
               <p className="mt-1 max-w-56 text-xs leading-5 text-slate-500">{_("notifications.emptyDescription")}</p>
             </div>
           ) : (
-            <ul className="max-h-[22rem] overflow-y-auto" aria-live="polite">
+            <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-live="polite">
               {notifications.map((notification) => {
                 const Icon = notificationIcons[notification.kind];
                 return (
@@ -159,7 +159,7 @@ export function NotificationCenter() {
                       <button
                         type="button"
                         onClick={() => removeNotification(notification.id)}
-                        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 opacity-0 transition-opacity hover:bg-slate-200 hover:text-slate-700 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 group-hover:opacity-100"
+                        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-6 sm:w-6 sm:text-slate-400 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100"
                         aria-label={_("notifications.dismiss")}
                       >
                         <X className="h-3.5 w-3.5" aria-hidden="true" />

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-08-09
+- **[7a25dc55](https://github.com/nealmtroy/TeleBos/commit/7a25dc55)**: fix: start log bot before retrying cycle logs
+
 ## 2026-08-08
 - **[31c5249b](https://github.com/nealmtroy/TeleBos/commit/31c5249b)**: fix: handle Telegram login email rejection
 - **[f5c7ec87](https://github.com/nealmtroy/TeleBos/commit/f5c7ec87)**: feat: notify marketplace account transactions
