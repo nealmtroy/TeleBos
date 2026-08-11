@@ -18,6 +18,9 @@ class FakeResult:
     def scalar_one_or_none(self):
         return self._accounts[0] if self._accounts else None
 
+    def scalar_one(self):
+        return self._accounts[0]
+
 
 class FakeDatabase:
     def __init__(self, account):
@@ -100,9 +103,12 @@ async def test_cancel_listing_audits_original_price():
     assert account.is_active is True
     assert account.sell_price is None
     assert account.seller_id is None
-    audit = db.add.call_args.args[0]
+    added = [call.args[0] for call in db.add.call_args_list]
+    audit = next(item for item in added if getattr(item, "action", None) == "cancel_sale")
+    notification = next(item for item in added if getattr(item, "event", None))
     assert audit.action == "cancel_sale"
     assert audit.price == 5500
+    assert notification.event == "marketplace.listing_cancelled"
     db.flush.assert_awaited_once()
 
 
@@ -120,7 +126,8 @@ async def test_cancel_legacy_listing_resolves_missing_price(monkeypatch):
     await marketplace_service.cancel_sell_account(db, user, str(account.id))
 
     resolve_price.assert_awaited_once_with(db, account)
-    audit = db.add.call_args.args[0]
+    added = [call.args[0] for call in db.add.call_args_list]
+    audit = next(item for item in added if getattr(item, "action", None) == "cancel_sale")
     assert audit.action == "cancel_sale"
     assert audit.price == 6000
     assert account.sell_price is None
@@ -139,7 +146,39 @@ async def test_invalid_session_delists_account_without_reactivating_it():
     assert account.is_active is False
     assert account.sell_price is None
     assert account.seller_id is None
-    audit = db.add.call_args.args[0]
+    added = [call.args[0] for call in db.add.call_args_list]
+    audit = next(item for item in added if getattr(item, "action", None) == "listing_invalid")
+    notification = next(item for item in added if getattr(item, "event", None))
     assert audit.action == "listing_invalid"
     assert audit.price == 5500
+    assert notification.event == "marketplace.listing_invalid"
     db.flush.assert_awaited_once()
+
+
+async def test_purchase_notifies_buyer_and_seller():
+    seller_id = uuid.uuid4()
+    buyer_id = uuid.uuid4()
+    account = make_account(seller_id, for_sale=True, sell_price=5500)
+    buyer = SimpleNamespace(id=buyer_id, balance=10000)
+    seller = SimpleNamespace(id=seller_id, balance=0)
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[FakeResult([account]), FakeResult([buyer]), FakeResult([seller])]
+        ),
+        add=MagicMock(),
+        flush=AsyncMock(),
+    )
+
+    await marketplace_service.buy_account(db, SimpleNamespace(id=buyer_id), str(account.id))
+
+    events = {
+        item.event
+        for call in db.add.call_args_list
+        if (item := call.args[0]) and getattr(item, "event", None)
+    }
+    assert events == {
+        "marketplace.purchase_completed",
+        "marketplace.sale_completed",
+    }
+    assert buyer.balance == 4500
+    assert seller.balance == 5500

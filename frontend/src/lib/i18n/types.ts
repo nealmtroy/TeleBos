@@ -76,6 +76,11 @@ export interface Dict {
     dismiss: string;
     emptyTitle: string;
     emptyDescription: string;
+    loading: string;
+    loadError: string;
+    retry: string;
+    unknownTitle: string;
+    unknownDescription: string;
   };
 
   // Account Switcher
@@ -1301,6 +1306,10 @@ export interface Dict {
     notificationSellCanceledMessage: string;
     notificationSellCancelFailedTitle: string;
     notificationSellCancelFailedMessage: string;
+    notificationSaleSuccessTitle: string;
+    notificationSaleSuccessMessage: string;
+    notificationListingInvalidTitle: string;
+    notificationListingInvalidMessage: string;
   };
 
   // Admin SMM

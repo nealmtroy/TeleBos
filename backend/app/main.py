@@ -78,6 +78,7 @@ from app.api import (
     gifs,
     public,
     api_keys,
+    notifications,
 )
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
@@ -1304,6 +1305,7 @@ app.include_router(ws.router)
 app.include_router(system.router)
 app.include_router(public.router)
 app.include_router(api_keys.router)
+app.include_router(notifications.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

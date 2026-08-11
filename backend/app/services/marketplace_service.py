@@ -16,6 +16,7 @@ from app.models.smm_setting import SmmSetting
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
 from app.services.telegram_client import client_pool
+from app.services.notification_service import create_notification
 from app.utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
@@ -211,6 +212,14 @@ async def sell_accounts(
             )
         )
 
+    create_notification(
+        db,
+        user.id,
+        "marketplace.listed",
+        kind="success",
+        data={"count": len(accounts)},
+        href="/orders",
+    )
     await db.flush()
     return len(accounts)
 
@@ -296,6 +305,14 @@ async def cancel_invalid_listing(db: AsyncSession, account_id: str) -> bool:
             phone=account.phone,
             telegram_id=account.telegram_id,
         )
+    )
+    create_notification(
+        db,
+        seller_id,
+        "marketplace.listing_invalid",
+        kind="warning",
+        data={"account_id": str(account.id), "phone": account.phone},
+        href="/orders",
     )
     await db.flush()
     logger.warning(
@@ -474,6 +491,24 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     )
     db.add(audit_buyer)
 
+    if seller:
+        create_notification(
+            db,
+            seller_id,
+            "marketplace.sale_completed",
+            kind="success",
+            data={"account_id": str(account.id), "phone": account.phone},
+            href="/orders",
+        )
+    create_notification(
+        db,
+        buyer_id,
+        "marketplace.purchase_completed",
+        kind="success",
+        data={"account_id": str(account.id), "phone": account.phone},
+        href="/orders",
+    )
+
     await db.flush()
 
     # Keep the returned ORM object's PK in sync with the locked buyer row so
@@ -544,6 +579,14 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
         telegram_id=account.telegram_id,
     )
     db.add(audit)
+    create_notification(
+        db,
+        user.id,
+        "marketplace.listing_cancelled",
+        kind="info",
+        data={"account_id": str(account.id), "phone": account.phone},
+        href="/orders",
+    )
 
     await db.flush()
 

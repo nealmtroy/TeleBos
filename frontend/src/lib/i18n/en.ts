@@ -76,6 +76,11 @@ const en: Dict = {
     dismiss: "Dismiss notification",
     emptyTitle: "No notifications yet",
     emptyDescription: "Important updates about your accounts and operations will appear here.",
+    loading: "Loading notifications...",
+    loadError: "Notifications could not be loaded.",
+    retry: "Try again",
+    unknownTitle: "Account update",
+    unknownDescription: "An operation on your account was updated.",
   },
 
   // ── Account Switcher ────────────────────────────────────────────────────
@@ -1302,6 +1307,10 @@ const en: Dict = {
     notificationSellCanceledMessage: "The account is available in your managed accounts again.",
     notificationSellCancelFailedTitle: "Sale listing could not be canceled",
     notificationSellCancelFailedMessage: "Try canceling the listing again in a moment.",
+    notificationSaleSuccessTitle: "Account sold",
+    notificationSaleSuccessMessage: "{phone} was sold and the proceeds were added to your balance.",
+    notificationListingInvalidTitle: "Listing removed",
+    notificationListingInvalidMessage: "{phone} was removed because its Telegram session is no longer valid.",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

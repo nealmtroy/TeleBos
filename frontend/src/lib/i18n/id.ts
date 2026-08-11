@@ -76,6 +76,11 @@ const id: Dict = {
     dismiss: "Tutup notifikasi",
     emptyTitle: "Belum ada notifikasi",
     emptyDescription: "Pembaruan penting tentang akun dan operasi Anda akan muncul di sini.",
+    loading: "Memuat notifikasi...",
+    loadError: "Notifikasi tidak dapat dimuat.",
+    retry: "Coba lagi",
+    unknownTitle: "Pembaruan akun",
+    unknownDescription: "Ada pembaruan pada salah satu operasi akun Anda.",
   },
 
   // ── Pemilih Akun ────────────────────────────────────────────────────────
@@ -1302,6 +1307,10 @@ const id: Dict = {
     notificationSellCanceledMessage: "Akun tersedia kembali di akun yang Anda kelola.",
     notificationSellCancelFailedTitle: "Listing penjualan tidak dapat dibatalkan",
     notificationSellCancelFailedMessage: "Coba batalkan listing lagi sebentar lagi.",
+    notificationSaleSuccessTitle: "Akun berhasil terjual",
+    notificationSaleSuccessMessage: "{phone} telah terjual dan hasilnya ditambahkan ke saldo Anda.",
+    notificationListingInvalidTitle: "Listing dihapus",
+    notificationListingInvalidMessage: "{phone} dihapus karena sesi Telegram-nya sudah tidak valid.",
   },
 
   // ── Admin SMM ───────────────────────────────────────────────────────────────

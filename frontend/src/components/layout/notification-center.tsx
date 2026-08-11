@@ -5,7 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18nStore, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { type AppNotification, type NotificationKind, useNotificationStore } from "@/store/notification-store";
+import {
+  type AppNotification,
+  type NotificationKind,
+  useNotificationActions,
+  useNotifications,
+} from "@/hooks/use-notifications";
 
 const notificationIcons: Record<NotificationKind, typeof Info> = {
   info: Info,
@@ -20,6 +25,76 @@ const notificationStyles: Record<NotificationKind, string> = {
   warning: "text-amber-700 bg-amber-50",
   error: "text-rose-600 bg-rose-50",
 };
+
+type Translate = (path: string, params?: Record<string, string | number>) => string;
+
+function notificationParam(notification: AppNotification, key: string, fallback: string | number) {
+  const value = notification.data[key];
+  return typeof value === "string" || typeof value === "number" ? value : fallback;
+}
+
+export function getNotificationContent(notification: AppNotification, translate: Translate) {
+  switch (notification.event) {
+    case "order.created":
+      return {
+        title: translate("orders.notificationCreatedTitle"),
+        message: translate("orders.notificationCreatedMessage", {
+          service: notificationParam(notification, "service", "Order"),
+        }),
+      };
+    case "order.mass_created":
+      return {
+        title: translate("orders.notificationMassCreatedTitle"),
+        message: translate("orders.notificationMassCreatedMessage", {
+          count: notificationParam(notification, "count", 0),
+        }),
+      };
+    case "order.status_changed":
+      return {
+        title: translate("orders.notificationStatusChangedTitle"),
+        message: translate("orders.notificationStatusChangedMessage", {
+          service: notificationParam(notification, "service", "Order"),
+          status: notificationParam(notification, "status", "Updated"),
+        }),
+      };
+    case "marketplace.listed":
+      return {
+        title: translate("orders.notificationSellListedTitle"),
+        message: translate("orders.notificationSellListedMessage", {
+          count: notificationParam(notification, "count", 0),
+        }),
+      };
+    case "marketplace.purchase_completed":
+      return {
+        title: translate("orders.notificationBuySuccessTitle"),
+        message: translate("orders.notificationBuySuccessMessage"),
+      };
+    case "marketplace.sale_completed":
+      return {
+        title: translate("orders.notificationSaleSuccessTitle"),
+        message: translate("orders.notificationSaleSuccessMessage", {
+          phone: notificationParam(notification, "phone", "Account"),
+        }),
+      };
+    case "marketplace.listing_cancelled":
+      return {
+        title: translate("orders.notificationSellCanceledTitle"),
+        message: translate("orders.notificationSellCanceledMessage"),
+      };
+    case "marketplace.listing_invalid":
+      return {
+        title: translate("orders.notificationListingInvalidTitle"),
+        message: translate("orders.notificationListingInvalidMessage", {
+          phone: notificationParam(notification, "phone", "Account"),
+        }),
+      };
+    default:
+      return {
+        title: translate("notifications.unknownTitle"),
+        message: translate("notifications.unknownDescription"),
+      };
+  }
+}
 
 function formatNotificationTime(value: string, locale: "en" | "id") {
   const timestamp = new Date(value);
@@ -41,12 +116,10 @@ export function NotificationCenter() {
   const router = useRouter();
   const _ = useT();
   const locale = useI18nStore((state) => state.locale);
-  const notifications = useNotificationStore((state) => state.notifications);
-  const markAsRead = useNotificationStore((state) => state.markAsRead);
-  const markAllAsRead = useNotificationStore((state) => state.markAllAsRead);
-  const removeNotification = useNotificationStore((state) => state.removeNotification);
-  const clearNotifications = useNotificationStore((state) => state.clearNotifications);
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const { data, isLoading, isError, refetch } = useNotifications();
+  const { markRead, markAllRead, remove, clear } = useNotificationActions();
+  const notifications = data?.notifications ?? [];
+  const unreadCount = data?.unread_count ?? 0;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -65,7 +138,7 @@ export function NotificationCenter() {
   }, []);
 
   const handleNotificationClick = (notification: AppNotification) => {
-    markAsRead(notification.id);
+    if (!notification.read_at) markRead.mutate(notification.id);
     if (notification.href) {
       setOpen(false);
       router.push(notification.href);
@@ -105,7 +178,8 @@ export function NotificationCenter() {
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  onClick={markAllAsRead}
+                  onClick={() => markAllRead.mutate()}
+                  disabled={markAllRead.isPending}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
@@ -115,7 +189,8 @@ export function NotificationCenter() {
               {notifications.length > 0 && (
                 <button
                   type="button"
-                  onClick={clearNotifications}
+                  onClick={() => clear.mutate()}
+                  disabled={clear.isPending}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   aria-label={_("notifications.clearAll")}
                 >
@@ -125,7 +200,22 @@ export function NotificationCenter() {
             </div>
           </header>
 
-          {notifications.length === 0 ? (
+          {isLoading ? (
+            <div className="flex min-h-44 items-center justify-center px-6 text-sm text-slate-500">
+              {_("notifications.loading")}
+            </div>
+          ) : isError && !data ? (
+            <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
+              <p className="text-sm font-medium text-slate-800">{_("notifications.loadError")}</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-3 rounded-lg px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                {_("notifications.retry")}
+              </button>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700">
                 <Bell className="h-5 w-5" aria-hidden="true" />
@@ -137,9 +227,10 @@ export function NotificationCenter() {
             <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-live="polite">
               {notifications.map((notification) => {
                 const Icon = notificationIcons[notification.kind];
+                const content = getNotificationContent(notification, _);
                 return (
                   <li key={notification.id} className="border-b border-slate-100 last:border-b-0">
-                    <div className={cn("group flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50", !notification.read && "bg-primary-50/50")}> 
+                    <div className={cn("group flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50", !notification.read_at && "bg-primary-50/50")}>
                       <button
                         type="button"
                         onClick={() => handleNotificationClick(notification)}
@@ -150,15 +241,16 @@ export function NotificationCenter() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-start justify-between gap-3">
-                            <span className="truncate text-sm font-medium text-slate-900">{notification.title}</span>
-                            <time className="shrink-0 pt-0.5 text-[11px] text-slate-500">{formatNotificationTime(notification.createdAt, locale)}</time>
+                            <span className="truncate text-sm font-medium text-slate-900">{content.title}</span>
+                            <time className="shrink-0 pt-0.5 text-[11px] text-slate-500">{formatNotificationTime(notification.created_at, locale)}</time>
                           </span>
-                          {notification.message && <span className="mt-0.5 block text-xs leading-5 text-slate-600">{notification.message}</span>}
+                          {content.message && <span className="mt-0.5 block text-xs leading-5 text-slate-600">{content.message}</span>}
                         </span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => removeNotification(notification.id)}
+                        onClick={() => remove.mutate(notification.id)}
+                        disabled={remove.isPending}
                         className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-6 sm:w-6 sm:text-slate-400 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100"
                         aria-label={_("notifications.dismiss")}
                       >

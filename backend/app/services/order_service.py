@@ -11,6 +11,7 @@ from app.models.smm_service import SmmService
 from app.models.smm_setting import SmmSetting
 from app.models.user import User
 from app.services.smm_service import create_order, check_order_status
+from app.services.notification_service import create_notification
 from app.utils.encryption import encrypt, decrypt
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,17 @@ def _parse_int_or_none(value: object, default: int | None = None) -> int | None:
         return int(float(str(value)))
     except (ValueError, TypeError):
         return default
+
+
+def _notification_kind_for_status(status: str) -> str:
+    normalized = status.lower()
+    if normalized in {"failed", "error", "partial", "canceled", "cancelled"}:
+        return "error"
+    if normalized in {"success", "completed"}:
+        return "success"
+    if normalized in {"processing", "in progress"}:
+        return "info"
+    return "warning"
 
 
 async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, str, str, int, int, str | None, str | None]:
@@ -160,6 +172,14 @@ async def place_order(
     # Deduct balance
     user.balance -= total_price
     await db.flush()
+    create_notification(
+        db,
+        user.id,
+        "order.created",
+        kind="success",
+        data={"order_id": str(order.id), "service": order.service_name},
+        href="/orders",
+    )
     return order
 
 
@@ -263,6 +283,14 @@ async def place_mass_orders(
     # Deduct total balance
     user.balance -= total_cost
     await db.flush()
+    create_notification(
+        db,
+        user.id,
+        "order.mass_created",
+        kind="success",
+        data={"count": len(created_orders)},
+        href="/orders",
+    )
     return created_orders
 
 
@@ -304,9 +332,23 @@ async def refresh_order_status(db: AsyncSession, order: Order) -> Order:
     if result.get("status"):
         data = result.get("data", {})
         new_status = data.get("status", order.status)
+        previous_status = order.status
         order.status = new_status
         order.start_count = _parse_int_or_none(data.get("start_count"), order.start_count)
         order.remains = _parse_int_or_none(data.get("remains"), order.remains)
+        if new_status != previous_status:
+            create_notification(
+                db,
+                order.user_id,
+                "order.status_changed",
+                kind=_notification_kind_for_status(new_status),
+                data={
+                    "order_id": str(order.id),
+                    "service": order.service_name,
+                    "status": new_status,
+                },
+                href="/orders",
+            )
 
     await db.flush()
     return order

@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import api from "@/lib/api";
 import { t } from "@/lib/i18n";
-import { type NotificationKind, useNotificationStore } from "@/store/notification-store";
+import { NOTIFICATIONS_QUERY_KEY } from "@/hooks/use-notifications";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,23 +50,6 @@ interface MassOrderItem {
   quantity: number;
   comments?: string;
   usernames?: string;
-}
-
-function addOrderNotification(kind: NotificationKind, title: string, message: string, orderId?: string) {
-  useNotificationStore.getState().addNotification({
-    kind,
-    title,
-    message,
-    href: orderId ? "/orders" : undefined,
-  });
-}
-
-function getOrderStatusKind(status: string): NotificationKind {
-  const normalizedStatus = status.toLowerCase();
-  if (["failed", "error", "partial", "canceled", "cancelled"].includes(normalizedStatus)) return "error";
-  if (["success", "completed"].includes(normalizedStatus)) return "success";
-  if (["processing", "in progress"].includes(normalizedStatus)) return "info";
-  return "warning";
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
@@ -137,18 +121,15 @@ export function usePlaceOrder() {
       const { data } = await api.post("/orders", payload);
       return data as Order;
     },
-    onSuccess: (order) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["auth"] });
-      addOrderNotification(
-        "success",
-        t("orders.notificationCreatedTitle"),
-        t("orders.notificationCreatedMessage", { service: order.service_name }),
-        order.id
-      );
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
     },
     onError: () => {
-      addOrderNotification("error", t("orders.notificationFailedTitle"), t("orders.notificationFailedMessage"));
+      toast.error(t("orders.notificationFailedTitle"), {
+        description: t("orders.notificationFailedMessage"),
+      });
     },
   });
 }
@@ -160,17 +141,15 @@ export function usePlaceMassOrder() {
       const { data } = await api.post("/orders/mass", { orders });
       return data as Order[];
     },
-    onSuccess: (orders) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["auth"] });
-      addOrderNotification(
-        "success",
-        t("orders.notificationMassCreatedTitle"),
-        t("orders.notificationMassCreatedMessage", { count: orders.length })
-      );
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
     },
     onError: () => {
-      addOrderNotification("error", t("orders.notificationFailedTitle"), t("orders.notificationFailedMessage"));
+      toast.error(t("orders.notificationFailedTitle"), {
+        description: t("orders.notificationFailedMessage"),
+      });
     },
   });
 }
@@ -182,29 +161,14 @@ export function useRefreshOrderStatus() {
       const { data } = await api.post(`/orders/${orderId}/refresh`);
       return data as Order;
     },
-    onMutate: (orderId) => {
-      const cachedOrders = queryClient.getQueriesData<Order[]>({ queryKey: ["orders", "history"] });
-      const previousOrder = cachedOrders
-        .flatMap(([, orders]) => orders ?? [])
-        .find((order) => order.id === orderId);
-      return { previousStatus: previousOrder?.status };
-    },
-    onSuccess: (order, _orderId, context) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
-      if (context?.previousStatus && context.previousStatus !== order.status) {
-        addOrderNotification(
-          getOrderStatusKind(order.status),
-          t("orders.notificationStatusChangedTitle"),
-          t("orders.notificationStatusChangedMessage", {
-            service: order.service_name,
-            status: order.status,
-          }),
-          order.id
-        );
-      }
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
     },
     onError: () => {
-      addOrderNotification("error", t("orders.notificationRefreshFailedTitle"), t("orders.notificationRefreshFailedMessage"));
+      toast.error(t("orders.notificationRefreshFailedTitle"), {
+        description: t("orders.notificationRefreshFailedMessage"),
+      });
     },
   });
 }

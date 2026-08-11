@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api", () => ({ default: api }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), warning: vi.fn() } }));
 
 describe("marketplace sell hook", () => {
   it("uses a bounded request timeout and reconciles marketplace queries", async () => {
@@ -31,6 +32,7 @@ describe("marketplace sell hook", () => {
     );
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["accounts"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["marketplace", "history"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["notifications"] });
   });
 
   it("recognizes gateway timeouts and client request timeouts as unknown outcomes", () => {
