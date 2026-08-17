@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-08-11
+- **[d00b6aac](https://github.com/nealmtroy/TeleBos/commit/d00b6aac)**: feat: persist user notifications in postgres
+
 ## 2026-08-09
 - **[dee3dbd8](https://github.com/nealmtroy/TeleBos/commit/dee3dbd8)**: fix: make notification center responsive
 - **[7a25dc55](https://github.com/nealmtroy/TeleBos/commit/7a25dc55)**: fix: start log bot before retrying cycle logs

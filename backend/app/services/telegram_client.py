@@ -20,7 +20,7 @@ from app.utils.device_spoof import deterministic_ios_device, random_ios_device
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-CLIENT_TTL_SECONDS = 3600  # Disconnect idle clients after 1 hour
+CLIENT_TTL_SECONDS = 300  # Disconnect idle clients after 5 minutes
 
 class TelegramClientPool:
     """
@@ -44,14 +44,15 @@ class TelegramClientPool:
         self._catch_up_tasks: set[asyncio.Task[Any]] = set()
 
     async def _cleanup_stale_clients(self) -> None:
-        """Disconnect and remove clients that haven't been accessed recently,
-        unless they have auto-reply enabled or are active in broadcast jobs.
+        """Disconnect and remove clients that haven't been accessed recently or
+        are no longer connected, unless they are active in broadcast jobs or auto-reply.
         """
         now = time.time()
-        stale_keys = [
-            acc_id for acc_id, data in self._clients.items()
-            if now - data["last_accessed"] > CLIENT_TTL_SECONDS
-        ]
+        stale_keys = []
+        for acc_id, data in list(self._clients.items()):
+            client = data["client"]
+            if not client.is_connected() or (now - data["last_accessed"] > CLIENT_TTL_SECONDS):
+                stale_keys.append(acc_id)
         
         if stale_keys:
             from app.database import async_session_factory
@@ -144,6 +145,17 @@ class TelegramClientPool:
                 except Exception as e:
                     logger.debug("Error disconnecting idle client %s: %s", acc_id, e)
 
+    async def _periodic_cleanup_loop(self) -> None:
+        """Run stale client cleanup periodically."""
+        while True:
+            try:
+                await self._cleanup_stale_clients()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error("Error in periodic cleanup loop: %s", e)
+            await asyncio.sleep(60)
+
     async def get(self, account_id: str, session_string: str) -> TelegramClient | None:
         """Return an existing client or create a new one from a session string."""
         async with self._connect_semaphore:
@@ -203,7 +215,7 @@ class TelegramClientPool:
         # Idle cleanup may query Telegram and the database. It must never delay
         # an interactive operation such as marketplace profile preparation.
         if self._cleanup_task is None or self._cleanup_task.done():
-            self._cleanup_task = asyncio.create_task(self._cleanup_stale_clients())
+            self._cleanup_task = asyncio.create_task(self._periodic_cleanup_loop())
 
         if account_id not in self._locks:
             self._locks[account_id] = asyncio.Lock()
@@ -211,9 +223,17 @@ class TelegramClientPool:
         async with self._locks[account_id]:
             # Return cached if still connected
             existing = self._clients.get(account_id)
-            if existing is not None and existing["client"].is_connected():
-                existing["last_accessed"] = time.time()
-                return existing["client"]
+            if existing is not None:
+                if existing["client"].is_connected():
+                    existing["last_accessed"] = time.time()
+                    return existing["client"]
+                else:
+                    logger.info("Evicting disconnected cached client for account %s", account_id)
+                    self._clients.pop(account_id, None)
+                    try:
+                        await asyncio.wait_for(existing["client"].disconnect(), timeout=2.0)
+                    except Exception as e:
+                        logger.debug("Failed to disconnect old client before recreating: %s", e)
     
             # Check for valid Telegram API configuration
             if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:

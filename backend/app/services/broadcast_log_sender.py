@@ -107,6 +107,26 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
     except (PeerIdInvalidError, ValueError, YouBlockedUserError) as exc:
         _resolved_dest_cache.pop(cache_key, None)
         is_bot = bool(getattr(entity, "bot", False)) or str(target).lower().lstrip("@").endswith("bot")
+        
+        # If the target is blocked, attempt to unblock first
+        if isinstance(exc, YouBlockedUserError) or "you blocked this user" in str(exc).lower():
+            try:
+                from telethon import functions
+                await client(functions.contacts.UnblockRequest(id=entity or target))
+                logger.info("Unblocked target %s to deliver log message", target)
+            except Exception as unblock_err:
+                logger.warning("Failed to unblock target %s: %s", target, unblock_err)
+                raise exc
+
+            # Attempt direct retry after unblocking
+            try:
+                await client.send_message(entity or target, message, **kwargs)
+                return
+            except Exception as retry_exc:
+                if not is_bot:
+                    raise retry_exc
+                # If it's a bot and still fails, proceed to start sequence below
+
         if not is_bot:
             raise exc
         try:
