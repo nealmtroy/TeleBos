@@ -10,7 +10,7 @@ RUN apk add --no-cache python3 make g++
 # Install exactly the dependency graph committed to the repository. This avoids
 # re-resolving optional Better Auth adapter peers during each image build.
 COPY package.json package-lock.json ./
-RUN npm ci --omit=optional
+RUN npm ci --legacy-peer-deps
 
 # ── Build ────────────────────────────────────────────────────────────────────
 FROM deps AS builder
