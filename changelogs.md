@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-21
+- **[8b3a0522](https://github.com/nealmtroy/TeleBos/commit/8b3a0522)**: fix: convert date string to timezone-aware datetime for PostgreSQL seeding
 - **[0e0ccc97](https://github.com/nealmtroy/TeleBos/commit/0e0ccc97)**: fix: correct programmatic migration database seeding condition
 - **[0c52b4d5](https://github.com/nealmtroy/TeleBos/commit/0c52b4d5)**: feat: integrate Telegram ID registration date and age estimator
 

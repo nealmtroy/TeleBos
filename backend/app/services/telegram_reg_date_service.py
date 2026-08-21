@@ -31,7 +31,10 @@ class TelegramRegDateService:
             return None
 
         # 1. Check if exact match exists in database
-        stmt = select(TelegramRegistrationDatapoint).where(TelegramRegistrationDatapoint.telegram_id == telegram_id)
+        stmt = select(TelegramRegistrationDatapoint).where(
+            TelegramRegistrationDatapoint.telegram_id == telegram_id,
+            TelegramRegistrationDatapoint.source == "seeded"
+        )
         result = await db.execute(stmt)
         exact = result.scalar_one_or_none()
         if exact:
@@ -44,7 +47,10 @@ class TelegramRegDateService:
         # 2. Find closest lower ID
         stmt_lower = (
             select(TelegramRegistrationDatapoint)
-            .where(TelegramRegistrationDatapoint.telegram_id < telegram_id)
+            .where(
+                TelegramRegistrationDatapoint.telegram_id < telegram_id,
+                TelegramRegistrationDatapoint.source == "seeded"
+            )
             .order_by(TelegramRegistrationDatapoint.telegram_id.desc())
             .limit(1)
         )
@@ -54,7 +60,10 @@ class TelegramRegDateService:
         # 3. Find closest upper ID
         stmt_upper = (
             select(TelegramRegistrationDatapoint)
-            .where(TelegramRegistrationDatapoint.telegram_id > telegram_id)
+            .where(
+                TelegramRegistrationDatapoint.telegram_id > telegram_id,
+                TelegramRegistrationDatapoint.source == "seeded"
+            )
             .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
             .limit(1)
         )
