@@ -944,7 +944,10 @@ def _run_migrations(connection):
             text("CREATE INDEX IF NOT EXISTS ix_telegram_registration_datapoints_registered_at ON telegram_registration_datapoints (registered_at)")
         )
         
-        # Seed datapoints from JSON
+    # Seed datapoints from JSON if no seeded entries exist yet
+    result = connection.execute(text("SELECT count(*) FROM telegram_registration_datapoints WHERE source = 'seeded'"))
+    seeded_count = result.scalar()
+    if seeded_count == 0:
         import os
         import json
         seed_path = os.path.join(os.path.dirname(__file__), "resources", "telegram_reg_date_seed.json")
