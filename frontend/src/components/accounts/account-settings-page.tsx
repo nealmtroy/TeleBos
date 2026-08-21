@@ -102,6 +102,8 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
           colorId={account?.color_id}
           hasProfilePhoto={account?.has_profile_photo}
           photoVersion={account?.photo_version}
+          isActive={account?.is_active}
+          profilePhotoPath={account?.profile_photo_path}
           size="xl"
           className="size-20 text-xl border border-gray-200"
           aria-label="Profile photo"

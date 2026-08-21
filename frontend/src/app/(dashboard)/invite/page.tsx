@@ -317,6 +317,8 @@ function NewInviteTab() {
                         colorId={acc.color_id}
                         hasProfilePhoto={acc.has_profile_photo}
                         photoVersion={acc.photo_version}
+                        isActive={acc.is_active}
+                        profilePhotoPath={acc.profile_photo_path}
                         size="md"
                       />
                       <div className="flex-1 min-w-0">

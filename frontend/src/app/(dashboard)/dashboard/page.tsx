@@ -30,6 +30,7 @@ interface Account {
   photo_version: number;
   has_profile_photo?: boolean;
   color_id: number | null;
+  profile_photo_path: string | null;
 }
 
 export default function DashboardPage() {
@@ -220,6 +221,8 @@ export default function DashboardPage() {
                       colorId={acc.color_id}
                       hasProfilePhoto={acc.has_profile_photo}
                       photoVersion={acc.photo_version}
+                      isActive={acc.is_active}
+                      profilePhotoPath={acc.profile_photo_path}
                       size="lg"
                     />
                     <div className="flex-1 min-w-0">

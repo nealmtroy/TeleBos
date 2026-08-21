@@ -156,6 +156,8 @@ export default function AccountDetailPage() {
             colorId={account.color_id}
             hasProfilePhoto={account.has_profile_photo}
             photoVersion={account.photo_version}
+            isActive={account.is_active}
+            profilePhotoPath={account.profile_photo_path}
             size="xl"
             className="size-20 text-2xl"
           />

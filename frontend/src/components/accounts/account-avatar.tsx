@@ -19,6 +19,8 @@ interface AccountAvatarProps {
   photoVersion?: number | null;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  isActive?: boolean;
+  profilePhotoPath?: string | null;
 }
 
 const sizeMap = {
@@ -45,10 +47,18 @@ export function AccountAvatar({
   photoVersion,
   size = "md",
   className,
+  isActive,
+  profilePhotoPath,
 }: AccountAvatarProps) {
   const photoUrl = getAccountPhotoUrl(accountId, photoVersion);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const shouldRenderImage = hasProfilePhoto ?? (photoVersion ?? 0) > 0;
+
+  // If the account is inactive/expired and we don't have a cached photo locally,
+  // we cannot download it on-demand from Telegram. Skip trying to load to avoid 404 console errors.
+  const isPhotoCached = !!profilePhotoPath;
+  const isImageLoadable = isActive !== false || isPhotoCached;
+
+  const shouldRenderImage = (hasProfilePhoto ?? (photoVersion ?? 0) > 0) && isImageLoadable;
   const showFallback = !shouldRenderImage || failedUrl === photoUrl;
   const initial = getAvatarInitial(firstName, phone);
   const backgroundColor = getTelegramAvatarColor(telegramId ?? accountId, colorId);

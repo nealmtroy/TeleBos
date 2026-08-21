@@ -19,6 +19,8 @@ function Avatar({ account, size = "sm" }: { account: Account; size?: "sm" | "md"
       colorId={account.color_id}
       hasProfilePhoto={account.has_profile_photo}
       photoVersion={account.photo_version}
+      isActive={account.is_active}
+      profilePhotoPath={account.profile_photo_path}
       size={size === "sm" ? "sm" : "lg"}
       className={dim}
     />

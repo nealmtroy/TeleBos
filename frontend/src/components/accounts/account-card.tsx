@@ -162,6 +162,8 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             colorId={account.color_id}
             hasProfilePhoto={account.has_profile_photo}
             photoVersion={account.photo_version}
+            isActive={account.is_active}
+            profilePhotoPath={account.profile_photo_path}
             size="xl"
           />
           <div className="min-w-0 flex-1">
