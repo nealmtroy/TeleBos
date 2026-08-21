@@ -31,6 +31,7 @@ export function ChatsContent() {
   );
   const [selectedChatTitle, setSelectedChatTitle] = useState("");
   const [selectedChatType, setSelectedChatType] = useState("");
+  const [selectedChatPhotoVersion, setSelectedChatPhotoVersion] = useState<number | null | undefined>(undefined);
 
   const [folderFilter, setFolderFilter] = useState<FolderFilter>({ type: "all" });
   const [typingChats, setTypingChats] = useState<Record<number, string>>({});
@@ -110,6 +111,7 @@ export function ChatsContent() {
   useEffect(() => {
     setPage(1);
     setSelectedChatId(null);
+    setSelectedChatPhotoVersion(undefined);
   }, [selectedAccount]);
 
   const chats = loadedChats;
@@ -121,6 +123,7 @@ export function ChatsContent() {
       if (found) {
         setSelectedChatTitle(found.title || t("chats.unknown"));
         setSelectedChatType(found.chat_type);
+        setSelectedChatPhotoVersion(found.photo_version);
         api
           .post(`/accounts/${selectedAccount}/chats/${selectedChatId}/read`)
           .catch(() => {});
@@ -363,6 +366,7 @@ export function ChatsContent() {
     setSelectedChatId(chat.chat_id);
     setSelectedChatTitle(chat.title || t("chats.unknown"));
     setSelectedChatType(chat.chat_type);
+    setSelectedChatPhotoVersion(chat.photo_version);
     if (selectedAccount) {
       queryClient.setQueryData<{ chats: ChatItem[]; total: number }>(
         ["chats", selectedAccount, page],
@@ -388,6 +392,7 @@ export function ChatsContent() {
 
   function handleBackToList() {
     setSelectedChatId(null);
+    setSelectedChatPhotoVersion(undefined);
   }
 
   function handleArchiveClick(e: React.MouseEvent | null, chat: ChatItem) {
@@ -530,6 +535,7 @@ export function ChatsContent() {
               chatId={selectedChatId}
               chatTitle={selectedChatTitle}
               chatType={selectedChatType}
+              photoVersion={selectedChatPhotoVersion}
               getApiUrl={getApiUrl}
               getAuthParam={getAuthParam}
               onBack={handleBackToList}

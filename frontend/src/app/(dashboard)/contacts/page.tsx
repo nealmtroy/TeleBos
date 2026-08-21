@@ -13,6 +13,7 @@ import {
 } from "@/hooks/use-contacts";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -235,26 +236,14 @@ function ContactsContent() {
                     )}
                   >
                     {/* Avatar */}
-                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 relative bg-gray-100">
-                      {isAuthenticated && selectedAccount && (
-                        <img
-                          src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${contact.contact_id}/photo`}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                            const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                            if (fb) fb.style.display = "flex";
-                          }}
-                          className="w-full h-full object-cover"
-                          alt=""
-                        />
-                      )}
-                      <div
-                        className="w-full h-full flex items-center justify-center text-white font-bold text-sm bg-blue-500"
-                        style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
-                      >
-                        {(contact.first_name || "?")[0]?.toUpperCase()}
-                      </div>
-                    </div>
+                    <ChatAvatar
+                      accountId={selectedAccount}
+                      chatId={contact.contact_id}
+                      chatTitle={contact.first_name}
+                      chatType="user"
+                      photoVersion={contact.photo_version}
+                      sizeClassName="w-11 h-11 text-sm font-bold"
+                    />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -337,26 +326,15 @@ function ContactsContent() {
                 <div className="max-w-md mx-auto space-y-6">
                   {/* Avatar & Name */}
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-24 h-24 rounded-full overflow-hidden relative shadow-lg mb-4">
-                      {isAuthenticated && selectedAccount && (
-                        <img
-                          src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${selectedContactId}/photo`}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                            const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                            if (fb) fb.style.display = "flex";
-                          }}
-                          className="w-full h-full object-cover rounded-full"
-                          alt=""
-                        />
-                      )}
-                      <div
-                        className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold"
-                        style={{ display: isAuthenticated && selectedAccount ? "none" : "flex" }}
-                      >
-                        {(contactDetail.first_name || "?")[0]?.toUpperCase()}
-                      </div>
-                    </div>
+                    <ChatAvatar
+                      accountId={selectedAccount}
+                      chatId={selectedContactId}
+                      chatTitle={contactDetail.first_name}
+                      chatType="user"
+                      photoVersion={contactDetail.photo_version}
+                      sizeClassName="w-24 h-24 text-3xl font-bold"
+                      className="shadow-lg mb-4"
+                    />
                     <h2 className="text-xl font-bold text-gray-900">
                       {contactDetail.first_name}
                       {contactDetail.last_name ? ` ${contactDetail.last_name}` : ""}

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { MessageItem, ChatItem } from "./types";
 import { getAvatarGradient, getAuthParam } from "./helpers";
+import { ChatAvatar } from "./ChatAvatar";
 import { ChatRightColumn } from "./ChatRightColumn";
 import { MessageBubble } from "./MessageBubble";
 import { EmojiPicker } from "./EmojiPicker";
@@ -45,6 +46,7 @@ interface MessagePaneProps {
   chatId: number;
   chatTitle: string;
   chatType: string;
+  photoVersion?: number | null;
   getApiUrl: () => string;
   getAuthParam: () => string;
   onBack: () => void;
@@ -58,6 +60,7 @@ export function MessagePane({
   chatId,
   chatTitle,
   chatType,
+  photoVersion,
   getApiUrl,
   getAuthParam,
   onBack,
@@ -639,32 +642,16 @@ export function MessagePane({
           <ArrowLeft className="h-5 w-5" />
         </button>
 
-        <div className="w-10 h-10 rounded-full flex-shrink-0 relative">
-          {isAuthenticated && accountId && (
-            <img
-              src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo`}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                if (fb) fb.style.display = "flex";
-              }}
-              className="w-full h-full object-cover rounded-full"
-              alt=""
-            />
-          )}
-          <div
-            className={cn(
-              "w-full h-full flex items-center justify-center text-white font-bold text-sm select-none rounded-full",
-              chatType === "user" && getAvatarGradient(chatId),
-              (chatType === "group" || chatType === "supergroup") && "bg-emerald-500",
-              chatType === "channel" && "bg-violet-500",
-              chatType === "bot" && "bg-orange-500"
-            )}
-            style={{ display: isAuthenticated && accountId ? "none" : "flex" }}
-          >
-            {(chatTitle || "?")[0]?.toUpperCase()}
-          </div>
-        </div>
+        <ChatAvatar
+          accountId={accountId}
+          chatId={chatId}
+          chatTitle={chatTitle}
+          chatType={chatType}
+          photoVersion={photoVersion}
+          sizeClassName="w-10 h-10 text-sm font-bold"
+          isSavedMessages={chatType === "saved" || chatTitle === "Saved Messages" || chatType === "self"}
+          isTelegram={chatId === 777000 || chatTitle === "Telegram"}
+        />
 
         <div className="flex-1 min-w-0 text-left">
           <h2 className="text-sm font-bold truncate" style={{ color: "var(--tg-text-primary)" }}>{chatTitle}</h2>
@@ -974,6 +961,7 @@ export function MessagePane({
           chatType={chatType}
           chatId={chatId}
           accountId={accountId}
+          photoVersion={photoVersion}
           isAuthenticated={isAuthenticated}
           getApiUrl={getApiUrl}
           getAuthParam={getAuthParam}

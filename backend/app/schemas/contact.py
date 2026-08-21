@@ -11,6 +11,7 @@ class ContactItem(BaseModel):
     username: str | None = None
     phone: str | None = None
     mutual: bool = False
+    photo_version: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -33,5 +34,6 @@ class ContactDetail(BaseModel):
     about: str | None = None
     mutual: bool = False
     common_chats_count: int = 0
+    photo_version: int | None = None
 
     model_config = {"from_attributes": True}

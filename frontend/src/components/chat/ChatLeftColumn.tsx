@@ -38,6 +38,7 @@ import {
 import { ChatItem, FolderFilter } from "./types";
 import { TgIcon } from "./helpers";
 import { AccountSwitcher } from "./AccountSwitcher";
+import { ChatAvatar } from "./ChatAvatar";
 
 // Telegram-style avatar colors (matching tweb)
 const AVATAR_COLORS = [
@@ -296,19 +297,14 @@ export function ChatLeftColumn({
                 {currentAccount && (
                   <div className="px-4 py-3 border-b mb-1 flex items-center justify-between" style={{ borderColor: "var(--tg-divider)" }}>
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-full flex-shrink-0 bg-primary/10 flex items-center justify-center font-bold text-primary text-base overflow-hidden relative">
-                        {isAuthenticated && (
-                          <img
-                            src={`${getApiUrl()}/accounts/${currentAccount.id}/photo`}
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                            className="w-full h-full object-cover rounded-full"
-                            alt=""
-                          />
-                        )}
-                        <span>{((currentAccount.first_name || currentAccount.title) || "?")[0]?.toUpperCase()}</span>
-                      </div>
+                        <ChatAvatar
+                          accountId={currentAccount.id}
+                          chatTitle={currentAccount.first_name || currentAccount.title}
+                          colorId={currentAccount.color_id}
+                          hasProfilePhoto={currentAccount.has_profile_photo}
+                          photoVersion={currentAccount.photo_version}
+                          sizeClassName="w-11 h-11 text-base font-bold"
+                        />
                       <div className="min-w-0 text-left">
                         <div className="font-bold text-sm truncate" style={{ color: "var(--tg-text-primary)" }}>
                           {currentAccount.first_name || currentAccount.title} {currentAccount.last_name || ""}
@@ -738,44 +734,19 @@ export function ChatLeftColumn({
                       )}
 
                       {/* Avatar */}
-                      <div
-                        className="tg-avatar"
-                        style={{
-                          "--avatar-top": avatarColor.top,
-                          "--avatar-bottom": avatarColor.bottom,
-                        } as React.CSSProperties}
+                      {/* Avatar */}
+                      <ChatAvatar
+                        accountId={selectedAccount}
+                        chatId={chat.chat_id}
+                        chatTitle={chat.title}
+                        chatType={chat.chat_type}
+                        colorId={chat.color_id}
+                        photoVersion={chat.photo_version}
+                        sizeClassName="tg-avatar"
+                        isSavedMessages={isSavedMessages}
+                        isTelegram={isTelegram}
+                        fallbackTextClassName="w-full h-full items-center justify-center font-semibold text-lg"
                       >
-                        {isSavedMessages ? (
-                          <Bookmark style={{ width: 22, height: 22, color: "#fff" }} />
-                        ) : isTelegram ? (
-                          <ShieldCheck style={{ width: 22, height: 22, color: "#fff" }} />
-                        ) : (
-                          <>
-                            {isAuthenticated && selectedAccount && chat.photo_version != null && (
-                              <img
-                                src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo?v=${chat.photo_version}`}
-                                onError={(event) => {
-                                  event.currentTarget.style.display = "none";
-                                  const fallback = event.currentTarget.nextElementSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = "flex";
-                                }}
-                                alt=""
-                              />
-                            )}
-                            <span
-                              style={{
-                                display: isAuthenticated && selectedAccount && chat.photo_version != null ? "none" : "flex",
-                                width: "100%",
-                                height: "100%",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              {isBot ? <Bot style={{ width: 22, height: 22, color: "#fff" }} /> : (chat.title || "?")[0]?.toUpperCase()}
-                            </span>
-                          </>
-                        )}
-
                         {/* Online dot */}
                         {onlineUsers[chat.chat_id] && <div className="tg-online-badge" />}
 
@@ -791,7 +762,7 @@ export function ChatLeftColumn({
                             <Archive style={{ width: 10, height: 10, color: "var(--tg-text-tertiary)" }} />
                           </div>
                         )}
-                      </div>
+                      </ChatAvatar>
 
                       {/* Chat Info */}
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>

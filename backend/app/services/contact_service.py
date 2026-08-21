@@ -40,6 +40,8 @@ async def get_contacts(
     # Serialize to dicts
     contact_list = []
     for user in users:
+        photo = getattr(user, "photo", None)
+        photo_version = getattr(photo, "photo_id", None) if photo else None
         contact_list.append({
             "contact_id": user.id,
             "first_name": user.first_name or "",
@@ -47,6 +49,7 @@ async def get_contacts(
             "username": user.username,
             "phone": user.phone,
             "mutual": getattr(user, "mutual_contact", False),
+            "photo_version": photo_version,
         })
 
     # Apply search filter
@@ -99,6 +102,8 @@ async def get_contact_detail(
 
     full_user = full.full_user if full else None
 
+    photo = getattr(entity, "photo", None)
+    photo_version = getattr(photo, "photo_id", None) if photo else None
     return {
         "contact_id": entity.id,
         "first_name": entity.first_name or "",
@@ -108,6 +113,7 @@ async def get_contact_detail(
         "about": getattr(full_user, "about", None),
         "mutual": getattr(entity, "mutual_contact", False),
         "common_chats_count": getattr(full_user, "common_chats_count", 0),
+        "photo_version": photo_version,
     }
 
 

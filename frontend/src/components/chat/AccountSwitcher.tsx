@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Search, X, ChevronDown, Check, Wifi, WifiOff } from "lucide-react";
+import { ChatAvatar } from "./ChatAvatar";
 
 interface AccountSwitcherProps {
   accounts: any[] | undefined;
@@ -116,48 +117,16 @@ export function AccountSwitcher({
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
       >
         {/* Mini avatar */}
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontSize: 14,
-            fontWeight: 600,
-            background: selectedAcc
-              ? `linear-gradient(135deg, ${getAccountColor(activeAccounts.indexOf(selectedAcc)).top}, ${getAccountColor(activeAccounts.indexOf(selectedAcc)).bottom})`
-              : "var(--tg-text-tertiary)",
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
-          {selectedAcc && (
-            <img
-              src={`${getApiUrl()}/accounts/${selectedAcc.id}/photo`}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                if (fb) fb.style.display = "flex";
-              }}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                borderRadius: "50%",
-                position: "absolute",
-                inset: 0,
-              }}
-              alt=""
-            />
-          )}
-          <span style={{ display: selectedAcc ? "none" : "flex" }}>
-            {(displayName[0] || "?").toUpperCase()}
-          </span>
-        </div>
+        {selectedAcc && (
+          <ChatAvatar
+            accountId={selectedAcc.id}
+            chatTitle={displayName}
+            colorId={activeAccounts.indexOf(selectedAcc)}
+            hasProfilePhoto={selectedAcc.has_profile_photo}
+            photoVersion={selectedAcc.photo_version}
+            sizeClassName="w-[36px] h-[36px] text-sm"
+          />
+        )}
 
         {/* Name + phone */}
         <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
@@ -308,44 +277,14 @@ export function AccountSwitcher({
                     }}
                   >
                     {/* Avatar */}
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#fff",
-                        fontSize: 18,
-                        fontWeight: 500,
-                        background: `linear-gradient(135deg, ${color.top}, ${color.bottom})`,
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                    >
-                      <img
-                        src={`${getApiUrl()}/accounts/${acc.id}/photo`}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                          const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (fb) fb.style.display = "flex";
-                        }}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          borderRadius: "50%",
-                          position: "absolute",
-                          inset: 0,
-                        }}
-                        alt=""
-                      />
-                      <span style={{ display: "none" }}>
-                        {(name[0] || "?").toUpperCase()}
-                      </span>
-                    </div>
+                    <ChatAvatar
+                      accountId={acc.id}
+                      chatTitle={name}
+                      colorId={activeAccounts.indexOf(acc)}
+                      hasProfilePhoto={acc.has_profile_photo}
+                      photoVersion={acc.photo_version}
+                      sizeClassName="w-12 h-12 text-lg font-medium"
+                    />
 
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>

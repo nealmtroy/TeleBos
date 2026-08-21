@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 
 const getApiUrl = () => {
   if (typeof window !== "undefined") {
@@ -357,29 +358,15 @@ function GroupsChannelsContent() {
                   href={`/chats?account=${selectedAccount}&chat=${chat.chat_id}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-full flex-shrink-0 relative bg-slate-100 ring-2 ring-slate-100/50 overflow-hidden flex items-center justify-center">
-                    <img
-                      src={`${getApiUrl()}/accounts/${selectedAccount}/chats/${chat.chat_id}/photo`}
-                      onLoad={(e) => {
-                        const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                        if (fb) fb.style.display = "none";
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                      className="w-full h-full object-cover rounded-full"
-                      alt=""
-                    />
-                    <div
-                      className="w-full h-full flex items-center justify-center text-white font-bold text-sm select-none rounded-full"
-                      style={{
-                        backgroundColor: activeTab === "channels" ? "#dbeafe" : "#f3e8ff",
-                        color: activeTab === "channels" ? "#1d4ed8" : "#7c3aed",
-                      }}
-                    >
-                      {(chat.title || "?")[0]?.toUpperCase()}
-                    </div>
-                  </div>
+                  <ChatAvatar
+                    accountId={selectedAccount}
+                    chatId={chat.chat_id}
+                    chatTitle={chat.title}
+                    chatType={activeTab === "channels" ? "channel" : "group"}
+                    photoVersion={chat.photo_version}
+                    sizeClassName="w-10 h-10"
+                    className="ring-2 ring-slate-100/50"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-sm font-semibold truncate text-gray-900">{chat.title}</h3>

@@ -10,6 +10,7 @@ export interface ContactItem {
   username: string | null;
   phone: string | null;
   mutual: boolean;
+  photo_version?: number | null;
 }
 
 export interface ContactDetail extends ContactItem {

@@ -32,6 +32,7 @@ interface ChatRightColumnProps {
   chatType: string;
   chatId: number;
   accountId: string;
+  photoVersion?: number | null;
   isAuthenticated: boolean;
   getApiUrl: () => string;
   getAuthParam: () => string;
@@ -48,6 +49,7 @@ export function ChatRightColumn({
   chatType,
   chatId,
   accountId,
+  photoVersion,
   isAuthenticated,
   getApiUrl,
   getAuthParam,
@@ -199,9 +201,9 @@ export function ChatRightColumn({
         {/* Cover Photo & Avatar Zoom Container */}
         <div className="relative w-full overflow-hidden flex flex-col items-center justify-end" style={{ minHeight: 240 }}>
           {/* Full Cover Image Background */}
-          {isAuthenticated && accountId ? (
+          {isAuthenticated && accountId && photoVersion != null ? (
             <img
-              src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo${getAuthParam()}`}
+              src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo?v=${photoVersion}`}
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
