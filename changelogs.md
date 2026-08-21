@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-21
+- **[6a685fb2](https://github.com/nealmtroy/TeleBos/commit/6a685fb2)**: fix: refactor harvester to enforce chronological monotonicity and store exact midnight dates, reverting estimator source filter
 - **[fb4e8b0e](https://github.com/nealmtroy/TeleBos/commit/fb4e8b0e)**: fix: restrict estimator lookups to curated seeded dataset to prevent chronological skew
 - **[8b3a0522](https://github.com/nealmtroy/TeleBos/commit/8b3a0522)**: fix: convert date string to timezone-aware datetime for PostgreSQL seeding
 - **[0e0ccc97](https://github.com/nealmtroy/TeleBos/commit/0e0ccc97)**: fix: correct programmatic migration database seeding condition

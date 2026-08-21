@@ -944,18 +944,19 @@ def _run_migrations(connection):
             text("CREATE INDEX IF NOT EXISTS ix_telegram_registration_datapoints_registered_at ON telegram_registration_datapoints (registered_at)")
         )
         
-    # Seed datapoints from JSON if no seeded entries exist yet
-    result = connection.execute(text("SELECT count(*) FROM telegram_registration_datapoints WHERE source = 'seeded'"))
-    seeded_count = result.scalar()
-    if seeded_count == 0:
-        import os
-        import json
-        seed_path = os.path.join(os.path.dirname(__file__), "resources", "telegram_reg_date_seed.json")
-        if os.path.exists(seed_path):
-            try:
-                with open(seed_path, "r", encoding="utf-8") as f:
-                    seed_data = json.load(f)
-                
+    # Seed datapoints from JSON if seeded count is less than JSON dataset size
+    import os
+    import json
+    seed_path = os.path.join(os.path.dirname(__file__), "resources", "telegram_reg_date_seed.json")
+    if os.path.exists(seed_path):
+        try:
+            with open(seed_path, "r", encoding="utf-8") as f:
+                seed_data = json.load(f)
+            
+            result = connection.execute(text("SELECT count(*) FROM telegram_registration_datapoints WHERE source = 'seeded'"))
+            seeded_count = result.scalar()
+            
+            if seeded_count < len(seed_data):
                 # Bulk insert using raw SQL parameter binding
                 values_clause = []
                 params = {}
