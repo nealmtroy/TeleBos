@@ -20,6 +20,7 @@ from .account_folder import AccountFolder
 from .account_folder_member import AccountFolderMember
 from .telegram_chat import TelegramChat
 from .notification import Notification
+from .telegram_registration_datapoint import TelegramRegistrationDatapoint
 
 __all__ = [
     "User",
@@ -44,4 +45,5 @@ __all__ = [
     "AccountFolderMember",
     "TelegramChat",
     "Notification",
+    "TelegramRegistrationDatapoint",
 ]

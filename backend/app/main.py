@@ -79,6 +79,7 @@ from app.api import (
     public,
     api_keys,
     notifications,
+    telegram_reg_date,
 )
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
@@ -927,6 +928,48 @@ def _run_migrations(connection):
                         )
                     )
 
+    # ── Telegram ID registration date datapoints table & seeding ──────────
+    if "telegram_registration_datapoints" not in tables:
+        connection.execute(
+            text(
+                "CREATE TABLE telegram_registration_datapoints ("
+                "  telegram_id BIGINT PRIMARY KEY,"
+                "  registered_at TIMESTAMPTZ NOT NULL,"
+                "  source VARCHAR(50) DEFAULT 'seeded' NOT NULL,"
+                "  created_at TIMESTAMPTZ DEFAULT now() NOT NULL"
+                ")"
+            )
+        )
+        connection.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_telegram_registration_datapoints_registered_at ON telegram_registration_datapoints (registered_at)")
+        )
+        
+        # Seed datapoints from JSON
+        import os
+        import json
+        seed_path = os.path.join(os.path.dirname(__file__), "resources", "telegram_reg_date_seed.json")
+        if os.path.exists(seed_path):
+            try:
+                with open(seed_path, "r", encoding="utf-8") as f:
+                    seed_data = json.load(f)
+                
+                # Bulk insert using raw SQL parameter binding
+                values_clause = []
+                params = {}
+                for idx, entry in enumerate(seed_data):
+                    t_id = int(entry["id"])
+                    reg_date = entry["date"] + " 00:00:00+00"  # UTC timezone offset
+                    values_clause.append(f"(:id_{idx}, :date_{idx}, 'seeded')")
+                    params[f"id_{idx}"] = t_id
+                    params[f"date_{idx}"] = reg_date
+                
+                if values_clause:
+                    sql = f"INSERT INTO telegram_registration_datapoints (telegram_id, registered_at, source) VALUES {','.join(values_clause)} ON CONFLICT DO NOTHING"
+                    connection.execute(text(sql), params)
+                    logger.info("Successfully seeded %d Telegram registration datapoints", len(seed_data))
+            except Exception as e:
+                logger.error("Failed to seed Telegram registration datapoints: %s", e)
+
 
 # Configure logging
 logging.basicConfig(
@@ -1306,6 +1349,7 @@ app.include_router(system.router)
 app.include_router(public.router)
 app.include_router(api_keys.router)
 app.include_router(notifications.router, prefix="/api/v1")
+app.include_router(telegram_reg_date.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

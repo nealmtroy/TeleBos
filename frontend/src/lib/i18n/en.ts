@@ -26,6 +26,7 @@ const en: Dict = {
     administrations: "Administrations",
     redeem: "Redeem",
     smm: "SMM",
+    ageChecker: "Age Checker",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────
@@ -310,6 +311,7 @@ const en: Dict = {
     spamLimitActive: "Spam Limit Active",
 
     // New / redesigned fields
+    estRegDate: "Estimated Reg. Date",
     telegramId: "Telegram ID",
     telegramIdCopied: "Copied!",
     contacts: "Contacts",
@@ -1456,6 +1458,29 @@ const en: Dict = {
     redeemedAt: "Redeemed At",
     detail: "Detail",
     noLogs: "No redemption logs yet.",
+  },
+  ageChecker: {
+    title: "Telegram ID Age Checker",
+    subtitle: "Estimate when a Telegram account was created based on its numeric User ID.",
+    inputLabel: "Telegram ID",
+    inputPlaceholder: "Enter a Telegram ID (e.g. 1350180828)",
+    checkButton: "Estimate Registration Date",
+    checking: "Calculating...",
+    resultTitle: "Estimation Results",
+    estRegDate: "Estimated Registration Date",
+    estAge: "Estimated Age",
+    statusLabel: "Estimate Status",
+    explanationTitle: "How does it work?",
+    explanationText: "Telegram User IDs are assigned sequentially. This utility estimates the registration date by performing linear interpolation between known, verified sign-up timestamps in our database. The accuracy depends on the density of datapoints around the target ID.",
+    errorInvalidId: "Please enter a valid positive numeric Telegram ID.",
+    statusExact: "Verified Exact Match",
+    statusApprox: "Interpolated Estimate (Approximate)",
+    statusOlder: "Older than dataset minimum (Approximate)",
+    statusNewer: "Newer than dataset maximum (Approximate)",
+    statusUnknown: "Unknown (Unable to interpolate)",
+    scanButton: "Scan Dialogs for Datapoints",
+    scanning: "Scanning...",
+    scanSuccess: "Successfully scanned and harvested {count} new registration datapoints!",
   },
 };
 

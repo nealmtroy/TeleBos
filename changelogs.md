@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-08-17
+- **[804310a8](https://github.com/nealmtroy/TeleBos/commit/804310a8)**: fix: resolve client pool connection leak and auto-unblock logging bot
+
 ## 2026-08-11
 - **[d00b6aac](https://github.com/nealmtroy/TeleBos/commit/d00b6aac)**: feat: persist user notifications in postgres
 

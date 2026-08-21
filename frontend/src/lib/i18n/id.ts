@@ -26,6 +26,7 @@ const id: Dict = {
     administrations: "Administrasi",
     redeem: "Redeem",
     smm: "SMM",
+    ageChecker: "Cek Umur ID",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────
@@ -310,6 +311,7 @@ const id: Dict = {
     spamLimitActive: "Batas Spam Aktif",
 
     // New / redesigned fields
+    estRegDate: "Estimasi Tgl. Registrasi",
     telegramId: "ID Telegram",
     telegramIdCopied: "Disalin!",
     contacts: "Kontak",
@@ -1456,6 +1458,29 @@ const id: Dict = {
     redeemedAt: "Ditukar Pada",
     detail: "Detail",
     noLogs: "Belum ada riwayat penukaran.",
+  },
+  ageChecker: {
+    title: "Cek Umur ID Telegram",
+    subtitle: "Estimasi waktu pembuatan akun Telegram berdasarkan numeric User ID.",
+    inputLabel: "ID Telegram",
+    inputPlaceholder: "Masukkan ID Telegram (contoh: 1350180828)",
+    checkButton: "Estimasi Tanggal Registrasi",
+    checking: "Menghitung...",
+    resultTitle: "Hasil Estimasi",
+    estRegDate: "Estimasi Tanggal Registrasi",
+    estAge: "Estimasi Umur Akun",
+    statusLabel: "Status Estimasi",
+    explanationTitle: "Bagaimana cara kerjanya?",
+    explanationText: "User ID Telegram diberikan secara berurutan. Alat ini mengestimasi tanggal pendaftaran dengan melakukan interpolasi linear antara data pendaftaran yang terverifikasi di database kami. Akurasi estimasi bergantung pada kepadatan titik data di sekitar ID target.",
+    errorInvalidId: "Silakan masukkan ID Telegram angka positif yang valid.",
+    statusExact: "Cocok Persis Terverifikasi",
+    statusApprox: "Estimasi Interpolasi (Mendekati)",
+    statusOlder: "Lebih lama dari batas minimum dataset (Mendekati)",
+    statusNewer: "Lebih baru dari batas maksimum dataset (Mendekati)",
+    statusUnknown: "Tidak Diketahui (Gagal melakukan interpolasi)",
+    scanButton: "Pindai Dialog untuk Data Registrasi",
+    scanning: "Memindai...",
+    scanSuccess: "Berhasil memindai dan mengumpulkan {count} data registrasi baru!",
   },
 };
 

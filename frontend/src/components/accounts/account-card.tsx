@@ -176,6 +176,14 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               <span className="text-[10px] text-gray-400">User ID:</span>
               <CopyableId id={account.telegram_id} />
             </div>
+            {account.est_reg_date_age && (
+              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-gray-500">
+                <span className="text-gray-400">Est. Age:</span>
+                <span className="font-semibold text-gray-800" title={account.est_reg_date_status || undefined}>
+                  {account.est_reg_date_age}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -59,6 +59,11 @@ const groupsChannelsSubItems = [
   { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search },
 ];
 
+const accountsSubItems = [
+  { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, exact: true },
+  { href: "/accounts/age-checker", labelKey: "nav.ageChecker", icon: Clock },
+];
+
 const servicesSubItems = [
   { href: "/orders/members", labelKey: "nav.telegramMembers", icon: Users },
   { href: "/orders/reactions", labelKey: "nav.telegramReactions", icon: Sparkles },
@@ -125,6 +130,7 @@ export function Sidebar() {
   const _ = useT();
   const locale = useI18nStore((s) => s.locale);
 
+  const isAccountsPage = pathname.startsWith("/accounts");
   const isBroadcastPage = pathname.startsWith("/broadcast");
   const isGroupsChannelsPage = pathname.startsWith("/groups-channels");
   const isServicesOpen =
@@ -141,6 +147,7 @@ export function Sidebar() {
     pathname.startsWith("/admin/redeem-logs");
   const isAdminSmmOpen = pathname.startsWith("/admin/smm");
 
+  const [accountsOpen, setAccountsOpen] = useState(isAccountsPage);
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
   const [servicesOpen, setServicesOpen] = useState(isServicesOpen);
@@ -155,6 +162,7 @@ export function Sidebar() {
 
   // Auto-open sections on mount / pathname change
   useEffect(() => {
+    if (isAccountsPage) setAccountsOpen(true);
     if (isBroadcastPage) setBroadcastOpen(true);
     if (isGroupsChannelsPage) setGroupsChannelsOpen(true);
     if (isServicesOpen) setServicesOpen(true);
@@ -218,7 +226,14 @@ export function Sidebar() {
       labelKey: locale === "id" ? "MENU UTAMA" : "MAIN MENU",
       items: [
         { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, minRole: 0 },
-        { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, minRole: 0 },
+        {
+          href: "/accounts",
+          labelKey: "nav.accounts",
+          icon: Smartphone,
+          hasSubItems: true,
+          subItems: accountsSubItems,
+          minRole: 0,
+        },
         { href: "/chats", labelKey: "nav.chats", icon: MessageSquare, minRole: 0 },
         { href: "/contacts", labelKey: "nav.contacts", icon: Users, minRole: 1 },
         {
@@ -314,6 +329,7 @@ export function Sidebar() {
   }
 
   const getSubmenuState = (href: string) => {
+    if (href.startsWith("/accounts")) return { isOpen: accountsOpen, setIsOpen: setAccountsOpen };
     if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
     if (href.startsWith("/groups-channels")) return { isOpen: groupsChannelsOpen, setIsOpen: setGroupsChannelsOpen };
     if (href === "/orders-services") return { isOpen: servicesOpen, setIsOpen: setServicesOpen };

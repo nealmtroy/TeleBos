@@ -221,6 +221,22 @@ export default function AccountDetailPage() {
                   {formatDate(account.created_at)}
                 </p>
               </div>
+              {account.est_reg_date && (
+                <div>
+                  <span className="text-xs text-gray-400 uppercase" title={account.est_reg_date_status || undefined}>
+                    {_("accountDetail.estRegDate")}
+                  </span>
+                  <p className="text-sm text-gray-900 font-medium">
+                    {new Date(account.est_reg_date).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                    {account.est_reg_date_age && ` (~${account.est_reg_date_age})`}
+                  </p>
+                </div>
+              )}
               <div>
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.spamStatus")}</span>
                 <div className="flex items-center gap-2 mt-0.5">

@@ -36,6 +36,13 @@ async def refresh_account_stats(db: AsyncSession, account) -> None:
     account.owned_channels = stats["owned_channels"]
     account.stats_updated_at = datetime.now(timezone.utc)
 
+    # Passive harvest of Telegram ID age registration datapoints (limited to 100 to avoid rate limits)
+    try:
+        from app.services.telegram_reg_date_service import reg_date_service
+        await reg_date_service.sync_datapoints_from_account(db, account.id, limit=100)
+    except Exception as exc:
+        logger.warning("Failed background sync of registration dates for account %s: %s", account.id, exc)
+
     await db.flush()
     logger.info(
         "Refreshed stats for account %s: %d contacts, %d groups, %d channels",

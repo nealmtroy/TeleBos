@@ -493,6 +493,17 @@ async def upload_session(
     return account
 
 
+async def resolve_reg_dates_for_accounts(db: AsyncSession, accounts: list) -> None:
+    from app.services.telegram_reg_date_service import reg_date_service
+    for account in accounts:
+        if account.telegram_id:
+            est = await reg_date_service.get_estimated_registration_date(db, account.telegram_id)
+            if est:
+                account.est_reg_date = est["date"].isoformat() if est["date"] else None
+                account.est_reg_date_age = est["age"]
+                account.est_reg_date_status = est["status"]
+
+
 @router.get("", response_model=AccountListResponse)
 async def list_accounts(
     folder_id: str | None = Query(None),
@@ -515,6 +526,7 @@ async def list_accounts(
         pages = math.ceil(total / lim) if lim > 0 else 0
         
         await resolve_prices_for_accounts(db, accounts)
+        await resolve_reg_dates_for_accounts(db, accounts)
         
         return AccountListResponse(
             accounts=accounts,
@@ -530,6 +542,7 @@ async def list_accounts(
             accounts = await account_service.get_accounts_for_user(db, user)
             
         await resolve_prices_for_accounts(db, accounts)
+        await resolve_reg_dates_for_accounts(db, accounts)
         
         return AccountListResponse(
             accounts=accounts,
@@ -552,6 +565,16 @@ async def get_account(
 
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
+    
+    # Resolve estimated registration date
+    if account.telegram_id:
+        from app.services.telegram_reg_date_service import reg_date_service
+        est = await reg_date_service.get_estimated_registration_date(db, account.telegram_id)
+        if est:
+            account.est_reg_date = est["date"].isoformat() if est["date"] else None
+            account.est_reg_date_age = est["age"]
+            account.est_reg_date_status = est["status"]
+
     return account
 
 

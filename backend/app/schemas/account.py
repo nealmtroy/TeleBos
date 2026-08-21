@@ -107,6 +107,10 @@ class AccountResponse(BaseModel):
     spam_detail: str | None = None
     spam_last_checked_at: datetime | None = None
 
+    est_reg_date: str | None = None
+    est_reg_date_age: str | None = None
+    est_reg_date_status: str | None = None
+
     folder_ids: list[UUID] = []
 
     model_config = {"from_attributes": True}

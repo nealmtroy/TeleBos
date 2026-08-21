@@ -30,6 +30,9 @@ export interface Account {
   sell_price: number | null;
   for_sale: boolean;
   folder_ids: string[];
+  est_reg_date?: string | null;
+  est_reg_date_age?: string | null;
+  est_reg_date_status?: string | null;
 }
 
 export interface ApiError {

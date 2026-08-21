@@ -26,6 +26,7 @@ export interface Dict {
     administrations: string;
     redeem: string;
     smm: string;
+    ageChecker: string;
   };
 
   // Account Folders
@@ -310,6 +311,7 @@ export interface Dict {
     spamLimitActive: string;
 
     // New / redesigned fields
+    estRegDate: string;
     telegramId: string;
     telegramIdCopied: string;
     contacts: string;
@@ -1455,5 +1457,30 @@ export interface Dict {
     redeemedAt: string;
     detail: string;
     noLogs: string;
+  };
+
+  // Age Checker Page
+  ageChecker: {
+    title: string;
+    subtitle: string;
+    inputLabel: string;
+    inputPlaceholder: string;
+    checkButton: string;
+    checking: string;
+    resultTitle: string;
+    estRegDate: string;
+    estAge: string;
+    statusLabel: string;
+    explanationTitle: string;
+    explanationText: string;
+    errorInvalidId: string;
+    statusExact: string;
+    statusApprox: string;
+    statusOlder: string;
+    statusNewer: string;
+    statusUnknown: string;
+    scanButton: string;
+    scanning: string;
+    scanSuccess: string;
   };
 }
