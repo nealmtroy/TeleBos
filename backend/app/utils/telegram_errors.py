@@ -14,6 +14,8 @@ from telethon.errors import (
     ChannelPrivateError,
     UserNotParticipantError,
     PhoneNumberBannedError,
+    PhoneNumberInvalidError,
+    PhoneNumberFloodError,
     MessageTooLongError,
     MessageEmptyError,
     AuthKeyUnregisteredError,
@@ -181,6 +183,12 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if isinstance(exc, PhoneNumberBannedError):
         return ("phone_banned", "Phone number is banned from Telegram")
 
+    if isinstance(exc, PhoneNumberInvalidError):
+        return ("phone_invalid", "The phone number is invalid")
+
+    if isinstance(exc, PhoneNumberFloodError):
+        return ("phone_flood", "Too many verification requests for this phone number. Please try again later.")
+
     if isinstance(exc, MessageTooLongError):
         return ("message_too_long", "Message text is too long for Telegram (limit is 4096 characters)")
 
@@ -258,6 +266,15 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
 
     # Generic fallback: try to parse common RPC errors
     msg = str(exc)
+    if "PHONE_NUMBER_INVALID" in msg:
+        return ("phone_invalid", "The phone number is invalid")
+
+    if "PHONE_NUMBER_BANNED" in msg:
+        return ("phone_banned", "Phone number is banned from Telegram")
+
+    if "PHONE_NUMBER_FLOOD" in msg:
+        return ("phone_flood", "Too many verification requests for this phone number. Please try again later.")
+
     if "FLOOD_WAIT" in msg:
         match = re.search(r"FLOOD_WAIT_(\d+)", msg)
         seconds = match.group(1) if match else "?"

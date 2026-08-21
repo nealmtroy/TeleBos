@@ -28,6 +28,14 @@ def sanitize_exception(exc: Exception, *, context: str = "") -> str:
             msg = msg[:_MAX_DETAIL_LEN] + "…"
         return msg
 
+    try:
+        from app.utils.telegram_errors import classify_telegram_error
+        err_type, err_msg = classify_telegram_error(exc)
+        if err_type != "unknown":
+            return err_msg
+    except Exception:
+        pass
+
     # Unknown / potentially leaky exception — log full details and suppress
     logger.error(
         "Unhandled exception in API%s: %s: %s",

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-21
+- **[345b0b03](https://github.com/nealmtroy/TeleBos/commit/345b0b03)**: feat: increase accounts page pagination limit to 12 for better desktop responsiveness
 - **[d8b4c3d7](https://github.com/nealmtroy/TeleBos/commit/d8b4c3d7)**: fix(deps): add @types/pg to frontend devDependencies for Next.js build compile
 - **[8c802a73](https://github.com/nealmtroy/TeleBos/commit/8c802a73)**: fix(deps): remove @better-auth/cli from devDependencies to eliminate better-sqlite3 from direct dependencies
 - **[1eca222b](https://github.com/nealmtroy/TeleBos/commit/1eca222b)**: fix(docker): use --legacy-peer-deps in npm ci to skip better-sqlite3 peer installation
