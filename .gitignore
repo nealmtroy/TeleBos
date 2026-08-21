@@ -83,3 +83,7 @@ tweb_reference/
 # Graphify & AI scratch directory
 graphify-out/
 scratch/
+
+# Seed dataset
+backend/app/resources/telegram_reg_date_seed.json
+
