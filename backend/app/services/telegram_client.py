@@ -175,6 +175,27 @@ class TelegramClientPool:
             logger.error("Cannot validate account %s: Telegram API is unconfigured", account_id)
             return "unknown"
 
+        # Check if the client is already connected in the pool to avoid duplicate connection/session ID conflicts
+        existing = self._clients.get(account_id)
+        if existing is not None:
+            existing_client = existing["client"]
+            if existing_client.is_connected():
+                try:
+                    logger.info("Using active cached client to validate session for account %s", account_id)
+                    is_auth = await existing_client.is_user_authorized()
+                    return "valid" if is_auth else "invalid"
+                except (
+                    AuthKeyUnregisteredError,
+                    AuthKeyDuplicatedError,
+                    SessionRevokedError,
+                    UserDeactivatedBanError,
+                ) as exc:
+                    logger.info("Marketplace session validation marked %s invalid (cached): %s", account_id, exc)
+                    return "invalid"
+                except Exception as exc:
+                    logger.warning("Marketplace session validation could not verify %s (cached): %s", account_id, exc)
+                    # Fall through to create a new client if checking the cached one raises a transient network issue
+
         client: TelegramClient | None = None
         try:
             async with self._connect_semaphore:
