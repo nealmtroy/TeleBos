@@ -31,10 +31,7 @@ class TelegramRegDateService:
             return None
 
         # 1. Check if exact match exists in database
-        stmt = select(TelegramRegistrationDatapoint).where(
-            TelegramRegistrationDatapoint.telegram_id == telegram_id,
-            TelegramRegistrationDatapoint.source == "seeded"
-        )
+        stmt = select(TelegramRegistrationDatapoint).where(TelegramRegistrationDatapoint.telegram_id == telegram_id)
         result = await db.execute(stmt)
         exact = result.scalar_one_or_none()
         if exact:
@@ -47,10 +44,7 @@ class TelegramRegDateService:
         # 2. Find closest lower ID
         stmt_lower = (
             select(TelegramRegistrationDatapoint)
-            .where(
-                TelegramRegistrationDatapoint.telegram_id < telegram_id,
-                TelegramRegistrationDatapoint.source == "seeded"
-            )
+            .where(TelegramRegistrationDatapoint.telegram_id < telegram_id)
             .order_by(TelegramRegistrationDatapoint.telegram_id.desc())
             .limit(1)
         )
@@ -60,10 +54,7 @@ class TelegramRegDateService:
         # 3. Find closest upper ID
         stmt_upper = (
             select(TelegramRegistrationDatapoint)
-            .where(
-                TelegramRegistrationDatapoint.telegram_id > telegram_id,
-                TelegramRegistrationDatapoint.source == "seeded"
-            )
+            .where(TelegramRegistrationDatapoint.telegram_id > telegram_id)
             .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
             .limit(1)
         )
@@ -151,7 +142,12 @@ class TelegramRegDateService:
                     msg = dialog.message
                     if msg and isinstance(msg, MessageService) and isinstance(msg.action, MessageActionContactSignUp):
                         telegram_id = dialog.id
-                        registered_at = msg.date
+                        
+                        # Truncate time to midnight UTC to match dataset.json formatting exactly
+                        date_only = msg.date.date()
+                        registered_at = datetime.datetime.combine(
+                            date_only, datetime.time.min, tzinfo=datetime.timezone.utc
+                        )
 
                         # Check if this ID already exists
                         stmt = select(TelegramRegistrationDatapoint).where(
@@ -160,6 +156,43 @@ class TelegramRegDateService:
                         result = await db.execute(stmt)
                         existing = result.scalar_one_or_none()
                         if not existing:
+                            # Enforce monotonicity check to prevent contact sync date anomalies
+                            # 1. Find closest lower ID in the database
+                            stmt_low = (
+                                select(TelegramRegistrationDatapoint)
+                                .where(TelegramRegistrationDatapoint.telegram_id < telegram_id)
+                                .order_by(TelegramRegistrationDatapoint.telegram_id.desc())
+                                .limit(1)
+                            )
+                            res_low = await db.execute(stmt_low)
+                            low_dp = res_low.scalar_one_or_none()
+
+                            # 2. Find closest upper ID in the database
+                            stmt_up = (
+                                select(TelegramRegistrationDatapoint)
+                                .where(TelegramRegistrationDatapoint.telegram_id > telegram_id)
+                                .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
+                                .limit(1)
+                            )
+                            res_up = await db.execute(stmt_up)
+                            up_dp = res_up.scalar_one_or_none()
+
+                            is_monotonic = True
+                            if low_dp and registered_at < low_dp.registered_at:
+                                is_monotonic = False
+                            if up_dp and registered_at > up_dp.registered_at:
+                                is_monotonic = False
+
+                            if not is_monotonic:
+                                logger.warning(
+                                    "Skipping non-monotonic sync datapoint: ID=%d, Date=%s (Bounds: %s to %s)",
+                                    telegram_id,
+                                    registered_at.date(),
+                                    low_dp.registered_at.date() if low_dp else "None",
+                                    up_dp.registered_at.date() if up_dp else "None",
+                                )
+                                continue
+
                             dp = TelegramRegistrationDatapoint(
                                 telegram_id=telegram_id,
                                 registered_at=registered_at,
