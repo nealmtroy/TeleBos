@@ -25,6 +25,7 @@ const ROLE_LIMITS: Record<string, number> = {
 };
 
 export default function AccountsListPage() {
+  const PAGE_SIZE = 12;
   const _ = useT();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,7 +61,7 @@ export default function AccountsListPage() {
   const { data: accountsData } = useAccounts(); // For limit checks and offline calculations
   const { data: paginatedData, isLoading, error } = useAccountsPaginated({
     page,
-    limit: 10,
+    limit: PAGE_SIZE,
     search: debouncedSearch,
     folder_id: selectedFolderId,
     status: statusFilter === "all" ? null : statusFilter,
@@ -293,8 +294,8 @@ export default function AccountsListPage() {
         >
           <p className="text-sm text-gray-500">
             {_("accountsList.showingAccounts", {
-              start: (page - 1) * 10 + 1,
-              end: Math.min(page * 10, totalItems),
+              start: (page - 1) * PAGE_SIZE + 1,
+              end: Math.min(page * PAGE_SIZE, totalItems),
               total: totalItems,
             })}
           </p>

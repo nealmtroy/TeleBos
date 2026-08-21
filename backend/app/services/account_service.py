@@ -585,7 +585,7 @@ async def get_accounts_paginated(
     db: AsyncSession,
     user: User,
     page: int = 1,
-    limit: int = 10,
+    limit: int = 12,
     search: str | None = None,
     folder_id: str | None = None,
     status: str | None = None,

@@ -518,7 +518,7 @@ async def list_accounts(
 
     if page is not None or limit is not None or search is not None or status is not None:
         p = page or 1
-        lim = limit or 10
+        lim = limit or 12
         accounts, total = await account_service.get_accounts_paginated(
             db, user, page=p, limit=lim, search=search, folder_id=folder_id, status=status
         )
