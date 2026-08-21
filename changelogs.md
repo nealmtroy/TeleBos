@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-21
+- **[08010b27](https://github.com/nealmtroy/TeleBos/commit/08010b27)**: remove: untrack telegram_reg_date_seed.json and add it to .gitignore
 - **[7501c7cc](https://github.com/nealmtroy/TeleBos/commit/7501c7cc)**: fix: correct try-except indentation in main.py migration seeder
 - **[6012e9b1](https://github.com/nealmtroy/TeleBos/commit/6012e9b1)**: fix: dynamically check seeded count against JSON dataset size to allow re-seeding
 - **[6a685fb2](https://github.com/nealmtroy/TeleBos/commit/6a685fb2)**: fix: refactor harvester to enforce chronological monotonicity and store exact midnight dates, reverting estimator source filter

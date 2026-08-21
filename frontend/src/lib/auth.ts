@@ -196,7 +196,9 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    twoFactor(),
+    twoFactor({
+      issuer: "TeleBos",
+    }),
     nextCookies(),
   ],
 });

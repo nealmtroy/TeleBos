@@ -126,6 +126,20 @@ export interface Dict {
     resendingVerification: string;
     resendFailed: string;
     verificationSent: string;
+    twoFactorTitle: string;
+    twoFactorDesc: string;
+    backupCodeTitle: string;
+    backupCodeDesc: string;
+    codeLabel: string;
+    codePlaceholder: string;
+    backupCodeLabel: string;
+    backupCodePlaceholder: string;
+    trustDevice: string;
+    verify: string;
+    verifying: string;
+    useBackupCode: string;
+    useTotp: string;
+    backToLogin: string;
   };
 
   // Auth — Register
@@ -638,6 +652,30 @@ export interface Dict {
     failedLoadApiKeys: string;
     failedCreateApiKey: string;
     failedRevokeApiKey: string;
+    twoFactorTitle: string;
+    twoFactorDesc: string;
+    twoFactorEnabledStatus: string;
+    twoFactorDisabledStatus: string;
+    enable2FA: string;
+    disable2FA: string;
+    setup2FATitle: string;
+    setup2FADesc: string;
+    enterCode: string;
+    enterCodePlaceholder: string;
+    verifyAndEnable: string;
+    backupCodesTitle: string;
+    backupCodesDesc: string;
+    backupCodesCopied: string;
+    saveBackupCodes: string;
+    totpInvalid: string;
+    totpSuccess: string;
+    disableSuccess: string;
+    regenerateBackupCodes: string;
+    regenerateBackupCodesConfirm: string;
+    enterPasswordConfirm: string;
+    enterPasswordConfirmDesc: string;
+    passwordRequired: string;
+    done: string;
   };
 
   // Account Settings (per-account)

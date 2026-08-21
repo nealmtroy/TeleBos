@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
-import { ArrowLeft, Eye, EyeOff, KeyRound, CheckCircle2, AlertCircle, Loader2, Copy, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, KeyRound, CheckCircle2, AlertCircle, Loader2, Copy, ShieldCheck, Trash2, Lock } from "lucide-react";
 import api from "@/lib/api";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import QRCode from "react-qr-code";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function SettingsPage() {
   const _ = useT();
@@ -26,6 +28,156 @@ export default function SettingsPage() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // 2FA state variables
+  const { data: session } = authClient.useSession();
+  const twoFactorEnabled = session?.user?.twoFactorEnabled;
+
+  const [twoFaLoading, setTwoFaLoading] = useState(false);
+  const [twoFaError, setTwoFaError] = useState<string | null>(null);
+  const [twoFaPassword, setTwoFaPassword] = useState("");
+  const [twoFaStep, setTwoFaStep] = useState<"inactive" | "verify" | "backup_codes">("inactive");
+  const [totpURI, setTotpURI] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"disable" | "regenerate" | null>(null);
+  const [showTwoFaPassword, setShowTwoFaPassword] = useState(false);
+
+  const handleEnable2FAStart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!twoFaPassword) {
+      setTwoFaError(_("settings.passwordRequired"));
+      return;
+    }
+    setTwoFaError(null);
+    setTwoFaLoading(true);
+
+    try {
+      const { data, error } = await authClient.twoFactor.enable({
+        password: twoFaPassword,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to enable 2FA setup");
+      }
+
+      if (data) {
+        setTotpURI(data.totpURI);
+        setBackupCodes(data.backupCodes);
+        setTwoFaStep("verify");
+        setTwoFaPassword(""); // Clear password
+      }
+    } catch (err: any) {
+      setTwoFaError(err.message || "An error occurred during 2FA setup");
+    } finally {
+      setTwoFaLoading(false);
+    }
+  };
+
+  const handleVerify2FACode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!totpCode) return;
+    setTwoFaError(null);
+    setTwoFaLoading(true);
+
+    try {
+      const { error } = await authClient.twoFactor.verifyTotp({
+        code: totpCode,
+        trustDevice: true,
+      });
+
+      if (error) {
+        throw new Error(error.message || _("settings.totpInvalid"));
+      }
+
+      setTwoFaStep("backup_codes");
+      toast.success(_("settings.totpSuccess"));
+    } catch (err: any) {
+      setTwoFaError(err.message || _("settings.totpInvalid"));
+    } finally {
+      setTwoFaLoading(false);
+    }
+  };
+
+  const handleDisable2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!twoFaPassword) {
+      setTwoFaError(_("settings.passwordRequired"));
+      return;
+    }
+    setTwoFaError(null);
+    setTwoFaLoading(true);
+
+    try {
+      const { error } = await authClient.twoFactor.disable({
+        password: twoFaPassword,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to disable 2FA");
+      }
+
+      setTwoFaPassword("");
+      setConfirmAction(null);
+      await useAuthStore.getState().fetchMe();
+      toast.success(_("settings.disableSuccess"));
+    } catch (err: any) {
+      setTwoFaError(err.message || "Incorrect password");
+    } finally {
+      setTwoFaLoading(false);
+    }
+  };
+
+  const handleRegenerateBackupCodes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!twoFaPassword) {
+      setTwoFaError(_("settings.passwordRequired"));
+      return;
+    }
+    setTwoFaError(null);
+    setTwoFaLoading(true);
+
+    try {
+      const { data, error } = await authClient.twoFactor.generateBackupCodes({
+        password: twoFaPassword,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to regenerate backup codes");
+      }
+
+      if (data) {
+        setBackupCodes(data.backupCodes);
+        setTwoFaStep("backup_codes");
+        setTwoFaPassword("");
+        setConfirmAction(null);
+        toast.success(_("settings.apiKeyCreated"));
+      }
+    } catch (err: any) {
+      setTwoFaError(err.message || "Incorrect password");
+    } finally {
+      setTwoFaLoading(false);
+    }
+  };
+
+  const handleDoneEnabled = async () => {
+    await useAuthStore.getState().fetchMe();
+    setTwoFaStep("inactive");
+    setTotpURI("");
+    setBackupCodes([]);
+    setTotpCode("");
+    setTwoFaPassword("");
+    setTwoFaError(null);
+  };
+
+  const copyBackupCodesToClipboard = async () => {
+    if (backupCodes.length === 0) return;
+    await navigator.clipboard.writeText(backupCodes.join("\n"));
+    setCopiedBackupCodes(true);
+    toast.success(_("settings.copied"));
+    setTimeout(() => setCopiedBackupCodes(false), 2000);
+  };
 
   type ApiKey = {
     id: string;
@@ -383,6 +535,340 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Two-Factor Authentication (2FA) Card */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mt-8">
+        {/* Card header */}
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {_("settings.twoFactorTitle")}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {_("settings.twoFactorDesc")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card body */}
+        <div className="p-6">
+          {/* Success / Error Messages */}
+          {twoFaError && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-rose-50 border border-rose-200 mb-5 animate-[slideDown_0.2s_ease-out]">
+              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+              <p className="text-sm font-medium text-rose-800">{twoFaError}</p>
+            </div>
+          )}
+
+          {/* 1. SETUP FLOW - VERIFY TOTP CODE */}
+          {twoFaStep === "verify" && (
+            <form onSubmit={handleVerify2FACode} className="space-y-6 animate-[slideDown_0.2s_ease-out]">
+              <div className="rounded-xl bg-slate-50 border border-slate-200/60 p-4 text-sm text-slate-700 leading-relaxed">
+                {_("settings.setup2FADesc")}
+              </div>
+
+              {totpURI && (
+                <div className="flex flex-col items-center gap-4 py-2">
+                  <QRCode
+                    value={totpURI}
+                    size={180}
+                    className="border-4 border-white rounded-xl shadow-sm"
+                  />
+                  {/* Manual secret display */}
+                  {(() => {
+                    const parsedUrl = new URL(totpURI);
+                    const secret = parsedUrl.searchParams.get("secret");
+                    return secret ? (
+                      <div className="text-center w-full max-w-sm">
+                        <span className="text-xs text-gray-400 block mb-1">Manual Secret Key</span>
+                        <code className="text-xs bg-slate-100 text-slate-800 px-3 py-1.5 rounded-lg select-all font-mono tracking-wider break-all block">
+                          {secret}
+                        </code>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">
+                  {_("settings.enterCode")}
+                </label>
+                <input
+                  type="text"
+                  value={totpCode}
+                  onChange={(e) => {
+                    setTotpCode(e.target.value);
+                    setTwoFaError(null);
+                  }}
+                  placeholder={_("settings.enterCodePlaceholder")}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-mono text-center tracking-widest placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
+                  maxLength={6}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTwoFaStep("inactive");
+                    setTwoFaPassword("");
+                    setTwoFaError(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
+                >
+                  {_("navbar.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={twoFaLoading || totpCode.length < 6}
+                  className={cn(
+                    "flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-200 shadow-sm",
+                    twoFaLoading || totpCode.length < 6
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 active:scale-[0.98]"
+                  )}
+                >
+                  {twoFaLoading ? (
+                    <span className="inline-flex items-center gap-2 justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {_("settings.generatingKey")}
+                    </span>
+                  ) : (
+                    _("settings.verifyAndEnable")
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* 2. BACKUP CODES DISPLAY */}
+          {twoFaStep === "backup_codes" && (
+            <div className="space-y-6 animate-[slideDown_0.2s_ease-out]">
+              <div className="rounded-xl bg-slate-50 border border-slate-200/60 p-4 text-sm text-slate-700 leading-relaxed">
+                {_("settings.backupCodesDesc")}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {backupCodes.map((code, idx) => (
+                  <div
+                    key={idx}
+                    className="font-mono text-sm font-medium text-slate-800 bg-slate-50 border border-slate-200/80 rounded-xl py-3 text-center tracking-widest select-all shadow-sm"
+                  >
+                    {code}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={copyBackupCodesToClipboard}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
+                >
+                  <Copy className="h-4 w-4" />
+                  {copiedBackupCodes ? _("settings.copied") : _("settings.saveBackupCodes")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDoneEnabled}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white shadow-sm bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all duration-200 text-center"
+                >
+                  {_("settings.done")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 3. CONFIRMING ACTION (DISABLE OR REGENERATE CODES) */}
+          {confirmAction && (
+            <form
+              onSubmit={
+                confirmAction === "disable"
+                  ? handleDisable2FA
+                  : handleRegenerateBackupCodes
+              }
+              className="space-y-5 animate-[slideDown_0.2s_ease-out]"
+            >
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  {_("settings.enterPasswordConfirm")}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {_("settings.enterPasswordConfirmDesc")}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="relative">
+                  <input
+                    type={showTwoFaPassword ? "text" : "password"}
+                    value={twoFaPassword}
+                    onChange={(e) => {
+                      setTwoFaPassword(e.target.value);
+                      setTwoFaError(null);
+                    }}
+                    placeholder={_("settings.currentPasswordPlaceholder")}
+                    className="w-full px-4 py-2.5 pr-11 rounded-xl border border-gray-300 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
+                    required
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTwoFaPassword(!showTwoFaPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                  >
+                    {showTwoFaPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmAction(null);
+                    setTwoFaPassword("");
+                    setTwoFaError(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 active:scale-[0.98] transition-all duration-200"
+                >
+                  {_("navbar.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={twoFaLoading || !twoFaPassword}
+                  className={cn(
+                    "flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-200 shadow-sm",
+                    twoFaLoading || !twoFaPassword
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : confirmAction === "disable"
+                      ? "bg-rose-600 hover:bg-rose-700 active:scale-[0.98]"
+                      : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 active:scale-[0.98]"
+                  )}
+                >
+                  {twoFaLoading ? (
+                    <span className="inline-flex items-center gap-2 justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {_("settings.changingPassword")}
+                    </span>
+                  ) : confirmAction === "disable" ? (
+                    _("settings.disable2FA")
+                  ) : (
+                    _("settings.regenerateBackupCodes")
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* 4. DEFAULT VIEW (INACTIVE / STATIC) */}
+          {twoFaStep === "inactive" && !confirmAction && (
+            <div className="space-y-5 animate-[slideIn_0.15s_ease-out]">
+              {twoFactorEnabled ? (
+                /* ENABLED STATE PANEL */
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                    <p className="text-sm font-medium">
+                      {_("settings.twoFactorEnabledStatus")}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmAction("regenerate")}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 active:scale-[0.98] transition-all duration-200 text-center"
+                    >
+                      {_("settings.regenerateBackupCodes")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmAction("disable")}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-rose-200 text-sm font-medium text-rose-600 bg-white hover:bg-rose-50 hover:border-rose-300 active:scale-[0.98] transition-all duration-200 text-center"
+                    >
+                      {_("settings.disable2FA")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* DISABLED STATE PANEL (WITH EXPANDABLE PASSWORD FORM) */
+                <form onSubmit={handleEnable2FAStart} className="space-y-5">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-800">
+                    <AlertCircle className="h-5 w-5 text-slate-500 shrink-0" />
+                    <p className="text-sm font-medium">
+                      {_("settings.twoFactorDisabledStatus")}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700">
+                        {_("settings.enterPasswordConfirm")}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showTwoFaPassword ? "text" : "password"}
+                          value={twoFaPassword}
+                          onChange={(e) => {
+                            setTwoFaPassword(e.target.value);
+                            setTwoFaError(null);
+                          }}
+                          placeholder={_("settings.currentPasswordPlaceholder")}
+                          className="w-full px-4 py-2.5 pr-11 rounded-xl border border-gray-300 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowTwoFaPassword(!showTwoFaPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                        >
+                          {showTwoFaPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={twoFaLoading || !twoFaPassword}
+                      className={cn(
+                        "w-full px-6 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-200 shadow-sm",
+                        twoFaLoading || !twoFaPassword
+                          ? "bg-gray-300 cursor-not-allowed"
+                          : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 active:scale-[0.98]"
+                      )}
+                    >
+                      {twoFaLoading ? (
+                        <span className="inline-flex items-center gap-2 justify-center">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {_("settings.changingPassword")}
+                        </span>
+                      ) : (
+                        _("settings.enable2FA")
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Integration API Keys */}

@@ -47,7 +47,9 @@ function LoginForm() {
     } catch (err: any) {
       const code = err?.code || null;
       setErrorCode(code);
-      if (code === "ACCOUNT_LOCKED") {
+      if (code === "TWO_FACTOR_REQUIRED") {
+        router.push("/login/two-factor");
+      } else if (code === "ACCOUNT_LOCKED") {
         setRetryAfterMinutes(err?.retryAfterMinutes || null);
         setError(err?.message || _("login.loginFailed"));
       } else if (code === "TOO_MANY_REQUESTS") {

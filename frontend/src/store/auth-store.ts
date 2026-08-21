@@ -63,7 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   login: async (email: string, password: string) => {
-    const { error } = await authClient.signIn.email({ email, password });
+    const { data, error } = await authClient.signIn.email({ email, password });
     if (error) {
       const err = new Error(error.message || "Login failed");
       (err as any).code = error.code;
@@ -71,6 +71,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       if ((error as any).retryAfterMinutes !== undefined) {
         (err as any).retryAfterMinutes = (error as any).retryAfterMinutes;
       }
+      throw err;
+    }
+
+    if ((data as any)?.twoFactorRedirect) {
+      const err = new Error("2FA verification required");
+      (err as any).code = "TWO_FACTOR_REQUIRED";
       throw err;
     }
 
