@@ -972,8 +972,8 @@ def _run_migrations(connection):
                     sql = f"INSERT INTO telegram_registration_datapoints (telegram_id, registered_at, source) VALUES {','.join(values_clause)} ON CONFLICT DO NOTHING"
                     connection.execute(text(sql), params)
                     logger.info("Successfully seeded %d Telegram registration datapoints", len(seed_data))
-            except Exception as e:
-                logger.error("Failed to seed Telegram registration datapoints: %s", e)
+        except Exception as e:
+            logger.error("Failed to seed Telegram registration datapoints: %s", e)
 
 
 # Configure logging
