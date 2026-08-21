@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-21
+- **[1eca222b](https://github.com/nealmtroy/TeleBos/commit/1eca222b)**: fix(docker): use --legacy-peer-deps in npm ci to skip better-sqlite3 peer installation
 - **[07df02c4](https://github.com/nealmtroy/TeleBos/commit/07df02c4)**: fix(docker): omit optional dependencies in frontend npm ci to avoid compilation errors
 - **[771214aa](https://github.com/nealmtroy/TeleBos/commit/771214aa)**: feat(auth): implement user two-factor authentication (2FA) via TOTP
 - **[08010b27](https://github.com/nealmtroy/TeleBos/commit/08010b27)**: remove: untrack telegram_reg_date_seed.json and add it to .gitignore
