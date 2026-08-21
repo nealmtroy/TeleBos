@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-21
+- **[45bdd7f7](https://github.com/nealmtroy/TeleBos/commit/45bdd7f7)**: fix(frontend): prevent 404 console errors for expired account profile photos
 - **[9551f302](https://github.com/nealmtroy/TeleBos/commit/9551f302)**: refactor(frontend/backend): unify chat and contact avatars with reusable ChatAvatar component
 - **[04f55ffe](https://github.com/nealmtroy/TeleBos/commit/04f55ffe)**: fix(telegram): reuse active cached client in validate_session to prevent concurrent session conflicts
 - **[e91451dc](https://github.com/nealmtroy/TeleBos/commit/e91451dc)**: build(frontend): add sharp dependency for standalone image optimization
