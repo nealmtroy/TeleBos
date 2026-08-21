@@ -959,9 +959,10 @@ def _run_migrations(connection):
                 # Bulk insert using raw SQL parameter binding
                 values_clause = []
                 params = {}
+                import datetime
                 for idx, entry in enumerate(seed_data):
                     t_id = int(entry["id"])
-                    reg_date = entry["date"] + " 00:00:00+00"  # UTC timezone offset
+                    reg_date = datetime.datetime.fromisoformat(entry["date"]).replace(tzinfo=datetime.timezone.utc)
                     values_clause.append(f"(:id_{idx}, :date_{idx}, 'seeded')")
                     params[f"id_{idx}"] = t_id
                     params[f"date_{idx}"] = reg_date
