@@ -72,6 +72,7 @@ def _schedule_sync(account_id: str) -> None:
 
 async def _background_chat_sync(account_id: str) -> None:
     """Run profile, chat, and folder synchronization in the background using a fresh DB session."""
+    from app.database import async_session_factory
     from app.services.chat_service import sync_all_chats_to_db, sync_folders_from_telegram
     from app.services.profile_sync_service import sync_account_profile
     from app.api.ws import manager

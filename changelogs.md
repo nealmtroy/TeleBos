@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-23
+- **[eb63f615](https://github.com/nealmtroy/TeleBos/commit/eb63f615)**: refactor: optimize Telegram API calls, sequential worker, and fix event handlers
 - **[f1a98dfc](https://github.com/nealmtroy/TeleBos/commit/f1a98dfc)**: feat: automate telegram registration date sync background loop
 
 ## 2026-08-21
