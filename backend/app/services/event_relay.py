@@ -899,43 +899,6 @@ class TelegramEventRelay:
                     result = await db.execute(stmt)
                     existing = result.scalar_one_or_none()
                     if not existing:
-                        # Enforce monotonicity check to prevent contact sync date anomalies
-                        # 1. Find closest lower ID in the database
-                        stmt_low = (
-                            select(TelegramRegistrationDatapoint)
-                            .where(TelegramRegistrationDatapoint.telegram_id < telegram_id)
-                            .order_by(TelegramRegistrationDatapoint.telegram_id.desc())
-                            .limit(1)
-                        )
-                        res_low = await db.execute(stmt_low)
-                        low_dp = res_low.scalar_one_or_none()
-
-                        # 2. Find closest upper ID in the database
-                        stmt_up = (
-                            select(TelegramRegistrationDatapoint)
-                            .where(TelegramRegistrationDatapoint.telegram_id > telegram_id)
-                            .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
-                            .limit(1)
-                        )
-                        res_up = await db.execute(stmt_up)
-                        up_dp = res_up.scalar_one_or_none()
-
-                        is_monotonic = True
-                        if low_dp and registered_at < low_dp.registered_at:
-                            is_monotonic = False
-                        if up_dp and registered_at > up_dp.registered_at:
-                            is_monotonic = False
-
-                        if not is_monotonic:
-                            logger.warning(
-                                "Skipping non-monotonic real-time datapoint: ID=%d, Date=%s (Bounds: %s to %s)",
-                                telegram_id,
-                                registered_at.date(),
-                                low_dp.registered_at.date() if low_dp else "None",
-                                up_dp.registered_at.date() if up_dp else "None",
-                            )
-                            return
-
                         dp = TelegramRegistrationDatapoint(
                             telegram_id=telegram_id,
                             registered_at=registered_at,
