@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-08-23
+- **[e443a9c8](https://github.com/nealmtroy/TeleBos/commit/e443a9c8)**: refactor: remove registration date monotonicity checks to match sibling project
 - **[9ef5c379](https://github.com/nealmtroy/TeleBos/commit/9ef5c379)**: fix: import async_session_factory in background chat sync
 - **[eb63f615](https://github.com/nealmtroy/TeleBos/commit/eb63f615)**: refactor: optimize Telegram API calls, sequential worker, and fix event handlers
 - **[f1a98dfc](https://github.com/nealmtroy/TeleBos/commit/f1a98dfc)**: feat: automate telegram registration date sync background loop

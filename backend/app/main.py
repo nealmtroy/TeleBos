@@ -1131,9 +1131,9 @@ async def lifespan(app: FastAPI):
                         except Exception as chat_exc:
                             logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
                             
-                        # Step C: Sync Registration Dates (limit to 20 dialogs since we have real-time harvesting)
+                        # Step C: Sync Registration Dates (limit to 500 dialogs)
                         try:
-                            await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=20)
+                            await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=500)
                         except Exception as reg_exc:
                             logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
 
