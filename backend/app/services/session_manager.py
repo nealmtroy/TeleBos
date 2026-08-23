@@ -72,8 +72,7 @@ def _schedule_sync(account_id: str) -> None:
 
 async def _background_chat_sync(account_id: str) -> None:
     """Run profile, chat, and folder synchronization in the background using a fresh DB session."""
-    from app.database import async_session_factory
-    from app.services.chat_service import sync_chats_to_db, sync_folders_from_telegram
+    from app.services.chat_service import sync_all_chats_to_db, sync_folders_from_telegram
     from app.services.profile_sync_service import sync_account_profile
     from app.api.ws import manager
 
@@ -98,21 +97,17 @@ async def _background_chat_sync(account_id: str) -> None:
                     except Exception as profile_exc:
                         logger.error("Error in background profile sync for account %s: %s", account_id, profile_exc)
 
-                    # 2. Sync chats (e.g. users/dialogs)
-                    await sync_chats_to_db(account, db)
+                    # 2. Consolidated Sync of Chats, Groups, Channels
+                    try:
+                        await sync_all_chats_to_db(account, db, skip_details=False)
+                    except Exception as chats_exc:
+                        logger.error("Error in consolidated background sync for account %s: %s", account_id, chats_exc)
 
                     # 3. Sync folders (e.g. folder categories)
                     try:
                         await sync_folders_from_telegram(account, db)
                     except Exception as folders_exc:
                         logger.warning("Error in background folders sync for account %s: %s", account_id, folders_exc)
-
-                    # 4. Sync groups and channels
-                    try:
-                        from app.services.chat_service import sync_groups_channels_to_db
-                        await sync_groups_channels_to_db(account, db)
-                    except Exception as gc_exc:
-                        logger.warning("Error in background groups/channels sync for account %s: %s", account_id, gc_exc)
 
                     # Explicitly commit all synced data
                     await db.commit()
@@ -335,6 +330,24 @@ class SessionManager:
             return False
         clients = await client_pool.get_connected_clients()
         if account_id in clients:
+            # Pastikan handler terpasang (aman dipanggil berulang kali karena memiliki proteksi duplikasi)
+            from app.database import async_session_factory
+            import uuid
+            try:
+                async with async_session_factory() as db:
+                    result = await db.execute(
+                        select(TelegramAccount.session_string).where(
+                            TelegramAccount.id == uuid.UUID(account_id),
+                            TelegramAccount.is_active.is_(True),
+                        )
+                    )
+                    row = result.fetchone()
+                    if row and row[0]:
+                        session_str = decrypt(row[0])
+                        if session_str:
+                            await event_relay.attach(account_id, session_str)
+            except Exception as exc:
+                logger.warning("Failed to re-attach event handler in ensure_connected_on_demand for account %s: %s", account_id, exc)
             return True
 
         owner = False

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-08-23
+- **[f1a98dfc](https://github.com/nealmtroy/TeleBos/commit/f1a98dfc)**: feat: automate telegram registration date sync background loop
+
 ## 2026-08-21
 - **[570d180f](https://github.com/nealmtroy/TeleBos/commit/570d180f)**: fix(backend): set profile_photo_path to null if cached file does not exist on disk
 - **[45bdd7f7](https://github.com/nealmtroy/TeleBos/commit/45bdd7f7)**: fix(frontend): prevent 404 console errors for expired account profile photos

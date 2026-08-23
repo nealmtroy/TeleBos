@@ -177,6 +177,12 @@ class TelegramEventRelay:
             sender = None
             logger.debug("Failed to get sender for new message (account %s)", account_id)
 
+        # Check for contact signup service messages to harvest registration date datapoints in real-time
+        from telethon.tl.types import MessageService, MessageActionContactSignUp
+        if isinstance(msg, MessageService) and isinstance(msg.action, MessageActionContactSignUp) and chat:
+            asyncio.create_task(self._harvest_registration_datapoint(msg, chat.id))
+            return
+
         channel = f"chats:{account_id}"
 
         # Determine media details
@@ -871,6 +877,75 @@ class TelegramEventRelay:
                         )
         except Exception as exc:
             logger.warning("Instant profile sync failed for %s: %s", account_id, exc)
+
+    async def _harvest_registration_datapoint(self, msg, telegram_id: int) -> None:
+        """Harvest registration date datapoint in real-time from a MessageActionContactSignUp event."""
+        import datetime as dt
+        from app.models.telegram_registration_datapoint import TelegramRegistrationDatapoint
+
+        # Truncate time to midnight UTC to match dataset.json formatting exactly
+        date_only = msg.date.date()
+        registered_at = datetime.combine(
+            date_only, dt.time.min, tzinfo=timezone.utc
+        )
+
+        async with self._db_sem:
+            try:
+                async with async_session_factory() as db:
+                    # Check if this ID already exists
+                    stmt = select(TelegramRegistrationDatapoint).where(
+                        TelegramRegistrationDatapoint.telegram_id == telegram_id
+                    )
+                    result = await db.execute(stmt)
+                    existing = result.scalar_one_or_none()
+                    if not existing:
+                        # Enforce monotonicity check to prevent contact sync date anomalies
+                        # 1. Find closest lower ID in the database
+                        stmt_low = (
+                            select(TelegramRegistrationDatapoint)
+                            .where(TelegramRegistrationDatapoint.telegram_id < telegram_id)
+                            .order_by(TelegramRegistrationDatapoint.telegram_id.desc())
+                            .limit(1)
+                        )
+                        res_low = await db.execute(stmt_low)
+                        low_dp = res_low.scalar_one_or_none()
+
+                        # 2. Find closest upper ID in the database
+                        stmt_up = (
+                            select(TelegramRegistrationDatapoint)
+                            .where(TelegramRegistrationDatapoint.telegram_id > telegram_id)
+                            .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
+                            .limit(1)
+                        )
+                        res_up = await db.execute(stmt_up)
+                        up_dp = res_up.scalar_one_or_none()
+
+                        is_monotonic = True
+                        if low_dp and registered_at < low_dp.registered_at:
+                            is_monotonic = False
+                        if up_dp and registered_at > up_dp.registered_at:
+                            is_monotonic = False
+
+                        if not is_monotonic:
+                            logger.warning(
+                                "Skipping non-monotonic real-time datapoint: ID=%d, Date=%s (Bounds: %s to %s)",
+                                telegram_id,
+                                registered_at.date(),
+                                low_dp.registered_at.date() if low_dp else "None",
+                                up_dp.registered_at.date() if up_dp else "None",
+                            )
+                            return
+
+                        dp = TelegramRegistrationDatapoint(
+                            telegram_id=telegram_id,
+                            registered_at=registered_at,
+                            source="realtime",
+                        )
+                        db.add(dp)
+                        await db.commit()
+                        logger.info("Successfully harvested 1 new signup datapoint in real-time for ID %d", telegram_id)
+            except Exception as exc:
+                logger.exception("Error harvesting real-time signup datapoint: %s", exc)
 
 
 # Singleton

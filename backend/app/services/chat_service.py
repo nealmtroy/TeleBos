@@ -93,41 +93,98 @@ async def update_account_stats_from_db(account: TelegramAccount, db: AsyncSessio
         account.owned_channels = row.owned_channels
 
 
-async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
-    """Sync groups, channels, supergroups, and user chats into local DB."""
+async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> None:
+    """Sync all chats (private, bots, groups, supergroups, channels) in a consolidated dialog call."""
+    import datetime as dt
     try:
         client = await get_active_client(account)
     except RuntimeError as exc:
         logger.error("Failed to sync chats for account %s: %s", account.id, exc)
         return
 
-    logger.info("Starting chat synchronization for account %s...", account.id)
+    logger.info("Starting consolidated chat synchronization for account %s...", account.id)
 
-    synced_chat_ids = set()
-    values = []
-
+    # 1. Fetch dialogs once (folder 0 and folder 1, to make sure we get everything)
     try:
-        # 1. Fetch main dialogs (folder 0)
-        dialogs = await client.get_dialogs(limit=100, folder=0)
-        for d in dialogs:
-            chat_type_val = _classify_chat(d.entity)
-            if chat_type_val in ("group", "supergroup", "channel"):
+        dialogs_folder_0 = await client.get_dialogs(limit=500, folder=0)
+    except Exception as exc:
+        logger.error("Error during get_dialogs folder 0 for account %s: %s", account.id, exc)
+        return
+
+    dialogs_folder_1 = []
+    try:
+        dialogs_folder_1 = await client.get_dialogs(limit=100, folder=1)
+    except Exception as exc:
+        logger.debug("Failed to fetch archived dialogs (folder 1) for account %s: %s", account.id, exc)
+
+    all_dialogs = dialogs_folder_0 + dialogs_folder_1
+
+    private_values = []
+    group_channel_values = []
+    
+    synced_private_ids = set()
+    synced_group_channel_ids = set()
+
+    for d in all_dialogs:
+        chat_type_val = _classify_chat(d.entity)
+        is_creator = getattr(d.entity, "creator", False)
+        access_hash = getattr(d.entity, "access_hash", None)
+        
+        # Save last message details
+        last_msg = None
+        last_time = None
+        if d.message:
+            last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+            last_time = d.message.date
+
+        avatar_metadata = _avatar_metadata(d.entity)
+        is_archived = getattr(d, "folder_id", 0) == 1 or getattr(d, "is_archived", False)
+
+        if chat_type_val in ("group", "supergroup", "channel"):
+            if d.id in synced_group_channel_ids:
                 continue
-            if d.id in synced_chat_ids:
+            left = getattr(d.entity, "left", False)
+            deactivated = getattr(d.entity, "deactivated", False)
+            is_active = not (left or deactivated)
+            
+            # Fetch detailed member stats and invite links if active and not skip_details
+            member_count = None
+            online_count = None
+            invite_link = None
+            if is_active and not skip_details:
+                try:
+                    member_count, online_count, invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
+                except Exception as detail_exc:
+                    logger.debug("Failed to get full chat details for %s: %s", d.id, detail_exc)
+
+            group_channel_values.append({
+                "id": uuid.uuid4(),
+                "account_id": account.id,
+                "chat_id": d.id,
+                "title": d.name or d.title or "Unknown",
+                "username": getattr(d.entity, "username", None),
+                "type": chat_type_val,
+                **avatar_metadata,
+                "unread_count": d.unread_count or 0,
+                "last_message": last_msg,
+                "last_message_date": last_time,
+                "access_hash": access_hash,
+                "is_active": is_active,
+                "is_creator": is_creator,
+                "is_archived": is_archived,
+                "is_pinned": getattr(d, "pinned", False),
+                "is_muted": _is_chat_muted(d),
+                "member_count": member_count,
+                "online_count": online_count,
+                "invite_link": invite_link,
+            })
+            if is_active:
+                synced_group_channel_ids.add(d.id)
+        else:
+            if d.id in synced_private_ids:
                 continue
-            is_creator = getattr(d.entity, "creator", False)
-            access_hash = getattr(d.entity, "access_hash", None)
-
-            # Save the last message text and date
-            last_msg = None
-            last_time = None
-            if d.message:
-                last_msg = d.message.text or "[non-text message]" if d.message.text else ""
-                last_time = d.message.date
-
-            avatar_metadata = _avatar_metadata(d.entity)
-
-            values.append({
+            
+            private_values.append({
                 "id": uuid.uuid4(),
                 "account_id": account.id,
                 "chat_id": d.id,
@@ -141,72 +198,26 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
                 "access_hash": access_hash,
                 "is_active": True,
                 "is_creator": is_creator,
-                "is_archived": False,
+                "is_archived": is_archived,
                 "is_pinned": getattr(d, "pinned", False),
                 "is_muted": _is_chat_muted(d),
             })
-            synced_chat_ids.add(d.id)
+            synced_private_ids.add(d.id)
 
-        # 2. Fetch archived dialogs (folder 1)
-        try:
-            archived_dialogs = await client.get_dialogs(limit=100, folder=1)
-            for d in archived_dialogs:
-                chat_type_val = _classify_chat(d.entity)
-                if chat_type_val in ("group", "supergroup", "channel"):
-                    continue
-                if d.id in synced_chat_ids:
-                    continue
-                is_creator = getattr(d.entity, "creator", False)
-                access_hash = getattr(d.entity, "access_hash", None)
+    # 2. Bulk upsert both private chats and group/channels in the DB
+    if private_values:
+        await _upsert_telegram_chats(db, private_values, preserve_details=True)
+    if group_channel_values:
+        await _upsert_telegram_chats(db, group_channel_values, preserve_details=True)
 
-                # Save the last message text and date
-                last_msg = None
-                last_time = None
-                if d.message:
-                    last_msg = d.message.text or "[non-text message]" if d.message.text else ""
-                    last_time = d.message.date
-
-                avatar_metadata = _avatar_metadata(d.entity)
-
-                values.append({
-                    "id": uuid.uuid4(),
-                    "account_id": account.id,
-                    "chat_id": d.id,
-                    "title": d.name or d.title or "Unknown",
-                    "username": getattr(d.entity, "username", None),
-                    "type": chat_type_val,
-                    **avatar_metadata,
-                    "unread_count": d.unread_count or 0,
-                    "last_message": last_msg,
-                    "last_message_date": last_time,
-                    "access_hash": access_hash,
-                    "is_active": True,
-                    "is_creator": is_creator,
-                    "is_archived": True,
-                    "is_pinned": getattr(d, "pinned", False),
-                    "is_muted": _is_chat_muted(d),
-                })
-                synced_chat_ids.add(d.id)
-        except Exception as arch_exc:
-            logger.debug("Failed to fetch archived dialogs (folder=1): %s", arch_exc)
-
-    except Exception as exc:
-        logger.error("Error during get_dialogs for account %s: %s", account.id, exc)
-        return
-
-    if not values:
-        logger.info("No dialogs found for account %s to sync", account.id)
-        return
-
-    await _upsert_telegram_chats(db, values, preserve_details=True)
-
-    # Mark other chats no longer present in sync as inactive (excluding groups/channels)
-    if synced_chat_ids:
+    # 3. Mark chats not returned in this sync as inactive
+    # Non group/channel chats
+    if synced_private_ids:
         await db.execute(
             update(TelegramChat)
             .where(TelegramChat.account_id == account.id)
             .where(TelegramChat.type.not_in(["group", "supergroup", "channel"]))
-            .where(TelegramChat.chat_id.not_in(list(synced_chat_ids)))
+            .where(TelegramChat.chat_id.not_in(list(synced_private_ids)))
             .values(is_active=False, updated_at=func.now())
         )
     else:
@@ -217,8 +228,41 @@ async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
             .values(is_active=False, updated_at=func.now())
         )
 
+    # Group/channel chats
+    if synced_group_channel_ids:
+        await db.execute(
+            update(TelegramChat)
+            .where(TelegramChat.account_id == account.id)
+            .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
+            .where(TelegramChat.chat_id.not_in(list(synced_group_channel_ids)))
+            .values(is_active=False, updated_at=func.now())
+        )
+    else:
+        await db.execute(
+            update(TelegramChat)
+            .where(TelegramChat.account_id == account.id)
+            .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
+            .values(is_active=False, updated_at=func.now())
+        )
+
+    # 4. Refresh cached stats and update timestamps
+    await update_account_stats_from_db(account, db)
+    now_utc = dt.datetime.now(dt.timezone.utc)
+    account.groups_channels_synced_at = now_utc
+    account.last_sync_at = now_utc
+
     await db.commit()
-    logger.info("Successfully synced %d chats for account %s", len(synced_chat_ids), account.id)
+    logger.info(
+        "Successfully consolidated sync for account %s: %d chats, %d groups/channels",
+        account.id,
+        len(synced_private_ids),
+        len(synced_group_channel_ids),
+    )
+
+
+async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:
+    """Deprecated: Use sync_all_chats_to_db. Backward compatibility wrapper."""
+    await sync_all_chats_to_db(account, db, skip_details=True)
 
 
 async def get_dialogs(
@@ -794,102 +838,7 @@ async def get_full_chat_details(client, entity, chat_type: str):
 
 
 async def sync_groups_channels_to_db(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> None:
-    """Fetch all groups and channels the account is joined to and cache in the DB."""
-    import datetime as dt
-    from sqlalchemy.dialects.postgresql import insert
-
-    client = await get_active_client(account)
-
-    logger.info("Starting groups & channels sync for account %s...", account.id)
-
-    synced_group_channel_ids = set()
-    values = []
-
-    seen_chat_ids = set()
-    try:
-        dialogs = await client.get_dialogs(limit=500)
-        for d in dialogs:
-            chat_type_val = _classify_chat(d.entity)
-            if chat_type_val not in ("group", "supergroup", "channel"):
-                continue
-            if d.id in seen_chat_ids:
-                continue
-            seen_chat_ids.add(d.id)
-
-            left = getattr(d.entity, "left", False)
-            deactivated = getattr(d.entity, "deactivated", False)
-            is_active = not (left or deactivated)
-            is_creator = getattr(d.entity, "creator", False)
-            access_hash = getattr(d.entity, "access_hash", None)
-
-            # Save the last message text and date
-            last_msg = None
-            last_time = None
-            if d.message:
-                last_msg = d.message.text or "[non-text message]" if d.message.text else ""
-                last_time = d.message.date
-
-            # Fetch detailed member stats and invite links
-            member_count = None
-            online_count = None
-            invite_link = None
-            if is_active and not skip_details:
-                member_count, online_count, invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
-
-            values.append({
-                "id": uuid.uuid4(),
-                "account_id": account.id,
-                "chat_id": d.id,
-                "title": d.name or d.title or "Unknown",
-                "username": getattr(d.entity, "username", None),
-                "type": chat_type_val,
-                **_avatar_metadata(d.entity),
-                "unread_count": d.unread_count or 0,
-                "last_message": last_msg,
-                "last_message_date": last_time,
-                "access_hash": access_hash,
-                "is_active": is_active,
-                "is_creator": is_creator,
-                "is_archived": getattr(d, "folder_id", 0) == 1,
-                "is_pinned": getattr(d, "pinned", False),
-                "is_muted": _is_chat_muted(d),
-                "member_count": member_count,
-                "online_count": online_count,
-                "invite_link": invite_link,
-            })
-            if is_active:
-                synced_group_channel_ids.add(d.id)
-    except Exception as exc:
-        logger.error("Error during get_dialogs for account %s: %s", account.id, exc)
-        raise RuntimeError(f"Telegram API error: {exc}")
-
-    # Bulk upsert groups and channels
-    await _upsert_telegram_chats(db, values, preserve_details=True)
-
-    # Mark groups and channels that were not returned in this sync as inactive
-    if synced_group_channel_ids:
-        await db.execute(
-            update(TelegramChat)
-            .where(TelegramChat.account_id == account.id)
-            .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
-            .where(TelegramChat.chat_id.not_in(list(synced_group_channel_ids)))
-            .values(is_active=False, updated_at=func.now())
-        )
-    else:
-        await db.execute(
-            update(TelegramChat)
-            .where(TelegramChat.account_id == account.id)
-            .where(TelegramChat.type.in_(["group", "supergroup", "channel"]))
-            .values(is_active=False, updated_at=func.now())
-        )
-
-    # Refresh cached counts on TelegramAccount model
-    await update_account_stats_from_db(account, db)
-
-    # Update synced_at timestamp
-    account.groups_channels_synced_at = dt.datetime.now(dt.timezone.utc)
-    
-    await db.commit()
-    logger.info("Successfully synced %d groups/channels for account %s", len(synced_group_channel_ids), account.id)
+    """Deprecated: Use sync_all_chats_to_db. Backward compatibility wrapper."""
+    await sync_all_chats_to_db(account, db, skip_details=skip_details)
 
 

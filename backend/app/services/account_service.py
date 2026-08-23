@@ -968,40 +968,32 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     try:
-        # 1. Send /start to @SpamBot
-        try:
-            sent_msg = await client.send_message("SpamBot", "/start")
-        except Exception as e:
-            from telethon.errors import YouBlockedUserError
-            if isinstance(e, YouBlockedUserError) or "you blocked this user" in str(e).lower():
-                logger.info("SpamBot is blocked for account %s. Unblocking...", account.phone)
-                from telethon import functions
-                try:
-                    await client(functions.contacts.UnblockRequest(id="SpamBot"))
-                    sent_msg = await client.send_message("SpamBot", "/start")
-                except Exception as unblock_err:
-                    logger.error("Failed to unblock SpamBot for account %s: %s", account.phone, unblock_err)
-                    raise e
-            else:
-                raise e
-
-        # 2. Poll for response messages for up to 5 seconds
+        # 1. Send /start to @SpamBot using conversation API
         response_msg = None
-        for _ in range(5):
-            messages = await client.get_messages("SpamBot", limit=5)
-            for msg in messages:
-                # incoming message (not sent by us)
-                if not msg.out:
-                    # Verify it's after the sent message
-                    if sent_msg and msg.date >= sent_msg.date:
-                        response_msg = msg
-                        break
-            if response_msg:
-                break
-            await asyncio.sleep(1.0)
-
-        # Fallback to the latest incoming message if no exact date match found
+        try:
+            async with client.conversation("SpamBot") as conv:
+                try:
+                    await conv.send_message("/start")
+                except Exception as e:
+                    from telethon.errors import YouBlockedUserError
+                    if isinstance(e, YouBlockedUserError) or "you blocked this user" in str(e).lower():
+                        logger.info("SpamBot is blocked for account %s. Unblocking...", account.phone)
+                        from telethon import functions
+                        try:
+                            await client(functions.contacts.UnblockRequest(id="SpamBot"))
+                            await conv.send_message("/start")
+                        except Exception as unblock_err:
+                            logger.error("Failed to unblock SpamBot for account %s: %s", account.phone, unblock_err)
+                            raise e
+                    else:
+                        raise e
+                response_msg = await conv.get_response(timeout=10)
+        except Exception as conv_exc:
+            logger.error("Conversation with SpamBot failed for account %s: %s", account.phone, conv_exc)
+            
+        # Fallback to the latest incoming message if conversation fails or returns no response
         if not response_msg:
+            logger.info("SpamBot conversation returned no response for %s, falling back to get_messages...", account.phone)
             messages = await client.get_messages("SpamBot", limit=5)
             for msg in messages:
                 if not msg.out:

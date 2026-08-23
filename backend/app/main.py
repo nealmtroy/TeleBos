@@ -1063,70 +1063,111 @@ async def lifespan(app: FastAPI):
 
     twofa_sync_task = asyncio.create_task(background_twofa_updater())
 
-    # 5. Spawn profile sync background loop (checks every 5 minutes)
-    from app.services.profile_sync_service import sync_all_profiles
+    # 5. Spawn adaptive sequential sync worker (combines profile, chats, groups, channels, and registration date sync)
+    async def _adaptive_sequential_sync_loop():
+        """Periodically sync profiles, chats, groups, channels, and registration dates sequentially."""
+        from datetime import datetime, timezone, timedelta
+        from sqlalchemy import select, or_
+        from app.models.telegram_account import TelegramAccount
+        from app.services.profile_sync_service import sync_account_profile
+        from app.services.chat_service import sync_all_chats_to_db
+        from app.services.telegram_reg_date_service import reg_date_service
 
-    async def _profile_sync_loop():
-        """Periodically sync Telegram profile changes."""
         await asyncio.sleep(60)  # Initial delay — let accounts connect first
+        
         while True:
             try:
-                await sync_all_profiles()
-            except Exception as exc:
-                logger.warning("Profile sync loop error: %s", exc)
-            await asyncio.sleep(300)  # Every 5 minutes
-
-    profile_sync_task = asyncio.create_task(_profile_sync_loop())
-    logger.info("Profile sync background task started (5-min interval)")
-
-    async def _groups_channels_sync_loop():
-        """Periodically sync Telegram groups and channels for active accounts."""
-        await asyncio.sleep(120)  # Initial delay — let accounts connect and profile sync run first
-        while True:
-            try:
-                from app.services.chat_service import sync_groups_channels_to_db
-                from app.models.telegram_account import TelegramAccount
-                from datetime import datetime, timezone, timedelta
-                from sqlalchemy import select, or_
-
+                # 1. Fetch the active account with the oldest last_sync_at (or None)
                 async with async_session_factory() as db:
-                    # Find active accounts that haven't been synced in the last hour
-                    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
                     stmt = select(TelegramAccount).where(
                         TelegramAccount.is_active == True,
-                        or_(
-                            TelegramAccount.groups_channels_synced_at.is_(None),
-                            TelegramAccount.groups_channels_synced_at < one_hour_ago,
-                        ),
-                    )
+                        TelegramAccount.session_string != "",
+                    ).order_by(
+                        TelegramAccount.last_sync_at.asc().nullsfirst()
+                    ).limit(1)
                     res = await db.execute(stmt)
-                    accounts = res.scalars().all()
+                    account = res.scalar_one_or_none()
+                    
+                    if not account:
+                        logger.info("Adaptive Sync: No active accounts found. Sleeping for 30 seconds.")
+                        await asyncio.sleep(30)
+                        continue
+                    
+                    # 2. Check if the oldest account needs a sync.
+                    # We sync an account if it hasn't been synced in the last hour, or if last_sync_at is None.
+                    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+                    last_sync = account.last_sync_at
+                    if last_sync and last_sync.tzinfo is None:
+                        last_sync = last_sync.replace(tzinfo=timezone.utc)
+                        
+                    if last_sync and last_sync >= one_hour_ago:
+                        # Even the oldest account is fresh (< 1 hour old). Wait before checking again.
+                        logger.debug("Adaptive Sync: All accounts are fresh (oldest last_sync_at was %s). Sleeping for 30 seconds.", last_sync)
+                        await asyncio.sleep(30)
+                        continue
+                        
+                    account_id = str(account.id)
+                
+                # 3. Process the sync for this account
+                logger.info("Adaptive Sync: Starting sync for account %s (%s)...", account_id, account.phone)
+                
+                async with async_session_factory() as db_session:
+                    # Reload the account object in this transaction
+                    acc_res = await db_session.execute(
+                        select(TelegramAccount).where(TelegramAccount.id == account_id)
+                    )
+                    db_acc = acc_res.scalar_one_or_none()
+                    if db_acc:
+                        # Step A: Sync Profile Info
+                        try:
+                            await sync_account_profile(db_session, db_acc)
+                        except Exception as profile_exc:
+                            logger.error("Adaptive Sync: Error syncing profile for %s: %s", db_acc.phone, profile_exc)
+                        
+                        # Step B: Consolidated Sync (Chats, Groups, Channels, & last_sync_at / groups_channels_synced_at)
+                        try:
+                            # We use skip_details=True for periodic background sync to avoid heavy API hits
+                            await sync_all_chats_to_db(db_acc, db_session, skip_details=True)
+                        except Exception as chat_exc:
+                            logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
+                            
+                        # Step C: Sync Registration Dates (limit to 20 dialogs since we have real-time harvesting)
+                        try:
+                            await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=20)
+                        except Exception as reg_exc:
+                            logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
 
-                for acc in accounts:
-                    try:
-                        async with async_session_factory() as db_session:
-                            acc_res = await db_session.execute(
-                                select(TelegramAccount).where(TelegramAccount.id == acc.id)
+                        # Step D: Save all changes
+                        db_acc.last_sync_at = datetime.now(timezone.utc)
+                        await db_session.commit()
+                        logger.info("Adaptive Sync: Completed sync for account %s (%s).", account_id, db_acc.phone)
+
+                        # Step E: Broadcast WS notifications to invalidate frontend query caches
+                        from app.api.ws import manager as ws_manager
+                        try:
+                            await ws_manager.broadcast(
+                                f"chats:{account_id}",
+                                {"type": "chats_synced", "account_id": account_id}
                             )
-                            db_acc = acc_res.scalar_one_or_none()
-                            if db_acc:
-                                await sync_groups_channels_to_db(db_acc, db_session, skip_details=True)
-                    except Exception as acc_exc:
-                        logger.warning(
-                            "Failed background sync of groups/channels for account %s: %s",
-                            acc.id,
-                            acc_exc,
-                        )
-                    # Pause between accounts to prevent hitting flood limits
-                    await asyncio.sleep(15)
+                            await ws_manager.broadcast(
+                                f"chats:{account_id}",
+                                {"type": "folders_synced", "account_id": account_id}
+                            )
+                            await ws_manager.broadcast(
+                                f"chats:{account_id}",
+                                {"type": "profile_sync", "account_id": account_id}
+                            )
+                        except Exception as ws_exc:
+                            logger.warning("Adaptive Sync: WS push failed for %s: %s", account_id, ws_exc)
+                            
             except Exception as exc:
-                logger.warning("Groups & channels sync loop error: %s", exc)
+                logger.warning("Adaptive Sync: Loop error: %s", exc)
 
-            # Check every 10 minutes
-            await asyncio.sleep(600)
+            # Wait cooldown interval between accounts to prevent rate limits
+            await asyncio.sleep(15)
 
-    groups_channels_sync_task = asyncio.create_task(_groups_channels_sync_loop())
-    logger.info("Groups & channels background sync task started (10-min check interval)")
+    adaptive_sync_task = asyncio.create_task(_adaptive_sequential_sync_loop())
+    logger.info("Adaptive sequential background sync task started (coalesced loop)")
 
     # 5. Spawn SMM services sync background loop (checks every 12 hours)
     from app.services.admin_smm_service import fetch_services, sync_services
@@ -1171,24 +1212,7 @@ async def lifespan(app: FastAPI):
     smm_orders_poll_task = asyncio.create_task(_smm_orders_poll_loop())
     logger.info("SMM orders background status poll task started (1-min interval)")
 
-    # 7. Spawn Telegram registration date datapoints sync background loop (checks every 12 hours)
-    from app.services.telegram_reg_date_service import reg_date_service
 
-    async def _telegram_reg_date_sync_loop():
-        """Periodically sync Telegram registration date datapoints."""
-        # Initial delay of 5 minutes after startup to avoid startup resource spikes
-        await asyncio.sleep(300)
-        while True:
-            try:
-                logger.info("Background task: Syncing Telegram registration date datapoints...")
-                await reg_date_service.sync_all_accounts_reg_dates()
-            except Exception as exc:
-                logger.warning("Telegram registration date sync loop error: %s", exc)
-            # Run every 12 hours (43200 seconds)
-            await asyncio.sleep(43200)
-
-    telegram_reg_date_sync_task = asyncio.create_task(_telegram_reg_date_sync_loop())
-    logger.info("Telegram registration date sync background task started (12-hour interval)")
 
     yield
     # Shutdown
@@ -1213,15 +1237,9 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-    profile_sync_task.cancel()
+    adaptive_sync_task.cancel()
     try:
-        await profile_sync_task
-    except asyncio.CancelledError:
-        pass
-
-    groups_channels_sync_task.cancel()
-    try:
-        await groups_channels_sync_task
+        await adaptive_sync_task
     except asyncio.CancelledError:
         pass
 
@@ -1237,11 +1255,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-    telegram_reg_date_sync_task.cancel()
-    try:
-        await telegram_reg_date_sync_task
-    except asyncio.CancelledError:
-        pass
+
 
     # 4. Close Redis client connection
     from app.utils.redis import redis_client
