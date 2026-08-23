@@ -1,10 +1,12 @@
 """Service to estimate Telegram account registration dates and sync datapoints."""
 
+import asyncio
 import datetime
 import logging
 from uuid import UUID
 
 from sqlalchemy import select
+from app.database import async_session_factory
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.tl.types import MessageService, MessageActionContactSignUp
 
@@ -208,6 +210,44 @@ class TelegramRegDateService:
             raise
 
         return added_count
+
+    async def sync_all_accounts_reg_dates(self) -> int:
+        """Sync Telegram registration date datapoints for all active accounts."""
+        total_new_datapoints = 0
+
+        # Phase 1: Short DB session to get account IDs
+        account_ids = []
+        try:
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(TelegramAccount.id).where(
+                        TelegramAccount.is_active == True,
+                        TelegramAccount.session_string != "",
+                    )
+                )
+                account_ids = [row[0] for row in result.all()]
+        except Exception as exc:
+            logger.error("Reg date sync: failed to fetch accounts: %s", exc)
+            return 0
+
+        # Phase 2: Sync each account with its own short-lived session
+        for account_id in account_ids:
+            try:
+                async with async_session_factory() as db:
+                    count = await self.sync_datapoints_from_account(db, account_id, limit=500)
+                    total_new_datapoints += count
+            except ValueError as val_exc:
+                # e.g., client not active/connected — normal situation, log as debug
+                logger.debug("Reg date sync skipped for account %s: %s", account_id, val_exc)
+            except Exception as exc:
+                logger.warning("Reg date sync: error syncing account %s: %s", account_id, exc)
+            
+            # Delay to avoid flood limits
+            await asyncio.sleep(5.0)
+
+        if total_new_datapoints > 0:
+            logger.info("Reg date sync: harvested %d new datapoints in total", total_new_datapoints)
+        return total_new_datapoints
 
 
 reg_date_service = TelegramRegDateService()

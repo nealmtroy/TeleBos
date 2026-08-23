@@ -1171,6 +1171,25 @@ async def lifespan(app: FastAPI):
     smm_orders_poll_task = asyncio.create_task(_smm_orders_poll_loop())
     logger.info("SMM orders background status poll task started (1-min interval)")
 
+    # 7. Spawn Telegram registration date datapoints sync background loop (checks every 12 hours)
+    from app.services.telegram_reg_date_service import reg_date_service
+
+    async def _telegram_reg_date_sync_loop():
+        """Periodically sync Telegram registration date datapoints."""
+        # Initial delay of 5 minutes after startup to avoid startup resource spikes
+        await asyncio.sleep(300)
+        while True:
+            try:
+                logger.info("Background task: Syncing Telegram registration date datapoints...")
+                await reg_date_service.sync_all_accounts_reg_dates()
+            except Exception as exc:
+                logger.warning("Telegram registration date sync loop error: %s", exc)
+            # Run every 12 hours (43200 seconds)
+            await asyncio.sleep(43200)
+
+    telegram_reg_date_sync_task = asyncio.create_task(_telegram_reg_date_sync_loop())
+    logger.info("Telegram registration date sync background task started (12-hour interval)")
+
     yield
     # Shutdown
     logger.info("Shutting down TeleBos API...")
@@ -1215,6 +1234,12 @@ async def lifespan(app: FastAPI):
     smm_orders_poll_task.cancel()
     try:
         await smm_orders_poll_task
+    except asyncio.CancelledError:
+        pass
+
+    telegram_reg_date_sync_task.cancel()
+    try:
+        await telegram_reg_date_sync_task
     except asyncio.CancelledError:
         pass
 

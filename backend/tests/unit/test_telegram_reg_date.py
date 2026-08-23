@@ -160,3 +160,42 @@ async def test_estimate_registration_date_interpolation():
     assert res is not None
     assert res["status"] == "approx"
     assert res["date"] == datetime.datetime(2020, 1, 2, 0, 0, 0, tzinfo=datetime.timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_sync_all_accounts_reg_dates(monkeypatch):
+    """Verify that sync_all_accounts_reg_dates iterates over active accounts and processes them."""
+    # Mock account IDs returned by the DB query
+    mock_ids = [MagicMock(), MagicMock()]
+
+    # Mock DB session execution results (list of rows)
+    mock_execute_res = MagicMock()
+    mock_execute_res.all.return_value = [(mock_ids[0],), (mock_ids[1],)]
+
+    # Mock AsyncSession context manager
+    mock_session = AsyncMock()
+    mock_session.execute.return_value = mock_execute_res
+
+    # Mock async_session_factory to return our mock_session
+    mock_session_factory = MagicMock()
+    mock_session_factory.return_value.__aenter__.return_value = mock_session
+    monkeypatch.setattr("app.services.telegram_reg_date_service.async_session_factory", mock_session_factory)
+
+    # Mock sync_datapoints_from_account to return 2 and 3 new datapoints respectively
+    sync_mock = AsyncMock()
+    sync_mock.side_effect = [2, 3]
+    monkeypatch.setattr(reg_date_service, "sync_datapoints_from_account", sync_mock)
+
+    # Mock asyncio.sleep to prevent tests from waiting
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr("asyncio.sleep", sleep_mock)
+
+    # Execute the method
+    total_new = await reg_date_service.sync_all_accounts_reg_dates()
+
+    # Assertions
+    assert total_new == 5
+    assert sync_mock.call_count == 2
+    sync_mock.assert_any_call(mock_session, mock_ids[0], limit=500)
+    sync_mock.assert_any_call(mock_session, mock_ids[1], limit=500)
+    assert sleep_mock.call_count == 2
