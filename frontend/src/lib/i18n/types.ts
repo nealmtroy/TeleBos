@@ -1397,6 +1397,22 @@ export interface Dict {
     deleteConfirm: string;
     totalRedeemCodes: string;
     totalRedeemed: string;
+    manageBroadcasts: string;
+    broadcastsDesc: string;
+    pauseAllRunning: string;
+    stopAllRunning: string;
+    clearFinished: string;
+    pauseJob: string;
+    resumeJob: string;
+    stopJob: string;
+    deleteJob: string;
+    pauseConfirm: string;
+    resumeConfirm: string;
+    stopConfirm: string;
+    deleteJobConfirm: string;
+    bulkPauseConfirm: string;
+    bulkStopConfirm: string;
+    bulkClearConfirm: string;
   };
 
   // Subscription

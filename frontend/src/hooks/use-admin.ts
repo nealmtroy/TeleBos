@@ -166,3 +166,174 @@ export function useDeletePrefixPrice() {
     },
   });
 }
+
+// ── Admin Broadcast Management ───────────────────────────────────────────────
+
+export interface AdminBroadcastAccountInfo {
+  id: string;
+  telegram_id: number | null;
+  phone: string;
+  name: string | null;
+  username: string | null;
+  is_duplicate?: boolean;
+  conflicting_job_ids?: string[];
+}
+
+export interface AdminBroadcastJob {
+  id: string;
+  user_id: string;
+  user_email: string | null;
+  user_full_name: string | null;
+  group_list_id: string | null;
+  group_list_name: string | null;
+  text_list_id: string | null;
+  mode: string;
+  custom_text: string | null;
+  status: "pending" | "running" | "paused" | "completed" | "failed" | "cancelled";
+  progress: number;
+  total_groups: number;
+  sent_count: number;
+  fail_count: number;
+  delay_per_group: number;
+  delay_after_all: number;
+  loop_enabled: boolean;
+  delay_randomized: boolean;
+  log_destination: string | null;
+  account_count: number;
+  accounts: AdminBroadcastAccountInfo[];
+  has_duplicate_accounts?: boolean;
+  duplicate_account_count?: number;
+  duplicate_job_ids?: string[];
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+export interface AdminBroadcastListResponse {
+  jobs: AdminBroadcastJob[];
+  total: number;
+}
+
+export interface AdminBroadcastStats {
+  total_jobs: number;
+  running_jobs: number;
+  paused_jobs: number;
+  completed_jobs: number;
+  failed_jobs: number;
+  cancelled_jobs: number;
+  total_sent: number;
+  total_failed: number;
+  active_looping_jobs: number;
+  duplicate_conflict_jobs?: number;
+}
+
+export function useAdminBroadcasts(params?: {
+  search?: string;
+  status?: string;
+  loop_enabled?: boolean;
+  duplicates_only?: boolean;
+  user_id?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.set("page", String(params.page));
+  if (params?.limit) queryParams.set("limit", String(params.limit));
+  if (params?.search) queryParams.set("search", params.search);
+  if (params?.status && params.status !== "all") queryParams.set("status", params.status);
+  if (params?.loop_enabled !== undefined) queryParams.set("loop_enabled", String(params.loop_enabled));
+  if (params?.duplicates_only) queryParams.set("duplicates_only", "true");
+  if (params?.user_id) queryParams.set("user_id", params.user_id);
+  if (params?.sort_by) queryParams.set("sort_by", params.sort_by);
+  if (params?.sort_order) queryParams.set("sort_order", params.sort_order);
+
+  return useQuery<AdminBroadcastListResponse>({
+    queryKey: ["admin", "broadcasts", params],
+    queryFn: async () => {
+      const { data } = await api.get(`/admin/broadcasts?${queryParams.toString()}`);
+      return data;
+    },
+  });
+}
+
+export function useAdminBroadcastStats() {
+  return useQuery<AdminBroadcastStats>({
+    queryKey: ["admin", "broadcasts", "stats"],
+    queryFn: async () => {
+      const { data } = await api.get("/admin/broadcasts/stats");
+      return data;
+    },
+  });
+}
+
+export function useAdminPauseBroadcast() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data } = await api.post(`/admin/broadcasts/${jobId}/pause`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
+export function useAdminResumeBroadcast() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data } = await api.post(`/admin/broadcasts/${jobId}/resume`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
+export function useAdminStopBroadcast() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data } = await api.post(`/admin/broadcasts/${jobId}/stop`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
+export function useAdminDeleteBroadcast() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      await api.delete(`/admin/broadcasts/${jobId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
+export function useAdminBulkBroadcastAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { action: string; job_ids?: string[] }) => {
+      const { data } = await api.post("/admin/broadcasts/bulk-action", payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
