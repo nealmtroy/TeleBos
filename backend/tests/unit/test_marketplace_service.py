@@ -156,8 +156,8 @@ async def test_invalid_session_delists_account_without_reactivating_it():
 
 
 async def test_purchase_notifies_buyer_and_seller():
-    seller_id = uuid.uuid4()
-    buyer_id = uuid.uuid4()
+    id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])
+    buyer_id, seller_id = id1, id2
     account = make_account(seller_id, for_sale=True, sell_price=5500)
     buyer = SimpleNamespace(id=buyer_id, balance=10000)
     seller = SimpleNamespace(id=seller_id, balance=0)

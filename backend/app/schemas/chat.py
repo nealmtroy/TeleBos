@@ -49,6 +49,13 @@ class MessageItem(BaseModel):
     reply_preview: str | None = None
     media_type: str | None = None  # photo, video, document, sticker, voice, etc.
     media_filename: str | None = None
+    stripped_thumb: str | None = None
+    waveform_levels: list[int] = []
+    file_size: int | None = None
+    mime_type: str | None = None
+    poll: dict[str, Any] | None = None
+    is_service: bool = False
+    service_text: str | None = None
 
 
 class MessageListResponse(BaseModel):

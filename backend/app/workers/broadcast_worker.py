@@ -14,13 +14,14 @@ def run_broadcast_job(self, job_id: str):
     logger.info("Starting broadcast job %s", job_id)
     try:
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
 
         if loop and loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(_execute(job_id), loop)
-            future.result()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(asyncio.run, _execute(job_id)).result()
         else:
             asyncio.run(_execute(job_id))
     except Exception as exc:

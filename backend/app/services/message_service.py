@@ -30,7 +30,7 @@ async def get_messages(
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
     me = await client.get_me()
-    my_id = me.id
+    my_id = me.id if me else None
 
     messages = await client.get_messages(
         entity, limit=limit + 1, offset_id=offset_id

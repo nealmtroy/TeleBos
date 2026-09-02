@@ -1,6 +1,7 @@
-"""Media endpoints."""
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -140,6 +141,49 @@ async def get_chat_photo(
         raise HTTPException(status_code=404, detail="No profile photo") from exc
 
 
+SAFE_INLINE_MEDIA_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "audio/ogg",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/wav",
+    "video/mp4",
+    "video/webm",
+}
+
+
+def create_safe_file_response(file_path: str, filename: str | None = None) -> FileResponse:
+    """Return a FileResponse with strict headers to prevent Stored XSS via uploaded attachments."""
+    import mimetypes
+    from fastapi.responses import FileResponse
+
+    mime, _ = mimetypes.guess_type(file_path)
+    clean_name = filename or os.path.basename(file_path)
+    # Sanitize header to prevent CRLF injection
+    safe_filename = clean_name.replace('"', '').replace('\r', '').replace('\n', '')
+
+    if mime in SAFE_INLINE_MEDIA_TYPES:
+        headers = {
+            "Content-Disposition": f'inline; filename="{safe_filename}"',
+            "X-Content-Type-Options": "nosniff",
+        }
+        return FileResponse(file_path, media_type=mime, headers=headers)
+    else:
+        headers = {
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+        }
+        if mime in {"image/svg+xml", "text/html", "application/xhtml+xml", "text/xml", "application/xml"}:
+            media_type = "application/octet-stream"
+        else:
+            media_type = mime or "application/octet-stream"
+        return FileResponse(file_path, media_type=media_type, headers=headers)
+
+
 @router.get("/accounts/{account_id}/chats/{chat_id}/messages/{message_id}/media")
 async def get_message_media_endpoint(
     account_id: str,
@@ -170,9 +214,7 @@ async def get_message_media_endpoint(
                 break
 
     if cached_file and os.path.exists(cached_file):
-        import mimetypes
-        mime, _ = mimetypes.guess_type(cached_file)
-        return FileResponse(cached_file, media_type=mime or "application/octet-stream")
+        return create_safe_file_response(cached_file)
 
     # If not cached, download using Telethon client
     account = await account_service.get_account(db, account_id, str(user.id))
@@ -217,9 +259,7 @@ async def get_message_media_endpoint(
         if not result_path or not os.path.exists(dest_path):
             raise HTTPException(status_code=500, detail="Failed to download media from Telegram")
 
-        import mimetypes
-        mime, _ = mimetypes.guess_type(dest_path)
-        return FileResponse(dest_path, media_type=mime or "application/octet-stream")
+        return create_safe_file_response(dest_path, filename=f"{filename}{ext}")
 
     except HTTPException as http_exc:
         raise http_exc
@@ -410,11 +450,11 @@ async def send_media(
         raise HTTPException(status_code=404, detail="Account not found")
 
     import os
-    # 1. Enforce file size limit (20MB)
+    from app.utils.file_upload import read_file_chunked
+
+    # 1. Enforce file size limit (20MB) safely using chunked streaming reading
     MAX_FILE_SIZE = 20 * 1024 * 1024
-    file_bytes = await file.read()
-    if len(file_bytes) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 20MB)")
+    file_bytes = await read_file_chunked(file, max_size=MAX_FILE_SIZE, detail="File too large (max 20MB)")
 
     # 2. Sanitize filename & validate dangerous extensions
     filename = os.path.basename(file.filename or "file")

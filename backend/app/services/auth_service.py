@@ -50,7 +50,7 @@ async def change_password(
         text("""
             SELECT password
             FROM account
-            WHERE user_id = :user_id
+            WHERE "userId" = :user_id
             LIMIT 1
         """),
         {"user_id": str(user.id)},
@@ -78,8 +78,8 @@ async def change_password(
     await db.execute(
         text("""
             UPDATE account
-            SET password = :password, updated_at = NOW()
-            WHERE user_id = :user_id
+            SET password = :password, "updatedAt" = NOW()
+            WHERE "userId" = :user_id
         """),
         {"password": new_hash, "user_id": str(user.id)},
     )

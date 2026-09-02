@@ -249,6 +249,7 @@ async def _prepare_account_for_sale_inner(
     rng: random.Random | random.SystemRandom | None,
     reserved_usernames: set[str] | None,
     deadline: float,
+    photos_to_delete: list[str] | None = None,
 ) -> SaleProfileIdentity:
     from telethon.errors import (
         FloodWaitError,
@@ -315,8 +316,11 @@ async def _prepare_account_for_sale_inner(
         from app.services.account_service import _photo_path
 
         photo_path = _photo_path(account_id)
-        if os.path.exists(photo_path):
-            os.remove(photo_path)
+        if photos_to_delete is not None:
+            photos_to_delete.append(photo_path)
+        else:
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
     except MarketplaceProfilePreparationError:
         raise
     except FloodWaitError as exc:
@@ -373,6 +377,7 @@ async def _prepare_account_for_sale(
     rng: random.Random | random.SystemRandom | None,
     reserved_usernames: set[str] | None,
     deadline: float,
+    photos_to_delete: list[str] | None = None,
 ) -> SaleProfileIdentity:
     from app.services.event_relay import event_relay
 
@@ -385,6 +390,7 @@ async def _prepare_account_for_sale(
             rng=rng,
             reserved_usernames=reserved_usernames,
             deadline=deadline,
+            photos_to_delete=photos_to_delete,
         )
     finally:
         event_relay.resume_profile_sync(account_id)
@@ -396,6 +402,7 @@ async def prepare_account_for_sale(
     *,
     rng: random.Random | random.SystemRandom | None = None,
     reserved_usernames: set[str] | None = None,
+    photos_to_delete: list[str] | None = None,
 ) -> SaleProfileIdentity:
     """Apply a randomized safe profile and remove photos before marketplace sale.
 
@@ -412,6 +419,7 @@ async def prepare_account_for_sale(
                 rng=rng,
                 reserved_usernames=reserved_usernames,
                 deadline=deadline,
+                photos_to_delete=photos_to_delete,
             ),
             timeout=PROFILE_PREPARATION_TIMEOUT_SECONDS,
         )

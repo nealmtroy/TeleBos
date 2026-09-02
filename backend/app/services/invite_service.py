@@ -637,6 +637,7 @@ async def execute_invite(job_id: str):
                     if job.status == "cancelled":
                         break
                     while job.status == "paused":
+                        await db.commit()  # Release transaction/connection lock before sleep
                         await interruptible_sleep(job_id, 86400)
                         await db.refresh(job)
                         if job.status == "cancelled":
@@ -677,6 +678,7 @@ async def execute_invite(job_id: str):
                     )
 
                     # Sleep in increments of 1s so we can check cancel status
+                    await db.commit()  # Release transaction/connection lock before sleep
                     completed = await interruptible_sleep(job_id, wait_sec)
                     if not completed:
                         await db.refresh(job)
@@ -794,12 +796,15 @@ async def execute_invite(job_id: str):
 
                     if dest_is_legacy_group:
                         # Legacy group (not a supergroup/channel)
-                        await client(
-                            telethon.tl.functions.messages.AddChatUserRequest(
-                                chat_id=current_entity.id,
-                                user_id=user_obj,
-                                fwd_limit=50,
-                            )
+                        await asyncio.wait_for(
+                            client(
+                                telethon.tl.functions.messages.AddChatUserRequest(
+                                    chat_id=current_entity.id,
+                                    user_id=user_obj,
+                                    fwd_limit=50,
+                                )
+                            ),
+                            timeout=30.0,
                         )
                     else:
                         # Channel or supergroup — use re-resolved entity
@@ -812,11 +817,14 @@ async def execute_invite(job_id: str):
                             )
                         else:
                             input_channel = current_entity
-                        await client(
-                            telethon.tl.functions.channels.InviteToChannelRequest(
-                                channel=input_channel,
-                                users=[user_obj],
-                            )
+                        await asyncio.wait_for(
+                            client(
+                                telethon.tl.functions.channels.InviteToChannelRequest(
+                                    channel=input_channel,
+                                    users=[user_obj],
+                                )
+                            ),
+                            timeout=30.0,
                         )
                     log.status = "success"
                     log.invited_at = datetime.now(timezone.utc)

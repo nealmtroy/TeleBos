@@ -1,6 +1,6 @@
 """Order endpoints — services list, place orders, history, status."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -146,6 +146,7 @@ async def place_single_order(
     payload: OrderCreate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    x_idempotency_key: str | None = Header(None, alias="X-Idempotency-Key"),
 ):
     """Place a single order."""
     ip = request.client.host
@@ -159,6 +160,18 @@ async def place_single_order(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many order requests for this user. Please wait.",
         )
+
+    # Idempotency check
+    from app.utils.redis import redis_client
+    cache_key = None
+    if x_idempotency_key and x_idempotency_key.strip():
+        cache_key = f"idempotency:order:{user.id}:{x_idempotency_key.strip()}"
+        cached_order_id = await redis_client.get(cache_key)
+        if cached_order_id:
+            existing_order = await order_service.get_order_by_id(db, cached_order_id, str(user.id))
+            if existing_order:
+                return existing_order
+
     try:
         order = await order_service.place_order(
             db,
@@ -170,6 +183,8 @@ async def place_single_order(
             payload.usernames,
         )
         await db.commit()
+        if cache_key:
+            await redis_client.setex(cache_key, 120, str(order.id))
         return order
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
@@ -181,6 +196,7 @@ async def place_mass_order(
     payload: MassOrderCreate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    x_idempotency_key: str | None = Header(None, alias="X-Idempotency-Key"),
 ):
     """Place multiple orders at once (mass order)."""
     ip = request.client.host
@@ -194,10 +210,33 @@ async def place_mass_order(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many order requests for this user. Please wait.",
         )
+
+    # Idempotency check for mass orders
+    import json
+    from app.utils.redis import redis_client
+    cache_key = None
+    if x_idempotency_key and x_idempotency_key.strip():
+        cache_key = f"idempotency:order_mass:{user.id}:{x_idempotency_key.strip()}"
+        cached_data = await redis_client.get(cache_key)
+        if cached_data:
+            try:
+                order_ids = json.loads(cached_data)
+                existing_orders = []
+                for oid in order_ids:
+                    ord_rec = await order_service.get_order_by_id(db, oid, str(user.id))
+                    if ord_rec:
+                        existing_orders.append(ord_rec)
+                if existing_orders:
+                    return existing_orders
+            except Exception:
+                pass
+
     orders_data = [o.model_dump() for o in payload.orders]
     try:
         orders = await order_service.place_mass_orders(db, user, orders_data)
         await db.commit()
+        if cache_key:
+            await redis_client.setex(cache_key, 120, json.dumps([str(o.id) for o in orders]))
         return orders
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

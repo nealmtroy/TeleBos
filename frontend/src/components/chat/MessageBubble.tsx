@@ -34,16 +34,20 @@ interface MessageBubbleProps {
 
 const renderFormattedText = (text: string | null) => {
   if (!text) return "";
+  // 1. Thoroughly escape HTML entities including double and single quotes
   let html = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
-  // Linkify URLs (http, https, t.me)
-  const urlRegex = /(https?:\/\/[^\s<]+|t\.me\/[^\s<]+)/g;
+  // 2. Linkify URLs securely (strictly valid URL characters, preventing quote breakout)
+  const urlRegex = /(https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&()*+,;=%]+|t\.me\/[a-zA-Z0-9\-._~:/?#[\]@!$&()*+,;=%]+)/g;
   html = html.replace(urlRegex, (url) => {
-    const fullUrl = url.startsWith("t.me") ? `https://${url}` : url;
-    return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="tg-link hover:underline font-semibold" style="color: var(--tg-accent)" onclick="event.stopPropagation()">${url}</a>`;
+    const rawUrl = url.startsWith("t.me") ? `https://${url}` : url;
+    const safeHref = rawUrl.replace(/"/g, "%22").replace(/'/g, "%27");
+    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="tg-link hover:underline font-semibold" style="color: var(--tg-accent)" onclick="event.stopPropagation()">${url}</a>`;
   });
 
   html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");

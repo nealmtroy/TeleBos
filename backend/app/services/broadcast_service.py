@@ -1056,15 +1056,18 @@ async def execute_broadcast(job_id: str):
 
                                 for retry_attempt in range(2):
                                     try:
-                                        await client.send_message(entity, chosen_text)
+                                        await asyncio.wait_for(client.send_message(entity, chosen_text), timeout=30.0)
                                         break
                                     except telethon.errors.UserNotParticipantError as unpe:
                                         if retry_attempt == 0:
                                             try:
-                                                await client(
-                                                    telethon.errors.channels.JoinChannelRequest(
-                                                        entity
-                                                    )
+                                                await asyncio.wait_for(
+                                                    client(
+                                                        telethon.errors.channels.JoinChannelRequest(
+                                                            entity
+                                                        )
+                                                    ),
+                                                    timeout=30.0,
                                                 )
                                                 await asyncio.sleep(2)
                                                 continue
@@ -1275,11 +1278,13 @@ async def execute_broadcast(job_id: str):
 
                 # Delay between groups (use flood-controlled delay if larger)
                 if delay_randomized:
-                    base_delay = random.randint(5, 30)
+                    min_d = max(1, int(delay_per_group * 0.7))
+                    max_d = max(min_d + 1, int(delay_per_group * 1.3))
+                    base_delay = random.randint(min_d, max_d)
                 else:
-                    base_delay = delay_per_group
+                    base_delay = max(1, delay_per_group)
                 flood_delay = fc.get_delay(acc_id_str)
-                actual_delay = max(base_delay, flood_delay)
+                actual_delay = max(1, max(base_delay, flood_delay))
                 await _interruptible_sleep(job_id_str, actual_delay)
 
             # Check if cancelled mid-cycle

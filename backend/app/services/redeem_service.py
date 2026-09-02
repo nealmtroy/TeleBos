@@ -110,12 +110,19 @@ async def redeem_code(
     if log_check.scalar_one_or_none():
         raise ValueError("You have already redeemed this code.")
 
+    # Lock user row to prevent lost update race conditions
+    user_res = await db.execute(
+        select(User).where(User.id == user.id).with_for_update()
+    )
+    locked_user = user_res.scalar_one()
+
     now = datetime.now(timezone.utc)
     detail_parts = {}
 
     if redeem.code_type == "balance":
         # Grant balance
-        user.balance += redeem.amount
+        locked_user.balance += redeem.amount
+        user.balance = locked_user.balance
         detail_parts["type"] = "balance"
         detail_parts["amount"] = redeem.amount
         expires_at = None
@@ -126,16 +133,29 @@ async def redeem_code(
         if redeem.plan not in ("pro", "premium"):
             raise ValueError("Invalid subscription plan.")
         # Don't downgrade owner
-        if user.role == "owner":
+        if locked_user.role == "owner":
             raise ValueError("Owner accounts cannot be upgraded via redeem codes.")
-        user.role = redeem.plan
-        user.subscription_expires_at = now + timedelta(days=redeem.duration_days)
+
+        # Don't downgrade premium to pro
+        if not (locked_user.role == "premium" and redeem.plan == "pro"):
+            locked_user.role = redeem.plan
+
+        # Accumulate remaining days if existing subscription is active
+        current_expiry = locked_user.subscription_expires_at
+        if current_expiry and current_expiry.tzinfo is None:
+            current_expiry = current_expiry.replace(tzinfo=timezone.utc)
+
+        base_time = max(now, current_expiry) if (current_expiry and current_expiry > now) else now
+        locked_user.subscription_expires_at = base_time + timedelta(days=redeem.duration_days)
+        user.role = locked_user.role
+        user.subscription_expires_at = locked_user.subscription_expires_at
+
         detail_parts["type"] = "subscription"
         detail_parts["plan"] = redeem.plan
         detail_parts["duration_days"] = redeem.duration_days
-        plan = redeem.plan
-        expires_at = user.subscription_expires_at
-        message = f"Success! You've been upgraded to {redeem.plan.title()} until {expires_at.strftime('%Y-%m-%d %H:%M UTC')}."
+        plan = locked_user.role
+        expires_at = locked_user.subscription_expires_at
+        message = f"Success! You've been upgraded to {locked_user.role.title()} until {expires_at.strftime('%Y-%m-%d %H:%M UTC')}."
 
     # Create log
     log_entry = RedeemLog(

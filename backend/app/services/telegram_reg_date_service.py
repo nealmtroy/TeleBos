@@ -102,6 +102,89 @@ class TelegramRegDateService:
             "age": self.format_age(est_date),
         }
 
+    async def estimate_registration_dates_batch(
+        self, db: AsyncSession, telegram_ids: list[int]
+    ) -> dict[int, dict]:
+        """Estimate registration dates for multiple Telegram IDs in a single query.
+
+        Fetches reference datapoints once and performs linear interpolation in-memory
+        using binary search, eliminating N+1 database roundtrips.
+        """
+        from bisect import bisect_left
+
+        valid_ids = [tid for tid in set(telegram_ids) if tid]
+        if not valid_ids:
+            return {}
+
+        # Fetch all reference datapoints in 1 single query
+        stmt = (
+            select(TelegramRegistrationDatapoint)
+            .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
+        )
+        result = await db.execute(stmt)
+        datapoints = list(result.scalars().all())
+
+        if not datapoints:
+            return {}
+
+        dp_ids = [dp.telegram_id for dp in datapoints]
+        results: dict[int, dict] = {}
+
+        for tid in valid_ids:
+            idx = bisect_left(dp_ids, tid)
+            # 1. Exact match
+            if idx < len(dp_ids) and dp_ids[idx] == tid:
+                exact = datapoints[idx]
+                results[tid] = {
+                    "status": "exact",
+                    "date": exact.registered_at,
+                    "age": self.format_age(exact.registered_at),
+                }
+                continue
+
+            # 2. Below minimum ID
+            if idx == 0:
+                upper = datapoints[0]
+                results[tid] = {
+                    "status": "older_than",
+                    "date": upper.registered_at,
+                    "age": self.format_age(upper.registered_at),
+                }
+                continue
+
+            # 3. Above maximum ID
+            if idx == len(dp_ids):
+                lower = datapoints[-1]
+                results[tid] = {
+                    "status": "newer_than",
+                    "date": lower.registered_at,
+                    "age": self.format_age(lower.registered_at),
+                }
+                continue
+
+            # 4. Interpolation between lower and upper
+            lower = datapoints[idx - 1]
+            upper = datapoints[idx]
+
+            lower_id = lower.telegram_id
+            lower_ts = lower.registered_at.timestamp()
+            upper_id = upper.telegram_id
+            upper_ts = upper.registered_at.timestamp()
+
+            if upper_id == lower_id:
+                est_ts = lower_ts
+            else:
+                est_ts = lower_ts + ((tid - lower_id) / (upper_id - lower_id)) * (upper_ts - lower_ts)
+
+            est_date = datetime.datetime.fromtimestamp(est_ts, tz=datetime.timezone.utc)
+            results[tid] = {
+                "status": "approx",
+                "date": est_date,
+                "age": self.format_age(est_date),
+            }
+
+        return results
+
     def format_age(self, date: datetime.datetime) -> str:
         """Convert a Date object to a human-readable age string."""
         now = datetime.datetime.now(datetime.timezone.utc)

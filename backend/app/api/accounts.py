@@ -495,20 +495,23 @@ async def upload_session(
 
 async def resolve_reg_dates_for_accounts(db: AsyncSession, accounts: list) -> None:
     from app.services.telegram_reg_date_service import reg_date_service
+    telegram_ids = [account.telegram_id for account in accounts if getattr(account, "telegram_id", None)]
+    if not telegram_ids:
+        return
+    estimates = await reg_date_service.estimate_registration_dates_batch(db, telegram_ids)
     for account in accounts:
-        if account.telegram_id:
-            est = await reg_date_service.get_estimated_registration_date(db, account.telegram_id)
-            if est:
-                account.est_reg_date = est["date"].isoformat() if est["date"] else None
-                account.est_reg_date_age = est["age"]
-                account.est_reg_date_status = est["status"]
+        if account.telegram_id and account.telegram_id in estimates:
+            est = estimates[account.telegram_id]
+            account.est_reg_date = est["date"].isoformat() if est["date"] else None
+            account.est_reg_date_age = est["age"]
+            account.est_reg_date_status = est["status"]
 
 
 @router.get("", response_model=AccountListResponse)
 async def list_accounts(
     folder_id: str | None = Query(None),
-    page: int | None = Query(None),
-    limit: int | None = Query(None),
+    page: int | None = Query(None, ge=1),
+    limit: int | None = Query(None, ge=1, le=100),
     search: str | None = Query(None),
     status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -517,8 +520,8 @@ async def list_accounts(
     from app.services.user_account_price_service import resolve_prices_for_accounts
 
     if page is not None or limit is not None or search is not None or status is not None:
-        p = page or 1
-        lim = limit or 12
+        p = max(1, page or 1)
+        lim = max(1, min(100, limit or 12))
         accounts, total = await account_service.get_accounts_paginated(
             db, user, page=p, limit=lim, search=search, folder_id=folder_id, status=status
         )
@@ -681,9 +684,8 @@ async def upload_profile_photo(
     if file.content_type is None or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    data = await file.read()
-    if len(data) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large (max 5MB)")
+    from app.utils.file_upload import read_file_chunked
+    data = await read_file_chunked(file, max_size=5 * 1024 * 1024, detail="File too large (max 5MB)")
 
     from PIL import Image
     import io

@@ -313,7 +313,7 @@ class TelegramEventRelay:
                     return
 
                 # Check Redis rate limit and cooldown
-                from app.utils.redis import check_auto_reply_rate_limit, record_auto_reply_sent
+                from app.utils.redis import check_auto_reply_rate_limit, record_auto_reply_sent, redis_client
 
                 if not await check_auto_reply_rate_limit(account_id):
                     logger.warning(
@@ -331,6 +331,12 @@ class TelegramEventRelay:
                 )
                 if log_result.scalar_one_or_none() is not None:
                     return  # Already replied to this user
+
+                # Distributed atomic lock to prevent concurrent duplicate auto-replies
+                lock_key = f"lock:autoreply:{account.id}:{sender_id}"
+                acquired = await redis_client.set(lock_key, "1", nx=True, ex=60)
+                if not acquired:
+                    return  # Another concurrent event is already sending the auto-reply
 
                 # 3. First DM — send auto-reply as a reply to the incoming message
                 if chat is None:

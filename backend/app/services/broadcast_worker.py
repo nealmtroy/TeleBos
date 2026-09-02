@@ -53,7 +53,7 @@ class BroadcastWorkerManager:
 
     async def pause(self, job_id: str) -> bool:
         event = self._pause_events.get(job_id)
-        if event is None or event.is_set():
+        if event is None or not event.is_set():
             return False
         event.clear()
         await self._update_job_status(job_id, "paused")

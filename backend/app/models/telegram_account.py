@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func, ForeignKey, BigInteger
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func, ForeignKey, BigInteger, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,9 @@ from app.database import Base
 
 class TelegramAccount(Base):
     __tablename__ = "telegram_accounts"
+    __table_args__ = (
+        UniqueConstraint("phone", name="uq_telegram_account_phone"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -20,7 +23,7 @@ class TelegramAccount(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False, unique=True, index=True)
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     session_string: Mapped[str] = mapped_column(Text, default="", nullable=False)
     twofa_password: Mapped[str] = mapped_column(Text, default="", nullable=False)

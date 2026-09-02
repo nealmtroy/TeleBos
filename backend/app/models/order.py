@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,9 @@ from app.database import Base
 
 class Order(Base):
     __tablename__ = "orders"
+    __table_args__ = (
+        Index("ix_orders_user_id_status", "user_id", "status"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -19,7 +22,7 @@ class Order(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
-    smm_order_id: Mapped[str | None] = mapped_column(String(50))  # Buzzerpanel order ID
+    smm_order_id: Mapped[str | None] = mapped_column(String(50), index=True)  # Buzzerpanel order ID
     service_id: Mapped[int] = mapped_column(Integer, nullable=False)
     service_name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -27,7 +30,7 @@ class Order(Base):
     quantity: Mapped[int] = mapped_column(BigInteger, default=1)
     price: Mapped[int] = mapped_column(BigInteger, default=0)  # Price per 1k or total
     total_price: Mapped[int] = mapped_column(BigInteger, default=0)  # Final price charged
-    status: Mapped[str] = mapped_column(String(50), default="Pending")  # Pending, Processing, Partial, In progress, Error, Success
+    status: Mapped[str] = mapped_column(String(50), default="Pending", index=True)  # Pending, Processing, Partial, In progress, Error, Success
     start_count: Mapped[int | None] = mapped_column(Integer)
     remains: Mapped[int | None] = mapped_column(Integer)
     is_mass_order: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -460,10 +460,16 @@ async def resume_spam_appeal(client: TelegramClient, reason: str) -> dict:
     async with client.conversation("spambot") as conv:
         # Click Done
         await btn_done.click()
-        response = await conv.get_response()
+        try:
+            response = await asyncio.wait_for(conv.get_response(), timeout=5.0)
+            resp_text = response.text
+        except asyncio.TimeoutError:
+            # Fallback if SpamBot edited the message in place rather than sending a new message
+            msgs = await client.get_messages("spambot", limit=3)
+            resp_text = msgs[0].text if msgs else ""
 
         # Check if captcha is still required (meaning Turnstile solve was not registered or failed)
-        captcha_match = re.search(r'(https://telegram\.org/captcha\S+)', response.text)
+        captcha_match = re.search(r'(https://telegram\.org/captcha\S+)', resp_text)
         if captcha_match:
             captcha_url = captcha_match.group(1).rstrip(').')
             return {
@@ -474,10 +480,16 @@ async def resume_spam_appeal(client: TelegramClient, reason: str) -> dict:
 
         # Otherwise, send reason
         await conv.send_message(reason)
-        final_resp = await conv.get_response()
+        try:
+            final_resp = await asyncio.wait_for(conv.get_response(), timeout=8.0)
+            final_text = final_resp.text
+        except asyncio.TimeoutError:
+            msgs = await client.get_messages("spambot", limit=3)
+            final_text = msgs[0].text if msgs else "Banding terkirim."
+
         return {
             "status": "completed",
-            "message": final_resp.text,
+            "message": final_text,
         }
 
 

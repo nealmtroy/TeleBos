@@ -90,6 +90,54 @@ async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, 
         else:
             effective_price = svc.original_price
 
+
+
+async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, str, str, int, int, str | None, str | None]:
+    """Get service info with effective price from local smm_services table.
+
+    Returns:
+        (effective_price, service_name, category, min_qty, max_qty, note, speed)
+
+    Raises:
+        ValueError: If service not found or inactive.
+    """
+    svc = await db.get(SmmService, service_id)
+    if not svc:
+        # Fallback: try fetching from SMM API directly
+        from app.services.smm_service import get_services
+        all_services = await get_services()
+        service_info = next((s for s in all_services if s["id"] == service_id), None)
+        if not service_info:
+            raise ValueError(f"Service with ID {service_id} not found")
+        return (
+            int(service_info["price"]),
+            service_info["name"],
+            service_info.get("category", "Telegram"),
+            int(service_info.get("min", 1)),
+            int(service_info.get("max", 999999)),
+            service_info.get("note"),
+            service_info.get("speed"),
+        )
+
+    if not svc.is_active:
+        raise ValueError(f"Service '{svc.service_name}' is currently unavailable")
+
+    # Get global markup
+    global_result = await db.execute(
+        select(SmmSetting.value).where(SmmSetting.key == SETTING_GLOBAL_MARKUP)
+    )
+    global_markup = int(global_result.scalar() or "0")
+
+    # Calculate effective price
+    if svc.selling_price is not None:
+        effective_price = svc.selling_price
+    else:
+        markup = svc.markup_percent if svc.markup_percent else global_markup
+        if markup > 0:
+            effective_price = max(1, (svc.original_price * (100 + markup)) // 100)
+        else:
+            effective_price = svc.original_price
+
     return (
         effective_price,
         svc.service_name,
@@ -126,34 +174,51 @@ async def place_order(
         raise ValueError(f"Minimum quantity is {min_qty}")
     if quantity > max_qty:
         raise ValueError(f"Maximum quantity is {max_qty}")
-
     # Calculate total price
     total_price = _calculate_price(price_per_unit, quantity)
 
-    # Re-fetch user row with exclusive lock to prevent TOCTOU race condition.
-    # The user object from get_current_user is loaded without FOR UPDATE,
-    # so concurrent requests could all see the same pre-deduction balance.
+    # 1. Atomically reserve funds under row-level lock to prevent TOCTOU race conditions
     locked_user_result = await db.execute(
         select(User).where(User.id == user.id).with_for_update()
     )
-    user = locked_user_result.scalar_one()
+    locked_user = locked_user_result.scalar_one()
 
-    # Check balance (now using the locked, fresh row)
-    if user.balance < total_price:
+    if locked_user.balance < total_price:
         raise ValueError(
-            f"Insufficient balance. Required: {total_price}, Your balance: {user.balance}"
+            f"Insufficient balance. Required: {total_price}, Your balance: {locked_user.balance}"
         )
 
-    # Call SMM API
-    result = await create_order(service_id, data_target, quantity, comments, usernames)
+    # Deduct balance and commit immediately to release the row write lock before network I/O
+    locked_user.balance -= total_price
+    await db.commit()
+
+    # 2. Call SMM API outside of the database row lock
+    try:
+        result = await create_order(service_id, data_target, quantity, comments, usernames)
+    except Exception as exc:
+        # Refund on network / unexpected exception
+        refund_res = await db.execute(
+            select(User).where(User.id == user.id).with_for_update()
+        )
+        refund_user = refund_res.scalar_one()
+        refund_user.balance += total_price
+        await db.commit()
+        raise ValueError(f"Order failed due to network error: {exc}")
 
     if not result.get("status"):
+        # Refund on API failure
+        refund_res = await db.execute(
+            select(User).where(User.id == user.id).with_for_update()
+        )
+        refund_user = refund_res.scalar_one()
+        refund_user.balance += total_price
+        await db.commit()
         msg = result.get("data", {}).get("msg", "Unknown API error")
         raise ValueError(f"Order failed: {msg}")
 
     smm_order_id = str(result.get("data", {}).get("id", ""))
 
-    # Create order record
+    # 3. Create order record & notification
     order = Order(
         user_id=user.id,
         smm_order_id=smm_order_id,
@@ -168,9 +233,6 @@ async def place_order(
         is_mass_order=False,
     )
     db.add(order)
-
-    # Deduct balance
-    user.balance -= total_price
     await db.flush()
     create_notification(
         db,
@@ -180,6 +242,7 @@ async def place_order(
         data={"order_id": str(order.id), "service": order.service_name},
         href="/orders",
     )
+    await db.commit()
     return order
 
 
@@ -208,6 +271,16 @@ async def place_mass_orders(
         service_id = order_data["service_id"]
         quantity = order_data.get("quantity", 1)
         price_per_unit, service_name, category, min_qty, max_qty, _, _ = await _get_effective_price(db, service_id)
+        if quantity <= 0:
+            raise ValueError(f"Quantity must be greater than 0 for service '{service_name}'")
+        if quantity < min_qty:
+            raise ValueError(
+                f"Quantity {quantity} is below minimum ({min_qty}) for service '{service_name}'"
+            )
+        if quantity > max_qty:
+            raise ValueError(
+                f"Quantity {quantity} exceeds maximum ({max_qty}) for service '{service_name}'"
+            )
         total_price = _calculate_price(price_per_unit, quantity)
         total_cost += total_price
         validated_orders.append({
@@ -218,18 +291,23 @@ async def place_mass_orders(
             "total_price": total_price,
         })
 
-    # Re-fetch user row with exclusive lock to prevent TOCTOU race condition
+    # 1. Atomically reserve total cost under row-level lock
     locked_user_result = await db.execute(
         select(User).where(User.id == user.id).with_for_update()
     )
-    user = locked_user_result.scalar_one()
+    locked_user = locked_user_result.scalar_one()
 
-    if user.balance < total_cost:
+    if locked_user.balance < total_cost:
         raise ValueError(
-            f"Insufficient balance. Required: {total_cost}, Your balance: {user.balance}"
+            f"Insufficient balance. Required: {total_cost}, Your balance: {locked_user.balance}"
         )
 
+    # Deduct and commit to release row lock before performing multiple external HTTP calls
+    locked_user.balance -= total_cost
+    await db.commit()
+
     created_orders = []
+    # 2. Execute external API calls without holding database locks
     for vd in validated_orders:
         try:
             result = await create_order(
@@ -280,8 +358,17 @@ async def place_mass_orders(
             db.add(order)
             created_orders.append(order)
 
-    # Deduct total balance
-    user.balance -= total_cost
+    # 3. Calculate actual successful cost and refund any failed items
+    successful_cost = sum(o.total_price for o in created_orders if o.status == "Pending")
+    refund_amount = total_cost - successful_cost
+
+    if refund_amount > 0:
+        refund_res = await db.execute(
+            select(User).where(User.id == user.id).with_for_update()
+        )
+        refund_user = refund_res.scalar_one()
+        refund_user.balance += refund_amount
+
     await db.flush()
     create_notification(
         db,
@@ -291,6 +378,7 @@ async def place_mass_orders(
         data={"count": len(created_orders)},
         href="/orders",
     )
+    await db.commit()
     return created_orders
 
 

@@ -437,7 +437,19 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     if not orders_to_check:
         return 0
 
-    tasks = [check_order_status(o.smm_order_id) for o in orders_to_check]
+    # Limit to at most 25 orders per polling cycle to prevent bursting
+    orders_to_check = orders_to_check[:25]
+
+    # Concurrency control: max 5 concurrent requests with 150ms pacing
+    sem = asyncio.Semaphore(5)
+
+    async def _check_paced(smm_order_id: str):
+        async with sem:
+            res = await check_order_status(smm_order_id)
+            await asyncio.sleep(0.15)
+            return res
+
+    tasks = [_check_paced(o.smm_order_id) for o in orders_to_check]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     updated = 0

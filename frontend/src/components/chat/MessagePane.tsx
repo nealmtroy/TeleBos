@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
@@ -55,6 +55,56 @@ interface MessagePaneProps {
   onDelete?: () => void;
 }
 
+interface RecordingVoiceBannerProps {
+  onCancel: () => void;
+  onSend: () => void;
+}
+
+const RecordingVoiceBanner = memo(function RecordingVoiceBanner({
+  onCancel,
+  onSend,
+}: RecordingVoiceBannerProps) {
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDuration((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const minutes = Math.floor(duration / 60);
+  const seconds = (duration % 60).toString().padStart(2, "0");
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-[#1a242f] w-full animate-in fade-in duration-200">
+      <div className="flex items-center gap-2.5">
+        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-350">
+          Recording Voice Note... {minutes}:{seconds}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onSend}
+          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-xs font-bold text-white transition flex items-center gap-1.5"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Send
+        </button>
+      </div>
+    </div>
+  );
+});
+
 export function MessagePane({
   accountId,
   chatId,
@@ -94,14 +144,20 @@ export function MessagePane({
   const [hasMore, setHasMore] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+
+  // Reset message list, offset, and reply state when switching chats
+  useEffect(() => {
+    setOffsetId(0);
+    setAllMessages([]);
+    setIsInitialLoad(true);
+    setReplyTo(null);
+  }, [chatId, accountId]);
   
   const [typingStatus, setTypingStatus] = useState<string | null>(null);
   const [onlineStatus, setOnlineStatus] = useState<string | null>(null);
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: "photo" | "video" } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingTimerRef = useRef<any>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const typingTimerRef = useRef<any>(null);
 
@@ -137,8 +193,14 @@ export function MessagePane({
       const params: any = {};
       if (searchQuery) params.q = searchQuery;
       if (searchMediaType) params.media_type = searchMediaType;
-      if (searchDateFrom) params.date_from = Math.floor(new Date(searchDateFrom).getTime() / 1000);
-      if (searchDateTo) params.date_to = Math.floor(new Date(searchDateTo).getTime() / 1000);
+      if (searchDateFrom) {
+        const fromTs = Math.floor(new Date(searchDateFrom).getTime() / 1000);
+        if (!isNaN(fromTs)) params.date_from = fromTs;
+      }
+      if (searchDateTo) {
+        const toTs = Math.floor(new Date(searchDateTo).getTime() / 1000);
+        if (!isNaN(toTs)) params.date_to = toTs;
+      }
       
       const { data } = await api.get(`/accounts/${accountId}/chats/${chatId}/messages/search`, { params });
       return Array.isArray(data) ? data : [];
@@ -259,22 +321,12 @@ export function MessagePane({
 
       mediaRecorder.start();
       setIsRecording(true);
-      setRecordingDuration(0);
-
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration((prev) => prev + 1);
-      }, 1000);
     } catch (err) {
       alert("Microphone permission denied or not available.");
     }
   };
 
   const stopRecording = (shouldSend: boolean) => {
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       if (!shouldSend) {
         audioChunksRef.current = [];
@@ -283,7 +335,6 @@ export function MessagePane({
     }
 
     setIsRecording(false);
-    setRecordingDuration(0);
   };
 
   const voteMutation = useMutation({
@@ -1143,29 +1194,10 @@ export function MessagePane({
             )}
 
             {isRecording ? (
-              <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-[#1a242f] w-full animate-in fade-in duration-200">
-                <div className="flex items-center gap-2.5">
-                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-350">
-                    Recording Voice Note... {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => stopRecording(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => stopRecording(true)}
-                    className="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-xs font-bold text-white transition flex items-center gap-1.5"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    Send
-                  </button>
-                </div>
-              </div>
+              <RecordingVoiceBanner
+                onCancel={() => stopRecording(false)}
+                onSend={() => stopRecording(true)}
+              />
             ) : (
               <div className="flex items-end gap-2 px-3 py-2 w-full">
                 <button

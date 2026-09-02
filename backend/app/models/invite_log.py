@@ -15,6 +15,7 @@ class InviteLog(Base):
 
     __table_args__ = (
         Index("ix_invite_logs_job_invited", "job_id", "invited_at"),
+        Index("ix_invite_logs_job_user", "job_id", "user_id_tg"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

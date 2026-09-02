@@ -162,12 +162,14 @@ async def sell_accounts(
 
     reserved_usernames: set[str] = set()
     prices: dict[UUID, int] = {}
+    photos_to_delete: list[str] = []
     for account in accounts:
         prices[account.id] = await resolve_telegram_id_price(db, account)
         await prepare_account_for_sale(
             db,
             account,
             reserved_usernames=reserved_usernames,
+            photos_to_delete=photos_to_delete,
         )
 
     active_broadcasts = await db.execute(
@@ -221,6 +223,15 @@ async def sell_accounts(
         href="/orders",
     )
     await db.flush()
+
+    # Physically delete cached profile photos only after all DB mutations succeed
+    for p_path in photos_to_delete:
+        try:
+            if os.path.exists(p_path):
+                os.remove(p_path)
+        except OSError as exc:
+            logger.warning("Failed to remove local profile photo %s: %s", p_path, exc)
+
     return len(accounts)
 
 
@@ -434,13 +445,18 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     # Use the account's own sell_price; fallback to default
     buy_price = account.sell_price or 7000
 
-    # Re-fetch buyer row with exclusive lock to prevent TOCTOU race condition.
-    # The user object from get_current_user is loaded without FOR UPDATE,
-    # so concurrent purchases could all see the same pre-deduction balance.
-    locked_buyer_result = await db.execute(
-        select(User).where(User.id == buyer_id).with_for_update()
-    )
-    buyer = locked_buyer_result.scalar_one()
+    # Deterministic lock ordering (sorted UUIDs) to prevent circular deadlock
+    first_id, second_id = (buyer_id, seller_id) if buyer_id < seller_id else (seller_id, buyer_id)
+    res_first = await db.execute(select(User).where(User.id == first_id).with_for_update())
+    res_second = await db.execute(select(User).where(User.id == second_id).with_for_update())
+    u_first = res_first.scalar_one_or_none()
+    u_second = res_second.scalar_one_or_none()
+
+    buyer = u_first if first_id == buyer_id else u_second
+    seller = u_second if first_id == buyer_id else u_first
+
+    if buyer is None:
+        raise ValueError("Buyer account not found.")
 
     if buyer.balance < buy_price:
         raise ValueError("Insufficient balance to buy this account.")
@@ -449,8 +465,6 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     buyer.balance -= buy_price
 
     # 2. Credit seller's balance
-    seller_result = await db.execute(select(User).where(User.id == seller_id).with_for_update())
-    seller = seller_result.scalar_one_or_none()
     if seller:
         seller.balance += buy_price
     else:
@@ -465,7 +479,7 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     # 3. Update ownership and flags
     account.user_id = buyer_id
     account.for_sale = False
-    account.is_sold = True
+    account.is_sold = False  # Reset for new owner so they can re-sell or manage the account
     account.sold_at = datetime.now(timezone.utc)
     # Set purchased account to active upon purchase
     account.is_active = True

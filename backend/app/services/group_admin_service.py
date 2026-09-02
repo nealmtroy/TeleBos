@@ -71,6 +71,13 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                 # For t.me/username style links, try as username
                 if not hash_clean.startswith(("/", "+")):
                     entity = await client.get_entity(hash_clean)
+                    try:
+                        await client.get_permissions(entity, "me")
+                    except Exception:
+                        try:
+                            await client(funcs.channels.JoinChannelRequest(entity))
+                        except Exception:
+                            pass
             except Exception:
                 raise RuntimeError(f"Failed to join: {err_msg}") from exc
     else:

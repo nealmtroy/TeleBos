@@ -4,7 +4,7 @@ import ipaddress
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBearer
 
@@ -975,6 +975,31 @@ def _run_migrations(connection):
         except Exception as e:
             logger.error("Failed to seed Telegram registration datapoints: %s", e)
 
+    # Ensure database constraints exist (idempotent)
+    try:
+        connection.execute(text("ALTER TABLE telegram_accounts ADD CONSTRAINT uq_telegram_account_phone UNIQUE (phone)"))
+    except Exception:
+        pass
+
+    try:
+        connection.execute(text("ALTER TABLE users ADD CONSTRAINT chk_user_balance_positive CHECK (balance >= 0)"))
+    except Exception:
+        pass
+
+    # Ensure performance indexes exist (idempotent)
+    for idx_sql in [
+        "CREATE INDEX IF NOT EXISTS ix_orders_smm_order_id ON orders (smm_order_id)",
+        "CREATE INDEX IF NOT EXISTS ix_orders_status ON orders (status)",
+        "CREATE INDEX IF NOT EXISTS ix_orders_user_id_status ON orders (user_id, status)",
+        "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_status ON broadcast_jobs (status)",
+        "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_user_id_status ON broadcast_jobs (user_id, status)",
+        "CREATE INDEX IF NOT EXISTS ix_invite_logs_job_user ON invite_logs (job_id, user_id_tg)",
+    ]:
+        try:
+            connection.execute(text(idx_sql))
+        except Exception:
+            pass
+
 
 # Configure logging
 logging.basicConfig(
@@ -1111,55 +1136,75 @@ async def lifespan(app: FastAPI):
                 # 3. Process the sync for this account
                 logger.info("Adaptive Sync: Starting sync for account %s (%s)...", account_id, account.phone)
                 
-                async with async_session_factory() as db_session:
-                    # Reload the account object in this transaction
-                    acc_res = await db_session.execute(
-                        select(TelegramAccount).where(TelegramAccount.id == account_id)
-                    )
-                    db_acc = acc_res.scalar_one_or_none()
-                    if db_acc:
-                        # Step A: Sync Profile Info
-                        try:
-                            await sync_account_profile(db_session, db_acc)
-                        except Exception as profile_exc:
-                            logger.error("Adaptive Sync: Error syncing profile for %s: %s", db_acc.phone, profile_exc)
-                        
-                        # Step B: Consolidated Sync (Chats, Groups, Channels, & last_sync_at / groups_channels_synced_at)
-                        dialogs = []
-                        try:
-                            # We use skip_details=True for periodic background sync to avoid heavy API hits
-                            dialogs = await sync_all_chats_to_db(db_acc, db_session, skip_details=True)
-                        except Exception as chat_exc:
-                            logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
+                sync_succeeded = False
+                try:
+                    async with async_session_factory() as db_session:
+                        # Reload the account object in this transaction
+                        acc_res = await db_session.execute(
+                            select(TelegramAccount).where(TelegramAccount.id == account_id)
+                        )
+                        db_acc = acc_res.scalar_one_or_none()
+                        if db_acc:
+                            # Step A: Sync Profile Info
+                            try:
+                                await sync_account_profile(db_session, db_acc)
+                            except Exception as profile_exc:
+                                logger.error("Adaptive Sync: Error syncing profile for %s: %s", db_acc.phone, profile_exc)
                             
-                        # Step C: Sync Registration Dates (re-uses already fetched dialogs, zero extra network calls)
-                        try:
-                            await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=500, dialogs=dialogs)
-                        except Exception as reg_exc:
-                            logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
+                            # Step B: Consolidated Sync (Chats, Groups, Channels, & last_sync_at / groups_channels_synced_at)
+                            dialogs = []
+                            try:
+                                # We use skip_details=True for periodic background sync to avoid heavy API hits
+                                dialogs = await sync_all_chats_to_db(db_acc, db_session, skip_details=True)
+                            except Exception as chat_exc:
+                                logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
+                                
+                            # Step C: Sync Registration Dates (re-uses already fetched dialogs, zero extra network calls)
+                            try:
+                                await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=500, dialogs=dialogs)
+                            except Exception as reg_exc:
+                                logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
 
-                        # Step D: Save all changes
-                        db_acc.last_sync_at = datetime.now(timezone.utc)
-                        await db_session.commit()
-                        logger.info("Adaptive Sync: Completed sync for account %s (%s).", account_id, db_acc.phone)
+                            # Step D: Save all changes
+                            db_acc.last_sync_at = datetime.now(timezone.utc)
+                            await db_session.commit()
+                            sync_succeeded = True
+                            logger.info("Adaptive Sync: Completed sync for account %s (%s).", account_id, db_acc.phone)
 
-                        # Step E: Broadcast WS notifications to invalidate frontend query caches
-                        from app.api.ws import manager as ws_manager
-                        try:
-                            await ws_manager.broadcast(
-                                f"chats:{account_id}",
-                                {"type": "chats_synced", "account_id": account_id}
+                            # Step E: Broadcast WS notifications to invalidate frontend query caches
+                            from app.api.ws import manager as ws_manager
+                            try:
+                                await ws_manager.broadcast(
+                                    f"chats:{account_id}",
+                                    {"type": "chats_synced", "account_id": account_id}
+                                )
+                                await ws_manager.broadcast(
+                                    f"chats:{account_id}",
+                                    {"type": "folders_synced", "account_id": account_id}
+                                )
+                                await ws_manager.broadcast(
+                                    f"chats:{account_id}",
+                                    {"type": "profile_sync", "account_id": account_id}
+                                )
+                            except Exception as ws_exc:
+                                logger.warning("Adaptive Sync: WS push failed for %s: %s", account_id, ws_exc)
+                except Exception as sync_err:
+                    logger.error("Adaptive Sync: Transaction error syncing account %s: %s", account_id, sync_err)
+
+                if not sync_succeeded:
+                    # Mark last_sync_at in an isolated transaction to prevent starvation loop on broken accounts
+                    try:
+                        async with async_session_factory() as recovery_session:
+                            rec_res = await recovery_session.execute(
+                                select(TelegramAccount).where(TelegramAccount.id == account_id)
                             )
-                            await ws_manager.broadcast(
-                                f"chats:{account_id}",
-                                {"type": "folders_synced", "account_id": account_id}
-                            )
-                            await ws_manager.broadcast(
-                                f"chats:{account_id}",
-                                {"type": "profile_sync", "account_id": account_id}
-                            )
-                        except Exception as ws_exc:
-                            logger.warning("Adaptive Sync: WS push failed for %s: %s", account_id, ws_exc)
+                            rec_acc = rec_res.scalar_one_or_none()
+                            if rec_acc:
+                                rec_acc.last_sync_at = datetime.now(timezone.utc)
+                                await recovery_session.commit()
+                                logger.warning("Adaptive Sync: Advanced last_sync_at for failed account %s to avoid loop starvation", account_id)
+                    except Exception as rec_err:
+                        logger.error("Adaptive Sync: Failed recovery commit for account %s: %s", account_id, rec_err)
                             
             except Exception as exc:
                 logger.warning("Adaptive Sync: Loop error: %s", exc)
@@ -1268,15 +1313,37 @@ async def lifespan(app: FastAPI):
 
 
 
-    # 4. Close Redis client connection
-    from app.utils.redis import redis_client
-
-    await redis_client.close()
-
+    # 4. Stop Telegram clients while Redis and DB connections are still active
     await session_manager.stop()
     from app.services.telegram_client import client_pool
 
-    await client_pool.stop()
+    # 5. Clean up zombie jobs — pause active running jobs before closing DB
+    try:
+        from app.database import async_session_factory
+        from app.models.broadcast_job import BroadcastJob
+        from app.models.invite_job import InviteJob
+        from sqlalchemy import update
+
+        async with async_session_factory() as shutdown_db:
+            await shutdown_db.execute(
+                update(BroadcastJob)
+                .where(BroadcastJob.status == "running")
+                .values(status="paused")
+            )
+            await shutdown_db.execute(
+                update(InviteJob)
+                .where(InviteJob.status == "running")
+                .values(status="paused")
+            )
+            await shutdown_db.commit()
+            logger.info("Shutdown: In-flight broadcast and invite jobs marked as paused.")
+    except Exception as shutdown_err:
+        logger.warning("Shutdown: Error updating in-flight jobs status: %s", shutdown_err)
+
+    # 6. Close Redis client connection and dispose database engine
+    from app.utils.redis import redis_client
+
+    await redis_client.close()
     await engine.dispose()
 
 
@@ -1408,5 +1475,39 @@ app.include_router(telegram_reg_date.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
-async def health():
-    return {"status": "ok", "app": app_settings.APP_NAME}
+async def health(response: Response):
+    from sqlalchemy import text
+
+    checks = {
+        "status": "ok",
+        "app": app_settings.APP_NAME,
+        "database": "unknown",
+        "redis": "unknown",
+    }
+    is_healthy = True
+
+    # 1. Check PostgreSQL connection
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        checks["database"] = f"error: {str(exc)[:60]}"
+        is_healthy = False
+
+    # 2. Check Redis connection
+    try:
+        from app.utils.redis import redis_client
+        pong = await redis_client.ping()
+        checks["redis"] = "ok" if pong else "no_pong"
+        if not pong:
+            is_healthy = False
+    except Exception as exc:
+        checks["redis"] = f"error: {str(exc)[:60]}"
+        is_healthy = False
+
+    if not is_healthy:
+        checks["status"] = "unhealthy"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return checks

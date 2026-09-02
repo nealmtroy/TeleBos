@@ -1,5 +1,6 @@
 """Account management business logic — login, logout, profile."""
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -331,7 +332,7 @@ async def verify_code(
                     # Get password info to extract hint
                     password_info = await unauth_client.get_password()
                     hint_msg = password_info.hint if password_info.hint else None
-                    hint_text = f"Verifikasi 2 langkah aktif. Password hint: {' '.join(hint_msg)}" if hint_msg else None
+                    hint_text = f"Verifikasi 2 langkah aktif. Password hint: {hint_msg}" if hint_msg else None
                 except Exception:
                     hint_text = "Akun ini memiliki verifikasi 2 langkah (V2L / 2FA). Masukkan password Telegram Anda."
 
@@ -660,7 +661,7 @@ async def get_accounts_paginated(
     query = query.order_by(TelegramAccount.created_at.desc())
     
     # Calculate offset
-    offset = (page - 1) * limit
+    offset = max(0, (page - 1) * limit)
     query = query.offset(offset).limit(limit)
 
     result = await db.execute(query)
@@ -839,7 +840,7 @@ async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: 
                 buf.seek(0)
                 data = buf.read()
                 try:
-                    data = resize_to_avatar(data)
+                    data = await asyncio.to_thread(resize_to_avatar, data)
                 except Exception as e:
                     logger.warning("Failed to resize uploaded profile photo for %s: %s", account.id, e)
                 with open(photo_path, "wb") as f:
@@ -913,7 +914,7 @@ async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
     buf.seek(0)
     data = buf.read()
     try:
-        data = resize_to_avatar(data)
+        data = await asyncio.to_thread(resize_to_avatar, data)
     except Exception as e:
         logger.warning("Failed to resize profile photo for %s: %s", account.id, e)
 

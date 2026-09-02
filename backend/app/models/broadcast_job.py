@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Integer, Text, func, ForeignKey
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,9 @@ from app.database import Base
 
 class BroadcastJob(Base):
     __tablename__ = "broadcast_jobs"
+    __table_args__ = (
+        Index("ix_broadcast_jobs_user_id_status", "user_id", "status"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -39,7 +42,7 @@ class BroadcastJob(Base):
     custom_text: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[str] = mapped_column(
-        String(20), default="pending"
+        String(20), default="pending", index=True
     )  # pending, running, paused, completed, cancelled, failed
 
     progress: Mapped[int] = mapped_column(Integer, default=0)

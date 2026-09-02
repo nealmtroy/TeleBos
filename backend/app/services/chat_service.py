@@ -136,7 +136,7 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
         last_msg = None
         last_time = None
         if d.message:
-            last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+            last_msg = (d.message.text or "[non-text message]") if d.message else ""
             last_time = d.message.date
 
         avatar_metadata = _avatar_metadata(d.entity)

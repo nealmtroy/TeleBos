@@ -38,6 +38,10 @@ class ReconnectingWebSocket {
   private _connected = false;
   private _intentionalClose = false;
   private _authenticated = false;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private baseReconnectDelay = 1000;
+  private maxReconnectDelay = 30000;
 
   constructor(url: string) {
     this.url = url;
@@ -60,6 +64,7 @@ class ReconnectingWebSocket {
 
     this.ws.onopen = () => {
       this._connected = true;
+      this.reconnectAttempts = 0;
 
       // Send Better Auth session token as first message to authenticate
       if (sessionToken) {
@@ -111,6 +116,7 @@ class ReconnectingWebSocket {
 
   disconnect() {
     this._intentionalClose = true;
+    this.reconnectAttempts = 0;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -160,11 +166,26 @@ class ReconnectingWebSocket {
   }
 
   private _scheduleReconnect() {
+    if (this._intentionalClose) return;
     if (this.reconnectTimer) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.warn(
+        `[WS] Max reconnect attempts (${this.maxReconnectAttempts}) reached for ${this.url}. Halting reconnect.`
+      );
+      return;
+    }
+
+    // Exponential backoff with random jitter
+    const delay = Math.min(
+      this.maxReconnectDelay,
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts) + Math.floor(Math.random() * 1000)
+    );
+    this.reconnectAttempts++;
+
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
-    }, 3_000);
+    }, delay);
   }
 }
 
