@@ -119,7 +119,13 @@ class TelegramRegDateService:
                 return f"{years} years, {remaining_months} months"
             return f"{years} years"
 
-    async def sync_datapoints_from_account(self, db: AsyncSession, account_id: UUID, limit: int = 500) -> int:
+    async def sync_datapoints_from_account(
+        self,
+        db: AsyncSession,
+        account_id: UUID | str,
+        limit: int = 500,
+        dialogs: list | None = None,
+    ) -> int:
         """Scan dialogues of a specific account for contact signup service messages
 
         and add them to the database as verified registration datapoints.

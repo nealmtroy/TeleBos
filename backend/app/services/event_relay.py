@@ -93,10 +93,10 @@ class TelegramEventRelay:
             lambda event: asyncio.create_task(self._on_message_read(account_id, event))
         )
 
-        # User typing / online status (only spawn task if a client is actively subscribed to chats:{account_id})
-        def _on_user_update_filter(event):
+        # User typing / online status (only process if a client is actively subscribed to chats:{account_id})
+        async def _on_user_update_filter(event):
             if manager.has_channel(f"chats:{account_id}"):
-                asyncio.create_task(self._on_user_update(account_id, event))
+                await self._on_user_update(account_id, event)
 
         typing_handler = client.on(events.UserUpdate())(_on_user_update_filter)
 
@@ -106,12 +106,12 @@ class TelegramEventRelay:
         )
 
         # Raw TL handler for profile changes (instant detection)
-        # Synchronously filters events: only spawn task if event matches our own user_id
-        def _on_raw_profile_filter(event):
+        # Synchronously filters events: only process if event matches our own user_id
+        async def _on_raw_profile_filter(event):
             tg_user_id = getattr(event, "user_id", None)
             my_tg_id = self._tg_id_map.get(account_id)
             if my_tg_id is not None and tg_user_id == my_tg_id:
-                asyncio.create_task(self._on_profile_change(account_id, event))
+                await self._on_profile_change(account_id, event)
 
         raw_profile_handler = client.on(
             events.Raw(types=(UpdateUserName, UpdateUserPhone, UpdateUser))

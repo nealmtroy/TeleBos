@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-03
+- **[86a0e638](https://github.com/nealmtroy/TeleBos/commit/86a0e638)**: fix(telethon): resolve memory leaks, connection resets, and audit bottlenecks (P0, P1, P2)
 - **[933271a1](https://github.com/nealmtroy/TeleBos/commit/933271a1)**: feat: add admin broadcast management panel with controls, duplicate detection, and sorting
 
 ## 2026-08-23
