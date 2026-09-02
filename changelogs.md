@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-03
+- **[933271a1](https://github.com/nealmtroy/TeleBos/commit/933271a1)**: feat: add admin broadcast management panel with controls, duplicate detection, and sorting
+
 ## 2026-08-23
 - **[7c276d3f](https://github.com/nealmtroy/TeleBos/commit/7c276d3f)**: refactor: change registration date sync limit to 500 in adaptive sync loop
 - **[e443a9c8](https://github.com/nealmtroy/TeleBos/commit/e443a9c8)**: refactor: remove registration date monotonicity checks to match sibling project

@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Any
 
 from telethon import events
 from telethon.tl.types import (
@@ -92,10 +93,12 @@ class TelegramEventRelay:
             lambda event: asyncio.create_task(self._on_message_read(account_id, event))
         )
 
-        # User typing
-        typing_handler = client.on(events.UserUpdate())(
-            lambda event: asyncio.create_task(self._on_user_update(account_id, event))
-        )
+        # User typing / online status (only spawn task if a client is actively subscribed to chats:{account_id})
+        def _on_user_update_filter(event):
+            if manager.has_channel(f"chats:{account_id}"):
+                asyncio.create_task(self._on_user_update(account_id, event))
+
+        typing_handler = client.on(events.UserUpdate())(_on_user_update_filter)
 
         # Chat action (someone joined/left/pinned/typing)
         chat_action_handler = client.on(events.ChatAction())(
@@ -103,10 +106,16 @@ class TelegramEventRelay:
         )
 
         # Raw TL handler for profile changes (instant detection)
-        # Catches UpdateUserName, UpdateUserPhone, UpdateUser for self
+        # Synchronously filters events: only spawn task if event matches our own user_id
+        def _on_raw_profile_filter(event):
+            tg_user_id = getattr(event, "user_id", None)
+            my_tg_id = self._tg_id_map.get(account_id)
+            if my_tg_id is not None and tg_user_id == my_tg_id:
+                asyncio.create_task(self._on_profile_change(account_id, event))
+
         raw_profile_handler = client.on(
             events.Raw(types=(UpdateUserName, UpdateUserPhone, UpdateUser))
-        )(lambda event: asyncio.create_task(self._on_profile_change(account_id, event)))
+        )(_on_raw_profile_filter)
 
         # Message deleted
         delete_handler = client.on(events.MessageDeleted())(
@@ -134,19 +143,23 @@ class TelegramEventRelay:
         logger.info("Event handlers attached for account %s", account_id)
         return True
 
-    def detach_client(self, account_id: str, client) -> None:
+    def detach_client(self, account_id: str, client: Any) -> None:
         """Remove handlers using an already-held client without pool I/O."""
         handlers = self._handlers.pop(account_id, None)
         self._tg_id_map.pop(account_id, None)
         if handlers is None:
             return
         for handler in handlers:
-            client.remove_event_handler(handler)
+            try:
+                client.remove_event_handler(handler)
+            except Exception as exc:
+                logger.debug("Error removing event handler for %s: %s", account_id, exc)
         logger.info("Event handlers detached for account %s", account_id)
 
-    async def detach(self, account_id: str) -> None:
+    async def detach(self, account_id: str, client: Any = None) -> None:
         """Remove all event handlers for an account."""
-        client = (await client_pool.get_connected_clients()).get(account_id)
+        if client is None:
+            client = (await client_pool.get_connected_clients()).get(account_id)
         if client:
             self.detach_client(account_id, client)
             return

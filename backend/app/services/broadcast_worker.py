@@ -20,7 +20,8 @@ from telethon.errors.rpcerrorlist import (
 
 from app.database import async_session_factory
 from app.utils.redis import redis_client
-from app.utils.telethon_pool import telethon_pool
+from app.utils.telethon_helpers import get_active_client
+from app.models.telegram_account import TelegramAccount
 from app.models.broadcast_job import BroadcastJob
 from app.models.broadcast_log import BroadcastLog
 from app.models.group_list import GroupList
@@ -117,19 +118,12 @@ class BroadcastWorkerManager:
                     job.status = "failed"
                     await db.commit()
                     return
-                client = await telethon_pool.get_or_create(
-                    account_id=ta.id,
-                    session_string=ta.session_string,
-                    phone=ta.phone,
-                )
+                client = await get_active_client(ta)
             except Exception as e:
                 job.status = "failed"
                 await db.commit()
                 logger.error("Failed to get client for job %s: %s", job_id[:8], e)
                 return
-
-            # We need TelegramAccount but only imported broadcast models above
-            from app.models.telegram_account import TelegramAccount
 
             await db.commit()
 

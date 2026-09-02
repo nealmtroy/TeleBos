@@ -93,14 +93,14 @@ async def update_account_stats_from_db(account: TelegramAccount, db: AsyncSessio
         account.owned_channels = row.owned_channels
 
 
-async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> None:
+async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> list[Any]:
     """Sync all chats (private, bots, groups, supergroups, channels) in a consolidated dialog call."""
     import datetime as dt
     try:
         client = await get_active_client(account)
     except RuntimeError as exc:
         logger.error("Failed to sync chats for account %s: %s", account.id, exc)
-        return
+        return []
 
     logger.info("Starting consolidated chat synchronization for account %s...", account.id)
 
@@ -109,7 +109,7 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
         dialogs_folder_0 = await client.get_dialogs(limit=500, folder=0)
     except Exception as exc:
         logger.error("Error during get_dialogs folder 0 for account %s: %s", account.id, exc)
-        return
+        return []
 
     dialogs_folder_1 = []
     try:
@@ -124,6 +124,8 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
     
     synced_private_ids = set()
     synced_group_channel_ids = set()
+    details_fetched = 0
+    MAX_DETAILS_PER_SYNC = 25  # Limit RPC calls to prevent flood waits and long loop blocks
 
     for d in all_dialogs:
         chat_type_val = _classify_chat(d.entity)
@@ -147,13 +149,14 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
             deactivated = getattr(d.entity, "deactivated", False)
             is_active = not (left or deactivated)
             
-            # Fetch detailed member stats and invite links if active and not skip_details
+            # Fetch detailed member stats and invite links if active and not skip_details (bounded)
             member_count = None
             online_count = None
             invite_link = None
-            if is_active and not skip_details:
+            if is_active and not skip_details and details_fetched < MAX_DETAILS_PER_SYNC:
                 try:
                     member_count, online_count, invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
+                    details_fetched += 1
                 except Exception as detail_exc:
                     logger.debug("Failed to get full chat details for %s: %s", d.id, detail_exc)
 
@@ -258,6 +261,7 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
         len(synced_private_ids),
         len(synced_group_channel_ids),
     )
+    return all_dialogs
 
 
 async def sync_chats_to_db(account: TelegramAccount, db: AsyncSession) -> None:

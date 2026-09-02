@@ -57,8 +57,7 @@ celerybeat-schedule
 .gemini/
 .kiro/
 .qoder/
-.claude/skills/
-.claude/settings.local.json
+.claude/
 .impeccable/
 # Local AI-skill installation state; never version-controlled
 skills-lock.json

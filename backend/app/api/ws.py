@@ -54,11 +54,18 @@ class ConnectionManager:
         if not conns:
             self._connections.pop(channel, None)
 
+    def has_channel(self, channel: str) -> bool:
+        """Check if there are any active subscribers for a channel."""
+        conns = self._connections.get(channel)
+        return bool(conns)
+
     async def broadcast(self, channel: str, data: dict) -> None:
         """Send a JSON message to all clients in a channel."""
-        conns = list(self._connections.get(channel, set()))
+        conns = self._connections.get(channel)
+        if not conns:
+            return
         payload = json.dumps(data)
-        for ws in conns:
+        for ws in list(conns):
             try:
                 await ws.send_text(payload)
             except Exception:

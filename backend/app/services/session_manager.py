@@ -445,7 +445,7 @@ class SessionManager:
         stale_ids: list[str] = []
         healthy_ids: list[str] = []
 
-        # Phase 1: Ping clients WITHOUT holding a DB session (get_me is a Telegram API call, can be slow)
+        # Phase 1: Check client connection status WITHOUT holding a DB session (uses local socket status)
         for account_id, client in list(clients.items()):
             try:
                 if not client.is_connected():
@@ -453,16 +453,10 @@ class SessionManager:
                     stale_ids.append(account_id)
                     continue
 
-                me = await client.get_me()
-                if me is None:
-                    logger.warning("Client %s returned no user", account_id)
-                    stale_ids.append(account_id)
-                    continue
-
                 healthy_ids.append(account_id)
 
             except Exception as exc:
-                logger.warning("Client %s ping failed: %s", account_id, exc)
+                logger.warning("Client %s connection check failed: %s", account_id, exc)
                 stale_ids.append(account_id)
 
         # Phase 2: Short DB session for lazy disconnect checks on healthy clients
@@ -481,7 +475,7 @@ class SessionManager:
                             account = result.scalar_one_or_none()
                             if account:
                                 has_auto_reply = account.auto_reply_enabled
-                                has_active_ws = ws_manager._connections.get(f"chats:{account_id}") is not None
+                                has_active_ws = ws_manager.has_channel(f"chats:{account_id}")
                                 has_active_job = await self.is_account_in_active_job(db, account_id)
 
                                 if not (has_auto_reply or has_active_ws or has_active_job):

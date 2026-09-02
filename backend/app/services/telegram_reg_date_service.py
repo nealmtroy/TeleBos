@@ -128,6 +128,10 @@ class TelegramRegDateService:
         if isinstance(account_id, str):
             account_id = UUID(account_id)
 
+        # If dialogs are already provided from a prior sync, extract without network calls
+        if dialogs is not None:
+            return await self.extract_datapoints_from_dialogs(db, dialogs)
+
         account = await db.get(TelegramAccount, account_id)
         if not account:
             raise ValueError(f"Account not found for ID: {account_id}")
@@ -140,31 +144,25 @@ class TelegramRegDateService:
         try:
             logger.info("Scanning last %d dialogs for account %s for signups...", limit, account.phone)
             async for dialog in client.iter_dialogs(limit=limit):
-                if dialog.is_user and dialog.id > 0:
-                    msg = dialog.message
-                    if msg and isinstance(msg, MessageService) and isinstance(msg.action, MessageActionContactSignUp):
-                        telegram_id = dialog.id
-                        
-                        # Truncate time to midnight UTC to match dataset.json formatting exactly
-                        date_only = msg.date.date()
-                        registered_at = datetime.datetime.combine(
-                            date_only, datetime.time.min, tzinfo=datetime.timezone.utc
-                        )
+                extracted = self._extract_signup_datapoint(dialog)
+                if not extracted:
+                    continue
+                telegram_id, registered_at = extracted
 
-                        # Check if this ID already exists
-                        stmt = select(TelegramRegistrationDatapoint).where(
-                            TelegramRegistrationDatapoint.telegram_id == telegram_id
-                        )
-                        result = await db.execute(stmt)
-                        existing = result.scalar_one_or_none()
-                        if not existing:
-                            dp = TelegramRegistrationDatapoint(
-                                telegram_id=telegram_id,
-                                registered_at=registered_at,
-                                source="sync",
-                            )
-                            db.add(dp)
-                            added_count += 1
+                # Check if this ID already exists
+                stmt = select(TelegramRegistrationDatapoint).where(
+                    TelegramRegistrationDatapoint.telegram_id == telegram_id
+                )
+                result = await db.execute(stmt)
+                existing = result.scalar_one_or_none()
+                if not existing:
+                    dp = TelegramRegistrationDatapoint(
+                        telegram_id=telegram_id,
+                        registered_at=registered_at,
+                        source="sync",
+                    )
+                    db.add(dp)
+                    added_count += 1
             if added_count > 0:
                 await db.commit()
                 logger.info("Successfully harvested %d new signup datapoints from %s", added_count, account.phone)
@@ -172,6 +170,44 @@ class TelegramRegDateService:
             logger.exception("Error scanning signup messages for account %s: %s", account.phone, exc)
             raise
 
+        return added_count
+
+    def _extract_signup_datapoint(self, dialog) -> tuple[int, datetime.datetime] | None:
+        """Extract telegram_id and registered_at from a dialog if it's a contact signup message."""
+        if getattr(dialog, "is_user", False) and getattr(dialog, "id", 0) > 0:
+            msg = getattr(dialog, "message", None)
+            if msg and isinstance(msg, MessageService) and isinstance(msg.action, MessageActionContactSignUp):
+                telegram_id = dialog.id
+                date_only = msg.date.date()
+                registered_at = datetime.datetime.combine(
+                    date_only, datetime.time.min, tzinfo=datetime.timezone.utc
+                )
+                return telegram_id, registered_at
+        return None
+
+    async def extract_datapoints_from_dialogs(self, db: AsyncSession, dialogs: list) -> int:
+        """Extract registration datapoints from an in-memory list of dialogs without network calls."""
+        added_count = 0
+        for dialog in dialogs:
+            extracted = self._extract_signup_datapoint(dialog)
+            if not extracted:
+                continue
+            telegram_id, registered_at = extracted
+            stmt = select(TelegramRegistrationDatapoint).where(
+                TelegramRegistrationDatapoint.telegram_id == telegram_id
+            )
+            result = await db.execute(stmt)
+            if not result.scalar_one_or_none():
+                dp = TelegramRegistrationDatapoint(
+                    telegram_id=telegram_id,
+                    registered_at=registered_at,
+                    source="sync",
+                )
+                db.add(dp)
+                added_count += 1
+        if added_count > 0:
+            await db.commit()
+            logger.info("Successfully harvested %d new signup datapoints from in-memory dialogs", added_count)
         return added_count
 
     async def sync_all_accounts_reg_dates(self) -> int:

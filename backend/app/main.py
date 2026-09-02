@@ -1125,15 +1125,16 @@ async def lifespan(app: FastAPI):
                             logger.error("Adaptive Sync: Error syncing profile for %s: %s", db_acc.phone, profile_exc)
                         
                         # Step B: Consolidated Sync (Chats, Groups, Channels, & last_sync_at / groups_channels_synced_at)
+                        dialogs = []
                         try:
                             # We use skip_details=True for periodic background sync to avoid heavy API hits
-                            await sync_all_chats_to_db(db_acc, db_session, skip_details=True)
+                            dialogs = await sync_all_chats_to_db(db_acc, db_session, skip_details=True)
                         except Exception as chat_exc:
                             logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
                             
-                        # Step C: Sync Registration Dates (limit to 500 dialogs)
+                        # Step C: Sync Registration Dates (re-uses already fetched dialogs, zero extra network calls)
                         try:
-                            await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=500)
+                            await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=500, dialogs=dialogs)
                         except Exception as reg_exc:
                             logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
 
@@ -1212,7 +1213,11 @@ async def lifespan(app: FastAPI):
     smm_orders_poll_task = asyncio.create_task(_smm_orders_poll_loop())
     logger.info("SMM orders background status poll task started (1-min interval)")
 
+    # 7. Spawn message media cache cleanup background task (runs daily)
+    from app.utils.media_cleanup import background_media_cleanup_loop
 
+    media_cleanup_task = asyncio.create_task(background_media_cleanup_loop())
+    logger.info("Message media cache cleanup background task started (daily interval)")
 
     yield
     # Shutdown
@@ -1252,6 +1257,12 @@ async def lifespan(app: FastAPI):
     smm_orders_poll_task.cancel()
     try:
         await smm_orders_poll_task
+    except asyncio.CancelledError:
+        pass
+
+    media_cleanup_task.cancel()
+    try:
+        await media_cleanup_task
     except asyncio.CancelledError:
         pass
 

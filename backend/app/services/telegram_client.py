@@ -135,13 +135,13 @@ class TelegramClientPool:
                 # Detach event handlers first to prevent memory leak
                 try:
                     from app.services.event_relay import event_relay
-                    await event_relay.detach(acc_id)
+                    event_relay.detach_client(acc_id, data["client"])
                 except Exception as e:
                     logger.warning("Error detaching event handlers during cleanup for account %s: %s", acc_id, e)
 
                 logger.info("Disconnecting idle Telegram client for account %s", acc_id)
                 try:
-                    await asyncio.wait_for(data["client"].disconnect(), timeout=2.0)
+                    await asyncio.wait_for(data["client"].disconnect(), timeout=5.0)
                 except Exception as e:
                     logger.debug("Error disconnecting idle client %s: %s", acc_id, e)
 
