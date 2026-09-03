@@ -6,7 +6,6 @@ import pytest
 
 from app.services.event_relay import TelegramEventRelay
 from app.services.telegram_client import TelegramClientPool
-from app.utils.telethon_pool import TelethonPool
 
 
 @pytest.mark.asyncio
@@ -75,19 +74,12 @@ async def test_cleanup_stale_clients_calls_detach_client():
     assert account_id not in pool._clients
 
 
-@pytest.mark.asyncio
-async def test_telethon_pool_delegates_to_client_pool():
-    """Verify that legacy telethon_pool delegates get_or_create to client_pool."""
-    pool = TelethonPool()
-    mock_client = MagicMock()
-
-    with patch("app.services.telegram_client.client_pool.get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = mock_client
-        with patch("app.utils.telethon_pool.decrypt", return_value="decrypted-session"):
-            res = await pool.get_or_create("acc-123", "enc-session")
-
-            mock_get.assert_awaited_once_with("acc-123", "decrypted-session")
-            assert res is mock_client
+def test_telegram_client_pool_active_count():
+    """Verify that TelegramClientPool active_count tracks clients."""
+    pool = TelegramClientPool()
+    assert pool.active_count == 0
+    pool._clients["acc-1"] = {"client": MagicMock()}
+    assert pool.active_count == 1
 
 
 def test_connection_manager_has_channel():

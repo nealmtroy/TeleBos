@@ -43,9 +43,9 @@ async def create_redeem_code(
     parsed_expires_at = None
     if data.expires_at:
         try:
-            parsed_expires_at = datetime.fromisoformat(data.expires_at)
-            if parsed_expires_at.tzinfo is None:
-                parsed_expires_at = parsed_expires_at.replace(tzinfo=timezone.utc)
+            from app.utils.timezone import ensure_utc
+
+            parsed_expires_at = ensure_utc(datetime.fromisoformat(data.expires_at))
         except ValueError:
             raise ValueError("Invalid expires_at format. Use ISO format (e.g. 2026-12-31T23:59:59)")
 
@@ -141,9 +141,9 @@ async def redeem_code(
             locked_user.role = redeem.plan
 
         # Accumulate remaining days if existing subscription is active
-        current_expiry = locked_user.subscription_expires_at
-        if current_expiry and current_expiry.tzinfo is None:
-            current_expiry = current_expiry.replace(tzinfo=timezone.utc)
+        from app.utils.timezone import ensure_utc
+
+        current_expiry = ensure_utc(locked_user.subscription_expires_at)
 
         base_time = max(now, current_expiry) if (current_expiry and current_expiry > now) else now
         locked_user.subscription_expires_at = base_time + timedelta(days=redeem.duration_days)

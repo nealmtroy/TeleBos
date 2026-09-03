@@ -5,37 +5,31 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.services.broadcast_worker import BroadcastWorkerManager
+from app.models.enums import JobStatus
+from app.services import broadcast_service
 from app.services.smm_service import call_smm_api
 from app.services.order_service import place_mass_orders
 from app.models.user import User
+from types import SimpleNamespace
 
 
 @pytest.mark.asyncio
-async def test_broadcast_worker_pause_logic():
-    """Verify LOG-05: broadcast worker pause properly pauses active jobs."""
-    worker = BroadcastWorkerManager()
-    job_id = str(uuid4())
+async def test_broadcast_service_update_job_status():
+    """Verify LOG-05: broadcast_service properly updates status and records completion timestamp."""
+    db = AsyncMock()
+    job = SimpleNamespace(id=uuid4(), status=JobStatus.RUNNING, completed_at=None)
 
-    # Simulate start
-    worker._pause_events[job_id] = asyncio.Event()
-    worker._pause_events[job_id].set()  # running state
+    with patch("app.services.broadcast_service._wake_job") as mock_wake:
+        await broadcast_service.update_job_status(db, job, JobStatus.PAUSED)
+        assert job.status == JobStatus.PAUSED
+        assert job.completed_at is None
+        mock_wake.assert_called_once_with(str(job.id))
+        db.flush.assert_awaited_once()
 
-    with patch.object(worker, "_update_job_status", new_callable=AsyncMock) as mock_update:
-        # First pause should succeed
-        paused = await worker.pause(job_id)
-        assert paused is True
-        assert not worker._pause_events[job_id].is_set()
-        mock_update.assert_called_once_with(job_id, "paused")
-
-        # Second pause on already-paused job should return False
-        paused_again = await worker.pause(job_id)
-        assert paused_again is False
-
-        # Resume should succeed
-        resumed = await worker.resume(job_id)
-        assert resumed is True
-        assert worker._pause_events[job_id].is_set()
+    with patch("app.services.broadcast_service._wake_job"):
+        await broadcast_service.update_job_status(db, job, JobStatus.COMPLETED)
+        assert job.status == JobStatus.COMPLETED
+        assert job.completed_at is not None
 
 
 @pytest.mark.asyncio

@@ -552,33 +552,26 @@ async def _broadcast_entities_for_target(
     return [await _join_and_resolve_target(client, target, job_id_str)]
 
 
+async def _get_broadcast_job_status(jid: uuid.UUID | str) -> str | None:
+    """Helper to check and retrieve the current status of the job using a fresh session."""
+    from app.database import async_session_factory
+    async with async_session_factory() as sdb:
+        res = await sdb.execute(select(BroadcastJob.status).where(BroadcastJob.id == jid))
+        return res.scalar_one_or_none()
+
+
 async def execute_broadcast(job_id: str):
     """Execute a broadcast job. Runs as an asyncio.Task in the FastAPI process."""
     from app.database import async_session_factory
-    import uuid as _uuid
-    import time
-    from telethon import TelegramClient
-    from telethon.sessions import StringSession
-    import telethon
-    from app.config import get_settings
-    from app.utils.flood_control import flood_controller as fc
-    from app.services.telegram_client import client_pool
-    from app.utils.encryption import decrypt
-    from app.utils.telegram_errors import classify_telegram_error
     from telethon.utils import get_peer_id
 
     try:
-        job_uuid = _uuid.UUID(job_id) if isinstance(job_id, str) else job_id
+        job_uuid = uuid.UUID(job_id) if isinstance(job_id, str) else job_id
     except ValueError:
         job_uuid = job_id
 
     job_id_str = str(job_uuid)
-
-    # Helper to check and retrieve the current status of the job using a fresh session
-    async def _get_current_status(jid):
-        async with async_session_factory() as sdb:
-            res = await sdb.execute(select(BroadcastJob.status).where(BroadcastJob.id == jid))
-            return res.scalar_one_or_none()
+    _get_current_status = _get_broadcast_job_status
 
     try:
         # ── Initial setup: copy DB data before any Telegram/network I/O ──

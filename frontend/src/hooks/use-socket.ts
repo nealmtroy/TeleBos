@@ -85,6 +85,7 @@ export function useJobSocket(jobType: "broadcast" | "invite", jobId: string | nu
     return () => {
       clearInterval(checkInterval);
       ws.off("all", handleEvent);
+      disconnectSocket(`${jobType}:${jobId}`);
       setLogs([]);
       setPhaseMessage("");
       setProgress(null);

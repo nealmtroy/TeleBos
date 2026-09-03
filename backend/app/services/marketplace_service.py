@@ -18,6 +18,7 @@ from app.models.invite_job import InviteJob
 from app.services.telegram_client import client_pool
 from app.services.notification_service import create_notification
 from app.utils.encryption import decrypt
+from app.utils.phone import COUNTRY_PREFIXES, clean_phone_number
 
 logger = logging.getLogger(__name__)
 
@@ -27,52 +28,14 @@ def get_country_code_and_name(phone: str) -> tuple[str, str]:
     if not phone:
         return "+Unknown", "Unknown"
 
-    # Clean phone number
-    cleaned = "".join(c for c in phone if c.isdigit() or c == "+")
-    if not cleaned.startswith("+"):
-        cleaned = "+" + cleaned
-
-    prefixes = {
-        "+62": "Indonesia",
-        "+1": "United States/Canada",
-        "+7": "Russia/Kazakhstan",
-        "+44": "United Kingdom",
-        "+91": "India",
-        "+86": "China",
-        "+33": "France",
-        "+49": "Germany",
-        "+39": "Italy",
-        "+34": "Spain",
-        "+81": "Japan",
-        "+82": "South Korea",
-        "+84": "Vietnam",
-        "+66": "Thailand",
-        "+60": "Malaysia",
-        "+65": "Singapore",
-        "+63": "Philippines",
-        "+92": "Pakistan",
-        "+90": "Turkey",
-        "+98": "Iran",
-        "+380": "Ukraine",
-        "+998": "Uzbekistan",
-        "+992": "Tajikistan",
-        "+993": "Turkmenistan",
-        "+994": "Azerbaijan",
-        "+995": "Georgia",
-        "+996": "Kyrgyzstan",
-        "+370": "Lithuania",
-        "+371": "Latvia",
-        "+372": "Estonia",
-        "+375": "Belarus",
-        "+351": "Portugal",
-    }
+    cleaned = clean_phone_number(phone)
 
     # Try 4-character prefix (e.g. +380), then 3-character (e.g. +62), then 2-character (e.g. +1)
     for length in [4, 3, 2]:
         if len(cleaned) >= length:
             prefix = cleaned[:length]
-            if prefix in prefixes:
-                return prefix, prefixes[prefix]
+            if prefix in COUNTRY_PREFIXES:
+                return prefix, COUNTRY_PREFIXES[prefix]
 
     if len(cleaned) > 2:
         return cleaned[:3], "Other"

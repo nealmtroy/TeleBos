@@ -91,3 +91,22 @@ def has_recent_appeal_keywords(text: str) -> bool:
         if kw in text_lower:
             return True
     return False
+
+
+async def start_spambot_conversation(client, conv, log_identifier: str = "") -> None:
+    """Send /start to SpamBot, automatically unblocking if blocked."""
+    try:
+        await conv.send_message("/start")
+    except Exception as e:
+        from telethon.errors import YouBlockedUserError
+        if isinstance(e, YouBlockedUserError) or "you blocked this user" in str(e).lower():
+            logger.info("SpamBot is blocked (%s). Unblocking...", log_identifier or "spambot")
+            from telethon import functions
+            try:
+                await client(functions.contacts.UnblockRequest(id="spambot"))
+                await conv.send_message("/start")
+            except Exception as unblock_err:
+                logger.error("Failed to unblock SpamBot (%s): %s", log_identifier or "spambot", unblock_err)
+                raise e
+        else:
+            raise e

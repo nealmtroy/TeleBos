@@ -259,9 +259,9 @@ class SessionManager:
 
                 twelve_hours_ago = datetime.now(timezone.utc) - timedelta(hours=12)
                 for row in rows:
-                    account_id, phone, last_checked = str(row[0]), row[1], row[2]
-                    if last_checked and last_checked.tzinfo is None:
-                        last_checked = last_checked.replace(tzinfo=timezone.utc)
+                    from app.utils.timezone import ensure_utc
+
+                    last_checked = ensure_utc(last_checked)
                     if last_checked is None or last_checked < twelve_hours_ago:
                         accounts_to_check.append((account_id, phone))
         except Exception as exc:

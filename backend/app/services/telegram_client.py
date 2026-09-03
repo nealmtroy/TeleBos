@@ -43,6 +43,11 @@ class TelegramClientPool:
         self._connect_semaphore = asyncio.Semaphore(3)
         self._catch_up_tasks: set[asyncio.Task[Any]] = set()
 
+    @property
+    def active_count(self) -> int:
+        """Return the number of clients currently retained in the pool."""
+        return len(self._clients)
+
     async def _cleanup_stale_clients(self) -> None:
         """Disconnect and remove clients that haven't been accessed recently or
         are no longer connected, unless they are active in broadcast jobs or auto-reply.

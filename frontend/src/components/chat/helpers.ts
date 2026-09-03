@@ -1,4 +1,5 @@
-export { getChatPhotoUrl } from "@/lib/avatar";
+export { getChatPhotoUrl, getTelegramAvatarColor } from "@/lib/avatar";
+import { getTelegramAvatarColor } from "@/lib/avatar";
 
 import {
   Image,
@@ -13,18 +14,8 @@ import {
   Phone,
 } from "lucide-react";
 
-export function getAvatarGradient(peerId: number, colorId?: number | null) {
-  const colors = [
-    "bg-red-500",
-    "bg-orange-500",
-    "bg-amber-500",
-    "bg-green-500",
-    "bg-teal-500",
-    "bg-blue-500",
-    "bg-violet-500",
-  ];
-  const value = colorId ?? peerId;
-  return colors[Math.abs(value) % colors.length];
+export function getAvatarGradient(peerId: number, colorId?: number | null): string {
+  return getTelegramAvatarColor(peerId, colorId);
 }
 
 export const MEDIA_ICONS: Record<string, any> = {

@@ -12,27 +12,6 @@ settings = get_settings()
 redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
-async def blacklist_token(jti: str, expire_seconds: int) -> None:
-    """Add a JWT ID (jti) to the blacklist with an expiration TTL."""
-    if not jti or expire_seconds <= 0:
-        return
-    try:
-        await redis_client.setex(f"token:blacklist:{jti}", expire_seconds, "1")
-    except Exception as exc:
-        logger.error("Failed to blacklist token in Redis: %s", exc)
-
-
-async def is_token_blacklisted(jti: str) -> bool:
-    """Return True if the JWT ID (jti) is in the blacklist."""
-    if not jti:
-        return False
-    try:
-        return await redis_client.exists(f"token:blacklist:{jti}") > 0
-    except Exception as exc:
-        logger.error("Failed to check token blacklist in Redis: %s", exc)
-        return False
-
-
 # Auto-reply Rate Limiter & Cooldown Defaults
 MAX_REPLIES_PER_HOUR = 30
 COOLDOWN_SECONDS = 5

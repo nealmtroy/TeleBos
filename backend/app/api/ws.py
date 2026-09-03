@@ -167,9 +167,9 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
             return None
 
         from datetime import datetime, timezone
-        expires_at = row.expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        from app.utils.timezone import ensure_utc
+
+        expires_at = ensure_utc(row.expires_at)
         if expires_at < datetime.now(timezone.utc):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Session expired")
             return None

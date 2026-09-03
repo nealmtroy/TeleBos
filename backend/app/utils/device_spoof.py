@@ -63,47 +63,14 @@ _APP_VERSIONS = [
 ]
 
 
+from app.utils.phone import get_locale_from_phone
+
+
 def get_locale_for_phone(phone: str | None) -> tuple[str, str]:
     """Determine (lang_code, system_lang_code) based on phone number prefix.
     Defaults to ('en', 'en-US').
     """
-    if not phone:
-        return "en", "en"
-    
-    # Strip non-digits
-    digits = "".join(c for c in phone if c.isdigit())
-    
-    # Common marketing phone prefixes mapping
-    if digits.startswith("62"): # Indonesia
-        return "id", "id-ID"
-    elif digits.startswith("7"): # Russia / Kazakhstan
-        return "ru", "ru-RU"
-    elif digits.startswith("60"): # Malaysia
-        return "ms", "ms-MY"
-    elif digits.startswith("380"): # Ukraine
-        return "uk", "uk-UA"
-    elif digits.startswith("98"): # Iran
-        return "fa", "fa-IR"
-    elif digits.startswith("91"): # India
-        return "hi", "hi-IN"
-    elif digits.startswith("55"): # Brazil
-        return "pt", "pt-BR"
-    elif digits.startswith("86"): # China
-        return "zh", "zh-CN"
-    elif digits.startswith("84"): # Vietnam
-        return "vi", "vi-VN"
-    elif digits.startswith("63"): # Philippines
-        return "tl", "tl-PH"
-    elif digits.startswith("33"): # France
-        return "fr", "fr-FR"
-    elif digits.startswith("49"): # Germany
-        return "de", "de-DE"
-    elif digits.startswith("39"): # Italy
-        return "it", "it-IT"
-    elif digits.startswith("34"): # Spain
-        return "es", "es-ES"
-    
-    return "en", "en"
+    return get_locale_from_phone(phone)
 
 
 def random_ios_device(phone: str | None = None) -> dict:

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { authClient } from "@/lib/auth-client";
 import api, { setSessionToken } from "@/lib/api";
-import { setSocketSessionToken } from "@/lib/socket";
+import { setSocketSessionToken, disconnectAll } from "@/lib/socket";
 
 export interface User {
   id: string;
@@ -141,8 +141,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.error("Better Auth sign-out failed:", err);
     }
 
-    // 3. Wipe all in-memory session state regardless of above outcomes.
+    // 3. Wipe all in-memory session state and terminate WebSocket connections
     syncSessionToken(null);
+    disconnectAll();
     set({ user: null, isAuthenticated: false, isLoading: false });
   },
 

@@ -67,9 +67,9 @@ async def get_current_user(
 
     # Check expiration
     from datetime import datetime, timezone
-    expires_at = row.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    from app.utils.timezone import ensure_utc
+
+    expires_at = ensure_utc(row.expires_at)
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -144,9 +144,9 @@ async def get_current_user_from_token_or_header(
         )
 
     from datetime import datetime, timezone
-    expires_at = row.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    from app.utils.timezone import ensure_utc
+
+    expires_at = ensure_utc(row.expires_at)
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
