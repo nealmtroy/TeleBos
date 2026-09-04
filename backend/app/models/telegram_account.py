@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func, ForeignKey, BigInteger, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func, ForeignKey, BigInteger, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,6 +14,7 @@ class TelegramAccount(Base):
     __tablename__ = "telegram_accounts"
     __table_args__ = (
         UniqueConstraint("phone", name="uq_telegram_account_phone"),
+        Index("ix_telegram_accounts_active_sync", "is_active", "last_sync_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -66,7 +67,7 @@ class TelegramAccount(Base):
     )
     auto_reply_text: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
 
-    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     pts: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
     qts: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
     date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)

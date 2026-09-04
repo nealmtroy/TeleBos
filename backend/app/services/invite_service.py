@@ -220,9 +220,22 @@ async def _resolve_group(client, item_type: str, group_identifier: str, telethon
         return None, classify_telegram_error(exc)
 
 
+from typing import NamedTuple
+
+
+class LightweightParticipant(NamedTuple):
+    """Memory-efficient representation of a scraped participant (OVF-02, MEM-01)."""
+    id: int
+    access_hash: int = 0
+    username: str | None = None
+    first_name: str = ""
+    bot: bool = False
+    deleted: bool = False
+
+
 async def _scrape_participants(client, entity, telethon_mod, limit_per_group: int = 10000):
-    """Scrape participants from a group entity. Returns list of user objects."""
-    participants = []
+    """Scrape participants from a group entity. Returns list of lightweight participant objects."""
+    participants: list[LightweightParticipant] = []
     offset = 0
     batch_size = 200
 
@@ -264,11 +277,16 @@ async def _scrape_participants(client, entity, telethon_mod, limit_per_group: in
 
             for user in result.users:
                 # Skip bots, deleted accounts, and self
-                if getattr(user, "bot", False):
+                if getattr(user, "bot", False) or getattr(user, "deleted", False):
                     continue
-                if getattr(user, "deleted", False):
-                    continue
-                participants.append(user)
+                participants.append(
+                    LightweightParticipant(
+                        id=getattr(user, "id", 0),
+                        access_hash=getattr(user, "access_hash", 0) or 0,
+                        username=getattr(user, "username", None),
+                        first_name=getattr(user, "first_name", "") or "",
+                    )
+                )
 
             if len(result.users) < batch_size:
                 break

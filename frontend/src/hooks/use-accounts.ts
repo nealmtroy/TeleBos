@@ -54,7 +54,7 @@ export function useAccounts() {
   return useQuery<Account[]>({
     queryKey: ["accounts"],
     queryFn: async () => {
-      const { data } = await api.get("/accounts");
+      const { data } = await api.get("/accounts?limit=100");
       return data.accounts || [];
     },
   });

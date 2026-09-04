@@ -90,54 +90,6 @@ async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, 
         else:
             effective_price = svc.original_price
 
-
-
-async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, str, str, int, int, str | None, str | None]:
-    """Get service info with effective price from local smm_services table.
-
-    Returns:
-        (effective_price, service_name, category, min_qty, max_qty, note, speed)
-
-    Raises:
-        ValueError: If service not found or inactive.
-    """
-    svc = await db.get(SmmService, service_id)
-    if not svc:
-        # Fallback: try fetching from SMM API directly
-        from app.services.smm_service import get_services
-        all_services = await get_services()
-        service_info = next((s for s in all_services if s["id"] == service_id), None)
-        if not service_info:
-            raise ValueError(f"Service with ID {service_id} not found")
-        return (
-            int(service_info["price"]),
-            service_info["name"],
-            service_info.get("category", "Telegram"),
-            int(service_info.get("min", 1)),
-            int(service_info.get("max", 999999)),
-            service_info.get("note"),
-            service_info.get("speed"),
-        )
-
-    if not svc.is_active:
-        raise ValueError(f"Service '{svc.service_name}' is currently unavailable")
-
-    # Get global markup
-    global_result = await db.execute(
-        select(SmmSetting.value).where(SmmSetting.key == SETTING_GLOBAL_MARKUP)
-    )
-    global_markup = int(global_result.scalar() or "0")
-
-    # Calculate effective price
-    if svc.selling_price is not None:
-        effective_price = svc.selling_price
-    else:
-        markup = svc.markup_percent if svc.markup_percent else global_markup
-        if markup > 0:
-            effective_price = max(1, (svc.original_price * (100 + markup)) // 100)
-        else:
-            effective_price = svc.original_price
-
     return (
         effective_price,
         svc.service_name,
@@ -264,13 +216,18 @@ async def place_mass_orders(
     Raises:
         ValueError: If total cost exceeds balance.
     """
-    # Calculate total cost first using local smm_services table
+    # Calculate total cost first by resolving effective prices for each unique service ID (N1Q-03)
+    service_ids = {order_data["service_id"] for order_data in orders_data}
+    effective_prices = {}
+    for sid in service_ids:
+        effective_prices[sid] = await _get_effective_price(db, sid)
+
     total_cost = 0
     validated_orders = []
     for order_data in orders_data:
         service_id = order_data["service_id"]
         quantity = order_data.get("quantity", 1)
-        price_per_unit, service_name, category, min_qty, max_qty, _, _ = await _get_effective_price(db, service_id)
+        price_per_unit, service_name, category, min_qty, max_qty, _, _ = effective_prices[service_id]
         if quantity <= 0:
             raise ValueError(f"Quantity must be greater than 0 for service '{service_name}'")
         if quantity < min_qty:

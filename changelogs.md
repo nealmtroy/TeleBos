@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-04
+- **[64acbadf](https://github.com/nealmtroy/TeleBos/commit/64acbadf)**: feat(perf): remediate 14 memory, connection, and resource leaks
+
 ## 2026-09-03
 - **[409826fc](https://github.com/nealmtroy/TeleBos/commit/409826fc)**: refactor: comprehensive code quality improvements across 10 dimensions
 - **[92f2e3b0](https://github.com/nealmtroy/TeleBos/commit/92f2e3b0)**: feat: comprehensive audit reports and 100% remediation of deep logic bugs

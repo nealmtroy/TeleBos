@@ -1,6 +1,7 @@
 """Service for managing telegram_id prefix-based pricing (owner only)."""
 
 import logging
+import time
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,53 @@ from app.models.user_account_price import TelegramIdPrefixPrice
 from app.models.smm_setting import SmmSetting
 
 logger = logging.getLogger(__name__)
+
+_price_cache: dict = {
+    "entries": None,  # list of (id_prefix, sell_price) sorted by len desc
+    "fallback_price": None,
+    "timestamp": 0.0,
+}
+_CACHE_TTL = 300.0  # 5 minutes
+
+
+def invalidate_price_cache() -> None:
+    """Invalidate in-memory price rules cache."""
+    _price_cache["entries"] = None
+    _price_cache["fallback_price"] = None
+    _price_cache["timestamp"] = 0.0
+
+
+async def _get_cached_rules(db: AsyncSession) -> tuple[list[tuple[str, int]], int]:
+    """Retrieve prefix price rules and fallback price with in-memory caching."""
+    now = time.time()
+    if (
+        _price_cache["entries"] is not None
+        and _price_cache["fallback_price"] is not None
+        and (now - _price_cache["timestamp"]) < _CACHE_TTL
+    ):
+        return _price_cache["entries"], _price_cache["fallback_price"]
+
+    # 1. Fetch prefix prices
+    raw_entries = prefix_result.scalars().all() if hasattr(prefix_result, "scalars") else []
+    # ALG-01: Sort by length descending so longest prefix match early exits immediately
+    sorted_entries = sorted(
+        [(getattr(e, "id_prefix", ""), getattr(e, "sell_price", 0)) for e in raw_entries if hasattr(e, "id_prefix")],
+        key=lambda x: len(x[0]),
+        reverse=True,
+    )
+
+    # 2. Fetch fallback sell price
+    setting_result = await db.execute(
+        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
+    )
+    setting = setting_result.scalar_one_or_none() if hasattr(setting_result, "scalar_one_or_none") else None
+    fallback_price = int(setting.value) if setting and hasattr(setting, "value") and setting.value else 5500
+
+    _price_cache["entries"] = sorted_entries
+    _price_cache["fallback_price"] = fallback_price
+    _price_cache["timestamp"] = now
+
+    return sorted_entries, fallback_price
 
 
 async def get_all_prefix_prices(db: AsyncSession) -> list[dict]:
@@ -47,6 +95,7 @@ async def upsert_prefix_price(db: AsyncSession, id_prefix: str, sell_price: int,
         db.add(entry)
 
     await db.flush()
+    invalidate_price_cache()
     return {
         "id": str(entry.id),
         "id_prefix": entry.id_prefix,
@@ -64,6 +113,7 @@ async def delete_prefix_price(db: AsyncSession, id_prefix: str):
     if entry:
         await db.delete(entry)
         await db.flush()
+        invalidate_price_cache()
 
 
 async def get_price_for_telegram_id(db: AsyncSession, telegram_id: int) -> int:
@@ -72,43 +122,23 @@ async def get_price_for_telegram_id(db: AsyncSession, telegram_id: int) -> int:
     E.g. if entries exist for "7" (3000) and "77" (5000), then
     telegram_id 7780645374 matches "77" (5000), not "7" (3000).
     """
+    sorted_entries, fallback_price = await _get_cached_rules(db)
     tid_str = str(telegram_id)
 
-    result = await db.execute(
-        select(TelegramIdPrefixPrice)
-    )
-    entries = result.scalars().all()
+    # Longest prefix matches first because entries are sorted by len descending
+    for id_prefix, sell_price in sorted_entries:
+        if tid_str.startswith(id_prefix):
+            return sell_price
 
-    # Find the longest matching prefix
-    best_price = None
-    best_len = 0
-
-    for entry in entries:
-        if tid_str.startswith(entry.id_prefix) and len(entry.id_prefix) > best_len:
-            best_price = entry.sell_price
-            best_len = len(entry.id_prefix)
-
-    if best_price is not None:
-        return best_price
-
-    # Fallback to global default
-    setting_result = await db.execute(
-        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
-    )
-    setting = setting_result.scalar_one_or_none()
-    return int(setting.value) if setting and setting.value else 5500
+    return fallback_price
 
 
 async def resolve_telegram_id_price(db: AsyncSession, account: TelegramAccount) -> int:
     """Resolve price for a TelegramAccount using its telegram_id."""
     if account.telegram_id:
         return await get_price_for_telegram_id(db, account.telegram_id)
-    # No telegram_id? Use global default
-    setting_result = await db.execute(
-        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
-    )
-    setting = setting_result.scalar_one_or_none()
-    return int(setting.value) if setting and setting.value else 5500
+    _, fallback_price = await _get_cached_rules(db)
+    return fallback_price
 
 
 async def resolve_prices_for_accounts(db: AsyncSession, accounts: list[TelegramAccount]) -> None:
@@ -116,18 +146,9 @@ async def resolve_prices_for_accounts(db: AsyncSession, accounts: list[TelegramA
     if not accounts:
         return
 
-    # 1. Fetch prefix prices
-    prefix_result = await db.execute(select(TelegramIdPrefixPrice))
-    entries = prefix_result.scalars().all()
+    sorted_entries, fallback_price = await _get_cached_rules(db)
 
-    # 2. Fetch fallback sell price
-    setting_result = await db.execute(
-        select(SmmSetting).where(SmmSetting.key == "account_sell_price")
-    )
-    setting = setting_result.scalar_one_or_none()
-    fallback_price = int(setting.value) if setting and setting.value else 5500
-
-    # 3. Resolve price in-memory for each account
+    # Resolve price in-memory for each account using cached sorted prefix rules
     for account in accounts:
         if account.for_sale or account.is_sold:
             if account.sell_price is not None:
@@ -138,15 +159,13 @@ async def resolve_prices_for_accounts(db: AsyncSession, accounts: list[TelegramA
             continue
 
         tid_str = str(account.telegram_id)
-        best_price = None
-        best_len = 0
+        matched_price = None
+        for id_prefix, sell_price in sorted_entries:
+            if tid_str.startswith(id_prefix):
+                matched_price = sell_price
+                break
 
-        for entry in entries:
-            if tid_str.startswith(entry.id_prefix) and len(entry.id_prefix) > best_len:
-                best_price = entry.sell_price
-                best_len = len(entry.id_prefix)
-
-        account.sell_price = best_price if best_price is not None else fallback_price
+        account.sell_price = matched_price if matched_price is not None else fallback_price
 
 
 async def get_available_prefixes(db: AsyncSession) -> list[str]:

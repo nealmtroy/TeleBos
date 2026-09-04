@@ -20,6 +20,31 @@ logger = logging.getLogger(__name__)
 class TelegramRegDateService:
     """Estimates Telegram registration dates by interpolating between known user ID datapoints."""
 
+    def __init__(self):
+        self._cached_datapoints: list[TelegramRegistrationDatapoint] | None = None
+        self._cached_at: float = 0.0
+        self._cache_ttl_seconds: float = 600.0  # 10 minutes cache TTL
+
+    def invalidate_cache(self) -> None:
+        """Invalidate in-memory cached reference datapoints."""
+        self._cached_datapoints = None
+        self._cached_at = 0.0
+
+    async def _get_cached_datapoints(self, db: AsyncSession) -> list[TelegramRegistrationDatapoint]:
+        import time
+        now = time.time()
+        if self._cached_datapoints is not None and (now - self._cached_at) < self._cache_ttl_seconds:
+            return self._cached_datapoints
+
+        stmt = (
+            select(TelegramRegistrationDatapoint)
+            .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
+        )
+        result = await db.execute(stmt)
+        self._cached_datapoints = list(result.scalars().all())
+        self._cached_at = now
+        return self._cached_datapoints
+
     async def get_estimated_registration_date(self, db: AsyncSession, telegram_id: int) -> dict | None:
         """Estimate the creation date of a Telegram ID.
 
@@ -116,13 +141,8 @@ class TelegramRegDateService:
         if not valid_ids:
             return {}
 
-        # Fetch all reference datapoints in 1 single query
-        stmt = (
-            select(TelegramRegistrationDatapoint)
-            .order_by(TelegramRegistrationDatapoint.telegram_id.asc())
-        )
-        result = await db.execute(stmt)
-        datapoints = list(result.scalars().all())
+        # Fetch reference datapoints from in-memory cache (or 1 DB query if expired)
+        datapoints = await self._get_cached_datapoints(db)
 
         if not datapoints:
             return {}
@@ -254,6 +274,7 @@ class TelegramRegDateService:
                     added_count += 1
             if added_count > 0:
                 await db.commit()
+                self.invalidate_cache()
                 logger.info("Successfully harvested %d new signup datapoints from %s", added_count, account.phone)
         except Exception as exc:
             logger.exception("Error scanning signup messages for account %s: %s", account.phone, exc)
@@ -296,6 +317,7 @@ class TelegramRegDateService:
                 added_count += 1
         if added_count > 0:
             await db.commit()
+            self.invalidate_cache()
             logger.info("Successfully harvested %d new signup datapoints from in-memory dialogs", added_count)
         return added_count
 

@@ -25,10 +25,12 @@ export function useChatSocket(accountId: string | null) {
     const key = `chats:${accountId}`;
     const ws = connectChatSocket(accountId);
 
-    // Poll until connected
-    const checkInterval = setInterval(() => {
-      setConnected(ws.connected);
-    }, 500);
+    // Event-driven status tracking (REN-03)
+    setConnected(ws.connected);
+    const handleOpen = () => setConnected(true);
+    const handleClose = () => setConnected(false);
+    ws.on("open", handleOpen);
+    ws.on("close", handleClose);
 
     // Forward all events to the handler
     const handleEvent = (data: any) => {
@@ -37,11 +39,9 @@ export function useChatSocket(accountId: string | null) {
 
     ws.on("all", handleEvent);
 
-    // Initial status
-    setConnected(ws.connected);
-
     return () => {
-      clearInterval(checkInterval);
+      ws.off("open", handleOpen);
+      ws.off("close", handleClose);
       ws.off("all", handleEvent);
       // Don't disconnect on unmount — keep alive for quick tab re-mount
     };
@@ -64,9 +64,12 @@ export function useJobSocket(jobType: "broadcast" | "invite", jobId: string | nu
 
     const ws = jobType === "broadcast" ? connectBroadcastSocket(jobId) : connectInviteSocket(jobId);
 
-    const checkInterval = setInterval(() => {
-      setConnected(ws.connected);
-    }, 500);
+    // Event-driven status tracking (REN-03)
+    setConnected(ws.connected);
+    const handleOpen = () => setConnected(true);
+    const handleClose = () => setConnected(false);
+    ws.on("open", handleOpen);
+    ws.on("close", handleClose);
 
     const handleEvent = (data: any) => {
       if (data.type === "progress") {
@@ -83,7 +86,8 @@ export function useJobSocket(jobType: "broadcast" | "invite", jobId: string | nu
     ws.on("all", handleEvent);
 
     return () => {
-      clearInterval(checkInterval);
+      ws.off("open", handleOpen);
+      ws.off("close", handleClose);
       ws.off("all", handleEvent);
       disconnectSocket(`${jobType}:${jobId}`);
       setLogs([]);

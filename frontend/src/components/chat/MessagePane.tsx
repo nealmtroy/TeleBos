@@ -42,6 +42,29 @@ import { LightboxModal } from "./LightboxModal";
 import { EMOJI_SUGGESTIONS } from "./constants";
 import { RecordingVoiceBanner } from "./RecordingVoiceBanner";
 import { ChatSearchBar } from "./ChatSearchBar";
+import { ChatHeaderSubtitle } from "./ChatHeaderSubtitle";
+
+// In-memory cache for message date grouping to eliminate redundant new Date / toLocaleDateString (COM-01)
+const formattedDateCache = new Map<string, string>();
+function getFormattedDate(dateStrRaw: string): string {
+  const cacheKey = dateStrRaw ? dateStrRaw.slice(0, 10) : "";
+  if (cacheKey && formattedDateCache.has(cacheKey)) {
+    return formattedDateCache.get(cacheKey)!;
+  }
+  const d = new Date(dateStrRaw);
+  const formatted = d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  if (cacheKey) {
+    if (formattedDateCache.size > 200) {
+      formattedDateCache.clear();
+    }
+    formattedDateCache.set(cacheKey, formatted);
+  }
+  return formatted;
+}
 
 interface MessagePaneProps {
   accountId: string;
@@ -105,14 +128,12 @@ export function MessagePane({
     setReplyTo(null);
   }, [chatId, accountId]);
   
-  const [typingStatus, setTypingStatus] = useState<string | null>(null);
   const [onlineStatus, setOnlineStatus] = useState<string | null>(null);
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: "photo" | "video" } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const typingTimerRef = useRef<any>(null);
 
   // Modal Visibility States
   const [showPollDialog, setShowPollDialog] = useState(false);
@@ -415,14 +436,7 @@ export function MessagePane({
     (data: any) => {
       if (!data || !data.type) return;
 
-      if (data.type === "typing" && data.chat_id === chatId) {
-        setTypingStatus(`${data.action || "typing"}...`.replace("_", " "));
-        
-        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = setTimeout(() => {
-          setTypingStatus(null);
-        }, 4000);
-      } else if (data.type === "user_update" && data.user_id === chatId) {
+      if (data.type === "user_update" && data.user_id === chatId) {
         setOnlineStatus(data.status);
       } else if ((data.type === "new_message" || data.type === "outgoing_message") && data.chat_id === chatId) {
         const newMsgItem: MessageItem = {
@@ -580,17 +594,12 @@ export function MessagePane({
     }
   }
 
-  // Group messages by date
+  // Group messages by date with memoized date formatting (COM-01)
   const groupedMessages = useMemo(() => {
     const groups: { date: string; messages: MessageItem[] }[] = [];
     let currentDate = "";
     for (const msg of allMessages) {
-      const d = new Date(msg.date);
-      const dateStr = d.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      const dateStr = getFormattedDate(msg.date);
       if (dateStr !== currentDate) {
         currentDate = dateStr;
         groups.push({ date: dateStr, messages: [] });
@@ -684,28 +693,12 @@ export function MessagePane({
 
         <div className="flex-1 min-w-0 text-left">
           <h2 className="text-sm font-bold truncate" style={{ color: "var(--tg-text-primary)" }}>{chatTitle}</h2>
-          <p className="text-xs font-medium truncate leading-tight mt-0.5">
-            {typingStatus ? (
-              <span className="text-primary dark:text-blue-400 font-semibold animate-pulse">{typingStatus}</span>
-            ) : chatType === "bot" ? (
-              <span className="text-slate-400 dark:text-slate-500 font-semibold">bot</span>
-            ) : chatType === "group" || chatType === "supergroup" ? (
-              <span className="text-slate-400 dark:text-slate-500 capitalize">{chatType}</span>
-            ) : chatType === "channel" ? (
-              <span className="text-slate-400 dark:text-slate-500 capitalize">channel</span>
-            ) : onlineStatus ? (
-              <span className={cn(
-                "capitalize",
-                onlineStatus.includes("Online") || onlineStatus.includes("online")
-                  ? "text-green-600 dark:text-green-400 font-bold"
-                  : "text-slate-400 dark:text-slate-500"
-              )}>
-                {onlineStatus.replace("UserStatus", "").toLowerCase()}
-              </span>
-            ) : (
-              <span className="text-slate-400 dark:text-slate-500 capitalize">{chatType || "user"}</span>
-            )}
-          </p>
+          <ChatHeaderSubtitle
+            accountId={accountId}
+            chatId={chatId}
+            chatType={chatType}
+            onlineStatus={onlineStatus}
+          />
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">

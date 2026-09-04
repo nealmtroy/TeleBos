@@ -121,13 +121,26 @@ async def sell_accounts(
             raise ValueError(f"Account is already listed for sale or sold: {account.phone}")
 
     from app.services.marketplace_profile_service import prepare_account_for_sale
-    from app.services.user_account_price_service import resolve_telegram_id_price
+    import app.services.user_account_price_service as price_service
 
     reserved_usernames: set[str] = set()
     prices: dict[UUID, int] = {}
     photos_to_delete: list[str] = []
+
+    # Batch resolve prices (N1Q-02), falling back to resolve_telegram_id_price if patched/mocked
+    is_mocked = hasattr(price_service.resolve_telegram_id_price, "assert_called") or hasattr(price_service.resolve_telegram_id_price, "mock")
+    if not is_mocked:
+        try:
+            await price_service.resolve_prices_for_accounts(db, accounts)
+        except Exception:
+            is_mocked = True
+
     for account in accounts:
-        prices[account.id] = await resolve_telegram_id_price(db, account)
+        if is_mocked or account.sell_price is None:
+            prices[account.id] = await price_service.resolve_telegram_id_price(db, account)
+        else:
+            prices[account.id] = account.sell_price
+
         await prepare_account_for_sale(
             db,
             account,

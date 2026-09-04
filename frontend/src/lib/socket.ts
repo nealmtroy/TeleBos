@@ -65,6 +65,7 @@ class ReconnectingWebSocket {
     this.ws.onopen = () => {
       this._connected = true;
       this.reconnectAttempts = 0;
+      this._emit("open", { type: "open" });
 
       // Send Better Auth session token as first message to authenticate
       if (sessionToken) {
@@ -104,6 +105,7 @@ class ReconnectingWebSocket {
         clearInterval(this.pingTimer);
         this.pingTimer = null;
       }
+      this._emit("close", { type: "close" });
       if (!this._intentionalClose) {
         this._scheduleReconnect();
       }

@@ -568,17 +568,25 @@ async def login_with_session(
 
 
 async def get_accounts_for_user(
-    db: AsyncSession, user: User
+    db: AsyncSession, user: User, limit: int | None = None
 ) -> list[TelegramAccount]:
-    result = await db.execute(
+    from sqlalchemy.orm import defer
+    query = (
         select(TelegramAccount)
-        .options(selectinload(TelegramAccount.folders))
+        .options(
+            selectinload(TelegramAccount.folders),
+            defer(TelegramAccount.session_string),
+            defer(TelegramAccount.twofa_password),
+        )
         .where(
             TelegramAccount.user_id == user.id,
             TelegramAccount.for_sale == False,
         )
         .order_by(TelegramAccount.created_at.desc())
     )
+    if limit is not None:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
@@ -595,10 +603,15 @@ async def get_accounts_paginated(
     from sqlalchemy import or_, cast, String, func
     from app.models.account_folder_member import AccountFolderMember
 
-    # Base query select from TelegramAccount
+    # Base query select from TelegramAccount with heavy columns deferred (OVF-01)
+    from sqlalchemy.orm import defer
     query = (
         select(TelegramAccount)
-        .options(selectinload(TelegramAccount.folders))
+        .options(
+            selectinload(TelegramAccount.folders),
+            defer(TelegramAccount.session_string),
+            defer(TelegramAccount.twofa_password),
+        )
         .where(
             TelegramAccount.user_id == user.id,
         )
@@ -780,6 +793,12 @@ async def update_profile(
     return account
 
 
+def _sync_write_bytes(path: str, data: bytes) -> None:
+    """Synchronous file write helper to be offloaded via asyncio.to_thread (BLK-02)."""
+    with open(path, "wb") as f:
+        f.write(data)
+
+
 def resize_to_avatar(image_bytes: bytes, size: tuple[int, int] = (320, 320)) -> bytes:
     """Resize image bytes to the target size, keeping aspect ratio and cropping to square if necessary."""
     from PIL import Image
@@ -843,8 +862,7 @@ async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: 
                     data = await asyncio.to_thread(resize_to_avatar, data)
                 except Exception as e:
                     logger.warning("Failed to resize uploaded profile photo for %s: %s", account.id, e)
-                with open(photo_path, "wb") as f:
-                    f.write(data)
+                await asyncio.to_thread(_sync_write_bytes, photo_path, data)
                 account.profile_photo_path = photo_path
                 photo = getattr(me, "photo", None)
                 account.profile_photo_id = getattr(photo, "photo_id", None) if photo else None
@@ -918,11 +936,10 @@ async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
     except Exception as e:
         logger.warning("Failed to resize profile photo for %s: %s", account.id, e)
 
-    # Cache locally
+    # Cache locally via threadpool (BLK-02)
     _ensure_photo_dir()
     photo_path = _photo_path(str(account.id))
-    with open(photo_path, "wb") as f:
-        f.write(data)
+    await asyncio.to_thread(_sync_write_bytes, photo_path, data)
 
     account.profile_photo_path = photo_path
     account.photo_version += 1

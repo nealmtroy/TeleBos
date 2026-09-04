@@ -548,7 +548,8 @@ async def list_accounts(
         if folder_id:
             accounts = await account_service.get_accounts_in_folder(db, user, folder_id)
         else:
-            accounts = await account_service.get_accounts_for_user(db, user)
+            # PAG-01: Apply default safety upper bound of 200 on unpaginated calls to prevent uncontrolled OOM
+            accounts = await account_service.get_accounts_for_user(db, user, limit=200)
             
         await resolve_prices_for_accounts(db, accounts)
         await resolve_reg_dates_for_accounts(db, accounts)
