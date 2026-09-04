@@ -115,6 +115,8 @@ class TelegramClientPool:
                     self._clients[k]["last_accessed"] = now
 
         for acc_id in stale_keys:
+            # MEM-02: Evict lock to prevent accumulation of orphaned asyncio.Lock objects
+            self._locks.pop(acc_id, None)
             data = self._clients.pop(acc_id, None)
             if data and data["client"]:
                 # Save the latest updates state to the DB before disconnecting
@@ -473,6 +475,9 @@ class TelegramClientPool:
                 await asyncio.wait_for(client.disconnect(), timeout=2.0)
             except Exception as exc:
                 logger.debug("Failed to disconnect client %s during removal: %s", account_id, exc)
+
+        # MEM-02: Evict lock once account removal is complete
+        self._locks.pop(account_id, None)
 
     async def stop(self) -> None:
         """Cancel pool-owned background work and disconnect all cached clients."""

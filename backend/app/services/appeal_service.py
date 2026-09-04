@@ -47,9 +47,8 @@ async def check_appeal_history(client: TelegramClient) -> bool:
         return False
 
 
-def solve_captcha_via_2captcha_sync(captcha_url: str, api_key: str) -> str | None:
-    """Synchronously extract sitekey and solve Turnstile captcha via 2captcha API."""
-    import requests
+def _extract_turnstile_params_sync(captcha_url: str) -> dict[str, str | None] | None:
+    """Synchronously extract Turnstile parameters from target captcha URL using cloudscraper."""
     import cloudscraper
     logger.info("Extracting Turnstile parameters from %s", captcha_url)
     try:
@@ -59,7 +58,6 @@ def solve_captcha_via_2captcha_sync(captcha_url: str, api_key: str) -> str | Non
         resp = scraper.get(captcha_url, timeout=30)
         html = resp.text
 
-        # Extract sitekey from data-sitekey
         sitekey_match = re.search(r'data-sitekey=["\']([^"\']+)["\']', html)
         if not sitekey_match:
             logger.warning("No data-sitekey found in captcha page HTML")
@@ -83,52 +81,73 @@ def solve_captcha_via_2captcha_sync(captcha_url: str, api_key: str) -> str | Non
         if chl_match:
             chl_pagedata = chl_match.group(1)
 
-        # Call 2captcha createTask
+        return {
+            "sitekey": sitekey,
+            "action": action,
+            "cdata": cdata,
+            "chl_pagedata": chl_pagedata,
+        }
+    except Exception as exc:
+        logger.exception("Error extracting Turnstile parameters: %s", exc)
+        return None
+
+
+async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> str | None:
+    """Solve Turnstile captcha asynchronously via 2captcha without thread pool starvation (RES-04)."""
+    import httpx
+    try:
+        loop = asyncio.get_running_loop()
+        params = await loop.run_in_executor(None, _extract_turnstile_params_sync, captcha_url)
+        if not params or not params.get("sitekey"):
+            return None
+
+        sitekey = params["sitekey"]
         api_url = "https://api.2captcha.com"
         task_payload = {
             "type": "TurnstileTaskProxyless",
             "websiteURL": captcha_url,
             "websiteKey": sitekey,
         }
-        if action:
-            task_payload["action"] = action
-        if cdata:
-            task_payload["data"] = cdata
-        if chl_pagedata:
-            task_payload["pagedata"] = chl_pagedata
+        if params.get("action"):
+            task_payload["action"] = params["action"]
+        if params.get("cdata"):
+            task_payload["data"] = params["cdata"]
+        if params.get("chl_pagedata"):
+            task_payload["pagedata"] = params["chl_pagedata"]
 
         create_payload = {
             "clientKey": api_key,
-            "task": task_payload
+            "task": task_payload,
         }
 
-        resp = requests.post(f"{api_url}/createTask", json=create_payload, timeout=30)
-        data = resp.json()
-        if data.get("errorId") != 0:
-            logger.error("2captcha createTask error: %s", data.get("errorDescription"))
-            return None
-
-        task_id = data.get("taskId")
-        result_payload = {
-            "clientKey": api_key,
-            "taskId": task_id
-        }
-
-        # Poll for result
-        for attempt in range(60):
-            time.sleep(3)
-            poll = requests.post(f"{api_url}/getTaskResult", json=result_payload, timeout=30)
-            result = poll.json()
-
-            if result.get("errorId") != 0:
-                logger.error("2captcha getTaskResult error: %s", result.get("errorDescription"))
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            resp = await http_client.post(f"{api_url}/createTask", json=create_payload)
+            data = resp.json()
+            if data.get("errorId") != 0:
+                logger.error("2captcha createTask error: %s", data.get("errorDescription"))
                 return None
 
-            if result.get("status") == "ready":
-                return result["solution"].get("token", "")
-            elif result.get("status") != "processing":
-                logger.warning("2captcha unexpected status: %s", result.get("status"))
-                return None
+            task_id = data.get("taskId")
+            result_payload = {
+                "clientKey": api_key,
+                "taskId": task_id,
+            }
+
+            # Non-blocking async sleep — does NOT block OS worker threads
+            for attempt in range(60):
+                await asyncio.sleep(3)
+                poll = await http_client.post(f"{api_url}/getTaskResult", json=result_payload)
+                result = poll.json()
+
+                if result.get("errorId") != 0:
+                    logger.error("2captcha getTaskResult error: %s", result.get("errorDescription"))
+                    return None
+
+                if result.get("status") == "ready":
+                    return result["solution"].get("token", "")
+                elif result.get("status") != "processing":
+                    logger.warning("2captcha unexpected status: %s", result.get("status"))
+                    return None
 
         logger.warning("2captcha timeout waiting for token")
         return None
@@ -346,9 +365,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
                 logger.info("Found TWOCAPTCHA_API_KEY in settings. Attempting auto solve...")
                 try:
                     loop = asyncio.get_running_loop()
-                    token = await loop.run_in_executor(
-                        None, solve_captcha_via_2captcha_sync, captcha_url, twocaptcha_key
-                    )
+                    token = await solve_captcha_via_2captcha_async(captcha_url, twocaptcha_key)
                     if token:
                         submit_ok = await loop.run_in_executor(
                             None, submit_turnstile_token_sync, captcha_url, token

@@ -157,7 +157,13 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             # Attach and reconnect
             from app.services.session_manager import session_manager
             await session_manager.attach_and_reconnect(db, account)
-            
+
+            # RES-02: Disconnect initial temporary QR login client to avoid duplicate parallel TCP connections
+            try:
+                await client.disconnect()
+            except Exception as disc_err:
+                logger.debug("Failed to disconnect temporary QR login client %s: %s", qr_id, disc_err)
+
             # Update status to success!
             if qr_id in _pending_qr_logins:
                 _pending_qr_logins[qr_id]["status"] = "success"

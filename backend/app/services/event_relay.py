@@ -53,6 +53,22 @@ class TelegramEventRelay:
         self._db_sem = asyncio.Semaphore(
             10
         )  # Limit concurrent DB writes to prevent pool exhaustion
+        self._background_tasks: set[asyncio.Task] = set()
+
+    def _spawn_task(self, coro) -> asyncio.Task:
+        """Spawn a background task with strong reference tracking and error handling (MEM-03)."""
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+
+        def _on_done(t: asyncio.Task) -> None:
+            self._background_tasks.discard(t)
+            if not t.cancelled():
+                exc = t.exception()
+                if exc:
+                    logger.error("Background event relay task failed: %s", exc)
+
+        task.add_done_callback(_on_done)
+        return task
 
     def suspend_profile_sync(self, account_id: str) -> None:
         """Prevent raw profile events from starting competing Telegram reads."""
@@ -75,22 +91,22 @@ class TelegramEventRelay:
 
         # New incoming message (private / small group)
         new_msg_handler = client.on(events.NewMessage(incoming=True))(
-            lambda event: asyncio.create_task(self._on_new_message(account_id, event))
+            lambda event: self._spawn_task(self._on_new_message(account_id, event))
         )
 
         # Outgoing message (so frontend sees what the user sent)
         outgoing_handler = client.on(events.NewMessage(outgoing=True))(
-            lambda event: asyncio.create_task(self._on_outgoing_message(account_id, event))
+            lambda event: self._spawn_task(self._on_outgoing_message(account_id, event))
         )
 
         # Message edited
         edit_handler = client.on(events.MessageEdited())(
-            lambda event: asyncio.create_task(self._on_message_edited(account_id, event))
+            lambda event: self._spawn_task(self._on_message_edited(account_id, event))
         )
 
         # Message read (someone read our messages)
         read_handler = client.on(events.MessageRead())(
-            lambda event: asyncio.create_task(self._on_message_read(account_id, event))
+            lambda event: self._spawn_task(self._on_message_read(account_id, event))
         )
 
         # User typing / online status (only process if a client is actively subscribed to chats:{account_id})
@@ -102,7 +118,7 @@ class TelegramEventRelay:
 
         # Chat action (someone joined/left/pinned/typing)
         chat_action_handler = client.on(events.ChatAction())(
-            lambda event: asyncio.create_task(self._on_chat_action(account_id, event))
+            lambda event: self._spawn_task(self._on_chat_action(account_id, event))
         )
 
         # Raw TL handler for profile changes (instant detection)
@@ -119,7 +135,7 @@ class TelegramEventRelay:
 
         # Message deleted
         delete_handler = client.on(events.MessageDeleted())(
-            lambda event: asyncio.create_task(self._on_message_deleted(account_id, event))
+            lambda event: self._spawn_task(self._on_message_deleted(account_id, event))
         )
 
         # Cache our own telegram_id for self-detection in raw handlers
@@ -193,7 +209,7 @@ class TelegramEventRelay:
         # Check for contact signup service messages to harvest registration date datapoints in real-time
         from telethon.tl.types import MessageService, MessageActionContactSignUp
         if isinstance(msg, MessageService) and isinstance(msg.action, MessageActionContactSignUp) and chat:
-            asyncio.create_task(self._harvest_registration_datapoint(msg, chat.id))
+            self._spawn_task(self._harvest_registration_datapoint(msg, chat.id))
             return
 
         channel = f"chats:{account_id}"
@@ -289,7 +305,7 @@ class TelegramEventRelay:
 
         # Update DB in the background
         if chat:
-            asyncio.create_task(
+            self._spawn_task(
                 self._update_chat_on_new_message(account_id, chat, msg, is_outgoing=False)
             )
 
@@ -456,7 +472,7 @@ class TelegramEventRelay:
 
         # Update DB in the background
         if chat:
-            asyncio.create_task(
+            self._spawn_task(
                 self._update_chat_on_new_message(account_id, chat, msg, is_outgoing=True)
             )
 
@@ -485,7 +501,7 @@ class TelegramEventRelay:
 
         # Also update the message text in the DB in the background
         if chat:
-            asyncio.create_task(
+            self._spawn_task(
                 self._update_chat_on_new_message(account_id, chat, msg, is_outgoing=msg.out)
             )
 
@@ -508,7 +524,7 @@ class TelegramEventRelay:
         )
 
         # Update DB in the background
-        asyncio.create_task(self._update_chat_read(account_id, event))
+        self._spawn_task(self._update_chat_read(account_id, event))
 
     async def _on_message_deleted(self, account_id: str, event) -> None:
         """Fire when one or more messages are deleted."""
@@ -596,7 +612,7 @@ class TelegramEventRelay:
         )
 
         # Update DB in the background
-        asyncio.create_task(self._update_chat_action(account_id, event))
+        self._spawn_task(self._update_chat_action(account_id, event))
 
     # ── Database Event Synchronization Helpers ───────────────────────────────
 

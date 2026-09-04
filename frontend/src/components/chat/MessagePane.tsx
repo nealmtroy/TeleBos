@@ -110,6 +110,7 @@ export function MessagePane({
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: "photo" | "video" } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const typingTimerRef = useRef<any>(null);
 
@@ -253,6 +254,7 @@ export function MessagePane({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -269,6 +271,9 @@ export function MessagePane({
           sendVoiceMutation.mutate(audioBlob);
         }
         stream.getTracks().forEach((track) => track.stop());
+        if (mediaStreamRef.current === stream) {
+          mediaStreamRef.current = null;
+        }
       };
 
       mediaRecorder.start();
@@ -285,9 +290,30 @@ export function MessagePane({
       }
       mediaRecorderRef.current.stop();
     }
-
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
     setIsRecording(false);
   };
+
+  // RES-01: Clean up any active microphone stream and recorder when switching chats or unmounting
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        audioChunksRef.current = [];
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+    };
+  }, [chatId, accountId]);
 
   const voteMutation = useMutation({
     mutationFn: async (params: { messageId: number; options: string[] }) => {

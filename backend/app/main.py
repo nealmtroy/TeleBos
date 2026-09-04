@@ -405,7 +405,12 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-
+    # Close shared SMM HTTP client
+    try:
+        from app.services.smm_service import close_smm_http_client
+        await close_smm_http_client()
+    except Exception as e:
+        logger.warning("Error closing SMM HTTP client: %s", e)
 
     # 4. Stop Telegram clients while Redis and DB connections are still active
     await session_manager.stop()

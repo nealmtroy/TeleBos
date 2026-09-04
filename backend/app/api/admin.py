@@ -381,6 +381,26 @@ async def delete_user(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
+    # RES-03: Cleanup Telegram accounts in client pool and cached avatar files before user deletion
+    import os
+    from app.config import get_settings
+    from app.services.telegram_client import client_pool
+    settings = get_settings()
+
+    acc_result = await db.execute(select(TelegramAccount).where(TelegramAccount.user_id == user.id))
+    user_accounts = acc_result.scalars().all()
+    for acc in user_accounts:
+        try:
+            await client_pool.remove(str(acc.id), save_state=False)
+        except Exception:
+            pass
+        photo_path = os.path.join(settings.UPLOAD_DIR, "profile_photos", f"{acc.id}.jpg")
+        if os.path.exists(photo_path):
+            try:
+                os.remove(photo_path)
+            except OSError:
+                pass
+
     await db.delete(user)
     await db.flush()
 

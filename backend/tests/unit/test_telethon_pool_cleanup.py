@@ -129,3 +129,20 @@ async def test_reg_date_extract_datapoints_from_dialogs():
     assert count == 1
     mock_db.add.assert_called_once()
     mock_db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_remove_cleans_up_locks():
+    """Verify that removing an account evicts its lock from _locks (MEM-02)."""
+    pool = TelegramClientPool()
+    account_id = "test-lock-acc"
+    mock_client = MagicMock()
+    mock_client.disconnect = AsyncMock()
+
+    pool._clients[account_id] = {"client": mock_client, "last_accessed": 100.0}
+    pool._locks[account_id] = asyncio.Lock()
+
+    await pool.remove(account_id, save_state=False)
+
+    assert account_id not in pool._clients
+    assert account_id not in pool._locks

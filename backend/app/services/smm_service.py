@@ -11,16 +11,34 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+_smm_client: httpx.AsyncClient | None = None
+
+
+def get_smm_http_client() -> httpx.AsyncClient:
+    """Return a shared singleton httpx.AsyncClient with connection pooling (EXA-01, EXA-02)."""
+    global _smm_client
+    if _smm_client is None or _smm_client.is_closed:
+        _smm_client = httpx.AsyncClient(
+            timeout=60.0,
+            limits=httpx.Limits(
+                max_connections=20,
+                max_keepalive_connections=10,
+                keepalive_expiry=30.0,
+            ),
+        )
+    return _smm_client
+
+
+async def close_smm_http_client() -> None:
+    """Close the shared SMM httpx client upon application shutdown."""
+    global _smm_client
+    if _smm_client is not None and not _smm_client.is_closed:
+        await _smm_client.aclose()
+        _smm_client = None
+
+
 async def call_smm_api(action: str, extra_params: dict | None = None) -> dict[str, Any]:
-    """Make a request to the Buzzerpanel API.
-
-    Args:
-        action: API action (services, order, status, profile, etc.)
-        extra_params: Additional parameters for the specific action.
-
-    Returns:
-        Parsed JSON response from the API.
-    """
+    """Make a request to the Buzzerpanel API using shared pooled connection."""
     params: dict[str, Any] = {
         "api_key": settings.SMM_API_KEY,
         "secret_key": settings.SMM_SECRET_KEY,
@@ -35,23 +53,23 @@ async def call_smm_api(action: str, extra_params: dict | None = None) -> dict[st
         {k: v for k, v in params.items() if k not in ("api_key", "secret_key")},
     )
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        try:
-            response = await client.post(settings.SMM_API_URL, json=params)
-            response.raise_for_status()
-            data = response.json()
-            payload = data.get("data") if isinstance(data, dict) else None
-            item_count = len(payload) if isinstance(payload, list) else None
-            logger.info(
-                "SMM API response: action=%s status=%s items=%s",
-                action,
-                data.get("status") if isinstance(data, dict) else None,
-                item_count,
-            )
-            return data
-        except (httpx.HTTPError, ValueError) as e:
-            logger.error("SMM API error for action=%s: %s", action, e)
-            return {"status": False, "data": {"msg": f"API request failed: {str(e)}"}}
+    client = get_smm_http_client()
+    try:
+        response = await client.post(settings.SMM_API_URL, json=params)
+        response.raise_for_status()
+        data = response.json()
+        payload = data.get("data") if isinstance(data, dict) else None
+        item_count = len(payload) if isinstance(payload, list) else None
+        logger.info(
+            "SMM API response: action=%s status=%s items=%s",
+            action,
+            data.get("status") if isinstance(data, dict) else None,
+            item_count,
+        )
+        return data
+    except (httpx.HTTPError, ValueError) as e:
+        logger.error("SMM API error for action=%s: %s", action, e)
+        return {"status": False, "data": {"msg": f"API request failed: {str(e)}"}}
 
 
 async def get_services() -> list[dict[str, Any]]:

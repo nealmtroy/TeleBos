@@ -59,17 +59,26 @@ class ConnectionManager:
         conns = self._connections.get(channel)
         return bool(conns)
 
+    async def _send_safe(self, ws: WebSocket, channel: str, payload: str) -> None:
+        try:
+            await asyncio.wait_for(ws.send_text(payload), timeout=5.0)
+        except Exception:
+            self.disconnect(channel, ws)
+
     async def broadcast(self, channel: str, data: dict) -> None:
-        """Send a JSON message to all clients in a channel."""
+        """Send a JSON message to all clients in a channel concurrently without head-of-line blocking (CON-02)."""
         conns = self._connections.get(channel)
         if not conns:
             return
         payload = json.dumps(data)
-        for ws in list(conns):
-            try:
-                await ws.send_text(payload)
-            except Exception:
-                self.disconnect(channel, ws)
+        targets = list(conns)
+        if len(targets) == 1:
+            await self._send_safe(targets[0], channel, payload)
+        else:
+            await asyncio.gather(
+                *[self._send_safe(ws, channel, payload) for ws in targets],
+                return_exceptions=True,
+            )
 
     async def send_progress(self, job_id: str, data: dict) -> None:
         await self.broadcast(f"broadcast:{job_id}", data)

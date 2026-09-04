@@ -189,40 +189,66 @@ class ReconnectingWebSocket {
   }
 }
 
-// ── Singleton connections ──────────────────────────────────────────────────
+// ── Singleton connections with bounded LRU eviction (UBC-02) ──────────────────
 
+const MAX_CACHED_SOCKETS = 5;
 const sockets: Map<string, ReconnectingWebSocket> = new Map();
+
+function getSocket(key: string): ReconnectingWebSocket | undefined {
+  const ws = sockets.get(key);
+  if (ws) {
+    // Refresh MRU order in Map
+    sockets.delete(key);
+    sockets.set(key, ws);
+  }
+  return ws;
+}
+
+function registerSocket(key: string, ws: ReconnectingWebSocket) {
+  if (sockets.has(key)) {
+    sockets.delete(key);
+  } else if (sockets.size >= MAX_CACHED_SOCKETS) {
+    // Evict oldest socket from browser memory
+    const oldestKey = sockets.keys().next().value;
+    if (oldestKey) {
+      const oldWs = sockets.get(oldestKey);
+      oldWs?.disconnect();
+      sockets.delete(oldestKey);
+    }
+  }
+  sockets.set(key, ws);
+}
 
 export function connectChatSocket(accountId: string): ReconnectingWebSocket {
   const key = `chats:${accountId}`;
-  const existing = sockets.get(key);
+  const existing = getSocket(key);
   if (existing) return existing;
 
   const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/chats/${accountId}`);
   ws.connect();
-  sockets.set(key, ws);
+  registerSocket(key, ws);
   return ws;
 }
 
 export function connectBroadcastSocket(jobId: string): ReconnectingWebSocket {
   const key = `broadcast:${jobId}`;
-  const existing = sockets.get(key);
+  const existing = getSocket(key);
   if (existing) return existing;
 
   const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/broadcast/${jobId}`);
   ws.connect();
-  sockets.set(key, ws);
+  registerSocket(key, ws);
   return ws;
 }
 
 export function connectInviteSocket(jobId: string): ReconnectingWebSocket {
   const key = `invite:${jobId}`;
-  const existing = sockets.get(key);
+  const existing = getSocket(key);
   if (existing) return existing;
 
   const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/invite/${jobId}`);
   ws.connect();
-  sockets.set(key, ws);
+  registerSocket(key, ws);
   return ws;
 }
 

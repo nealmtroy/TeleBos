@@ -283,11 +283,102 @@ async def _scrape_participants(client, entity, telethon_mod, limit_per_group: in
     return participants
 
 
+async def _get_invite_job_status(job_uuid) -> str | None:
+    from app.database import async_session_factory
+    async with async_session_factory() as db:
+        res = await db.execute(select(InviteJob.status).where(InviteJob.id == job_uuid))
+        return res.scalar_one_or_none()
+
+
+async def _update_invite_job_status(job_uuid, status: str) -> None:
+    from app.database import async_session_factory
+    async with async_session_factory() as db:
+        res = await db.execute(select(InviteJob).where(InviteJob.id == job_uuid))
+        job = res.scalar_one_or_none()
+        if job:
+            job.status = status
+            if status in ("completed", "failed", "cancelled"):
+                job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+
+async def _set_invite_job_total_members(job_uuid, total_members: int, *, status: str = "running") -> None:
+    from app.database import async_session_factory
+    async with async_session_factory() as db:
+        res = await db.execute(select(InviteJob).where(InviteJob.id == job_uuid))
+        job = res.scalar_one_or_none()
+        if job:
+            job.total_members = total_members
+            if status != "running":
+                job.status = status
+                job.progress = 100
+                job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+
+async def _save_invite_log_and_stats(
+    job_uuid,
+    log: InviteLog,
+    *,
+    invited: int,
+    already: int,
+    failed: int,
+    skipped: int,
+    progress: int,
+    final_status: str | None = None,
+) -> None:
+    from app.database import async_session_factory
+    async with async_session_factory() as db:
+        db.add(log)
+        res = await db.execute(select(InviteJob).where(InviteJob.id == job_uuid))
+        job = res.scalar_one_or_none()
+        if job:
+            job.progress = progress
+            job.invited_count = invited
+            job.already_member_count = already
+            job.fail_count = failed
+            job.skip_count = skipped
+            if final_status:
+                job.status = final_status
+                job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+
+
+async def _finalize_invite_job(
+    job_uuid,
+    *,
+    status: str,
+    invited: int,
+    already: int,
+    failed: int,
+    skipped: int,
+) -> None:
+    from app.database import async_session_factory
+    async with async_session_factory() as db:
+        res = await db.execute(select(InviteJob).where(InviteJob.id == job_uuid))
+        job = res.scalar_one_or_none()
+        if job:
+            job.status = status
+            job.progress = 100
+            job.invited_count = invited
+            job.already_member_count = already
+            job.fail_count = failed
+            job.skip_count = skipped
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+
 async def execute_invite(job_id: str):
     """Execute an invite job. Runs as an asyncio.Task in the FastAPI process."""
     from app.database import async_session_factory
     import uuid as _uuid
     import time
+    from telethon import TelegramClient
+    from telethon.sessions import StringSession
+    import telethon
+    from telethon.tl.types import InputUser, InputChannel, Channel as TelethonChannel, Chat as LegacyChat
+    from app.config import get_settings
+    from app.utils.flood_control import flood_controller as fc
 
     try:
         job_uuid = _uuid.UUID(job_id) if isinstance(job_id, str) else job_id
@@ -295,30 +386,35 @@ async def execute_invite(job_id: str):
         job_uuid = job_id
 
     active_accounts = []
-    async with async_session_factory() as db:
-        try:
+
+    # CON-01: Fetch job configuration and account records in a short-lived DB session
+    account_records = []
+    job_destination_group = ""
+    job_destination_type = "username"
+    job_source_groups = []
+    job_delay_per_invite = 30
+    job_delay_per_batch = 0
+    job_batch_size = 10
+
+    try:
+        async with async_session_factory() as db:
             result = await db.execute(select(InviteJob).where(InviteJob.id == job_uuid))
             job = result.scalar_one_or_none()
-            if job is None:
-                return
-            if job.status in ("cancelled", "completed"):
+            if job is None or job.status in ("cancelled", "completed"):
                 return
 
             job.status = "running"
             await db.commit()
             await _push_invite(job_id, "status", {"status": "running"})
 
-            # Load active accounts
-            from telethon import TelegramClient
-            from telethon.sessions import StringSession
-            import telethon
-            from app.config import get_settings
-            from app.utils.flood_control import flood_controller as fc
+            job_destination_group = job.destination_group
+            job_destination_type = job.destination_type
+            job_source_groups = list(job.source_groups or [])
+            job_delay_per_invite = job.delay_per_invite
+            job_delay_per_batch = job.delay_per_batch
+            job_batch_size = job.batch_size
 
-            settings = get_settings()
-            active_accounts = []
-
-            for acc_id_str in job.account_ids:
+            for acc_id_str in (job.account_ids or []):
                 try:
                     acc_uuid = _uuid.UUID(acc_id_str)
                 except ValueError:
@@ -332,708 +428,422 @@ async def execute_invite(job_id: str):
                         "Account %s is not active or listed for sale, skipping", acc_id_str
                     )
                     continue
+                account_records.append(account)
+        # Database session is committed and closed here! No DB connection checked out.
 
-                try:
-                    client = await get_active_client(account)
-                    me = await client.get_me()
-                    my_id = me.id if me else None
-                    active_accounts.append(
-                        {
-                            "account_id": acc_id_str,
-                            "account_name": f"{account.first_name or ''} ({account.phone or ''})",
-                            "client": client,
-                            "me": me,
-                            "my_id": my_id,
-                            "consecutive_peer_floods": 0,
-                            "cooldown_until": 0.0,
-                        }
-                    )
-                except Exception as connect_exc:
-                    logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
-
-            if not active_accounts:
-                job.status = "failed"
-                await db.commit()
-                await _push_invite(
-                    job_id,
-                    "error",
+        # Connect active accounts
+        for account in account_records:
+            acc_id_str = str(account.id)
+            try:
+                client = await get_active_client(account)
+                me = await client.get_me()
+                my_id = me.id if me else None
+                active_accounts.append(
                     {
-                        "status": "failed",
-                        "message": "No authorized Telegram accounts could be connected",
-                    },
+                        "account_id": acc_id_str,
+                        "account_name": f"{account.first_name or ''} ({account.phone or ''})",
+                        "client": client,
+                        "me": me,
+                        "my_id": my_id,
+                        "consecutive_peer_floods": 0,
+                        "cooldown_until": 0.0,
+                    }
                 )
-                return
+            except Exception as connect_exc:
+                logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
 
-            # ── Step 1: Resolve destination group ─────────────────────────
-            dest_entity = None
-            dest_err = None
+        if not active_accounts:
+            await _update_invite_job_status(job_uuid, "failed")
+            await _push_invite(
+                job_id,
+                "error",
+                {
+                    "status": "failed",
+                    "message": "No authorized Telegram accounts could be connected",
+                },
+            )
+            return
+
+        # ── Step 1: Resolve destination group ─────────────────────────
+        dest_entity = None
+        dest_err = None
+        for acc in active_accounts:
+            dest_entity, dest_err = await _resolve_group(
+                acc["client"], job_destination_type, job_destination_group, telethon
+            )
+            if dest_entity is not None:
+                break
+
+        if dest_entity is None:
+            err_msg = (
+                dest_err[1]
+                if dest_err
+                else f"Could not resolve destination: {job_destination_group}"
+            )
+            await _update_invite_job_status(job_uuid, "failed")
             for acc in active_accounts:
-                dest_entity, dest_err = await _resolve_group(
-                    acc["client"], job.destination_type, job.destination_group, telethon
-                )
-                if dest_entity is not None:
-                    break
-
-            if dest_entity is None:
-                err_msg = (
-                    dest_err[1]
-                    if dest_err
-                    else f"Could not resolve destination: {job.destination_group}"
-                )
-                job.status = "failed"
-                await db.commit()
-                for acc in active_accounts:
-                    await acc["client"].disconnect()
-                await _push_invite(
-                    job_id,
-                    "error",
-                    {
-                        "status": "failed",
-                        "message": err_msg,
-                    },
-                )
-                return
-
-            # Detect entity type — channel vs supergroup vs legacy group
-            from telethon.tl.types import Channel as TelethonChannel
-            from telethon.tl.types import Chat as LegacyChat
-
-            dest_is_channel = isinstance(dest_entity, TelethonChannel) and getattr(
-                dest_entity, "broadcast", False
+                await acc["client"].disconnect()
+            await _push_invite(
+                job_id,
+                "error",
+                {
+                    "status": "failed",
+                    "message": err_msg,
+                },
             )
-            dest_is_megagroup = isinstance(dest_entity, TelethonChannel) and getattr(
-                dest_entity, "megagroup", False
-            )
-            dest_is_legacy = isinstance(dest_entity, LegacyChat)
-            logger.info(
-                "Destination resolved: id=%s title=%s is_channel=%s is_megagroup=%s is_legacy_group=%s",
-                dest_entity.id,
-                getattr(dest_entity, "title", "?"),
-                dest_is_channel,
-                dest_is_megagroup,
-                dest_is_legacy,
-            )
-            if dest_is_channel:
-                await _push_invite(
-                    job_id,
-                    "phase",
-                    {
-                        "phase": "destination_check",
-                        "message": "Destination is a broadcast channel. Note: only Telegram accounts with admin rights can add members to channels.",
-                    },
-                )
-            elif dest_is_legacy:
-                await _push_invite(
-                    job_id,
-                    "phase",
-                    {
-                        "phase": "destination_check",
-                        "message": "Destination is a legacy group (basic group, not supergroup/channel).",
-                    },
-                )
+            return
 
-            # ── Auto-join destination group if not already a member ──────────
+        # Detect entity type — channel vs supergroup vs legacy group
+        dest_is_channel = isinstance(dest_entity, TelethonChannel) and getattr(
+            dest_entity, "broadcast", False
+        )
+        dest_is_megagroup = isinstance(dest_entity, TelethonChannel) and getattr(
+            dest_entity, "megagroup", False
+        )
+        dest_is_legacy = isinstance(dest_entity, LegacyChat)
+        logger.info(
+            "Destination resolved: id=%s title=%s is_channel=%s is_megagroup=%s is_legacy_group=%s",
+            dest_entity.id,
+            getattr(dest_entity, "title", "?"),
+            dest_is_channel,
+            dest_is_megagroup,
+            dest_is_legacy,
+        )
+        if dest_is_channel:
             await _push_invite(
                 job_id,
                 "phase",
                 {
-                    "phase": "joining_destination",
-                    "message": "Ensuring accounts have joined the destination group...",
+                    "phase": "destination_check",
+                    "message": "Destination is a broadcast channel. Note: only Telegram accounts with admin rights can add members to channels.",
                 },
             )
-            for acc in active_accounts:
-                try:
-                    await acc["client"].get_entity(dest_entity.id)
-                except Exception:
-                    # Not a member — try to join
-                    try:
-                        if job.destination_type == "link":
-                            clean_url = job.destination_group.rstrip("/")
-                            invite_hash = (
-                                clean_url.split("/")[-1] if "/" in clean_url else clean_url
-                            )
-                            invite_hash = invite_hash.lstrip("+")
-                            await acc["client"](
-                                telethon.tl.functions.messages.ImportChatInviteRequest(
-                                    hash=invite_hash
-                                )
-                            )
-                        else:
-                            lookup_key = job.destination_group.lstrip("@")
-                            await acc["client"](
-                                telethon.tl.functions.channels.JoinChannelRequest(lookup_key)
-                            )
-                        logger.info(
-                            "Account %s auto-joined destination %s",
-                            acc["account_name"],
-                            job.destination_group,
-                        )
-                    except Exception as join_exc:
-                        logger.warning(
-                            "Account %s could not auto-join destination %s: %s",
-                            acc["account_name"],
-                            job.destination_group,
-                            join_exc,
-                        )
-
-            # Scrape existing participants from destination group to avoid duplicate invites
-            dest_member_ids = set()
-            for acc in active_accounts:
-                try:
-                    dest_participants = await _scrape_participants(
-                        acc["client"], dest_entity, telethon
-                    )
-                    if dest_participants:
-                        dest_member_ids = {u.id for u in dest_participants}
-                        logger.info(
-                            "Scraped %d existing members from destination group",
-                            len(dest_member_ids),
-                        )
-                        break
-                except Exception as scrape_dest_exc:
-                    logger.warning(
-                        "Failed to scrape destination group using account %s: %s",
-                        acc["account_id"],
-                        scrape_dest_exc,
-                    )
-
+        elif dest_is_legacy:
             await _push_invite(
                 job_id,
                 "phase",
                 {
-                    "phase": "scraping",
-                    "message": "Scraping members from source groups...",
+                    "phase": "destination_check",
+                    "message": "Destination is a legacy group (basic group, not supergroup/channel).",
                 },
             )
 
-            # ── Step 2: Scrape participants from all source groups ────────
-            all_members = {}  # user_id -> (user_obj, source_group_identifier)
-            source_groups = job.source_groups
-
-            for sg_idx, sg in enumerate(source_groups):
-                await db.refresh(job)
-                current_status = job.status
-                # Release the checkout started by refresh before Telegram I/O.
-                await db.rollback()
-                if current_status == "cancelled":
-                    break
-
-                sg_type = sg.get("type", "username")
-                sg_value = sg.get("value", "")
-
-                await _push_invite(
-                    job_id,
-                    "scrape_progress",
-                    {
-                        "current_source": sg_idx + 1,
-                        "total_sources": len(source_groups),
-                        "source": sg_value,
-                        "message": f"Scraping {sg_value} ({sg_idx + 1}/{len(source_groups)})...",
-                    },
-                )
-
-                scraped_ok = False
-                for acc in active_accounts:
-                    src_entity, src_err = await _resolve_group(
-                        acc["client"], sg_type, sg_value, telethon
-                    )
-                    if src_err is not None or src_entity is None:
-                        logger.warning(
-                            "Account %s could not resolve source group %s: %s",
-                            acc["account_id"],
-                            sg_value,
-                            src_err[1] if src_err else "unknown",
+        # ── Auto-join destination group if not already a member ──────────
+        await _push_invite(
+            job_id,
+            "phase",
+            {
+                "phase": "joining_destination",
+                "message": "Ensuring accounts have joined the destination group...",
+            },
+        )
+        for acc in active_accounts:
+            try:
+                await acc["client"].get_entity(dest_entity.id)
+            except Exception:
+                # Not a member — try to join
+                try:
+                    if job_destination_type == "link":
+                        clean_url = job_destination_group.rstrip("/")
+                        invite_hash = (
+                            clean_url.split("/")[-1] if "/" in clean_url else clean_url
                         )
-                        continue
-
-                    participants = await _scrape_participants(acc["client"], src_entity, telethon)
-                    if participants:
-                        my_ids = {a["my_id"] for a in active_accounts if a["my_id"]}
-                        for user in participants:
-                            uid = user.id
-                            if uid in my_ids:
-                                continue
-                            if uid not in all_members:
-                                all_members[uid] = (user, sg_value)
-
-                        logger.info(
-                            "Scraped %d members from %s using account %s (total unique so far: %d)",
-                            len(participants),
-                            sg_value,
-                            acc["account_name"],
-                            len(all_members),
+                        invite_hash = invite_hash.lstrip("+")
+                        await acc["client"](
+                            telethon.tl.functions.messages.ImportChatInviteRequest(
+                                hash=invite_hash
+                            )
                         )
-                        scraped_ok = True
-                        break
-
-                if not scraped_ok:
-                    logger.warning("Failed to scrape source group %s with any account", sg_value)
-                    await _push_invite(
-                        job_id,
-                        "scrape_error",
-                        {
-                            "source": sg_value,
-                            "error": "Could not scrape group with any account",
-                        },
-                    )
-
-                # Small delay between source group scrapes
-                await asyncio.sleep(1)
-
-            # Check if cancelled during scraping
-            await db.refresh(job)
-            if job.status == "cancelled":
-                for acc in active_accounts:
-                    await acc["client"].disconnect()
-                return
-
-            if not all_members:
-                job.status = "completed"
-                job.total_members = 0
-                job.progress = 100
-                job.completed_at = datetime.now(timezone.utc)
-                await db.commit()
-                for acc in active_accounts:
-                    await acc["client"].disconnect()
-                await _push_invite(
-                    job_id,
-                    "completed",
-                    {
-                        "total": 0,
-                        "invited": 0,
-                        "message": "No members found to invite",
-                    },
-                )
-                return
-
-            # Update total members count
-            members_list = list(all_members.values())
-            job.total_members = len(members_list)
-            await db.commit()
-
-            await _push_invite(
-                job_id,
-                "phase",
-                {
-                    "phase": "inviting",
-                    "total_members": len(members_list),
-                    "message": f"Found {len(members_list)} unique members. Starting invite...",
-                },
-            )
-
-            # ── Step 3: Invite members one by one ────────────────────────
-            invited = 0
-            already = 0
-            failed = 0
-            skipped = 0
-            total = len(members_list)
-            max_peer_floods = 3  # Stop using an account after 3 consecutive PeerFlood errors
-            current_acc_idx = 0
-
-            for idx, (user_obj, source_group) in enumerate(members_list):
-                # Find the next ready account
-                while True:
-                    await db.refresh(job)
-                    if job.status == "cancelled":
-                        break
-                    while job.status == "paused":
-                        await db.commit()  # Release transaction/connection lock before sleep
-                        await interruptible_sleep(job_id, 86400)
-                        await db.refresh(job)
-                        if job.status == "cancelled":
-                            break
-                    if job.status == "cancelled":
-                        break
-
-                    # If no active accounts left, we fail the job
-                    if not active_accounts:
-                        break
-
-                    # Check if any account is ready (cooldown passed)
-                    now_ts = time.time()
-                    ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
-                    if ready_accs:
-                        selected_acc = None
-                        for offset in range(len(active_accounts)):
-                            i_idx = (current_acc_idx + offset) % len(active_accounts)
-                            candidate = active_accounts[i_idx]
-                            if now_ts >= candidate["cooldown_until"]:
-                                selected_acc = candidate
-                                current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                break
-                        if selected_acc:
-                            break
-
-                    # If no accounts are ready, find the minimum cooldown time to wait
-                    earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
-                    wait_sec = max(1.0, earliest_ready_time - now_ts)
-
-                    await _push_invite(
-                        job_id,
-                        "flood_wait",
-                        {
-                            "wait_seconds": int(wait_sec),
-                            "message": f"All accounts on cooldown. Waiting {int(wait_sec)}s...",
-                        },
-                    )
-
-                    # Sleep in increments of 1s so we can check cancel status
-                    await db.commit()  # Release transaction/connection lock before sleep
-                    completed = await interruptible_sleep(job_id, wait_sec)
-                    if not completed:
-                        await db.refresh(job)
-                        if job.status == "cancelled":
-                            break
-                    if job.status == "cancelled":
-                        break
-
-                if job.status == "cancelled":
-                    break
-
-                if not active_accounts:
-                    job.status = "failed"
-                    job.invited_count = invited
-                    job.already_member_count = already
-                    job.fail_count = failed
-                    job.skip_count = skipped
-                    job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                    job.completed_at = datetime.now(timezone.utc)
-                    await db.commit()
-                    await _push_invite(
-                        job_id,
-                        "error",
-                        {
-                            "status": "failed",
-                            "message": "All Telegram accounts have been limited or failed. Job stopped.",
-                        },
-                    )
-                    break
-
-                # Retrieve selected account details
-                client = selected_acc["client"]
-                acc_id_str = selected_acc["account_id"]
-                acc_name = selected_acc["account_name"]
-
-                user_id_tg = user_obj.id
-                username = getattr(user_obj, "username", None)
-                first_name = getattr(user_obj, "first_name", None) or ""
-
-                log = InviteLog(
-                    job_id=job.id,
-                    user_id_tg=user_id_tg,
-                    username=username,
-                    first_name=first_name,
-                    source_group=source_group,
-                    account_id_used=_uuid.UUID(acc_id_str),
-                )
-
-                if user_id_tg in dest_member_ids:
-                    log.status = "already_member"
-                    log.invited_at = datetime.now(timezone.utc)
-                    db.add(log)
-                    already += 1
+                    else:
+                        lookup_key = job_destination_group.lstrip("@")
+                        await acc["client"](
+                            telethon.tl.functions.channels.JoinChannelRequest(lookup_key)
+                        )
                     logger.info(
-                        "Invite already_member | account=%s target=%s username=%s dest=%s",
-                        acc_id_str,
-                        user_id_tg,
-                        username or first_name,
-                        job.destination_group,
+                        "Account %s auto-joined destination %s",
+                        acc["account_name"],
+                        job_destination_group,
+                    )
+                except Exception as join_exc:
+                    logger.warning(
+                        "Account %s could not auto-join destination %s: %s",
+                        acc["account_name"],
+                        job_destination_group,
+                        join_exc,
                     )
 
-                    job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                    job.already_member_count = already
-                    await db.commit()
-
-                    await _push_invite(
-                        job_id,
-                        "progress",
-                        {
-                            "current": idx + 1,
-                            "total": total,
-                            "progress": job.progress,
-                            "invited": invited,
-                            "already_member": already,
-                            "failed": failed,
-                            "skipped": skipped,
-                            "status": job.status,
-                        },
+        # Scrape existing participants from destination group to avoid duplicate invites
+        dest_member_ids = set()
+        for acc in active_accounts:
+            try:
+                dest_participants = await _scrape_participants(
+                    acc["client"], dest_entity, telethon
+                )
+                if dest_participants:
+                    dest_member_ids = {u.id for u in dest_participants}
+                    logger.info(
+                        "Scraped %d existing members from destination group",
+                        len(dest_member_ids),
                     )
+                    break
+            except Exception as scrape_dest_exc:
+                logger.warning(
+                    "Failed to scrape destination group using account %s: %s",
+                    acc["account_id"],
+                    scrape_dest_exc,
+                )
 
-                    await _push_invite(
-                        job_id,
-                        "log",
-                        {
-                            "user_id_tg": user_id_tg,
-                            "username": username,
-                            "first_name": first_name,
-                            "source_group": source_group,
-                            "status": log.status,
-                            "error_type": log.error_type,
-                            "account_id_used": acc_id_str,
-                            "account_name": acc_name,
-                        },
+        await _push_invite(
+            job_id,
+            "phase",
+            {
+                "phase": "scraping",
+                "message": "Scraping members from source groups...",
+            },
+        )
+
+        # ── Step 2: Scrape participants from all source groups ────────
+        # MEM-01: Store only lightweight dictionaries, NOT full Telethon User TL objects!
+        all_members = {}  # user_id -> member_dict
+        source_groups = job_source_groups
+
+        for sg_idx, sg in enumerate(source_groups):
+            # Check if cancelled before scraping each source group
+            if await _get_invite_job_status(job_uuid) == "cancelled":
+                break
+
+            sg_type = sg.get("type", "username")
+            sg_value = sg.get("value", "")
+
+            await _push_invite(
+                job_id,
+                "scrape_progress",
+                {
+                    "current_source": sg_idx + 1,
+                    "total_sources": len(source_groups),
+                    "source": sg_value,
+                    "message": f"Scraping {sg_value} ({sg_idx + 1}/{len(source_groups)})...",
+                },
+            )
+
+            scraped_ok = False
+            for acc in active_accounts:
+                src_entity, src_err = await _resolve_group(
+                    acc["client"], sg_type, sg_value, telethon
+                )
+                if src_err is not None or src_entity is None:
+                    logger.warning(
+                        "Account %s could not resolve source group %s: %s",
+                        acc["account_id"],
+                        sg_value,
+                        src_err[1] if src_err else "unknown",
                     )
                     continue
 
-                try:
-                    # Determine entity type and use the correct invite method
-                    from telethon.tl.types import Chat as LegacyChat
-                    from telethon.tl.types import InputChannel
+                participants = await _scrape_participants(acc["client"], src_entity, telethon)
+                if participants:
+                    my_ids = {a["my_id"] for a in active_accounts if a["my_id"]}
+                    for user in participants:
+                        uid = user.id
+                        if uid in my_ids:
+                            continue
+                        if uid not in all_members:
+                            # MEM-01: Lightweight primitive dictionary
+                            all_members[uid] = {
+                                "id": uid,
+                                "access_hash": getattr(user, "access_hash", 0) or 0,
+                                "username": getattr(user, "username", None),
+                                "first_name": getattr(user, "first_name", "") or "",
+                                "source_group": sg_value,
+                            }
 
-                    dest_is_legacy_group = isinstance(dest_entity, LegacyChat)
-
-                    # Re-resolve entity with current account from the original identifier
-                    try:
-                        lookup_key = job.destination_group.lstrip("@")
-                        if job.destination_type == "username":
-                            current_entity = await client.get_entity(lookup_key)
-                        elif job.destination_type == "link":
-                            current_entity = await client.get_entity(lookup_key)
-                        else:
-                            current_entity = await client.get_entity(dest_entity.id)
-                    except Exception:
-                        current_entity = dest_entity
-
-                    if dest_is_legacy_group:
-                        # Legacy group (not a supergroup/channel)
-                        await asyncio.wait_for(
-                            client(
-                                telethon.tl.functions.messages.AddChatUserRequest(
-                                    chat_id=current_entity.id,
-                                    user_id=user_obj,
-                                    fwd_limit=50,
-                                )
-                            ),
-                            timeout=30.0,
-                        )
-                    else:
-                        # Channel or supergroup — use re-resolved entity
-                        from telethon.tl.types import InputChannel
-
-                        if hasattr(current_entity, "access_hash") and current_entity.access_hash:
-                            input_channel = InputChannel(
-                                channel_id=current_entity.id,
-                                access_hash=current_entity.access_hash,
-                            )
-                        else:
-                            input_channel = current_entity
-                        await asyncio.wait_for(
-                            client(
-                                telethon.tl.functions.channels.InviteToChannelRequest(
-                                    channel=input_channel,
-                                    users=[user_obj],
-                                )
-                            ),
-                            timeout=30.0,
-                        )
-                    log.status = "success"
-                    log.invited_at = datetime.now(timezone.utc)
-                    db.add(log)
-                    invited += 1
-                    selected_acc["consecutive_peer_floods"] = 0
-                    fc.record_success(acc_id_str)
-                    dest_member_ids.add(user_id_tg)
                     logger.info(
-                        "Invite success | account=%s account_name=%s target=%s username=%s dest=%s",
-                        acc_id_str,
-                        acc_name,
-                        user_id_tg,
-                        username or first_name,
-                        job.destination_group,
+                        "Scraped %d members from %s using account %s (total unique so far: %d)",
+                        len(participants),
+                        sg_value,
+                        acc["account_name"],
+                        len(all_members),
                     )
-
-                except Exception as exc:
-                    err_type, err_msg = classify_telegram_error(exc)
-                    log.error_type = err_type
-                    log.error_message = err_msg
-                    log.invited_at = datetime.now(timezone.utc)
-
-                    if err_type == "already_member":
-                        log.status = "already_member"
-                        already += 1
-                        selected_acc["consecutive_peer_floods"] = 0
-                        dest_member_ids.add(user_id_tg)
-
-                    elif err_type in (
-                        "privacy_restricted",
-                        "not_mutual_contact",
-                        "too_many_channels",
-                        "deactivated",
-                        "user_kicked",
-                        "user_id_invalid",
-                    ):
-                        log.status = "skipped"
-                        skipped += 1
-                        selected_acc["consecutive_peer_floods"] = 0
-
-                    elif err_type == "flood":
-                        log.status = "error"
-                        failed += 1
-                        wait = 30
-                        if hasattr(exc, "seconds"):
-                            wait = exc.seconds
-                        fc.record_flood(acc_id_str, wait)
-                        selected_acc["cooldown_until"] = time.time() + wait
-
-                        await _push_invite(
-                            job_id,
-                            "flood_wait",
-                            {
-                                "wait_seconds": wait,
-                                "account": acc_name,
-                                "message": f"Flood wait on {acc_name}: waiting {wait} seconds...",
-                            },
-                        )
-
-                    elif err_type == "peer_flood":
-                        log.status = "error"
-                        failed += 1
-                        selected_acc["consecutive_peer_floods"] += 1
-
-                        backoff_time = 300  # 5 minutes
-                        fc.record_flood(acc_id_str, backoff_time)
-                        selected_acc["cooldown_until"] = time.time() + backoff_time
-
-                        await _push_invite(
-                            job_id,
-                            "peer_flood",
-                            {
-                                "backoff_seconds": backoff_time,
-                                "consecutive": selected_acc["consecutive_peer_floods"],
-                                "account": acc_name,
-                                "message": f"PeerFlood on {acc_name} ({selected_acc['consecutive_peer_floods']}x). Backing off {backoff_time}s...",
-                            },
-                        )
-
-                        if selected_acc["consecutive_peer_floods"] >= max_peer_floods:
-                            await _push_invite(
-                                job_id,
-                                "account_failed",
-                                {
-                                    "account": acc_name,
-                                    "message": f"Account {acc_name} reached max consecutive PeerFloods. Removing from rotation.",
-                                },
-                            )
-                            try:
-                                await client.disconnect()
-                            except Exception:
-                                pass
-                            active_accounts.remove(selected_acc)
-                            if current_acc_idx >= len(active_accounts) and active_accounts:
-                                current_acc_idx = 0
-
-                    elif err_type == "banned":
-                        # UserBannedInChannelError → the TARGET user is banned from
-                        # this channel, not our account. Skip the user, keep the account.
-                        log.status = "skipped"
-                        skipped += 1
-                        selected_acc["consecutive_peer_floods"] = 0
-
-                    elif err_type == "phone_banned":
-                        # PhoneNumberBannedError → our phone is banned from Telegram.
-                        # This IS account-level — remove it from rotation.
-                        log.status = "error"
-                        failed += 1
-                        await _push_invite(
-                            job_id,
-                            "account_failed",
-                            {
-                                "account": acc_name,
-                                "message": f"Account {acc_name} is banned from Telegram. Removing from rotation.",
-                            },
-                        )
-                        try:
-                            await client.disconnect()
-                        except Exception:
-                            pass
-                        active_accounts.remove(selected_acc)
-                        if current_acc_idx >= len(active_accounts) and active_accounts:
-                            current_acc_idx = 0
-
-                    elif err_type in ("admin_only", "admin_invite_only"):
-                        log.status = "error"
-                        failed += 1
-
-                        # Remove this account from rotation and try with others
-                        await _push_invite(
-                            job_id,
-                            "account_failed",
-                            {
-                                "account": acc_name,
-                                "message": f"Account {acc_name} cannot invite ({err_type}). Removing from rotation.",
-                            },
-                        )
-                        try:
-                            await client.disconnect()
-                        except Exception:
-                            pass
-                        active_accounts.remove(selected_acc)
-                        if current_acc_idx >= len(active_accounts) and active_accounts:
-                            current_acc_idx = 0
-
-                    elif err_type in ("invite_request_sent", "already_invited"):
-                        log.status = "skipped"
-                        skipped += 1
-                        selected_acc["consecutive_peer_floods"] = 0
-
-                    else:
-                        log.status = "error"
-                        failed += 1
-                        selected_acc["consecutive_peer_floods"] = 0
-                        logger.warning(
-                            "Unknown invite error | account=%s user=%s type=%s msg=%s",
-                            acc_id_str,
-                            user_id_tg,
-                            err_type,
-                            err_msg,
-                        )
-
-                        if "authorized" in err_msg.lower() or "session" in err_msg.lower():
-                            await _push_invite(
-                                job_id,
-                                "account_failed",
-                                {
-                                    "account": acc_name,
-                                    "message": f"Account {acc_name} session is invalid/unauthorized. Removing.",
-                                },
-                            )
-                            try:
-                                await client.disconnect()
-                            except Exception:
-                                pass
-                            active_accounts.remove(selected_acc)
-                            if current_acc_idx >= len(active_accounts) and active_accounts:
-                                current_acc_idx = 0
-
-                    db.add(log)
-
-                # Check if this was the last account before progressing
-                if not active_accounts:
-                    job.status = "failed"
-                    job.invited_count = invited
-                    job.already_member_count = already
-                    job.fail_count = failed
-                    job.skip_count = skipped
-                    job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                    job.completed_at = datetime.now(timezone.utc)
-                    await db.commit()
-                    await _push_invite(
-                        job_id,
-                        "error",
-                        {
-                            "status": "failed",
-                            "message": "All Telegram accounts have been limited or failed. Job stopped.",
-                        },
-                    )
+                    scraped_ok = True
                     break
 
-                # Update progress + push to WS
-                job.progress = int(((idx + 1) / total) * 100) if total > 0 else 0
-                job.invited_count = invited
-                job.already_member_count = already
-                job.fail_count = failed
-                job.skip_count = skipped
-                await db.commit()
+            if not scraped_ok:
+                logger.warning("Failed to scrape source group %s with any account", sg_value)
+                await _push_invite(
+                    job_id,
+                    "scrape_error",
+                    {
+                        "source": sg_value,
+                        "error": "Could not scrape group with any account",
+                    },
+                )
+
+            # Small delay between source group scrapes
+            await asyncio.sleep(1)
+
+        # Check if cancelled during scraping
+        if await _get_invite_job_status(job_uuid) == "cancelled":
+            for acc in active_accounts:
+                await acc["client"].disconnect()
+            return
+
+        if not all_members:
+            await _set_invite_job_total_members(job_uuid, 0, status="completed")
+            for acc in active_accounts:
+                await acc["client"].disconnect()
+            await _push_invite(
+                job_id,
+                "completed",
+                {
+                    "total": 0,
+                    "invited": 0,
+                    "message": "No members found to invite",
+                },
+            )
+            return
+
+        # Update total members count
+        members_list = list(all_members.values())
+        await _set_invite_job_total_members(job_uuid, len(members_list))
+
+        await _push_invite(
+            job_id,
+            "phase",
+            {
+                "phase": "inviting",
+                "total_members": len(members_list),
+                "message": f"Found {len(members_list)} unique members. Starting invite...",
+            },
+        )
+
+        # ── Step 3: Invite members one by one ────────────────────────
+        invited = 0
+        already = 0
+        failed = 0
+        skipped = 0
+        total = len(members_list)
+        max_peer_floods = 3  # Stop using an account after 3 consecutive PeerFlood errors
+        current_acc_idx = 0
+
+        for idx, member_entry in enumerate(members_list):
+            # Find the next ready account
+            while True:
+                job_status = await _get_invite_job_status(job_uuid)
+                if job_status == "cancelled":
+                    break
+                while job_status == "paused":
+                    # CON-01: NO DB session held while sleeping!
+                    await interruptible_sleep(job_id, 86400)
+                    job_status = await _get_invite_job_status(job_uuid)
+                    if job_status == "cancelled":
+                        break
+                if job_status == "cancelled":
+                    break
+
+                # If no active accounts left, we fail the job
+                if not active_accounts:
+                    break
+
+                # Check if any account is ready (cooldown passed)
+                now_ts = time.time()
+                ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
+                if ready_accs:
+                    selected_acc = None
+                    for offset in range(len(active_accounts)):
+                        i_idx = (current_acc_idx + offset) % len(active_accounts)
+                        candidate = active_accounts[i_idx]
+                        if now_ts >= candidate["cooldown_until"]:
+                            selected_acc = candidate
+                            current_acc_idx = (i_idx + 1) % len(active_accounts)
+                            break
+                    if selected_acc:
+                        break
+
+                # If no accounts are ready, find the minimum cooldown time to wait
+                earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
+                wait_sec = max(1.0, earliest_ready_time - now_ts)
+
+                await _push_invite(
+                    job_id,
+                    "flood_wait",
+                    {
+                        "wait_seconds": int(wait_sec),
+                        "message": f"All accounts on cooldown. Waiting {int(wait_sec)}s...",
+                    },
+                )
+
+                # CON-01: NO DB connection held during cooldown sleep
+                completed = await interruptible_sleep(job_id, wait_sec)
+                if not completed:
+                    if await _get_invite_job_status(job_uuid) == "cancelled":
+                        break
+                if await _get_invite_job_status(job_uuid) == "cancelled":
+                    break
+
+            if await _get_invite_job_status(job_uuid) == "cancelled":
+                break
+
+            if not active_accounts:
+                await _finalize_invite_job(
+                    job_uuid,
+                    status="failed",
+                    invited=invited,
+                    already=already,
+                    failed=failed,
+                    skipped=skipped,
+                )
+                await _push_invite(
+                    job_id,
+                    "error",
+                    {
+                        "status": "failed",
+                        "message": "All Telegram accounts have been limited or failed. Job stopped.",
+                    },
+                )
+                break
+
+            # Retrieve selected account details
+            client = selected_acc["client"]
+            acc_id_str = selected_acc["account_id"]
+            acc_name = selected_acc["account_name"]
+
+            user_id_tg = member_entry["id"]
+            access_hash = member_entry["access_hash"]
+            username = member_entry["username"]
+            first_name = member_entry["first_name"]
+            source_group = member_entry["source_group"]
+
+            log = InviteLog(
+                job_id=job_uuid,
+                user_id_tg=user_id_tg,
+                username=username,
+                first_name=first_name,
+                source_group=source_group,
+                account_id_used=_uuid.UUID(acc_id_str),
+            )
+
+            if user_id_tg in dest_member_ids:
+                log.status = "already_member"
+                log.invited_at = datetime.now(timezone.utc)
+                already += 1
+                logger.info(
+                    "Invite already_member | account=%s target=%s username=%s dest=%s",
+                    acc_id_str,
+                    user_id_tg,
+                    username or first_name,
+                    job_destination_group,
+                )
+
+                prog = int(((idx + 1) / total) * 100) if total > 0 else 0
+                await _save_invite_log_and_stats(
+                    job_uuid,
+                    log,
+                    invited=invited,
+                    already=already,
+                    failed=failed,
+                    skipped=skipped,
+                    progress=prog,
+                )
 
                 await _push_invite(
                     job_id,
@@ -1041,12 +851,12 @@ async def execute_invite(job_id: str):
                     {
                         "current": idx + 1,
                         "total": total,
-                        "progress": job.progress,
+                        "progress": prog,
                         "invited": invited,
                         "already_member": already,
                         "failed": failed,
                         "skipped": skipped,
-                        "status": job.status,
+                        "status": "running",
                     },
                 )
 
@@ -1064,72 +874,348 @@ async def execute_invite(job_id: str):
                         "account_name": acc_name,
                     },
                 )
+                continue
 
-                # Delay between invites — only apply flood delay for the account
-                # that actually sent. Other accounts are not penalized.
-                flood_delay = (
-                    fc.get_delay(acc_id_str) if selected_acc["cooldown_until"] <= time.time() else 0
+            try:
+                dest_is_legacy_group = isinstance(dest_entity, LegacyChat)
+
+                # Re-resolve entity with current account from the original identifier
+                try:
+                    lookup_key = job_destination_group.lstrip("@")
+                    if job_destination_type in ("username", "link"):
+                        current_entity = await client.get_entity(lookup_key)
+                    else:
+                        current_entity = await client.get_entity(dest_entity.id)
+                except Exception:
+                    current_entity = dest_entity
+
+                # MEM-01: Use InputUser or username
+                user_target = InputUser(user_id_tg, access_hash) if access_hash else (username or user_id_tg)
+
+                if dest_is_legacy_group:
+                    await asyncio.wait_for(
+                        client(
+                            telethon.tl.functions.messages.AddChatUserRequest(
+                                chat_id=current_entity.id,
+                                user_id=user_target,
+                                fwd_limit=50,
+                            )
+                        ),
+                        timeout=30.0,
+                    )
+                else:
+                    if hasattr(current_entity, "access_hash") and current_entity.access_hash:
+                        input_channel = InputChannel(
+                            channel_id=current_entity.id,
+                            access_hash=current_entity.access_hash,
+                        )
+                    else:
+                        input_channel = current_entity
+                    await asyncio.wait_for(
+                        client(
+                            telethon.tl.functions.channels.InviteToChannelRequest(
+                                channel=input_channel,
+                                users=[user_target],
+                            )
+                        ),
+                        timeout=30.0,
+                    )
+                log.status = "success"
+                log.invited_at = datetime.now(timezone.utc)
+                invited += 1
+                selected_acc["consecutive_peer_floods"] = 0
+                fc.record_success(acc_id_str)
+                dest_member_ids.add(user_id_tg)
+                logger.info(
+                    "Invite success | account=%s account_name=%s target=%s username=%s dest=%s",
+                    acc_id_str,
+                    acc_name,
+                    user_id_tg,
+                    username or first_name,
+                    job_destination_group,
                 )
-                actual_delay = max(job.delay_per_invite, flood_delay)
 
-                if (idx + 1) % job.batch_size == 0 and job.delay_per_batch > 0:
-                    actual_delay = max(actual_delay, job.delay_per_batch)
+            except Exception as exc:
+                err_type, err_msg = classify_telegram_error(exc)
+                log.error_type = err_type
+                log.error_message = err_msg
+                log.invited_at = datetime.now(timezone.utc)
+
+                if err_type == "already_member":
+                    log.status = "already_member"
+                    already += 1
+                    selected_acc["consecutive_peer_floods"] = 0
+                    dest_member_ids.add(user_id_tg)
+
+                elif err_type in (
+                    "privacy_restricted",
+                    "not_mutual_contact",
+                    "too_many_channels",
+                    "deactivated",
+                    "user_kicked",
+                    "user_id_invalid",
+                ):
+                    log.status = "skipped"
+                    skipped += 1
+                    selected_acc["consecutive_peer_floods"] = 0
+
+                elif err_type == "flood":
+                    log.status = "error"
+                    failed += 1
+                    wait = 30
+                    if hasattr(exc, "seconds"):
+                        wait = exc.seconds
+                    fc.record_flood(acc_id_str, wait)
+                    selected_acc["cooldown_until"] = time.time() + wait
+
                     await _push_invite(
                         job_id,
-                        "batch_delay",
+                        "flood_wait",
                         {
-                            "batch_number": (idx + 1) // job.batch_size,
-                            "delay": actual_delay,
-                            "message": f"Batch delay: waiting {actual_delay}s...",
+                            "wait_seconds": wait,
+                            "account": acc_name,
+                            "message": f"Flood wait on {acc_name}: waiting {wait} seconds...",
                         },
                     )
 
-                await interruptible_sleep(job_id, actual_delay)
+                elif err_type == "peer_flood":
+                    log.status = "error"
+                    failed += 1
+                    selected_acc["consecutive_peer_floods"] += 1
 
-            # Mark completed
-            await db.refresh(job)
-            if job.status == "running":
-                job.status = "completed"
-                job.progress = 100
-                job.invited_count = invited
-                job.already_member_count = already
-                job.fail_count = failed
-                job.skip_count = skipped
-                await db.commit()
+                    backoff_time = 300  # 5 minutes
+                    fc.record_flood(acc_id_str, backoff_time)
+                    selected_acc["cooldown_until"] = time.time() + backoff_time
+
+                    await _push_invite(
+                        job_id,
+                        "peer_flood",
+                        {
+                            "backoff_seconds": backoff_time,
+                            "consecutive": selected_acc["consecutive_peer_floods"],
+                            "account": acc_name,
+                            "message": f"PeerFlood on {acc_name} ({selected_acc['consecutive_peer_floods']}x). Backing off {backoff_time}s...",
+                        },
+                    )
+
+                    if selected_acc["consecutive_peer_floods"] >= max_peer_floods:
+                        await _push_invite(
+                            job_id,
+                            "account_failed",
+                            {
+                                "account": acc_name,
+                                "message": f"Account {acc_name} reached max consecutive PeerFloods. Removing from rotation.",
+                            },
+                        )
+                        try:
+                            await client.disconnect()
+                        except Exception:
+                            pass
+                        active_accounts.remove(selected_acc)
+                        if current_acc_idx >= len(active_accounts) and active_accounts:
+                            current_acc_idx = 0
+
+                elif err_type == "banned":
+                    log.status = "skipped"
+                    skipped += 1
+                    selected_acc["consecutive_peer_floods"] = 0
+
+                elif err_type == "phone_banned":
+                    log.status = "error"
+                    failed += 1
+                    await _push_invite(
+                        job_id,
+                        "account_failed",
+                        {
+                            "account": acc_name,
+                            "message": f"Account {acc_name} is banned from Telegram. Removing from rotation.",
+                        },
+                    )
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        pass
+                    active_accounts.remove(selected_acc)
+                    if current_acc_idx >= len(active_accounts) and active_accounts:
+                        current_acc_idx = 0
+
+                elif err_type in ("admin_only", "admin_invite_only"):
+                    log.status = "error"
+                    failed += 1
+
+                    await _push_invite(
+                        job_id,
+                        "account_failed",
+                        {
+                            "account": acc_name,
+                            "message": f"Account {acc_name} cannot invite ({err_type}). Removing from rotation.",
+                        },
+                    )
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        pass
+                    active_accounts.remove(selected_acc)
+                    if current_acc_idx >= len(active_accounts) and active_accounts:
+                        current_acc_idx = 0
+
+                elif err_type in ("invite_request_sent", "already_invited"):
+                    log.status = "skipped"
+                    skipped += 1
+                    selected_acc["consecutive_peer_floods"] = 0
+
+                else:
+                    log.status = "error"
+                    failed += 1
+                    selected_acc["consecutive_peer_floods"] = 0
+                    logger.warning(
+                        "Unknown invite error | account=%s user=%s type=%s msg=%s",
+                        acc_id_str,
+                        user_id_tg,
+                        err_type,
+                        err_msg,
+                    )
+
+                    if "authorized" in err_msg.lower() or "session" in err_msg.lower():
+                        await _push_invite(
+                            job_id,
+                            "account_failed",
+                            {
+                                "account": acc_name,
+                                "message": f"Account {acc_name} session is invalid/unauthorized. Removing.",
+                            },
+                        )
+                        try:
+                            await client.disconnect()
+                        except Exception:
+                            pass
+                        active_accounts.remove(selected_acc)
+                        if current_acc_idx >= len(active_accounts) and active_accounts:
+                            current_acc_idx = 0
+
+            # Check if this was the last account before progressing
+            if not active_accounts:
+                await _finalize_invite_job(
+                    job_uuid,
+                    status="failed",
+                    invited=invited,
+                    already=already,
+                    failed=failed,
+                    skipped=skipped,
+                )
                 await _push_invite(
                     job_id,
-                    "completed",
+                    "error",
                     {
-                        "total": total,
-                        "invited": invited,
-                        "already_member": already,
-                        "failed": failed,
-                        "skipped": skipped,
+                        "status": "failed",
+                        "message": "All Telegram accounts have been limited or failed. Job stopped.",
+                    },
+                )
+                break
+
+            # Update progress + log in short-lived DB session
+            prog = int(((idx + 1) / total) * 100) if total > 0 else 0
+            await _save_invite_log_and_stats(
+                job_uuid,
+                log,
+                invited=invited,
+                already=already,
+                failed=failed,
+                skipped=skipped,
+                progress=prog,
+            )
+
+            await _push_invite(
+                job_id,
+                "progress",
+                {
+                    "current": idx + 1,
+                    "total": total,
+                    "progress": prog,
+                    "invited": invited,
+                    "already_member": already,
+                    "failed": failed,
+                    "skipped": skipped,
+                    "status": "running",
+                },
+            )
+
+            await _push_invite(
+                job_id,
+                "log",
+                {
+                    "user_id_tg": user_id_tg,
+                    "username": username,
+                    "first_name": first_name,
+                    "source_group": source_group,
+                    "status": log.status,
+                    "error_type": log.error_type,
+                    "account_id_used": acc_id_str,
+                    "account_name": acc_name,
+                },
+            )
+
+            # Delay between invites
+            flood_delay = (
+                fc.get_delay(acc_id_str) if selected_acc["cooldown_until"] <= time.time() else 0
+            )
+            actual_delay = max(job_delay_per_invite, flood_delay)
+
+            if (idx + 1) % job_batch_size == 0 and job_delay_per_batch > 0:
+                actual_delay = max(actual_delay, job_delay_per_batch)
+                await _push_invite(
+                    job_id,
+                    "batch_delay",
+                    {
+                        "batch_number": (idx + 1) // job_batch_size,
+                        "delay": actual_delay,
+                        "message": f"Batch delay: waiting {actual_delay}s...",
                     },
                 )
 
-        except Exception as exc:
-            logger.exception("Invite job %s failed: %s", job_id, exc)
+            # CON-01: NO DB connection held during inter-invite delay!
+            await interruptible_sleep(job_id, actual_delay)
+
+        # Mark completed if still running
+        curr_status = await _get_invite_job_status(job_uuid)
+        if curr_status == "running":
+            await _finalize_invite_job(
+                job_uuid,
+                status="completed",
+                invited=invited,
+                already=already,
+                failed=failed,
+                skipped=skipped,
+            )
+            await _push_invite(
+                job_id,
+                "completed",
+                {
+                    "total": total,
+                    "invited": invited,
+                    "already_member": already,
+                    "failed": failed,
+                    "skipped": skipped,
+                },
+            )
+
+    except Exception as exc:
+        logger.exception("Invite job %s failed: %s", job_id, exc)
+        try:
+            await _update_invite_job_status(job_uuid, "failed")
+            await _push_invite(
+                job_id,
+                "error",
+                {
+                    "status": "failed",
+                    "message": str(exc),
+                },
+            )
+        except Exception:
+            pass
+    finally:
+        for acc in active_accounts:
             try:
-                await db.rollback()
-                result = await db.execute(select(InviteJob).where(InviteJob.id == job_uuid))
-                job = result.scalar_one_or_none()
-                if job:
-                    job.status = "failed"
-                    await db.commit()
-                    await _push_invite(
-                        job_id,
-                        "error",
-                        {
-                            "status": "failed",
-                            "message": str(exc),
-                        },
-                    )
+                await acc["client"].disconnect()
             except Exception:
                 pass
-        finally:
-            for acc in active_accounts:
-                try:
-                    await acc["client"].disconnect()
-                except Exception:
-                    pass

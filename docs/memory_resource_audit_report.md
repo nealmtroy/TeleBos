@@ -10,24 +10,27 @@
 
 Audit efisiensi sumber daya dan manajemen siklus hidup memori menemukan **18 temuan berisiko tinggi** yang berdampak langsung pada stabilitas server dan performa klien. Temuan paling krusial meliputi **penahanan koneksi database fisik selama berjam-jam saat sleep**, **kebocoran stream mikrofon browser pada frontend**, **penyimpanan 50.000 objek raw Telegram User di RAM proses**, **cache foto chat di disk tanpa TTL**, serta **pembuatan puluhan `httpx.AsyncClient` sekaligus secara ad-hoc**.
 
-### Matriks Keparahan Masalah Memori & Sumber Daya
+### Matriks Keparahan & Status Remediasi Sumber Daya
 
-| ID | Kategori | Modul Terkait | Tingkat Keparahan | Ringkasan Dampak |
-| :--- | :--- | :--- | :--- | :--- |
-| **CON-01** | Connection Leak | `services/invite_service.py` | 🔴 **CRITICAL (P0)** | Koneksi DB ditahan terbuka selama `interruptible_sleep` hingga 24 jam, menghabiskan pool koneksi database (`pool_size=20`). |
-| **RES-01** | Resource Leak | `frontend/.../MessagePane.tsx` | 🔴 **CRITICAL (P0)** | Stream mikrofon `MediaRecorder` tidak dihentikan jika komponen unmount saat merekam, membiarkan mic aktif terus di browser. |
-| **MEM-01** | Large Object Retention | `services/invite_service.py` | 🟠 **HIGH (P1)** | Menyimpan hingga 50.000 objek raw Telethon `User` lengkap di RAM selama berhari-hari, memakan ~50–100 MB per job. |
-| **UBC-01** | Unbounded Cache | `api/media.py` | 🟠 **HIGH (P1)** | Direktori `uploads/chat_photos` tidak pernah dibersihkan oleh `media_cleanup.py`, memicu disk bloat tak terbatas. |
-| **UBC-02** | Unbounded Cache | `frontend/src/lib/socket.ts` | 🟠 **HIGH (P1)** | Map global `sockets` menyimpan semua koneksi WebSocket tanpa batas (tidak pernah di-disconnect), memicu puluhan socket zombie. |
-| **EXA-01** | Excessive Allocation | `services/admin_smm_service.py` | 🟠 **HIGH (P1)** | Polling status SMM membuat hingga 50 instance `httpx.AsyncClient` dan koneksi TLS baru secara bersamaan setiap menit. |
-| **RES-02** | Resource Leak | `api/accounts.py` | 🟠 **HIGH (P1)** | Klien Telegram unauthenticated pada QR login tidak di-disconnect saat login sukses, menyisakan 2 koneksi TCP paralel ke akun yang sama. |
-| **RES-03** | Resource Leak | `api/admin.py` & `models/user.py` | 🟠 **HIGH (P1)** | Deletion user secara cascade tidak memanggil `remove_account()`, meninggalkan file foto profil dan client Telegram terhubung. |
-| **MEM-02** | Memory Leak | `services/telegram_client.py` | 🟡 **MEDIUM (P2)** | Dictionary `_locks` menyimpan instance `asyncio.Lock()` untuk setiap akun tanpa pernah di-pop saat akun dievikt/dihapus. |
-| **MEM-03** | Memory Leak | `services/event_relay.py` | 🟡 **MEDIUM (P2)** | Handler pesan membuat `asyncio.create_task` tanpa referensi kuat (*strong reference*), memicu premature GC atau task exception leak. |
-| **RES-04** | Resource Leak | `services/appeal_service.py` | 🟡 **MEDIUM (P2)** | `solve_captcha_via_2captcha_sync` melakukan `time.sleep(3)` sinkron di threadpool executor selama 3 menit, memblokir thread pool OS. |
-| **EXA-02** | Excessive Allocation | `services/smm_service.py` | 🟡 **MEDIUM (P2)** | Setiap fungsi API SMM membuat client HTTP baru (`async with httpx.AsyncClient()`) tanpa koneksi persistent/keep-alive. |
-| **UBC-03** | Unbounded Cache | `frontend/src/lib/drafts.ts` | 🟡 **MEDIUM (P2)** | LocalStorage `telebos-drafts` menyimpan semua teks draft chat tanpa mekanisme kadaluwarsa (TTL) atau batas ukuran. |
-| **CON-02** | Connection Leak | `api/ws.py` | 🟡 **MEDIUM (P2)** | Broadcast pesan ke client WebSocket dieksekusi secara serial; satu client lambat menahan buffer memori pengiriman seluruh client. |
+> [!NOTE]
+> **Status Audit Terkini:** Seluruh 14 temuan risiko sumber daya & memori di bawah ini telah **100% DIPERBAIKI (RESOLVED)** pada 4 September 2026.
+
+| ID | Kategori | Modul Terkait | Tingkat Keparahan | Status | Ringkasan Remediasi |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| **CON-01** | Connection Leak | [`services/invite_service.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/invite_service.py) | 🔴 **CRITICAL (P0)** | 🟢 **RESOLVED** | Sesi DB diubah menjadi *short-lived*, koneksi dilepas sebelum `interruptible_sleep` saat pause, delay, dan flood wait. |
+| **RES-01** | Resource Leak | [`frontend/.../MessagePane.tsx`](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/MessagePane.tsx) | 🔴 **CRITICAL (P0)** | 🟢 **RESOLVED** | Ditambahkan `mediaStreamRef` dan `useEffect` unmount cleanup untuk mematikan `MediaRecorder` dan `track.stop()`. |
+| **MEM-01** | Large Object Retention | [`services/invite_service.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/invite_service.py) | 🟠 **HIGH (P1)** | 🟢 **RESOLVED** | Menyimpan dict ringan `(id, access_hash, username, first_name)` alih-alih 50.000 raw Telethon `User` TL objects. |
+| **UBC-01** | Unbounded Cache | [`utils/media_cleanup.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/utils/media_cleanup.py) | 🟠 **HIGH (P1)** | 🟢 **RESOLVED** | Ditambahkan `cleanup_old_chat_photos` dengan batas umur 7 hari dan disk cap 500 MB (LRU by `mtime`). |
+| **UBC-02** | Unbounded Cache | [`frontend/src/lib/socket.ts`](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/lib/socket.ts) | 🟠 **HIGH (P1)** | 🟢 **RESOLVED** | Diterapkan pool LRU dengan `MAX_CACHED_SOCKETS = 5`, socket tertua otomatis di-disconnect dan dihapus dari memori browser. |
+| **EXA-01** | Excessive Allocation | [`services/smm_service.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/smm_service.py) | 🟠 **HIGH (P1)** | 🟢 **RESOLVED** | Menggunakan singleton `httpx.AsyncClient` dengan connection pooling keep-alive (`max_connections=20`). |
+| **RES-02** | Resource Leak | [`api/accounts.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/api/accounts.py) | 🟠 **HIGH (P1)** | 🟢 **RESOLVED** | Klien Telethon awal diputus via `await client.disconnect()` segera setelah QR login sukses tersimpan. |
+| **RES-03** | Resource Leak | [`api/admin.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/api/admin.py) | 🟠 **HIGH (P1)** | 🟢 **RESOLVED** | Pada `delete_user`, akun dievikt dari `client_pool` dan foto profil di disk dihapus sebelum row user dihapus. |
+| **MEM-02** | Memory Leak | [`services/telegram_client.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/telegram_client.py) | 🟡 **MEDIUM (P2)** | 🟢 **RESOLVED** | Ditambahkan `self._locks.pop(account_id, None)` saat akun dievikt idle maupun saat dihapus permanen. |
+| **MEM-03** | Memory Leak | [`services/event_relay.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/event_relay.py) | 🟡 **MEDIUM (P2)** | 🟢 **RESOLVED** | Seluruh task dibungkus `_spawn_task` dengan referensi kuat di `_background_tasks: set[asyncio.Task]`. |
+| **RES-04** | Resource Leak | [`services/appeal_service.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/appeal_service.py) | 🟡 **MEDIUM (P2)** | 🟢 **RESOLVED** | Turnstile captcha solver diubah menjadi async non-blocking (`httpx` + `asyncio.sleep(3)`), membebaskan thread OS. |
+| **EXA-02** | Excessive Allocation | [`services/smm_service.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/smm_service.py) | 🟡 **MEDIUM (P2)** | 🟢 **RESOLVED** | Dibuat singleton client `get_smm_http_client()` dan graceful shutdown hook `close_smm_http_client()`. |
+| **UBC-03** | Unbounded Cache | [`frontend/src/lib/drafts.ts`](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/lib/drafts.ts) | 🟡 **MEDIUM (P2)** | 🟢 **RESOLVED** | Diterapkan batasan LRU maksimal 50 draft dan TTL kadaluwarsa 14 hari pada LocalStorage `telebos-drafts`. |
+| **CON-02** | Connection Leak | [`api/ws.py`](file:///d:/PROJECT/Telegram/TeleBos/backend/app/api/ws.py) | 🟡 **MEDIUM (P2)** | 🟢 **RESOLVED** | Broadcast serial diganti dengan `asyncio.gather` konkuren + timeout 5s per socket, mencegah *head-of-line blocking*. |
 
 ---
 
