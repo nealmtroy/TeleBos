@@ -736,14 +736,67 @@ def run_migrations(connection):
 
     # Ensure database constraints exist (idempotent)
     try:
-        connection.execute(text("ALTER TABLE telegram_accounts ADD CONSTRAINT uq_telegram_account_phone UNIQUE (phone)"))
+        tables_res = inspector.get_table_names()
+        tables = set(tables_res) if isinstance(tables_res, (list, set, tuple)) else set()
     except Exception:
-        pass
+        tables = set()
 
-    try:
-        connection.execute(text("ALTER TABLE users ADD CONSTRAINT chk_user_balance_positive CHECK (balance >= 0)"))
-    except Exception:
-        pass
+    if "telegram_accounts" in tables:
+        try:
+            uqs_res = inspector.get_unique_constraints("telegram_accounts")
+            existing_uqs = {
+                uc["name"]
+                for uc in uqs_res
+                if isinstance(uc, dict) and uc.get("name")
+            } if isinstance(uqs_res, (list, tuple)) else set()
+        except Exception:
+            existing_uqs = set()
+
+        if "uq_telegram_account_phone" not in existing_uqs:
+            dialect_name = getattr(getattr(connection, "dialect", None), "name", "")
+            if dialect_name == "postgresql":
+                try:
+                    connection.execute(
+                        text("""
+                            UPDATE telegram_accounts
+                            SET phone = substring(phone, 1, 14) || '_d' || substring(id::text, 1, 4)
+                            WHERE id IN (
+                                SELECT id FROM (
+                                    SELECT id, ROW_NUMBER() OVER (PARTITION BY phone ORDER BY is_active DESC, created_at DESC) as rn
+                                    FROM telegram_accounts
+                                    WHERE phone IS NOT NULL
+                                ) t WHERE rn > 1
+                            )
+                        """)
+                    )
+                except Exception as e:
+                    logger.warning("Could not deduplicate phone numbers: %s", e)
+
+            try:
+                connection.execute(
+                    text("ALTER TABLE telegram_accounts ADD CONSTRAINT uq_telegram_account_phone UNIQUE (phone)")
+                )
+            except Exception as e:
+                logger.warning("Could not add uq_telegram_account_phone constraint: %s", e)
+
+    if "users" in tables:
+        try:
+            chks_res = inspector.get_check_constraints("users")
+            existing_chks = {
+                cc["name"]
+                for cc in chks_res
+                if isinstance(cc, dict) and cc.get("name")
+            } if isinstance(chks_res, (list, tuple)) else set()
+        except Exception:
+            existing_chks = set()
+
+        if "chk_user_balance_positive" not in existing_chks:
+            try:
+                connection.execute(
+                    text("ALTER TABLE users ADD CONSTRAINT chk_user_balance_positive CHECK (balance >= 0)")
+                )
+            except Exception as e:
+                logger.warning("Could not add chk_user_balance_positive constraint: %s", e)
 
     # Ensure performance indexes exist (idempotent)
     for idx_sql in [
@@ -756,6 +809,7 @@ def run_migrations(connection):
     ]:
         try:
             connection.execute(text(idx_sql))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Could not create index %s: %s", idx_sql, e)
+
 
