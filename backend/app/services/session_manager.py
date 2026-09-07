@@ -79,6 +79,7 @@ async def _background_chat_sync(account_id: str) -> None:
 
     async with _sync_semaphore:
         try:
+            client_pool.touch_client(account_id)
             async with async_session_factory() as db:
                 result = await db.execute(
                     select(TelegramAccount).where(TelegramAccount.id == account_id)
@@ -477,10 +478,16 @@ class SessionManager:
                                 has_auto_reply = account.auto_reply_enabled
                                 has_active_ws = ws_manager.has_channel(f"chats:{account_id}")
                                 has_active_job = await self.is_account_in_active_job(db, account_id)
+                                is_syncing = account_id in _sync_tasks and not _sync_tasks[account_id].done()
+                                is_idle = client_pool.is_client_idle(account_id, max_idle_seconds=300.0)
 
-                                if not (has_auto_reply or has_active_ws or has_active_job):
-                                    logger.info("Lazy Connection: disconnecting unneeded client for account %s", account_id)
+                                if not (has_auto_reply or has_active_ws or has_active_job or is_syncing) and is_idle:
+                                    logger.info("Lazy Connection: disconnecting idle unneeded client for account %s", account_id)
                                     lazy_disconnect_ids.append(account_id)
+                                elif is_syncing:
+                                    logger.debug("Lazy Connection: keeping client %s connected (sync in progress)", account_id)
+                                elif not is_idle:
+                                    logger.debug("Lazy Connection: keeping client %s connected (recently accessed / within TTL)", account_id)
                         except Exception as exc:
                             logger.warning("Lazy disconnect check failed for %s: %s", account_id, exc)
             except Exception as exc:

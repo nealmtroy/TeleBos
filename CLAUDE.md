@@ -17,6 +17,7 @@ Use one detailed owner per topic; do not copy long specifications between docume
 | Cross-agent compatibility | `AGENTS.md` |
 | Full request/response API contract | `/api/docs` and `/api/openapi.json` on a running backend |
 | Targeted security assessment | `docs/security/strix-assessment-instructions.md` |
+| Database schema, tables, constraints, and relationships | `docs/database_schema.md` |
 
 ## Stack and architecture
 

@@ -146,3 +146,85 @@ async def test_remove_cleans_up_locks():
 
     assert account_id not in pool._clients
     assert account_id not in pool._locks
+
+
+def test_telegram_client_pool_is_client_idle():
+    """Verify that is_client_idle correctly evaluates idle status based on last_accessed."""
+    import time
+    pool = TelegramClientPool()
+    account_id = "idle-acc-1"
+
+    # Non-existent account is considered idle
+    assert pool.is_client_idle(account_id, max_idle_seconds=300.0) is True
+
+    # Recently accessed account is NOT idle
+    now = time.time()
+    pool._clients[account_id] = {"client": MagicMock(), "last_accessed": now}
+    assert pool.is_client_idle(account_id, max_idle_seconds=300.0) is False
+
+    # Account accessed 400s ago is idle (> 300s TTL)
+    pool._clients[account_id]["last_accessed"] = now - 400.0
+    assert pool.is_client_idle(account_id, max_idle_seconds=300.0) is True
+
+    # touch_client updates last_accessed so it becomes non-idle
+    pool.touch_client(account_id)
+    assert pool.is_client_idle(account_id, max_idle_seconds=300.0) is False
+
+
+@pytest.mark.asyncio
+async def test_on_demand_dialog_lock_serialization():
+    """Verify that _get_account_dialog_lock returns the same lock for identical account IDs."""
+    from app.services.chat_service import _get_account_dialog_lock
+    lock1 = await _get_account_dialog_lock("acc-concurrent-1")
+    lock2 = await _get_account_dialog_lock("acc-concurrent-1")
+    lock3 = await _get_account_dialog_lock("acc-different-2")
+
+    assert lock1 is lock2
+    assert lock1 is not lock3
+
+
+@pytest.mark.asyncio
+async def test_check_connections_protects_syncing_and_non_idle_accounts():
+    """Verify that _check_connections does NOT disconnect clients that are non-idle or actively syncing."""
+    from app.services.session_manager import session_manager, _sync_tasks
+    from app.services.telegram_client import client_pool
+
+    mock_client = MagicMock()
+    mock_client.is_connected.return_value = True
+
+    # Setup 2 accounts: acc-syncing (active sync task) and acc-recent (recently accessed)
+    acc_syncing = "acc-syncing-123"
+    acc_recent = "acc-recent-456"
+
+    client_pool._clients[acc_syncing] = {"client": mock_client, "last_accessed": 100.0}
+    client_pool._clients[acc_recent] = {"client": mock_client, "last_accessed": 100.0}
+
+    # Simulate active sync task for acc_syncing
+    future = asyncio.get_running_loop().create_future()
+    _sync_tasks[acc_syncing] = future
+
+    # acc_recent is NOT idle
+    with patch.object(client_pool, "is_client_idle", side_effect=lambda acc, **kw: False if acc == acc_recent else True):
+        with patch.object(client_pool, "remove", new_callable=AsyncMock) as mock_remove:
+            with patch("app.database.async_session_factory") as mock_db_factory:
+                # Mock DB query
+                mock_db = AsyncMock()
+                mock_db_factory.return_value.__aenter__.return_value = mock_db
+                mock_acc = MagicMock()
+                mock_acc.auto_reply_enabled = False
+                mock_db.execute.return_value.scalar_one_or_none.return_value = mock_acc
+
+                with patch.object(session_manager, "is_account_in_active_job", return_value=False):
+                    with patch("app.api.ws.manager.has_channel", return_value=False):
+                        await session_manager._check_connections()
+
+            # Neither acc_syncing (sync in progress) nor acc_recent (not idle) should be removed!
+            mock_remove.assert_not_called()
+
+    # Cleanup
+    future.cancel()
+    _sync_tasks.pop(acc_syncing, None)
+    client_pool._clients.pop(acc_syncing, None)
+    client_pool._clients.pop(acc_recent, None)
+
+

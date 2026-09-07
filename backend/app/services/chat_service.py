@@ -1,5 +1,6 @@
 """Chat and folder business logic."""
 
+import asyncio
 import logging
 import uuid
 from typing import Any
@@ -17,6 +18,20 @@ from app.utils.encryption import decrypt
 from app.utils.telethon_helpers import get_active_client
 
 logger = logging.getLogger(__name__)
+
+
+_on_demand_dialog_locks: dict[str, asyncio.Lock] = {}
+_on_demand_lock_guard = asyncio.Lock()
+
+
+async def _get_account_dialog_lock(account_id: str) -> asyncio.Lock:
+    """Return a per-account lock to serialize concurrent on-demand dialog fetches."""
+    async with _on_demand_lock_guard:
+        lock = _on_demand_dialog_locks.get(account_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            _on_demand_dialog_locks[account_id] = lock
+        return lock
 
 
 def _avatar_metadata(entity: Any) -> dict[str, int | None]:
@@ -314,112 +329,123 @@ async def get_dialogs(
     # If the database does not have enough chats to satisfy the requested page,
     # we can try to fetch more chats from Telegram API using offset parameters
     if not is_group_channel_query and (len(chats) < page_size or total < page * page_size) and page > 0:
-        try:
-            session_str = decrypt(account.session_string)
-            client = await client_pool.get(str(account.id), session_str)
-            if client and client.is_connected():
-                # Find the oldest synced chat in the DB to use its date and peer as offsets
-                oldest_stmt = select(TelegramChat).where(
-                    TelegramChat.account_id == account.id,
-                    TelegramChat.is_active == True,
-                    TelegramChat.type.not_in(["group", "supergroup", "channel"])
-                ).order_by(TelegramChat.last_message_date.asc()).limit(1)
+        dialog_lock = await _get_account_dialog_lock(str(account.id))
+        async with dialog_lock:
+            # Re-check database count to see if a concurrent request already loaded the dialogs
+            count_stmt = select(func.count()).select_from(stmt.subquery())
+            total = await db.scalar(count_stmt) or 0
+            stmt_recheck = stmt.order_by(TelegramChat.last_message_date.desc().nullslast())
+            stmt_recheck = stmt_recheck.offset((page - 1) * page_size).limit(page_size)
+            res_recheck = await db.execute(stmt_recheck)
+            chats = res_recheck.scalars().all()
 
-                oldest_res = await db.execute(oldest_stmt)
-                oldest_chat = oldest_res.scalar_one_or_none()
-
-                offset_date = None
-                offset_peer = None
-                if oldest_chat:
-                    offset_date = oldest_chat.last_message_date
-                    offset_peer = await resolve_chat_entity(client, account.id, oldest_chat.chat_id)
-
-                # Fetch more dialogs from Telegram starting after the oldest chat we have
-                logger.info("Loading more dialogs on-demand from Telegram (offset_date=%s) for account %s", offset_date, account.id)
-                dialogs = await client.get_dialogs(
-                    limit=50,
-                    offset_date=offset_date,
-                    offset_peer=offset_peer
-                )
-
-                if dialogs:
-                    # Sync these newly loaded dialogs to DB!
-                    new_values = []
-                    seen_new_chat_ids = set()
-                    for d in dialogs:
-                        chat_type_val = _classify_chat(d.entity)
-                        if chat_type_val in ("group", "supergroup", "channel"):
-                            continue
-                        if d.id in seen_new_chat_ids:
-                            continue
-                        seen_new_chat_ids.add(d.id)
-                        is_creator = getattr(d.entity, "creator", False)
-                        access_hash = getattr(d.entity, "access_hash", None)
-
-                        last_msg = None
-                        last_time = None
-                        if d.message:
-                            last_msg = d.message.text or "[non-text message]" if d.message.text else ""
-                            last_time = d.message.date
-
-                        new_values.append({
-                            "id": uuid.uuid4(),
-                            "account_id": account.id,
-                            "chat_id": d.id,
-                            "title": d.name or d.title or "Unknown",
-                            "username": getattr(d.entity, "username", None),
-                            "type": chat_type_val,
-                            **_avatar_metadata(d.entity),
-                            "unread_count": d.unread_count or 0,
-                            "last_message": last_msg,
-                            "last_message_date": last_time,
-                            "access_hash": access_hash,
-                            "is_active": True,
-                            "is_creator": is_creator,
-                        })
-
-                    if new_values:
-                        from sqlalchemy.dialects.postgresql import insert
-                        stmt_insert = insert(TelegramChat).values(new_values)
-                        stmt_insert = stmt_insert.on_conflict_do_update(
-                            constraint="uq_telegram_chat_account_chat",
-                            set_={
-                                "title": stmt_insert.excluded.title,
-                                "username": stmt_insert.excluded.username,
-                                "type": stmt_insert.excluded.type,
-                                "color_id": stmt_insert.excluded.color_id,
-                                "photo_version": stmt_insert.excluded.photo_version,
-                                "unread_count": stmt_insert.excluded.unread_count,
-                                "last_message": stmt_insert.excluded.last_message,
-                                "last_message_date": stmt_insert.excluded.last_message_date,
-                                "access_hash": stmt_insert.excluded.access_hash,
-                                "is_active": True,
-                                "is_creator": stmt_insert.excluded.is_creator,
-                                "updated_at": func.now(),
-                            }
-                        )
-                        await db.execute(stmt_insert)
-                        await db.commit()
-
-                        # Re-calculate total count and fetch page chats
-                        stmt = select(TelegramChat).where(
+            if (len(chats) < page_size or total < page * page_size):
+                try:
+                    session_str = decrypt(account.session_string)
+                    client = await client_pool.get(str(account.id), session_str)
+                    if client and client.is_connected():
+                        # Find the oldest synced chat in the DB to use its date and peer as offsets
+                        oldest_stmt = select(TelegramChat).where(
                             TelegramChat.account_id == account.id,
                             TelegramChat.is_active == True,
+                            TelegramChat.type.not_in(["group", "supergroup", "channel"])
+                        ).order_by(TelegramChat.last_message_date.asc()).limit(1)
+
+                        oldest_res = await db.execute(oldest_stmt)
+                        oldest_chat = oldest_res.scalar_one_or_none()
+
+                        offset_date = None
+                        offset_peer = None
+                        if oldest_chat:
+                            offset_date = oldest_chat.last_message_date
+                            offset_peer = await resolve_chat_entity(client, account.id, oldest_chat.chat_id)
+
+                        # Fetch more dialogs from Telegram starting after the oldest chat we have
+                        logger.info("Loading more dialogs on-demand from Telegram (offset_date=%s) for account %s", offset_date, account.id)
+                        dialogs = await client.get_dialogs(
+                            limit=50,
+                            offset_date=offset_date,
+                            offset_peer=offset_peer
                         )
-                        if chat_type:
-                            stmt = stmt.where(TelegramChat.type.in_(allowed_types))
 
-                        count_stmt = select(func.count()).select_from(stmt.subquery())
-                        total = await db.scalar(count_stmt) or 0
+                        if dialogs:
+                            # Sync these newly loaded dialogs to DB!
+                            new_values = []
+                            seen_new_chat_ids = set()
+                            for d in dialogs:
+                                chat_type_val = _classify_chat(d.entity)
+                                if chat_type_val in ("group", "supergroup", "channel"):
+                                    continue
+                                if d.id in seen_new_chat_ids:
+                                    continue
+                                seen_new_chat_ids.add(d.id)
+                                is_creator = getattr(d.entity, "creator", False)
+                                access_hash = getattr(d.entity, "access_hash", None)
 
-                        stmt = stmt.order_by(TelegramChat.last_message_date.desc().nullslast())
-                        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+                                last_msg = None
+                                last_time = None
+                                if d.message:
+                                    last_msg = d.message.text or "[non-text message]" if d.message.text else ""
+                                    last_time = d.message.date
 
-                        result = await db.execute(stmt)
-                        chats = result.scalars().all()
+                                new_values.append({
+                                    "id": uuid.uuid4(),
+                                    "account_id": account.id,
+                                    "chat_id": d.id,
+                                    "title": d.name or d.title or "Unknown",
+                                    "username": getattr(d.entity, "username", None),
+                                    "type": chat_type_val,
+                                    **_avatar_metadata(d.entity),
+                                    "unread_count": d.unread_count or 0,
+                                    "last_message": last_msg,
+                                    "last_message_date": last_time,
+                                    "access_hash": access_hash,
+                                    "is_active": True,
+                                    "is_creator": is_creator,
+                                })
 
-        except Exception as offset_exc:
-            logger.warning("Failed to load more dialogs using offsets for account %s: %s", account.id, offset_exc)
+                            if new_values:
+                                from sqlalchemy.dialects.postgresql import insert
+                                stmt_insert = insert(TelegramChat).values(new_values)
+                                stmt_insert = stmt_insert.on_conflict_do_update(
+                                    constraint="uq_telegram_chat_account_chat",
+                                    set_={
+                                        "title": stmt_insert.excluded.title,
+                                        "username": stmt_insert.excluded.username,
+                                        "type": stmt_insert.excluded.type,
+                                        "color_id": stmt_insert.excluded.color_id,
+                                        "photo_version": stmt_insert.excluded.photo_version,
+                                        "unread_count": stmt_insert.excluded.unread_count,
+                                        "last_message": stmt_insert.excluded.last_message,
+                                        "last_message_date": stmt_insert.excluded.last_message_date,
+                                        "access_hash": stmt_insert.excluded.access_hash,
+                                        "is_active": True,
+                                        "is_creator": stmt_insert.excluded.is_creator,
+                                        "updated_at": func.now(),
+                                    }
+                                )
+                                await db.execute(stmt_insert)
+                                await db.commit()
+
+                                # Re-calculate total count and fetch page chats
+                                stmt = select(TelegramChat).where(
+                                    TelegramChat.account_id == account.id,
+                                    TelegramChat.is_active == True,
+                                )
+                                if chat_type:
+                                    stmt = stmt.where(TelegramChat.type.in_(allowed_types))
+
+                                count_stmt = select(func.count()).select_from(stmt.subquery())
+                                total = await db.scalar(count_stmt) or 0
+
+                                stmt = stmt.order_by(TelegramChat.last_message_date.desc().nullslast())
+                                stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+                                result = await db.execute(stmt)
+                                chats = result.scalars().all()
+
+                except Exception as offset_exc:
+                    logger.warning("Failed to load more dialogs using offsets for account %s: %s", account.id, offset_exc)
 
     page_dialogs = []
     for c in chats:

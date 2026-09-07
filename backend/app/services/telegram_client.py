@@ -48,6 +48,25 @@ class TelegramClientPool:
         """Return the number of clients currently retained in the pool."""
         return len(self._clients)
 
+    def is_client_idle(self, account_id: str, max_idle_seconds: float = CLIENT_TTL_SECONDS) -> bool:
+        """Check if an account client exists and has been idle longer than max_idle_seconds."""
+        data = self._clients.get(account_id)
+        if not data:
+            return True
+        last_accessed = data.get("last_accessed", 0.0)
+        return (time.time() - last_accessed) > max_idle_seconds
+
+    def touch_client(self, account_id: str) -> None:
+        """Update last_accessed timestamp to keep an in-flight client alive."""
+        data = self._clients.get(account_id)
+        if data:
+            data["last_accessed"] = time.time()
+
+    def get_last_accessed(self, account_id: str) -> float | None:
+        """Return the last_accessed timestamp for an account, or None if not pooled."""
+        data = self._clients.get(account_id)
+        return data.get("last_accessed") if data else None
+
     async def _cleanup_stale_clients(self) -> None:
         """Disconnect and remove clients that haven't been accessed recently or
         are no longer connected, unless they are active in broadcast jobs or auto-reply.
@@ -259,7 +278,9 @@ class TelegramClientPool:
                     logger.info("Evicting disconnected cached client for account %s", account_id)
                     self._clients.pop(account_id, None)
                     try:
-                        await asyncio.wait_for(existing["client"].disconnect(), timeout=2.0)
+                        await asyncio.wait_for(existing["client"].disconnect(), timeout=5.0)
+                    except (RuntimeError, ConnectionResetError, OSError) as e:
+                        logger.debug("Socket already closed or reset during eviction of account %s: %s", account_id, e)
                     except Exception as e:
                         logger.debug("Failed to disconnect old client before recreating: %s", e)
     
@@ -472,12 +493,15 @@ class TelegramClientPool:
                     logger.debug("Failed to save update state on remove for account %s: %s", account_id, exc)
 
             try:
-                await asyncio.wait_for(client.disconnect(), timeout=2.0)
+                await asyncio.wait_for(client.disconnect(), timeout=5.0)
+            except (RuntimeError, ConnectionResetError, OSError) as exc:
+                logger.debug("Socket already closed or reset during disconnect of client %s: %s", account_id, exc)
             except Exception as exc:
                 logger.debug("Failed to disconnect client %s during removal: %s", account_id, exc)
 
-        # MEM-02: Evict lock once account removal is complete
-        self._locks.pop(account_id, None)
+        # MEM-02: Evict lock once account removal is complete only if no other coroutines are holding it
+        if not lock.locked():
+            self._locks.pop(account_id, None)
 
     async def stop(self) -> None:
         """Cancel pool-owned background work and disconnect all cached clients."""
