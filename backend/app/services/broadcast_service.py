@@ -290,6 +290,65 @@ async def get_jobs_for_user(db: AsyncSession, user_id: str, limit: int = 20) -> 
     return list(result.scalars().all())
 
 
+async def get_broadcast_summary_for_user(db: AsyncSession, user_id: str | _uuid.UUID) -> dict:
+    """Compute aggregate broadcast KPI summary metrics for a given user."""
+    uid = _uuid.UUID(str(user_id)) if not isinstance(user_id, _uuid.UUID) else user_id
+    result = await db.execute(
+        select(
+            BroadcastJob.status,
+            BroadcastJob.account_ids,
+            BroadcastJob.sent_count,
+            BroadcastJob.fail_count,
+        ).where(BroadcastJob.user_id == uid)
+    )
+    rows = result.all()
+    total_jobs = len(rows)
+    running_jobs = 0
+    paused_jobs = 0
+    completed_jobs = 0
+    failed_jobs = 0
+    cancelled_jobs = 0
+    total_sent = 0
+    total_failed = 0
+    active_accounts: set[str] = set()
+    all_accounts: set[str] = set()
+
+    for job_status, account_ids, sent, fail in rows:
+        if job_status == "running":
+            running_jobs += 1
+            if account_ids and isinstance(account_ids, list):
+                active_accounts.update(str(a) for a in account_ids)
+        elif job_status == "paused":
+            paused_jobs += 1
+            if account_ids and isinstance(account_ids, list):
+                active_accounts.update(str(a) for a in account_ids)
+        elif job_status == "completed":
+            completed_jobs += 1
+        elif job_status == "failed":
+            failed_jobs += 1
+        elif job_status == "cancelled":
+            cancelled_jobs += 1
+
+        if account_ids and isinstance(account_ids, list):
+            all_accounts.update(str(a) for a in account_ids)
+        total_sent += (sent or 0)
+        total_failed += (fail or 0)
+
+    return {
+        "total_jobs": total_jobs,
+        "running_jobs": running_jobs,
+        "paused_jobs": paused_jobs,
+        "completed_jobs": completed_jobs,
+        "failed_jobs": failed_jobs,
+        "cancelled_jobs": cancelled_jobs,
+        "active_accounts_count": len(active_accounts),
+        "total_accounts_used": len(all_accounts),
+        "total_sent": total_sent,
+        "total_failed": total_failed,
+    }
+
+
+
 async def update_job_status(db: AsyncSession, job: BroadcastJob, status: str) -> None:
     job.status = status
     if status in ("completed", "cancelled", "failed"):

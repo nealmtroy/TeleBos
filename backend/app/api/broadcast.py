@@ -16,6 +16,7 @@ from app.schemas.broadcast import (
     BroadcastStartRequest,
     BroadcastJobResponse,
     BroadcastLogResponse,
+    BroadcastUserSummaryResponse,
 )
 from app.services import broadcast_service
 from app.utils.rate_limiter import rate_limiter
@@ -172,6 +173,16 @@ async def job_history(
 ):
     jobs = await broadcast_service.get_jobs_for_user(db, str(user.id), limit=limit)
     return jobs
+
+
+@router.get("/broadcast/summary", response_model=BroadcastUserSummaryResponse)
+async def job_summary(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get aggregate broadcast summary metrics for current user."""
+    summary = await broadcast_service.get_broadcast_summary_for_user(db, user.id)
+    return summary
 
 
 @router.get("/broadcast/{job_id}", response_model=BroadcastJobResponse)

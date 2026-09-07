@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[c39dd24e](https://github.com/nealmtroy/TeleBos/commit/c39dd24e)**: fix(broadcast,invite): prevent automatic pause on shutdown and fix task re-spawning on resume
 - **[cf5e85bd](https://github.com/nealmtroy/TeleBos/commit/cf5e85bd)**: perf(telethon): add cryptg for hardware-accelerated AES IGE crypto
 - **[901e5405](https://github.com/nealmtroy/TeleBos/commit/901e5405)**: fix(broadcast): remove shadowing inner imports of client_pool and event_relay causing UnboundLocalError
 - **[8ad59434](https://github.com/nealmtroy/TeleBos/commit/8ad59434)**: fix(admin): guard query parameters against non-string defaults in list_admin_auto_replies

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import {
   useBroadcastJobs,
+  useBroadcastSummary,
   useBroadcastAction,
   useDeleteBroadcastJob,
   useRetryBroadcastJob,
@@ -23,6 +24,11 @@ import {
   Clock,
   Folder,
   User,
+  Radio,
+  CheckCircle2,
+  Send,
+  Smartphone,
+  Layers,
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -42,9 +48,27 @@ export default function BroadcastHistoryPage() {
   const router = useRouter();
   const _ = useT();
   const { data: jobs, isLoading } = useBroadcastJobs();
+  const { data: summary } = useBroadcastSummary();
   const actionMutation = useBroadcastAction();
   const deleteMutation = useDeleteBroadcastJob();
   const retryMutation = useRetryBroadcastJob();
+
+  // Compute metrics with fallback
+  const runningCount = summary?.running_jobs ?? jobs?.filter((j) => j.status === "running").length ?? 0;
+  const accountsInUse = summary?.active_accounts_count ?? (() => {
+    const accs = new Set<string>();
+    jobs?.filter((j) => j.status === "running").forEach((j) => j.account_ids?.forEach((id) => accs.add(id)));
+    return accs.size;
+  })();
+  const totalAccountsUsed = summary?.total_accounts_used ?? (() => {
+    const accs = new Set<string>();
+    jobs?.forEach((j) => j.account_ids?.forEach((id) => accs.add(id)));
+    return accs.size;
+  })();
+  const completedCount = summary?.completed_jobs ?? jobs?.filter((j) => j.status === "completed").length ?? 0;
+  const failedCount = summary?.failed_jobs ?? jobs?.filter((j) => j.status === "failed").length ?? 0;
+  const totalSent = summary?.total_sent ?? jobs?.reduce((sum, j) => sum + (j.sent_count || 0), 0) ?? 0;
+  const totalFailed = summary?.total_failed ?? jobs?.reduce((sum, j) => sum + (j.fail_count || 0), 0) ?? 0;
 
   // Fetch setups & accounts for details display
   const { data: accounts } = useAccounts();
@@ -92,6 +116,93 @@ export default function BroadcastHistoryPage() {
         <p className="text-gray-500 mt-1">
           {_("broadcastHistory.desc")}
         </p>
+      </div>
+
+      {/* Broadcast Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Running Broadcasts */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {_("broadcastHistory.summaryRunning") || "Running Broadcasts"}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-gray-900">{runningCount}</span>
+              {runningCount > 0 ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
+                  Active
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400">Idle</span>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {summary?.paused_jobs ? `${summary.paused_jobs} paused` : "In execution"}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <Radio className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* Accounts In Use */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {_("broadcastHistory.summaryAccountsInUse") || "Accounts In Use"}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-gray-900">{accountsInUse}</span>
+              <span className="text-xs font-medium text-gray-500">active</span>
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {totalAccountsUsed} total accounts configured
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+            <Smartphone className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* Completed Broadcasts */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {_("broadcastHistory.summaryCompleted") || "Completed"}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-gray-900">{completedCount}</span>
+              <span className="text-xs font-medium text-gray-500">jobs</span>
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {failedCount > 0 ? `${failedCount} failed jobs` : "All runs completed"}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* Total Sent */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {_("broadcastHistory.summaryTotalSent") || "Messages Delivered"}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-gray-900">
+                {totalSent.toLocaleString()}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500">
+              {totalFailed > 0 ? `${totalFailed.toLocaleString()} failed` : "Delivered without failure"}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <Send className="h-5 w-5" />
+          </div>
+        </div>
       </div>
 
       {isLoading ? (

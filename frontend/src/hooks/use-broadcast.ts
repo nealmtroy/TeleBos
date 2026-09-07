@@ -46,6 +46,19 @@ export interface BroadcastJob {
   completed_at: string | null;
 }
 
+export interface BroadcastUserSummary {
+  total_jobs: number;
+  running_jobs: number;
+  paused_jobs: number;
+  completed_jobs: number;
+  failed_jobs: number;
+  cancelled_jobs: number;
+  active_accounts_count: number;
+  total_accounts_used: number;
+  total_sent: number;
+  total_failed: number;
+}
+
 export interface BroadcastLog {
   id: string;
   job_id: string;
@@ -187,6 +200,17 @@ export function useBroadcastJobs() {
   });
 }
 
+export function useBroadcastSummary() {
+  return useQuery<BroadcastUserSummary>({
+    queryKey: ["broadcast", "summary"],
+    queryFn: async () => {
+      const { data } = await api.get("/broadcast/summary");
+      return data;
+    },
+    refetchInterval: 10_000,
+  });
+}
+
 export function useBroadcastJob(jobId: string) {
   return useQuery<BroadcastJob>({
     queryKey: ["broadcast-jobs", jobId],
@@ -218,6 +242,7 @@ export function useStartBroadcast() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["broadcast-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast", "summary"] });
     },
   });
 }
@@ -237,6 +262,7 @@ export function useBroadcastAction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["broadcast-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast", "summary"] });
     },
   });
 }
@@ -249,6 +275,7 @@ export function useDeleteBroadcastJob() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["broadcast-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast", "summary"] });
     },
   });
 }
@@ -262,6 +289,7 @@ export function useRetryBroadcastJob() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["broadcast-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast", "summary"] });
     },
   });
 }

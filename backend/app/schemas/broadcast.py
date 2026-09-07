@@ -110,3 +110,17 @@ class BroadcastLogFilter(BaseModel):
     date_from: datetime | None = None
     date_to: datetime | None = None
     search: str | None = None
+
+
+class BroadcastUserSummaryResponse(BaseModel):
+    total_jobs: int = 0
+    running_jobs: int = 0
+    paused_jobs: int = 0
+    completed_jobs: int = 0
+    failed_jobs: int = 0
+    cancelled_jobs: int = 0
+    active_accounts_count: int = 0
+    total_accounts_used: int = 0
+    total_sent: int = 0
+    total_failed: int = 0
+

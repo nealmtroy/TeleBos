@@ -20,6 +20,7 @@ import {
   Users,
   FileText,
   MessageCircleReply,
+  Bot,
   UserPlus,
   HelpCircle,
   ShoppingCart,
@@ -76,6 +77,7 @@ const administrationsSubItems = [
   { href: "/admin", exact: true, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
+  { href: "/admin/auto-replies", exact: false, labelKey: "admin.manageAutoReplies", icon: Bot },
   { href: "/admin/account-prices", exact: false, labelKey: "Account Prices", icon: Tag },
 ];
 

@@ -504,6 +504,12 @@ export interface Dict {
     groupList: string;
     textList: string;
     customText: string;
+    summaryRunning: string;
+    summaryAccountsInUse: string;
+    summaryCompleted: string;
+    summaryTotalSent: string;
+    summaryTotalFailed: string;
+    summaryTotalJobs: string;
   };
 
   // Broadcast Logs
@@ -1414,6 +1420,20 @@ export interface Dict {
     bulkPauseConfirm: string;
     bulkStopConfirm: string;
     bulkClearConfirm: string;
+    manageAutoReplies: string;
+    autoRepliesDesc: string;
+    connectedAccounts: string;
+    activeAccounts: string;
+    expiredAccounts: string;
+    limitedAccounts: string;
+    broadcastRunning: string;
+    broadcastFinished: string;
+    broadcastFailed: string;
+    broadcastTotal: string;
+    userDetails: string;
+    userOverview: string;
+    accountHealth: string;
+    broadcastStats: string;
   };
 
   // Subscription

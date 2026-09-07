@@ -504,6 +504,12 @@ const id: Dict = {
     groupList: "Grup",
     textList: "Template Pesan",
     customText: "Teks Kustom",
+    summaryRunning: "Broadcast Berjalan",
+    summaryAccountsInUse: "Akun Dipakai",
+    summaryCompleted: "Broadcast Selesai",
+    summaryTotalSent: "Pesan Terkirim",
+    summaryTotalFailed: "Pesan Gagal",
+    summaryTotalJobs: "Total Broadcast",
   },
 
   // ── Log Siaran ──────────────────────────────────────────────────────────
@@ -1415,6 +1421,20 @@ const id: Dict = {
     bulkPauseConfirm: "Yakin ingin menjeda SEMUA broadcast yang sedang berjalan?",
     bulkStopConfirm: "Yakin ingin menghentikan SEMUA broadcast aktif?",
     bulkClearConfirm: "Hapus semua tugas broadcast yang sudah selesai, gagal, atau dihentikan?",
+    manageAutoReplies: "Kelola Auto Reply",
+    autoRepliesDesc: "Pantau dan kendalikan bot responder auto-reply di seluruh akun",
+    connectedAccounts: "Akun Terhubung",
+    activeAccounts: "Akun Aktif",
+    expiredAccounts: "Akun Expired",
+    limitedAccounts: "Akun Terbatasi",
+    broadcastRunning: "Broadcast Berjalan",
+    broadcastFinished: "Broadcast Selesai",
+    broadcastFailed: "Broadcast Gagal",
+    broadcastTotal: "Total Broadcast",
+    userDetails: "Detail Pengguna",
+    userOverview: "Ringkasan Pengguna",
+    accountHealth: "Kesehatan Akun Telegram",
+    broadcastStats: "Statistik Broadcast",
   },
 
   // ── Subscription ────────────────────────────────────────────────────────

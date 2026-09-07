@@ -504,6 +504,12 @@ const en: Dict = {
     groupList: "Group List",
     textList: "Text List",
     customText: "Custom Text",
+    summaryRunning: "Running Broadcasts",
+    summaryAccountsInUse: "Accounts In Use",
+    summaryCompleted: "Completed Broadcasts",
+    summaryTotalSent: "Messages Sent",
+    summaryTotalFailed: "Messages Failed",
+    summaryTotalJobs: "Total Broadcasts",
   },
 
   // ── Broadcast Logs ──────────────────────────────────────────────────────
@@ -1415,6 +1421,20 @@ const en: Dict = {
     bulkPauseConfirm: "Are you sure you want to pause ALL currently running broadcast jobs?",
     bulkStopConfirm: "Are you sure you want to stop/cancel ALL active broadcast jobs?",
     bulkClearConfirm: "Delete all completed, failed, and cancelled broadcast jobs?",
+    manageAutoReplies: "Manage Auto-Replies",
+    autoRepliesDesc: "Monitor and control auto-reply bot responders across accounts",
+    connectedAccounts: "Connected Accounts",
+    activeAccounts: "Active Accounts",
+    expiredAccounts: "Expired Accounts",
+    limitedAccounts: "Limited Accounts",
+    broadcastRunning: "Broadcasts Running",
+    broadcastFinished: "Broadcasts Finished",
+    broadcastFailed: "Broadcasts Failed",
+    broadcastTotal: "Total Broadcasts",
+    userDetails: "User Details",
+    userOverview: "User Overview",
+    accountHealth: "Telegram Account Health",
+    broadcastStats: "Broadcast Statistics",
   },
 
   // ── Subscription ────────────────────────────────────────────────────────

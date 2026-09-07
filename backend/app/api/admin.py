@@ -4,7 +4,7 @@ from uuid import UUID
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -121,6 +121,18 @@ class UserAdminResponse(BaseModel):
     order_count: int = 0
     created_at: datetime | None = None
 
+    # Telegram Account metrics
+    connected_accounts: int = 0
+    active_accounts: int = 0
+    expired_accounts: int = 0
+    limited_accounts: int = 0
+
+    # Broadcast metrics
+    broadcast_running: int = 0
+    broadcast_finished: int = 0
+    broadcast_failed: int = 0
+    broadcast_total: int = 0
+
     model_config = {"from_attributes": True}
 
 
@@ -146,10 +158,13 @@ class AdminStatsResponse(BaseModel):
     accounts_active: int = 0
     accounts_selling: int = 0
     accounts_expired: int = 0
+    accounts_limited: int = 0
 
     # Broadcast Jobs Breakdown
     broadcast_running: int = 0
     broadcast_stopped: int = 0
+    broadcast_completed: int = 0
+    broadcast_failed: int = 0
 
     # Invite Jobs Breakdown
     invite_running: int = 0
@@ -160,6 +175,7 @@ class AdminStatsResponse(BaseModel):
     auto_reply_running: int = 0
     auto_reply_stopped: int = 0
     total_auto_reply_sent: int = 0
+
 
 
 class AdminAutoReplyAccountResponse(BaseModel):
@@ -263,6 +279,26 @@ async def get_admin_stats(
     )
     accounts_expired = ta_expired_result.scalar() or 0
 
+    # Limited accounts (phone_verified = True and spam_status in limited status variants)
+    ta_limited_result = await db.execute(
+        select(func.count(TelegramAccount.id)).where(
+            TelegramAccount.phone_verified.is_(True),
+            TelegramAccount.spam_status.in_(["limited", "temporary_limit", "permanent_limit"]),
+        )
+    )
+    accounts_limited = ta_limited_result.scalar() or 0
+
+    # Completed and Failed broadcast jobs
+    bj_completed_result = await db.execute(
+        select(func.count(BroadcastJob.id)).where(BroadcastJob.status == "completed")
+    )
+    broadcast_completed = bj_completed_result.scalar() or 0
+
+    bj_failed_result = await db.execute(
+        select(func.count(BroadcastJob.id)).where(BroadcastJob.status == "failed")
+    )
+    broadcast_failed = bj_failed_result.scalar() or 0
+
     # Count users by role
     role_counts = {"basic": 0, "pro": 0, "premium": 0, "owner": 0}
     for role in role_counts:
@@ -314,8 +350,11 @@ async def get_admin_stats(
         accounts_active=accounts_active,
         accounts_selling=accounts_selling,
         accounts_expired=accounts_expired,
+        accounts_limited=accounts_limited,
         broadcast_running=broadcast_running,
         broadcast_stopped=broadcast_stopped,
+        broadcast_completed=broadcast_completed,
+        broadcast_failed=broadcast_failed,
         invite_running=invite_running,
         invite_stopped=invite_stopped,
         total_auto_reply_jobs=total_auto_reply_jobs,
@@ -349,22 +388,94 @@ async def list_users(
     result = await db.execute(query)
     users = list(result.scalars().all())
 
-    # Get order counts
     user_ids = [u.id for u in users]
     if user_ids:
+        # Get order counts
         count_q = select(Order.user_id, func.count(Order.id)).where(
             Order.user_id.in_(user_ids)
         ).group_by(Order.user_id)
         count_result = await db.execute(count_q)
         order_counts = {row[0]: row[1] for row in count_result}
+
+        # Telegram Account aggregates per user
+        acct_q = (
+            select(
+                TelegramAccount.user_id,
+                func.count(TelegramAccount.id).label("connected"),
+                func.sum(case((TelegramAccount.is_active.is_(True), 1), else_=0)).label("active"),
+                func.sum(case((TelegramAccount.is_active.is_(False), 1), else_=0)).label("expired"),
+                func.sum(
+                    case(
+                        (
+                            TelegramAccount.spam_status.in_(["limited", "temporary_limit", "permanent_limit"]),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("limited"),
+            )
+            .where(
+                TelegramAccount.user_id.in_(user_ids),
+                TelegramAccount.phone_verified.is_(True),
+            )
+            .group_by(TelegramAccount.user_id)
+        )
+        acct_res = await db.execute(acct_q)
+        acct_stats = {
+            row[0]: {
+                "connected": int(row[1] or 0),
+                "active": int(row[2] or 0),
+                "expired": int(row[3] or 0),
+                "limited": int(row[4] or 0),
+            }
+            for row in acct_res
+        }
+
+        # Broadcast Job aggregates per user
+        bc_q = (
+            select(
+                BroadcastJob.user_id,
+                func.count(BroadcastJob.id).label("total"),
+                func.sum(case((BroadcastJob.status == "running", 1), else_=0)).label("running"),
+                func.sum(case((BroadcastJob.status.in_(["completed", "cancelled"]), 1), else_=0)).label("finished"),
+                func.sum(case((BroadcastJob.status == "failed", 1), else_=0)).label("failed"),
+            )
+            .where(BroadcastJob.user_id.in_(user_ids))
+            .group_by(BroadcastJob.user_id)
+        )
+        bc_res = await db.execute(bc_q)
+        bc_stats = {
+            row[0]: {
+                "total": int(row[1] or 0),
+                "running": int(row[2] or 0),
+                "finished": int(row[3] or 0),
+                "failed": int(row[4] or 0),
+            }
+            for row in bc_res
+        }
     else:
         order_counts = {}
+        acct_stats = {}
+        bc_stats = {}
 
     response_users = []
     for u in users:
         ru = UserAdminResponse.model_validate(u)
         ru.order_count = order_counts.get(u.id, 0)
         ru.created_at = u.created_at.isoformat() if u.created_at else None
+
+        u_acct = acct_stats.get(u.id, {})
+        ru.connected_accounts = u_acct.get("connected", 0)
+        ru.active_accounts = u_acct.get("active", 0)
+        ru.expired_accounts = u_acct.get("expired", 0)
+        ru.limited_accounts = u_acct.get("limited", 0)
+
+        u_bc = bc_stats.get(u.id, {})
+        ru.broadcast_total = u_bc.get("total", 0)
+        ru.broadcast_running = u_bc.get("running", 0)
+        ru.broadcast_finished = u_bc.get("finished", 0)
+        ru.broadcast_failed = u_bc.get("failed", 0)
+
         response_users.append(ru)
 
     return UserAdminListResponse(users=response_users, total=total)

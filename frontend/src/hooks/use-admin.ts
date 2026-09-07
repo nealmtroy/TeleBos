@@ -16,9 +16,12 @@ export interface AdminStats {
   accounts_active: number;
   accounts_selling: number;
   accounts_expired: number;
+  accounts_limited?: number;
 
   broadcast_running: number;
   broadcast_stopped: number;
+  broadcast_completed?: number;
+  broadcast_failed?: number;
 
   invite_running: number;
   invite_stopped: number;
@@ -38,6 +41,18 @@ export interface AdminUser {
   is_active: boolean;
   order_count: number;
   created_at: string | null;
+
+  // Telegram Account metrics
+  connected_accounts?: number;
+  active_accounts?: number;
+  expired_accounts?: number;
+  limited_accounts?: number;
+
+  // Broadcast metrics
+  broadcast_running?: number;
+  broadcast_finished?: number;
+  broadcast_failed?: number;
+  broadcast_total?: number;
 }
 
 interface UserListResponse {
