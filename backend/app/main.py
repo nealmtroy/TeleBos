@@ -418,7 +418,6 @@ async def lifespan(app: FastAPI):
 
     # 5. Clean up zombie jobs — pause active running jobs before closing DB
     try:
-        from app.database import async_session_factory
         from app.models.broadcast_job import BroadcastJob
         from app.models.invite_job import InviteJob
         from sqlalchemy import update

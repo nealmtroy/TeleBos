@@ -258,12 +258,12 @@ class SessionManager:
                 rows = result.all()
 
                 twelve_hours_ago = datetime.now(timezone.utc) - timedelta(hours=12)
-                for row in rows:
-                    from app.utils.timezone import ensure_utc
+                from app.utils.timezone import ensure_utc
 
-                    last_checked = ensure_utc(last_checked)
+                for row in rows:
+                    last_checked = ensure_utc(row.spam_last_checked_at)
                     if last_checked is None or last_checked < twelve_hours_ago:
-                        accounts_to_check.append((account_id, phone))
+                        accounts_to_check.append((str(row.id), row.phone))
         except Exception as exc:
             logger.error("Error fetching accounts for spam check: %s", exc)
             return

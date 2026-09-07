@@ -13,7 +13,7 @@ from app.models.chat_folder import ChatFolder
 from app.models.telegram_chat import TelegramChat
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
-from app.services.chat_service import resolve_chat_entity
+from app.services.chat_service import resolve_chat_entity, _classify_chat
 
 logger = logging.getLogger(__name__)
 

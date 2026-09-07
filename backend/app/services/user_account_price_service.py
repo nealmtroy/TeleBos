@@ -37,6 +37,7 @@ async def _get_cached_rules(db: AsyncSession) -> tuple[list[tuple[str, int]], in
         return _price_cache["entries"], _price_cache["fallback_price"]
 
     # 1. Fetch prefix prices
+    prefix_result = await db.execute(select(TelegramIdPrefixPrice))
     raw_entries = prefix_result.scalars().all() if hasattr(prefix_result, "scalars") else []
     # ALG-01: Sort by length descending so longest prefix match early exits immediately
     sorted_entries = sorted(

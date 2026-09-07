@@ -6,7 +6,12 @@ import logging
 import random
 import time
 import uuid
+_uuid = uuid
 from datetime import datetime, timezone
+
+import telethon
+import telethon.errors
+from telethon.tl.functions.channels import JoinChannelRequest
 
 from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +26,7 @@ from app.models.user import User
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
+fc = flood_controller
 from app.utils.telegram_errors import classify_telegram_error
 from app.utils.telethon_helpers import (
     get_active_client,
@@ -1056,7 +1062,7 @@ async def execute_broadcast(job_id: str):
                                             try:
                                                 await asyncio.wait_for(
                                                     client(
-                                                        telethon.errors.channels.JoinChannelRequest(
+                                                        JoinChannelRequest(
                                                             entity
                                                         )
                                                     ),
