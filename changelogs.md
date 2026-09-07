@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-08
+- **[5b284035](https://github.com/nealmtroy/TeleBos/commit/5b284035)**: fix(docker): enable init process to reap zombie processes and optimize healthcheck
+
 ## 2026-09-07
 - **[5f8922c4](https://github.com/nealmtroy/TeleBos/commit/5f8922c4)**: fix(db): inspect constraints before adding and deduplicate duplicate phones
 - **[d6d125b7](https://github.com/nealmtroy/TeleBos/commit/d6d125b7)**: fix(telethon): resolve session ID mismatch, connection flapping, and socket reset crashes

@@ -677,6 +677,7 @@ async def execute_broadcast(job_id: str):
             acc_id_str = snapshot["account_id"]
             try:
                 client = await get_active_client(snapshot)
+                client_pool.touch_client(acc_id_str)
                 active_accounts.append(
                     {
                         "account_id": acc_id_str,
@@ -885,6 +886,7 @@ async def execute_broadcast(job_id: str):
                 client = selected_acc["client"]
                 acc_id_str = selected_acc["account_id"]
                 acc_name = selected_acc["account_name"]
+                client_pool.touch_client(acc_id_str)
 
                 group_identifier = item.get("value", "") or ""
                 item_type = item.get("type", "username")

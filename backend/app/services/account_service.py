@@ -984,6 +984,7 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
         raise RuntimeError("Account is disconnected. Please re-login.")
+    client_pool.touch_client(str(account.id))
 
     try:
         # 1. Send /start to @SpamBot using conversation API

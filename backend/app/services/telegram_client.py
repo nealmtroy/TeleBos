@@ -118,7 +118,7 @@ class TelegramClientPool:
                         for acc_list in active_job_accounts:
                             if isinstance(acc_list, list):
                                 for acc_id in acc_list:
-                                    if acc_id in stale_keys:
+                                    if str(acc_id) in stale_keys:
                                         protected_keys.add(str(acc_id))
             except Exception as exc:
                 logger.error("Error checking protected clients in DB: %s", exc)
@@ -134,42 +134,14 @@ class TelegramClientPool:
                     self._clients[k]["last_accessed"] = now
 
         for acc_id in stale_keys:
-            # MEM-02: Evict lock to prevent accumulation of orphaned asyncio.Lock objects
-            self._locks.pop(acc_id, None)
-            data = self._clients.pop(acc_id, None)
-            if data and data["client"]:
-                # Save the latest updates state to the DB before disconnecting
-                try:
-                    client = data["client"]
-                    if client.is_connected():
-                        from telethon.tl.functions.updates import GetStateRequest
-                        state = await client(GetStateRequest())
-                        from app.database import async_session_factory
-                        from app.models.telegram_account import TelegramAccount
-                        from sqlalchemy import update
-                        import uuid
-                        async with async_session_factory() as db:
-                            await db.execute(
-                                update(TelegramAccount)
-                                .where(TelegramAccount.id == uuid.UUID(acc_id))
-                                .values(pts=state.pts, qts=state.qts, date=state.date)
-                            )
-                            await db.commit()
-                except Exception as e:
-                    logger.debug("Failed to save update state on idle cleanup for account %s: %s", acc_id, e)
+            # If the lock is held, an operation is currently using this client — skip cleanup
+            lock = self._locks.get(acc_id)
+            if lock and lock.locked():
+                logger.debug("Skipping idle cleanup for account %s: client lock is currently active", acc_id)
+                continue
 
-                # Detach event handlers first to prevent memory leak
-                try:
-                    from app.services.event_relay import event_relay
-                    event_relay.detach_client(acc_id, data["client"])
-                except Exception as e:
-                    logger.warning("Error detaching event handlers during cleanup for account %s: %s", acc_id, e)
-
-                logger.info("Disconnecting idle Telegram client for account %s", acc_id)
-                try:
-                    await asyncio.wait_for(data["client"].disconnect(), timeout=5.0)
-                except Exception as e:
-                    logger.debug("Error disconnecting idle client %s: %s", acc_id, e)
+            logger.info("Disconnecting idle Telegram client for account %s", acc_id)
+            await self.remove(acc_id, save_state=True)
 
     async def _periodic_cleanup_loop(self) -> None:
         """Run stale client cleanup periodically."""

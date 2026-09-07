@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY_1: str = ""
     GROQ_API_KEY_2: str = ""
     GROQ_API_KEY_3: str = ""
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
 
     # UptimeRobot
     UPTIMEROBOT_API_KEY: str = ""

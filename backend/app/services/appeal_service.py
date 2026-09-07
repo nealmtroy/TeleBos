@@ -238,15 +238,21 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
     )
 
     import httpx
-    payload = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant writing a support ticket appeal."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.85,
-        "max_tokens": 150
-    }
+
+    configured_model = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-20b") or "openai/gpt-oss-20b"
+    model_candidates = [
+        configured_model,
+        "openai/gpt-oss-20b",
+        "groq/compound-mini",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+    ]
+    seen_models = set()
+    models_to_try = []
+    for m in model_candidates:
+        if m and m not in seen_models:
+            seen_models.add(m)
+            models_to_try.append(m)
 
     # Try each API key in order
     for name, api_key in api_keys:
@@ -255,19 +261,36 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(url, json=payload, headers=headers, timeout=15)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    text = data["choices"][0]["message"]["content"].strip()
-                    text = text.strip('"\'')
-                    logger.info("Successfully generated AI appeal reason via Groq using %s (%d chars)", name, len(text))
-                    return text
-                else:
-                    logger.warning("Groq API (%s) returned error status %d: %s", name, resp.status_code, resp.text)
-        except Exception as exc:
-            logger.warning("Failed to call Groq API with %s: %s", name, exc)
+        for model in models_to_try:
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant writing a support ticket appeal."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.85,
+                "max_tokens": 150
+            }
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(url, json=payload, headers=headers, timeout=15)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        text = data["choices"][0]["message"]["content"].strip()
+                        if "<think>" in text and "</think>" in text:
+                            text = text.split("</think>")[-1].strip()
+                        text = text.strip('"\'')
+                        logger.info("Successfully generated AI appeal reason via Groq (%s) using %s (%d chars)", model, name, len(text))
+                        return text
+                    elif resp.status_code == 404:
+                        logger.warning("Groq model '%s' not found for %s (404), trying next model candidate...", model, name)
+                        continue
+                    else:
+                        logger.warning("Groq API (%s with %s) returned error status %d: %s", name, model, resp.status_code, resp.text)
+                        break
+            except Exception as exc:
+                logger.warning("Failed to call Groq API with %s (model %s): %s", name, model, exc)
+                break
 
     logger.error("All configured Groq API keys failed to generate a reason. Falling back to default preset.")
     if is_indo:
