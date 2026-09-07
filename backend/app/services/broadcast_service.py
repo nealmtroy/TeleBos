@@ -24,6 +24,7 @@ from app.models.text_list import TextList
 from app.models.telegram_account import TelegramAccount
 from app.models.user import User
 from app.services.telegram_client import client_pool
+from app.services.event_relay import event_relay
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 fc = flood_controller
@@ -1206,9 +1207,6 @@ async def execute_broadcast(job_id: str):
                                     "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
                                 },
                             )
-                            from app.services.telegram_client import client_pool
-                            from app.services.event_relay import event_relay
-
                             await event_relay.detach(acc_id_str)
                             await client_pool.remove(acc_id_str)
 
