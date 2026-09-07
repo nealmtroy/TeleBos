@@ -60,6 +60,24 @@ export function useAccounts() {
   });
 }
 
+export interface AccountsSummary {
+  total: number;
+  active: number;
+  expired: number;
+  selling: number;
+  limited: number;
+}
+
+export function useAccountsSummary() {
+  return useQuery<AccountsSummary>({
+    queryKey: ["accounts", "summary"],
+    queryFn: async () => {
+      const { data } = await api.get("/accounts/summary");
+      return data;
+    },
+  });
+}
+
 export interface AccountsResponse {
   accounts: Account[];
   total: number;

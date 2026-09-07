@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { useAccounts, useAccountsPaginated } from "@/hooks/use-accounts";
+import { useAccounts, useAccountsPaginated, useAccountsSummary } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountCard } from "@/components/accounts/account-card";
 import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
@@ -58,6 +58,7 @@ export default function AccountsListPage() {
     setPage(1);
   };
 
+  const { data: accountsSummary } = useAccountsSummary();
   const { data: accountsData } = useAccounts(); // For limit checks and offline calculations
   const { data: paginatedData, isLoading, error } = useAccountsPaginated({
     page,
@@ -91,8 +92,9 @@ export default function AccountsListPage() {
     }
   }, [page, totalPages]);
 
+  const totalUsedAccounts = accountsSummary?.total ?? allAccounts.length;
   const accountLimit = ROLE_LIMITS[user?.role || "basic"] ?? 1;
-  const atLimit = allAccounts.length >= accountLimit;
+  const atLimit = totalUsedAccounts >= accountLimit;
 
   return (
     <div className="space-y-6">
@@ -104,7 +106,7 @@ export default function AccountsListPage() {
             {_("accountsList.subtitle")}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            {allAccounts.length}/{accountLimit} accounts used
+            {totalUsedAccounts}/{accountLimit} accounts used
             {user?.role !== "owner" && ` (${user?.role || "basic"} plan)`}
           </p>
         </div>

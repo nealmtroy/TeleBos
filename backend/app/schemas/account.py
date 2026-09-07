@@ -189,9 +189,18 @@ class BulkAutoReplyUpdateRequest(BaseModel):
     auto_reply_text: str | None = None
 
 
+class UserAccountsSummaryResponse(BaseModel):
+    total: int = 0
+    active: int = 0
+    expired: int = 0
+    selling: int = 0
+    limited: int = 0
+
+
 class AccountListResponse(BaseModel):
     accounts: list[AccountResponse]
     total: int | None = None
+    total_active: int | None = None
     page: int | None = None
     pages: int | None = None
     limit: int | None = None

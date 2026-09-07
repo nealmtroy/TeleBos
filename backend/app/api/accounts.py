@@ -25,6 +25,7 @@ from app.schemas.account import (
     UploadSessionRequest,
     AccountResponse,
     AccountListResponse,
+    UserAccountsSummaryResponse,
     ProfileUpdateRequest,
     AutoReplyUpdateRequest,
     BulkAutoReplyUpdateRequest,
@@ -561,6 +562,41 @@ async def list_accounts(
             pages=1,
             limit=len(accounts)
         )
+
+
+@router.get("/summary", response_model=UserAccountsSummaryResponse)
+async def get_accounts_summary(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get high-level summary counts for the current user's accounts."""
+    from sqlalchemy import func
+    stmt = select(
+        func.count(TelegramAccount.id).label("total"),
+        func.count(TelegramAccount.id).filter(
+            TelegramAccount.is_active.is_(True),
+            TelegramAccount.for_sale.is_(False),
+        ).label("active"),
+        func.count(TelegramAccount.id).filter(
+            TelegramAccount.is_active.is_(False),
+        ).label("expired"),
+        func.count(TelegramAccount.id).filter(
+            TelegramAccount.for_sale.is_(True),
+        ).label("selling"),
+        func.count(TelegramAccount.id).filter(
+            TelegramAccount.is_active.is_(True),
+            TelegramAccount.spam_status == "limited",
+        ).label("limited"),
+    ).where(TelegramAccount.user_id == user.id)
+    result = await db.execute(stmt)
+    row = result.one()
+    return UserAccountsSummaryResponse(
+        total=row.total or 0,
+        active=row.active or 0,
+        expired=row.expired or 0,
+        selling=row.selling or 0,
+        limited=row.limited or 0,
+    )
 
 
 @router.get("/{account_id}", response_model=AccountResponse)

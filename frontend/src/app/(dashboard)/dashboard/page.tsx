@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccounts } from "@/hooks/use-accounts";
+import { useAccounts, useAccountsSummary } from "@/hooks/use-accounts";
 import { useT } from "@/lib/i18n";
 import {
   Smartphone,
@@ -35,11 +35,12 @@ interface Account {
 
 export default function DashboardPage() {
   const _ = useT();
+  const { data: accountsSummary } = useAccountsSummary();
   const { data: accountsData, isLoading } = useAccounts();
   const accounts = Array.isArray(accountsData) ? (accountsData as unknown as Account[]) : [];
 
-  const activeCount = accounts?.filter((a) => a.is_active).length || 0;
-  const totalCount = accounts?.length || 0;
+  const activeCount = accountsSummary ? accountsSummary.active : (accounts?.filter((a) => a.is_active).length || 0);
+  const totalCount = accountsSummary ? accountsSummary.total : (accounts?.length || 0);
 
   const stats = [
     {
