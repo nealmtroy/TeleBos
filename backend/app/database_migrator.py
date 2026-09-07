@@ -806,6 +806,7 @@ def run_migrations(connection):
         "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_status ON broadcast_jobs (status)",
         "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_user_id_status ON broadcast_jobs (user_id, status)",
         "CREATE INDEX IF NOT EXISTS ix_invite_logs_job_user ON invite_logs (job_id, user_id_tg)",
+        "CREATE INDEX IF NOT EXISTS ix_telegram_accounts_auto_reply ON telegram_accounts (auto_reply_enabled, is_active)",
     ]:
         try:
             connection.execute(text(idx_sql))

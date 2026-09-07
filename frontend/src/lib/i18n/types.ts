@@ -1371,6 +1371,7 @@ export interface Dict {
     totalUsers: string;
     totalBroadcastJobs: string;
     totalInviteJobs: string;
+    totalAutoReplyJobs: string;
     totalAccountsConnected: string;
     searchUsers: string;
     email: string;

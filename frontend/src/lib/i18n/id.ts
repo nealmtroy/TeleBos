@@ -1372,6 +1372,7 @@ const id: Dict = {
     totalUsers: "Total Pengguna",
     totalBroadcastJobs: "Total Broadcast",
     totalInviteJobs: "Total Invite",
+    totalAutoReplyJobs: "Total Auto-Reply",
     totalAccountsConnected: "Akun Terhubung",
     searchUsers: "Cari pengguna...",
     email: "Email",

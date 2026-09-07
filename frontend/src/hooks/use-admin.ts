@@ -22,6 +22,11 @@ export interface AdminStats {
 
   invite_running: number;
   invite_stopped: number;
+
+  total_auto_reply_jobs: number;
+  auto_reply_running: number;
+  auto_reply_stopped: number;
+  total_auto_reply_sent: number;
 }
 
 export interface AdminUser {
@@ -336,4 +341,77 @@ export function useAdminBulkBroadcastAction() {
     },
   });
 }
+
+// ── Admin Auto-Reply Management ─────────────────────────────────────────────
+
+export interface AdminAutoReplyItem {
+  id: string;
+  user_id: string;
+  user_email: string | null;
+  user_full_name: string | null;
+  phone: string;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  auto_reply_enabled: boolean;
+  auto_reply_text: string | null;
+  is_active: boolean;
+  status: "running" | "stopped" | "disabled";
+  total_replied: number;
+  last_replied_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminAutoReplyListResponse {
+  items: AdminAutoReplyItem[];
+  total: number;
+  running_count: number;
+  stopped_count: number;
+  total_sent: number;
+}
+
+export function useAdminAutoReplies(params?: {
+  search?: string;
+  status?: string;
+  user_id?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.set("page", String(params.page));
+  if (params?.limit) queryParams.set("limit", String(params.limit));
+  if (params?.search) queryParams.set("search", params.search);
+  if (params?.status && params.status !== "all") queryParams.set("status", params.status);
+  if (params?.user_id) queryParams.set("user_id", params.user_id);
+  if (params?.sort_by) queryParams.set("sort_by", params.sort_by);
+  if (params?.sort_order) queryParams.set("sort_order", params.sort_order);
+
+  const qs = queryParams.toString();
+  return useQuery<AdminAutoReplyListResponse>({
+    queryKey: ["admin", "auto-replies", qs],
+    queryFn: async () => {
+      const { data } = await api.get(`/admin/auto-replies${qs ? `?${qs}` : ""}`);
+      return data;
+    },
+    refetchInterval: 15_000,
+  });
+}
+
+export function useAdminToggleAutoReply() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (accountId: string) => {
+      const { data } = await api.post(`/admin/auto-replies/${accountId}/toggle`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "auto-replies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
 

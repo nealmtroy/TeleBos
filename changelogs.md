@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[1548a991](https://github.com/nealmtroy/TeleBos/commit/1548a991)**: fix(telethon): synchronize idle cleanup with per-account locks, touch clients during broadcast/spambot, and fallback groq models
 - **[5b284035](https://github.com/nealmtroy/TeleBos/commit/5b284035)**: fix(docker): enable init process to reap zombie processes and optimize healthcheck
 
 ## 2026-09-07

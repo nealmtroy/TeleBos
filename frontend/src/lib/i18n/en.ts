@@ -1372,6 +1372,7 @@ const en: Dict = {
     totalUsers: "Total Users",
     totalBroadcastJobs: "Total Broadcast Jobs",
     totalInviteJobs: "Total Invite Jobs",
+    totalAutoReplyJobs: "Total Auto-Reply Jobs",
     totalAccountsConnected: "Connected Accounts",
     searchUsers: "Search users...",
     email: "Email",
