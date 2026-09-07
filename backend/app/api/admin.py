@@ -1058,7 +1058,15 @@ async def list_admin_auto_replies(
     current_user: User = Depends(require_role(["owner"])),
 ):
     """List all accounts with auto-reply configured across users, with stats, search, and pagination. Owner only."""
-    offset = (page - 1) * limit
+    page_val = page if isinstance(page, int) else 1
+    limit_val = limit if isinstance(limit, int) else 10
+    offset = (page_val - 1) * limit_val
+
+    status_str = status if isinstance(status, str) else "all"
+    search_str = search if isinstance(search, str) and search.strip() else None
+    user_id_str = user_id if isinstance(user_id, str) and user_id.strip() else None
+    sort_by_str = sort_by if isinstance(sort_by, str) else "updated_at"
+    sort_order_str = sort_order if isinstance(sort_order, str) else "desc"
 
     # Subquery for reply stats per account
     reply_stats = (
@@ -1090,29 +1098,29 @@ async def list_admin_auto_replies(
         .where(TelegramAccount.phone_verified.is_(True))
     )
 
-    if status == "running":
+    if status_str == "running":
         base_query = base_query.where(TelegramAccount.auto_reply_enabled.is_(True), TelegramAccount.is_active.is_(True))
         count_query = count_query.where(TelegramAccount.auto_reply_enabled.is_(True), TelegramAccount.is_active.is_(True))
-    elif status == "stopped":
+    elif status_str == "stopped":
         base_query = base_query.where(TelegramAccount.auto_reply_enabled.is_(True), TelegramAccount.is_active.is_(False))
         count_query = count_query.where(TelegramAccount.auto_reply_enabled.is_(True), TelegramAccount.is_active.is_(False))
-    elif status == "disabled":
+    elif status_str == "disabled":
         base_query = base_query.where(TelegramAccount.auto_reply_enabled.is_(False))
         count_query = count_query.where(TelegramAccount.auto_reply_enabled.is_(False))
     else:  # "all" - shows accounts that have auto reply enabled
         base_query = base_query.where(TelegramAccount.auto_reply_enabled.is_(True))
         count_query = count_query.where(TelegramAccount.auto_reply_enabled.is_(True))
 
-    if user_id:
+    if user_id_str:
         try:
-            u_uuid = UUID(user_id)
+            u_uuid = UUID(user_id_str)
             base_query = base_query.where(TelegramAccount.user_id == u_uuid)
             count_query = count_query.where(TelegramAccount.user_id == u_uuid)
         except ValueError:
             pass
 
-    if search:
-        search_val = search.replace("%", "\\%").replace("_", "\\_").strip()
+    if search_str:
+        search_val = search_str.replace("%", "\\%").replace("_", "\\_").strip()
         search_pat = f"%{search_val}%"
         search_filter = (
             TelegramAccount.phone.ilike(search_pat, escape="\\")
@@ -1126,16 +1134,16 @@ async def list_admin_auto_replies(
         base_query = base_query.where(search_filter)
         count_query = count_query.where(search_filter)
 
-    if sort_by == "phone":
+    if sort_by_str == "phone":
         order_col = TelegramAccount.phone
-    elif sort_by == "total_replied":
+    elif sort_by_str == "total_replied":
         order_col = func.coalesce(reply_stats.c.total_replied, 0)
-    elif sort_by == "last_replied_at":
+    elif sort_by_str == "last_replied_at":
         order_col = reply_stats.c.last_replied_at
     else:
         order_col = TelegramAccount.updated_at
 
-    if sort_order == "asc":
+    if sort_order_str == "asc":
         base_query = base_query.order_by(order_col.asc().nulls_last())
     else:
         base_query = base_query.order_by(order_col.desc().nulls_last())
@@ -1143,7 +1151,7 @@ async def list_admin_auto_replies(
     total_res = await db.execute(count_query)
     total = total_res.scalar() or 0
 
-    results = await db.execute(base_query.offset(offset).limit(limit))
+    results = await db.execute(base_query.offset(offset).limit(limit_val))
     rows = results.all()
 
     # Overall stats
