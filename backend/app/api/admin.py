@@ -119,7 +119,7 @@ class UserAdminResponse(BaseModel):
     balance: int
     is_active: bool
     order_count: int = 0
-    created_at: datetime | None = None
+    created_at: datetime | str | None = None
 
     # Telegram Account metrics
     connected_accounts: int = 0
@@ -462,7 +462,7 @@ async def list_users(
     for u in users:
         ru = UserAdminResponse.model_validate(u)
         ru.order_count = order_counts.get(u.id, 0)
-        ru.created_at = u.created_at.isoformat() if u.created_at else None
+        ru.created_at = u.created_at
 
         u_acct = acct_stats.get(u.id, {})
         ru.connected_accounts = u_acct.get("connected", 0)
