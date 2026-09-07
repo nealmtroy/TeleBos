@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-07
+- **[5f8922c4](https://github.com/nealmtroy/TeleBos/commit/5f8922c4)**: fix(db): inspect constraints before adding and deduplicate duplicate phones
 - **[d6d125b7](https://github.com/nealmtroy/TeleBos/commit/d6d125b7)**: fix(telethon): resolve session ID mismatch, connection flapping, and socket reset crashes
 - **[06cf3bb8](https://github.com/nealmtroy/TeleBos/commit/06cf3bb8)**: feat(accounts): add user accounts summary endpoint and use it on dashboard for exact totals
 - **[fa6c7aaa](https://github.com/nealmtroy/TeleBos/commit/fa6c7aaa)**: fix(backend): resolve UnboundLocalError in lifespan and fix undefined names in services/api

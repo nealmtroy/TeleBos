@@ -39,6 +39,7 @@ services:
 
   # ── FastAPI Backend ────────────────────────────────────────────────────────
   backend:
+    init: true
     build: ./backend
     restart: unless-stopped
     env_file: ./.env
@@ -54,7 +55,7 @@ services:
     volumes:
       - backend_uploads:/app/app/uploads
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')\""]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -67,6 +68,7 @@ services:
 
   # ── Celery Worker ─────────────────────────────────────────────────────────
   celery-worker:
+    init: true
     build: ./backend
     restart: unless-stopped
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
@@ -85,6 +87,7 @@ services:
 
   # ── Telegram Bot ──────────────────────────────────────────────────────────
   telegram-bot:
+    init: true
     build: ./backend
     restart: unless-stopped
     command: python -m app.bot.main
@@ -103,6 +106,7 @@ services:
 
   # ── Next.js Frontend ───────────────────────────────────────────────────────
   frontend:
+    init: true
     build:
       context: ./frontend
       args:
