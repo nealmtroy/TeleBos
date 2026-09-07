@@ -912,21 +912,7 @@ async def admin_resume_broadcast(
     await db.commit()
 
     # Re-spawn in-memory background task if not running
-    job_id_str = str(job.id)
-    if job_id_str not in broadcast_service._running_tasks or broadcast_service._running_tasks[job_id_str].done():
-        import asyncio
-        async def _safe_execute():
-            try:
-                await broadcast_service.execute_broadcast(job_id_str)
-            except Exception as exc:
-                import logging
-                logging.getLogger(__name__).exception("Background broadcast task %s crashed: %s", job_id_str, exc)
-            finally:
-                broadcast_service._running_tasks.pop(job_id_str, None)
-                broadcast_service.clear_job_event(job_id_str)
-
-        task = asyncio.create_task(_safe_execute())
-        broadcast_service._running_tasks[job_id_str] = task
+    broadcast_service.start_broadcast_task(job.id)
 
     return {"message": "Job resumed successfully", "job_id": job_id, "status": "running"}
 

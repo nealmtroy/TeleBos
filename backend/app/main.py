@@ -298,11 +298,15 @@ async def lifespan(app: FastAPI):
         reconnected = await session_manager.reconnect_all(db)
         logger.info("Auto-reconnected %d accounts with real-time handlers", reconnected)
 
-        # Resume any running broadcast jobs
+        # Resume any running broadcast and invite jobs
         from app.services.broadcast_service import resume_running_broadcasts_on_startup
+        from app.services.invite_service import resume_running_invites_on_startup
 
-        resumed = await resume_running_broadcasts_on_startup(db)
-        logger.info("Auto-resumed %d running broadcast jobs", resumed)
+        resumed_broadcasts = await resume_running_broadcasts_on_startup(db)
+        logger.info("Auto-resumed %d running broadcast jobs", resumed_broadcasts)
+
+        resumed_invites = await resume_running_invites_on_startup(db)
+        logger.info("Auto-resumed %d running invite jobs", resumed_invites)
 
         # Seed: ensure nealmtroy@gmail.com is owner
         from sqlalchemy import select
@@ -412,31 +416,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Error closing SMM HTTP client: %s", e)
 
-    # 4. Stop Telegram clients while Redis and DB connections are still active
-    await session_manager.stop()
-    from app.services.telegram_client import client_pool
-
-    # 5. Clean up zombie jobs — pause active running jobs before closing DB
+    # 4. Gracefully cancel in-flight broadcast and invite background tasks
     try:
-        from app.models.broadcast_job import BroadcastJob
-        from app.models.invite_job import InviteJob
-        from sqlalchemy import update
+        from app.services.broadcast_service import cancel_all_broadcast_tasks
 
-        async with async_session_factory() as shutdown_db:
-            await shutdown_db.execute(
-                update(BroadcastJob)
-                .where(BroadcastJob.status == "running")
-                .values(status="paused")
-            )
-            await shutdown_db.execute(
-                update(InviteJob)
-                .where(InviteJob.status == "running")
-                .values(status="paused")
-            )
-            await shutdown_db.commit()
-            logger.info("Shutdown: In-flight broadcast and invite jobs marked as paused.")
-    except Exception as shutdown_err:
-        logger.warning("Shutdown: Error updating in-flight jobs status: %s", shutdown_err)
+        cancelled_b = await cancel_all_broadcast_tasks()
+        logger.info("Shutdown: Cancelled %d active broadcast tasks", cancelled_b)
+    except Exception as exc:
+        logger.warning("Shutdown: Error cancelling broadcast tasks: %s", exc)
+
+    try:
+        from app.services.invite_service import cancel_all_invite_tasks
+
+        cancelled_i = await cancel_all_invite_tasks()
+        logger.info("Shutdown: Cancelled %d active invite tasks", cancelled_i)
+    except Exception as exc:
+        logger.warning("Shutdown: Error cancelling invite tasks: %s", exc)
+
+    # 5. Stop Telegram clients while Redis and DB connections are still active
+    await session_manager.stop()
 
     # 6. Close Redis client connection and dispose database engine
     from app.utils.redis import redis_client

@@ -67,3 +67,41 @@ async def test_mass_order_quantity_validation():
         # 3. Test quantity > max_qty
         with pytest.raises(ValueError, match="exceeds maximum"):
             await place_mass_orders(db, user, [{"service_id": 1, "quantity": 5000, "data_target": "https://t.me/post"}])
+
+
+@pytest.mark.asyncio
+async def test_start_broadcast_task_and_startup_resume():
+    """Verify broadcast task lifecycle: start_broadcast_task and startup auto-resume."""
+    job_id = uuid4()
+    job_id_str = str(job_id)
+
+    with patch("app.services.broadcast_service.execute_broadcast", new_callable=AsyncMock) as mock_exec:
+        # 1. Spawning a new task
+        spawned = broadcast_service.start_broadcast_task(job_id)
+        assert spawned is True
+        assert job_id_str in broadcast_service._running_tasks
+
+        # 2. Re-spawning while running should return False (no duplicate task)
+        spawned_again = broadcast_service.start_broadcast_task(job_id)
+        assert spawned_again is False
+
+        # Clean up task
+        task = broadcast_service._running_tasks.pop(job_id_str, None)
+        if task:
+            task.cancel()
+
+        # 3. Test resume_running_broadcasts_on_startup
+        db = AsyncMock()
+        mock_job = SimpleNamespace(id=job_id, status="running")
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_job]
+        db.execute.return_value = mock_result
+
+        resumed_count = await broadcast_service.resume_running_broadcasts_on_startup(db)
+        assert resumed_count == 1
+        assert job_id_str in broadcast_service._running_tasks
+
+        # Clean up
+        task = broadcast_service._running_tasks.pop(job_id_str, None)
+        if task:
+            task.cancel()

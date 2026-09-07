@@ -113,6 +113,8 @@ async def resume_invite_job(
     if job.status != "paused":
         raise HTTPException(status_code=400, detail="Job is not paused")
     await invite_service.update_invite_job_status(db, job, "running")
+    await db.commit()
+    invite_service.start_invite_task(job.id)
     return {"message": "Resumed"}
 
 

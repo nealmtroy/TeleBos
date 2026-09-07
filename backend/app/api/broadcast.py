@@ -213,6 +213,8 @@ async def resume_job(
     if job.status != "paused":
         raise HTTPException(status_code=400, detail="Job is not paused")
     await broadcast_service.update_job_status(db, job, "running")
+    await db.commit()
+    broadcast_service.start_broadcast_task(job.id)
     return {"message": "Resumed"}
 
 

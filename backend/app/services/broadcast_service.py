@@ -263,19 +263,7 @@ async def start_broadcast(
     await db.refresh(job)
 
     # Run broadcast in background asyncio task (no Celery needed)
-    job_id_str = str(job.id)
-
-    async def _safe_execute():
-        try:
-            await execute_broadcast(job_id_str)
-        except Exception as exc:
-            logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
-        finally:
-            _running_tasks.pop(job_id_str, None)
-            clear_job_event(job_id_str)
-
-    task = asyncio.create_task(_safe_execute())
-    _running_tasks[job_id_str] = task
+    start_broadcast_task(job.id)
 
     return job
 
@@ -347,19 +335,7 @@ async def retry_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob
     await db.refresh(job)
 
     # Run broadcast in background asyncio task
-    job_id_str = str(job.id)
-
-    async def _safe_execute():
-        try:
-            await execute_broadcast(job_id_str)
-        except Exception as exc:
-            logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
-        finally:
-            _running_tasks.pop(job_id_str, None)
-            clear_job_event(job_id_str)
-
-    task = asyncio.create_task(_safe_execute())
-    _running_tasks[job_id_str] = task
+    start_broadcast_task(job.id)
 
     return job
 
@@ -1504,26 +1480,50 @@ async def execute_broadcast(job_id: str):
             pass
 
 
+def start_broadcast_task(job_id: str | uuid.UUID) -> bool:
+    """Ensure a background broadcast task is running for the given job ID.
+    Returns True if a new task was spawned, False if already running.
+    """
+    job_id_str = str(job_id)
+    existing_task = _running_tasks.get(job_id_str)
+    if existing_task and not existing_task.done():
+        return False
+
+    async def _safe_execute():
+        try:
+            await execute_broadcast(job_id_str)
+        except asyncio.CancelledError:
+            logger.info("Broadcast task %s cancelled gracefully", job_id_str)
+        except Exception as exc:
+            logger.exception("Background broadcast task %s crashed: %s", job_id_str, exc)
+        finally:
+            _running_tasks.pop(job_id_str, None)
+            clear_job_event(job_id_str)
+
+    task = asyncio.create_task(_safe_execute())
+    _running_tasks[job_id_str] = task
+    return True
+
+
+async def cancel_all_broadcast_tasks() -> int:
+    """Cancel all active broadcast background tasks gracefully on shutdown."""
+    tasks = list(_running_tasks.values())
+    for t in tasks:
+        if not t.done():
+            t.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    _running_tasks.clear()
+    return len(tasks)
+
+
 async def resume_running_broadcasts_on_startup(db: AsyncSession) -> int:
     """Find all broadcast jobs with status 'running' and resume them in the background."""
     result = await db.execute(select(BroadcastJob).where(BroadcastJob.status == "running"))
     jobs = result.scalars().all()
     count = 0
     for job in jobs:
-        job_id_str = str(job.id)
-        if job_id_str in _running_tasks:
-            continue
-
-        async def _safe_execute(jid=job_id_str):
-            try:
-                await execute_broadcast(jid)
-            except Exception as exc:
-                logger.exception("Resumed background broadcast task %s crashed: %s", jid, exc)
-            finally:
-                _running_tasks.pop(jid, None)
-
-        task = asyncio.create_task(_safe_execute())
-        _running_tasks[job_id_str] = task
-        count += 1
+        if start_broadcast_task(job.id):
+            count += 1
     logger.info("Resumed %d running broadcast jobs on startup", count)
     return count

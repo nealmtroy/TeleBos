@@ -72,19 +72,7 @@ async def start_invite(
     await db.refresh(job)
 
     # Run invite in background asyncio task
-    job_id_str = str(job.id)
-
-    async def _safe_execute():
-        try:
-            await execute_invite(job_id_str)
-        except Exception as exc:
-            logger.exception("Background invite task %s crashed: %s", job_id_str, exc)
-        finally:
-            _running_invite_tasks.pop(job_id_str, None)
-            clear_job_event(job_id_str)
-
-    task = asyncio.create_task(_safe_execute())
-    _running_invite_tasks[job_id_str] = task
+    start_invite_task(job.id)
 
     return job
 
@@ -150,19 +138,8 @@ async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> Invit
     await db.commit()
     await db.refresh(job)
 
-    job_id_str = str(job.id)
-
-    async def _safe_execute():
-        try:
-            await execute_invite(job_id_str)
-        except Exception as exc:
-            logger.exception("Background invite task %s crashed: %s", job_id_str, exc)
-        finally:
-            _running_invite_tasks.pop(job_id_str, None)
-            clear_job_event(job_id_str)
-
-    task = asyncio.create_task(_safe_execute())
-    _running_invite_tasks[job_id_str] = task
+    # Run invite in background asyncio task
+    start_invite_task(job.id)
 
     return job
 
@@ -1237,3 +1214,52 @@ async def execute_invite(job_id: str):
                 await acc["client"].disconnect()
             except Exception:
                 pass
+
+
+def start_invite_task(job_id: str | uuid.UUID) -> bool:
+    """Ensure a background invite task is running for the given job ID.
+    Returns True if a new task was spawned, False if already running.
+    """
+    job_id_str = str(job_id)
+    existing = _running_invite_tasks.get(job_id_str)
+    if existing and not existing.done():
+        return False
+
+    async def _safe_execute():
+        try:
+            await execute_invite(job_id_str)
+        except asyncio.CancelledError:
+            logger.info("Invite task %s cancelled gracefully", job_id_str)
+        except Exception as exc:
+            logger.exception("Background invite task %s crashed: %s", job_id_str, exc)
+        finally:
+            _running_invite_tasks.pop(job_id_str, None)
+            clear_job_event(job_id_str)
+
+    task = asyncio.create_task(_safe_execute())
+    _running_invite_tasks[job_id_str] = task
+    return True
+
+
+async def cancel_all_invite_tasks() -> int:
+    """Cancel all active invite background tasks gracefully on shutdown."""
+    tasks = list(_running_invite_tasks.values())
+    for t in tasks:
+        if not t.done():
+            t.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    _running_invite_tasks.clear()
+    return len(tasks)
+
+
+async def resume_running_invites_on_startup(db: AsyncSession) -> int:
+    """Find all invite jobs with status 'running' and resume them in the background."""
+    result = await db.execute(select(InviteJob).where(InviteJob.status == "running"))
+    jobs = result.scalars().all()
+    count = 0
+    for job in jobs:
+        if start_invite_task(job.id):
+            count += 1
+    logger.info("Resumed %d running invite jobs on startup", count)
+    return count
