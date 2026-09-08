@@ -161,3 +161,50 @@ async def test_worker_control_subscriber_processes_signals():
                 assert mock_wake.call_count == 3
                 # start_broadcast_task should be called on resume
                 mock_start.assert_called_once_with(test_id)
+
+
+@pytest.mark.asyncio
+async def test_client_pool_receive_updates_flag():
+    """Verify that TelegramClientPool honors receive_updates=False and skips catch_up."""
+    from app.services.telegram_client import TelegramClientPool
+
+    pool = TelegramClientPool(receive_updates=False)
+    assert pool.receive_updates is False
+
+    mock_client = AsyncMock()
+    mock_client.is_connected.return_value = True
+    mock_client.is_user_authorized = AsyncMock(return_value=True)
+
+    with patch("app.services.telegram_client.StringSession"):
+        with patch("app.services.telegram_client.TelegramClient", return_value=mock_client) as mock_tg:
+            with patch("app.services.telegram_client.settings") as mock_settings:
+                mock_settings.TELEGRAM_API_ID = 12345
+                mock_settings.TELEGRAM_API_HASH = "mockhash"
+                client = await pool.get("test-acc-id", "mock-session-string")
+                assert client is mock_client
+                # Verify receive_updates was passed as False to TelegramClient
+                call_kwargs = mock_tg.call_args[1]
+                assert call_kwargs.get("receive_updates") is False
+                # Verify catch_up was never scheduled
+                assert len(pool._catch_up_tasks) == 0
+
+
+@pytest.mark.asyncio
+async def test_pause_interrupted_jobs_on_startup():
+    """Verify that pause_interrupted_broadcasts_on_startup pauses running jobs."""
+    from app.services import broadcast_service, invite_service
+
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    test_id = uuid.uuid4()
+    mock_result.scalars.return_value.all.return_value = [test_id]
+    mock_db.execute.return_value = mock_result
+
+    count_b = await broadcast_service.pause_interrupted_broadcasts_on_startup(mock_db)
+    assert count_b == 1
+    assert mock_db.commit.await_count == 1
+
+    count_i = await invite_service.pause_interrupted_invites_on_startup(mock_db)
+    assert count_i == 1
+    assert mock_db.commit.await_count == 2
+

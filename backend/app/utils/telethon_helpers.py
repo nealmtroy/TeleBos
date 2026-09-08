@@ -16,7 +16,7 @@ from app.services.telegram_client import client_pool
 logger = logging.getLogger(__name__)
 
 
-async def get_active_client(account) -> TelegramClient:
+async def get_active_client(account, receive_updates: bool | None = None) -> TelegramClient:
     """Decrypt session credentials and fetch client from the connection pool.
     
     Supports both ORM object and dictionary.
@@ -30,7 +30,7 @@ async def get_active_client(account) -> TelegramClient:
         enc_session = account.session_string
 
     session_str = decrypt(enc_session)
-    client = await client_pool.get(str(acc_id), session_str)
+    client = await client_pool.get(str(acc_id), session_str, receive_updates=receive_updates)
     if client is None:
         raise RuntimeError(f"Account {acc_id} is disconnected. Please reconnect first.")
     return client

@@ -6,7 +6,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invite_job import InviteJob
@@ -1262,13 +1262,31 @@ async def cancel_all_invite_tasks() -> int:
     return len(tasks)
 
 
-async def resume_running_invites_on_startup(db: AsyncSession) -> int:
+async def pause_interrupted_invites_on_startup(db: AsyncSession) -> int:
+    """Find all invite jobs with status 'running' and set them to 'paused'
+    so the worker daemon doesn't experience a startup thundering herd."""
+    result = await db.execute(
+        update(InviteJob)
+        .where(InviteJob.status == "running")
+        .values(status="paused", updated_at=datetime.now(timezone.utc))
+        .returning(InviteJob.id)
+    )
+    paused_ids = list(result.scalars().all())
+    await db.commit()
+    count = len(paused_ids)
+    if count > 0:
+        logger.info("Safely paused %d interrupted invite jobs on worker startup", count)
+    return count
+
+
+async def resume_running_invites_on_startup(db: AsyncSession, limit: int = 5) -> int:
     """Find all invite jobs with status 'running' and resume them in the background."""
-    result = await db.execute(select(InviteJob).where(InviteJob.status == "running"))
+    result = await db.execute(select(InviteJob).where(InviteJob.status == "running").limit(limit))
     jobs = result.scalars().all()
     count = 0
     for job in jobs:
         if start_invite_task(job.id):
             count += 1
-    logger.info("Resumed %d running invite jobs on startup", count)
+    logger.info("Resumed %d running invite jobs on startup (capped at %d)", count, limit)
     return count
+

@@ -143,11 +143,16 @@ async def main() -> None:
         logger.critical("Encryption key verification failed: %s", exc)
         sys.exit(1)
 
-    # 2. Auto-resume running jobs on worker startup
+    # 2. Configure Telegram client pool for outbound-only operations (no update streams)
+    from app.services.telegram_client import client_pool
+    client_pool.receive_updates = False
+    logger.info("Worker client pool configured in outbound-only mode (receive_updates=False)")
+
+    # 3. Safely pause interrupted running jobs on worker startup to prevent startup stampedes
     async with async_session_factory() as db:
-        resumed_b = await broadcast_service.resume_running_broadcasts_on_startup(db)
-        resumed_i = await invite_service.resume_running_invites_on_startup(db)
-        logger.info("Startup complete: Auto-resumed %d broadcast jobs and %d invite jobs", resumed_b, resumed_i)
+        paused_b = await broadcast_service.pause_interrupted_broadcasts_on_startup(db)
+        paused_i = await invite_service.pause_interrupted_invites_on_startup(db)
+        logger.info("Startup complete: Paused %d interrupted broadcast jobs and %d invite jobs", paused_b, paused_i)
 
     # 3. Start background loops
     consumer_task = asyncio.create_task(queue_consumer_loop())
