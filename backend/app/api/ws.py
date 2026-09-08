@@ -286,11 +286,7 @@ async def ws_chats(websocket: WebSocket, account_id: str):
     if not await manager.connect(channel, websocket):
         return
 
-    # Ensure only one bounded, coalesced connection attempt per account. Awaiting
-    # here keeps failures owned by the WebSocket request instead of leaving a
-    # detached task behind after the socket disconnects.
-    from app.services.session_manager import session_manager
-    await session_manager.ensure_connected_on_demand(account_id)
+    # Connected to in-memory channel; updates from async-worker are relayed via Redis bridge
 
     try:
         while True:

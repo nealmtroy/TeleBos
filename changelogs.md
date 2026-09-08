@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[bd17e9f5](https://github.com/nealmtroy/TeleBos/commit/bd17e9f5)**: fix(ws): catch WebSocketDisconnect in auth handshake and make spam check loop opt-in
 - **[092df497](https://github.com/nealmtroy/TeleBos/commit/092df497)**: fix(core): block WS on-demand connection for active worker accounts and remove redundant sync
 - **[0f2af4ce](https://github.com/nealmtroy/TeleBos/commit/0f2af4ce)**: feat(core): consolidate Telegram background sync into async worker and harden log sender
 - **[07942365](https://github.com/nealmtroy/TeleBos/commit/07942365)**: fix(core): prevent concurrent MTProto session collisions between backend and worker
