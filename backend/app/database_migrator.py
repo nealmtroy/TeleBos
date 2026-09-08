@@ -103,10 +103,12 @@ def run_migrations(connection):
 
         is_pg = connection.dialect.name == "postgresql"
         json_col_type = "JSONB DEFAULT '[]'::jsonb" if is_pg else "TEXT DEFAULT '[]'"
+        created_at_type = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP" if is_pg else "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
         connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS total_groups INTEGER DEFAULT 0 NOT NULL"))
         connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS sent_count INTEGER DEFAULT 0 NOT NULL"))
         connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS fail_count INTEGER DEFAULT 0 NOT NULL"))
         connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS duration_ms INTEGER DEFAULT NULL"))
+        connection.execute(text(f"ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS created_at {created_at_type} NOT NULL"))
         connection.execute(text(f"ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS details {json_col_type} NOT NULL"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_cycle ON broadcast_logs(job_id, cycle_number)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_created ON broadcast_logs(job_id, created_at)"))
