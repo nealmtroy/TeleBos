@@ -79,32 +79,37 @@ def run_migrations(connection):
             text("ALTER TABLE broadcast_jobs ADD COLUMN log_destination VARCHAR(255) DEFAULT NULL")
         )
 
-    # ── Broadcast logs migrations ───────────────────────────────────────
+    # ── Broadcast logs cycle-level migration (011) ──────────────────────
     broadcast_logs_cols_info = inspector.get_columns("broadcast_logs")
     broadcast_logs_cols = [c["name"] for c in broadcast_logs_cols_info]
-    if "account_id_used" not in broadcast_logs_cols:
-        connection.execute(
-            text(
-                "ALTER TABLE broadcast_logs "
-                "ADD COLUMN account_id_used UUID REFERENCES telegram_accounts(id) ON DELETE SET NULL"
-            )
-        )
+    if "details" not in broadcast_logs_cols:
+        # Migrate table to cycle-level storage
+        connection.execute(text("TRUNCATE TABLE broadcast_logs"))
+        for old_col in [
+            "account_id_used",
+            "group_identifier",
+            "group_id",
+            "status",
+            "error_type",
+            "error_message",
+            "sent_text",
+            "sent_at",
+        ]:
+            if old_col in broadcast_logs_cols:
+                try:
+                    connection.execute(text(f"ALTER TABLE broadcast_logs DROP COLUMN IF EXISTS {old_col} CASCADE"))
+                except Exception:
+                    pass
 
-    # Widen group_identifier (was VARCHAR(500), some pasted blobs overflow it
-    # and rolled back the whole broadcast transaction with
-    # StringDataRightTruncationError).
-    for col in broadcast_logs_cols_info:
-        if col["name"] == "group_identifier":
-            col_type = str(col.get("type", "")).upper()
-            if "VARCHAR" in col_type or "CHARACTER VARYING" in col_type:
-                connection.execute(
-                    text(
-                        "ALTER TABLE broadcast_logs "
-                        "ALTER COLUMN group_identifier TYPE TEXT "
-                        "USING group_identifier::TEXT"
-                    )
-                )
-            break
+        is_pg = connection.dialect.name == "postgresql"
+        json_col_type = "JSONB DEFAULT '[]'::jsonb" if is_pg else "TEXT DEFAULT '[]'"
+        connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS total_groups INTEGER DEFAULT 0 NOT NULL"))
+        connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS sent_count INTEGER DEFAULT 0 NOT NULL"))
+        connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS fail_count INTEGER DEFAULT 0 NOT NULL"))
+        connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS duration_ms INTEGER DEFAULT NULL"))
+        connection.execute(text(f"ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS details {json_col_type} NOT NULL"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_cycle ON broadcast_logs(job_id, cycle_number)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_created ON broadcast_logs(job_id, created_at)"))
 
     # ── Telegram account columns (auto-reply, cached stats, spam) ────────
     acct_cols = [c["name"] for c in inspector.get_columns("telegram_accounts")]

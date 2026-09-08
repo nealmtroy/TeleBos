@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[b630be07](https://github.com/nealmtroy/TeleBos/commit/b630be07)**: feat(broadcast): migrate to per-cycle log storage with JSONB details
 - **[702216b9](https://github.com/nealmtroy/TeleBos/commit/702216b9)**: fix(admin): eliminate Pydantic serialization warning for created_at datetime
 - **[0a78cc7f](https://github.com/nealmtroy/TeleBos/commit/0a78cc7f)**: feat: separate admin auto-reply, add broadcast history summary, and add admin user telemetry
 - **[c39dd24e](https://github.com/nealmtroy/TeleBos/commit/c39dd24e)**: fix(broadcast,invite): prevent automatic pause on shutdown and fix task re-spawning on resume
