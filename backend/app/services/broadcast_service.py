@@ -1794,16 +1794,24 @@ async def pause_interrupted_broadcasts_on_startup(db: AsyncSession) -> int:
     return count
 
 
-async def resume_running_broadcasts_on_startup(db: AsyncSession, limit: int = 5) -> int:
-    """Find broadcast jobs with status 'running' and resume them with a safety limit."""
-    result = await db.execute(
-        select(BroadcastJob).where(BroadcastJob.status == "running").limit(limit)
-    )
+async def resume_running_broadcasts_on_startup(
+    db: AsyncSession,
+    max_jobs: int | None = None,
+    stagger_seconds: float = 0.3,
+) -> int:
+    """Find broadcast jobs with status 'running' and resume them on worker startup.
+    Staggers startup slightly between multiple jobs to prevent connection spikes."""
+    query = select(BroadcastJob).where(BroadcastJob.status == "running").order_by(BroadcastJob.updated_at.desc())
+    if max_jobs:
+        query = query.limit(max_jobs)
+    result = await db.execute(query)
     jobs = result.scalars().all()
     count = 0
-    for job in jobs:
+    for idx, job in enumerate(jobs):
+        if idx > 0 and stagger_seconds > 0:
+            await asyncio.sleep(stagger_seconds)
         if start_broadcast_task(job.id):
             count += 1
-    logger.info("Resumed %d running broadcast jobs on startup (capped at %d)", count, limit)
+    logger.info("Resumed %d running broadcast jobs on worker startup", count)
     return count
 

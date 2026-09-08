@@ -1279,14 +1279,24 @@ async def pause_interrupted_invites_on_startup(db: AsyncSession) -> int:
     return count
 
 
-async def resume_running_invites_on_startup(db: AsyncSession, limit: int = 5) -> int:
-    """Find all invite jobs with status 'running' and resume them in the background."""
-    result = await db.execute(select(InviteJob).where(InviteJob.status == "running").limit(limit))
+async def resume_running_invites_on_startup(
+    db: AsyncSession,
+    max_jobs: int | None = None,
+    stagger_seconds: float = 0.3,
+) -> int:
+    """Find all invite jobs with status 'running' and resume them on worker startup.
+    Staggers startup slightly between multiple jobs to prevent connection spikes."""
+    query = select(InviteJob).where(InviteJob.status == "running").order_by(InviteJob.updated_at.desc())
+    if max_jobs:
+        query = query.limit(max_jobs)
+    result = await db.execute(query)
     jobs = result.scalars().all()
     count = 0
-    for job in jobs:
+    for idx, job in enumerate(jobs):
+        if idx > 0 and stagger_seconds > 0:
+            await asyncio.sleep(stagger_seconds)
         if start_invite_task(job.id):
             count += 1
-    logger.info("Resumed %d running invite jobs on startup (capped at %d)", count, limit)
+    logger.info("Resumed %d running invite jobs on worker startup", count)
     return count
 
