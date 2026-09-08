@@ -7,6 +7,8 @@ logger = logging.getLogger(__name__)
 
 # Cache resolved log destinations per client to avoid repeated API calls
 _resolved_dest_cache: dict[tuple[int, str], object] = {}
+# Cache FloodWait expiration per client and target to prevent repetitive flood errors
+_dest_flood_cooldown: dict[tuple[int, str], float] = {}
 
 
 def _parse_dest(dest: str):
@@ -112,6 +114,11 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
     me = await client.get_me()
     cache_key = (me.id, str(target))
 
+    import time
+    now_ts = time.time()
+    if cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
+        return
+
     # Try using cached entity first
     entity = _resolved_dest_cache.get(cache_key)
 
@@ -120,9 +127,10 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
             entity = await client.get_entity(target)
             _resolved_dest_cache[cache_key] = entity
         except FloodWaitError as fw:
+            _dest_flood_cooldown[cache_key] = now_ts + fw.seconds
             logger.warning(
-                "FloodWait (%ds) resolving log destination %s for account %s. Skipping log dispatch.",
-                fw.seconds, target, me.id,
+                "FloodWait (%ds) resolving log destination %s for account %s. Skipping log dispatch for %ds.",
+                fw.seconds, target, me.id, fw.seconds,
             )
             return
         except Exception:
@@ -131,9 +139,10 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
     try:
         await client.send_message(entity or target, message, **kwargs)
     except FloodWaitError as fw:
+        _dest_flood_cooldown[cache_key] = now_ts + fw.seconds
         logger.warning(
-            "FloodWait (%ds) sending log message to %s for account %s. Skipping log dispatch.",
-            fw.seconds, target, me.id,
+            "FloodWait (%ds) sending log message to %s for account %s. Skipping log dispatch for %ds.",
+            fw.seconds, target, me.id, fw.seconds,
         )
         return
     except (PeerIdInvalidError, ValueError, YouBlockedUserError) as exc:

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[19391729](https://github.com/nealmtroy/TeleBos/commit/19391729)**: fix(sync): query InviteJob.account_ids list instead of non-existent account_id
 - **[3a5ab76a](https://github.com/nealmtroy/TeleBos/commit/3a5ab76a)**: fix(ws): decouple frontend WebSocket from Telegram client connection
 - **[bd17e9f5](https://github.com/nealmtroy/TeleBos/commit/bd17e9f5)**: fix(ws): catch WebSocketDisconnect in auth handshake and make spam check loop opt-in
 - **[092df497](https://github.com/nealmtroy/TeleBos/commit/092df497)**: fix(core): block WS on-demand connection for active worker accounts and remove redundant sync

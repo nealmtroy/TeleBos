@@ -117,13 +117,17 @@ class TelegramClientPool:
                                         pass
 
                         ij_query = await db.execute(
-                            select(InviteJob.account_id).where(
+                            select(InviteJob.account_ids).where(
                                 InviteJob.status.in_(["pending", "running"])
                             )
                         )
-                        for a in ij_query.scalars():
-                            if a:
-                                busy_ids.add(a)
+                        for acc_list in ij_query.scalars():
+                            if isinstance(acc_list, list):
+                                for a in acc_list:
+                                    try:
+                                        busy_ids.add(uuid.UUID(str(a)))
+                                    except (ValueError, TypeError):
+                                        pass
 
                         # Protect active accounts with auto-reply enabled (unless claimed by worker jobs)
                         auto_reply_query = await db.execute(
