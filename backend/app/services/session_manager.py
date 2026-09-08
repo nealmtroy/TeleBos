@@ -332,11 +332,15 @@ class SessionManager:
             return False
         clients = await client_pool.get_connected_clients()
         if account_id in clients:
-            # Pastikan handler terpasang (aman dipanggil berulang kali karena memiliki proteksi duplikasi)
             from app.database import async_session_factory
             import uuid
             try:
                 async with async_session_factory() as db:
+                    if await self.is_account_in_active_job(db, account_id):
+                        logger.info("ensure_connected_on_demand: disconnecting account %s (claimed by active worker job)", account_id)
+                        await event_relay.detach(account_id)
+                        await client_pool.remove(account_id)
+                        return False
                     result = await db.execute(
                         select(TelegramAccount.session_string).where(
                             TelegramAccount.id == uuid.UUID(account_id),
@@ -386,6 +390,9 @@ class SessionManager:
                 account = result.scalar_one_or_none()
                 if account is None:
                     return False
+                if await self.is_account_in_active_job(db, account_id):
+                    logger.info("Lazy Connection: skipping account %s (claimed by active worker job)", account_id)
+                    return False
                 account_id_value = str(account.id)
                 session_string = account.session_string
                 account_snapshot = {
@@ -428,7 +435,6 @@ class SessionManager:
                 success = await event_relay.attach(account_id_value, session_str)
                 if success:
                     logger.info("Account %s connected + event handlers attached", account_id_value)
-                    _schedule_sync(account_id_value)
                 return success
         except Exception as exc:
             logger.error("Error connecting account %s on-demand: %s", account_id_value, exc)
