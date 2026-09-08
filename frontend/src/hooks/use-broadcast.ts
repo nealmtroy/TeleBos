@@ -59,19 +59,29 @@ export interface BroadcastUserSummary {
   total_failed: number;
 }
 
-export interface BroadcastLog {
-  id: string;
-  job_id: string;
-  cycle_number: number;
+export interface BroadcastCycleDetail {
   group_identifier: string;
   group_id: number | null;
+  account_id_used: string | null;
+  account_name: string | null;
   status: string;
   error_type: string | null;
   error_message: string | null;
   sent_text: string | null;
-  sent_at: string;
   duration_ms: number | null;
-  account_id_used: string | null;
+  sent_at: string | null;
+}
+
+export interface BroadcastLog {
+  id: string;
+  job_id: string;
+  cycle_number: number;
+  total_groups: number;
+  sent_count: number;
+  fail_count: number;
+  duration_ms: number | null;
+  created_at: string;
+  details: BroadcastCycleDetail[];
 }
 
 // ── Group Lists ─────────────────────────────────────────────────────────────

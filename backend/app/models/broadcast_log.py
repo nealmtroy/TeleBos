@@ -1,10 +1,11 @@
-"""Per-group broadcast delivery log."""
+"""Per-cycle broadcast delivery log with JSONB group details."""
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Integer, Text, func, ForeignKey, BigInteger, Index
-from sqlalchemy.dialects.postgresql import UUID
+import sqlalchemy as sa
+from sqlalchemy import DateTime, Integer, func, ForeignKey, Index
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -14,7 +15,8 @@ class BroadcastLog(Base):
     __tablename__ = "broadcast_logs"
 
     __table_args__ = (
-        Index("ix_broadcast_logs_job_sent", "job_id", "sent_at"),
+        Index("ix_broadcast_logs_job_cycle", "job_id", "cycle_number"),
+        Index("ix_broadcast_logs_job_created", "job_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -25,30 +27,25 @@ class BroadcastLog(Base):
         ForeignKey("broadcast_jobs.id", ondelete="CASCADE"),
         nullable=False,
     )
-    account_id_used: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("telegram_accounts.id", ondelete="SET NULL"),
-        nullable=True, index=True,
-    )
 
     cycle_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    total_groups: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    sent_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fail_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # Text (unbounded) — some imported group_list items can be very long
-    # (e.g. a paste of many links that wasn't split). Don't fail the insert on length.
-    group_identifier: Mapped[str] = mapped_column(Text, nullable=False)
-    group_id: Mapped[int | None] = mapped_column(BigInteger)
-
-    status: Mapped[str] = mapped_column(String(20), nullable=False)  # success, error
-    error_type: Mapped[str | None] = mapped_column(
-        String(50)
-    )  # muted, banned, flood, slowmode, admin_only, invalid_username, invalid_link, etc.
-    error_message: Mapped[str | None] = mapped_column(Text)
-    sent_text: Mapped[str | None] = mapped_column(Text)
-
-    sent_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    duration_ms: Mapped[int | None] = mapped_column(Integer)
+
+    # Details of each group delivery attempt in this cycle
+    details: Mapped[list[dict]] = mapped_column(
+        JSONB().with_variant(sa.JSON(), "sqlite"),
+        default=list,
+        server_default=sa.text("'[]'"),
+        nullable=False,
+    )
 
     # Relationships
     job: Mapped["BroadcastJob"] = relationship("BroadcastJob", back_populates="logs")
+

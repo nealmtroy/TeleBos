@@ -306,7 +306,7 @@ async def get_logs(
 @router.get("/broadcast/{job_id}/logs/export")
 async def export_logs(
     job_id: str,
-    format: str = Query("csv", regex="^(csv|json)$"),
+    format: str = Query("csv", pattern="^(csv|json)$"),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -323,19 +323,19 @@ async def export_logs(
     logs = await broadcast_service.get_job_logs(db, job_id, limit=10000)
 
     if format == "json":
-        data = [
-            {
-                "id": str(l.id),
-                "cycle": l.cycle_number,
-                "group": l.group_identifier,
-                "status": l.status,
-                "error_type": l.error_type,
-                "error_message": l.error_message,
-                "text": l.sent_text,
-                "sent_at": l.sent_at.isoformat() if l.sent_at else None,
-            }
-            for l in logs
-        ]
+        data = []
+        for l in logs:
+            for item in (l.details or []):
+                data.append({
+                    "cycle": l.cycle_number,
+                    "group": item.get("group_identifier"),
+                    "account_name": item.get("account_name"),
+                    "status": item.get("status"),
+                    "error_type": item.get("error_type"),
+                    "error_message": item.get("error_message"),
+                    "text": item.get("sent_text"),
+                    "sent_at": item.get("sent_at"),
+                })
         output = json.dumps(data, indent=2, ensure_ascii=False)
         return StreamingResponse(
             io.StringIO(output),
@@ -351,15 +351,19 @@ async def export_logs(
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id", "cycle", "group", "status", "error_type", "error_message", "text", "sent_at"])
+    writer.writerow(["cycle", "group", "account", "status", "error_type", "error_message", "text", "sent_at"])
     for l in logs:
-        writer.writerow([
-            str(l.id), l.cycle_number,
-            _safe_csv(l.group_identifier or ""), l.status,
-            _safe_csv(l.error_type or ""), _safe_csv(l.error_message or ""),
-            _safe_csv((l.sent_text or "")[:200]),
-            l.sent_at.isoformat() if l.sent_at else "",
-        ])
+        for item in (l.details or []):
+            writer.writerow([
+                l.cycle_number,
+                _safe_csv(item.get("group_identifier") or ""),
+                _safe_csv(item.get("account_name") or ""),
+                item.get("status") or "",
+                _safe_csv(item.get("error_type") or ""),
+                _safe_csv(item.get("error_message") or ""),
+                _safe_csv((item.get("sent_text") or "")[:200]),
+                item.get("sent_at") or "",
+            ])
     output.seek(0)
     return StreamingResponse(
         output,

@@ -275,25 +275,35 @@ def register_broadcasts_handlers(client):
             return
 
         async with async_session_factory() as session:
-            # Fetch last 10 logs for this job
+            # Fetch latest cycle logs for this job
             result = await session.execute(
                 select(BroadcastLog)
                 .where(BroadcastLog.job_id == job.id)
-                .order_by(BroadcastLog.sent_at.desc())
-                .limit(10)
+                .order_by(BroadcastLog.cycle_number.desc())
+                .limit(2)
             )
-            logs = result.scalars().all()
+            cycle_logs = result.scalars().all()
+
+        recent_items = []
+        for cl in cycle_logs:
+            for item in reversed(cl.details or []):
+                recent_items.append(item)
+                if len(recent_items) >= 10:
+                    break
+            if len(recent_items) >= 10:
+                break
 
         log_lines = []
-        for log in logs:
-            sent_time = log.sent_at.strftime('%H:%M:%S')
-            status_icon = "🟢" if log.status == "success" else "🔴"
-            target = log.group_identifier
+        for item in recent_items:
+            sent_time_str = item.get("sent_at", "")
+            sent_time = sent_time_str[11:19] if len(sent_time_str) >= 19 else "--:--:--"
+            status_icon = "🟢" if item.get("status") == "success" else "🔴"
+            target = str(item.get("group_identifier") or "")
             # Truncate target if too long
             if len(target) > 25:
                 target = target[:22] + "..."
-            
-            error_desc = f" ({log.error_type})" if log.error_type else ""
+
+            error_desc = f" ({item.get('error_type')})" if item.get("error_type") else ""
             log_lines.append(f"[{sent_time}] {status_icon} `{target}`{error_desc}")
 
         if not log_lines:

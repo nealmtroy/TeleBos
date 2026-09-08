@@ -43,8 +43,13 @@ def _format_cycle_summary(
     minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
     duration_str = f"{minutes}m {seconds}s"
 
-    success_count = sum(1 for log in cycle_logs if log.status == "success")
-    error_count = sum(1 for log in cycle_logs if log.status == "error")
+    def _get_val(obj, attr, default=None):
+        if isinstance(obj, dict):
+            return obj.get(attr, default)
+        return getattr(obj, attr, default)
+
+    success_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "success")
+    error_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "error")
 
     lines = [
         f"<b>Broadcast Cycle #{cycle_number} 🚀</b>",
@@ -64,22 +69,22 @@ def _format_cycle_summary(
     lines.append("</blockquote>")
 
     # Separate success and failed
-    success_logs = [log for log in cycle_logs if log.status == "success"]
-    error_logs = [log for log in cycle_logs if log.status == "error"]
+    success_logs = [log for log in cycle_logs if _get_val(log, "status") == "success"]
+    error_logs = [log for log in cycle_logs if _get_val(log, "status") == "error"]
 
     if success_logs:
         lines.append("")
         lines.append("<b>Berhasil Terkirim</b>:")
         for log in success_logs:
-            target_display = html.escape(log.group_identifier)
+            target_display = html.escape(str(_get_val(log, "group_identifier") or ""))
             lines.append(f"✅ {target_display}")
 
     if error_logs:
         lines.append("")
         lines.append("<b>Gagal Terkirim</b>:")
         for log in error_logs:
-            target_display = html.escape(log.group_identifier)
-            reason = html.escape(log.error_type or "Unknown Error")
+            target_display = html.escape(str(_get_val(log, "group_identifier") or ""))
+            reason = html.escape(str(_get_val(log, "error_type") or "Unknown Error"))
             lines.append(f"❌ {target_display} — {reason}")
 
     return "\n".join(lines)

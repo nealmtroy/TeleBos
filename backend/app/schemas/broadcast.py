@@ -87,21 +87,35 @@ class BroadcastJobResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BroadcastCycleDetail(BaseModel):
+    group_identifier: str
+    group_id: int | None = None
+    account_id_used: str | None = None
+    account_name: str | None = None
+    status: str  # "success" or "error"
+    error_type: str | None = None
+    error_message: str | None = None
+    sent_text: str | None = None
+    duration_ms: int | None = None
+    sent_at: str | None = None
+
+
 class BroadcastLogResponse(BaseModel):
     id: UUID
     job_id: UUID
     cycle_number: int = 1
-    group_identifier: str
-    group_id: int | None
-    status: str
-    error_type: str | None
-    error_message: str | None
-    sent_text: str | None
-    sent_at: datetime
-    duration_ms: int | None
-    account_id_used: UUID | None = None
+    total_groups: int = 0
+    sent_count: int = 0
+    fail_count: int = 0
+    duration_ms: int | None = None
+    created_at: datetime
+    details: list[BroadcastCycleDetail] = []
 
     model_config = {"from_attributes": True}
+
+
+class BroadcastCycleLogResponse(BroadcastLogResponse):
+    pass
 
 
 class BroadcastLogFilter(BaseModel):

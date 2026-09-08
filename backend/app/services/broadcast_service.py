@@ -406,24 +406,53 @@ async def get_job_logs(
     limit: int = 100,
     offset: int = 0,
 ) -> list[BroadcastLog]:
-    query = select(BroadcastLog).where(BroadcastLog.job_id == job_id)
+    try:
+        jid = uuid.UUID(job_id) if isinstance(job_id, str) else job_id
+    except (ValueError, TypeError):
+        jid = job_id
 
-    if filters:
-        if filters.get("status"):
-            query = query.where(BroadcastLog.status == filters["status"])
-        if filters.get("error_type"):
-            query = query.where(BroadcastLog.error_type == filters["error_type"])
-        if filters.get("search"):
-            search_val = filters["search"].replace("%", "\\%").replace("_", "\\_")
-            search = f"%{search_val}%"
-            query = query.where(BroadcastLog.group_identifier.ilike(search, escape="\\"))
+    query = select(BroadcastLog).where(BroadcastLog.job_id == jid)
 
-        if filters.get("cycle"):
-            query = query.where(BroadcastLog.cycle_number == int(filters["cycle"]))
+    if filters and filters.get("cycle"):
+        query = query.where(BroadcastLog.cycle_number == int(filters["cycle"]))
 
-    query = query.order_by(BroadcastLog.sent_at.asc()).offset(offset).limit(limit)
+    query = query.order_by(BroadcastLog.cycle_number.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
-    return list(result.scalars().all())
+    cycle_logs = list(result.scalars().all())
+
+    # If status, error_type, or search filters are applied, filter the items within details
+    if filters and (filters.get("status") or filters.get("error_type") or filters.get("search")):
+        st_filter = filters.get("status")
+        err_filter = filters.get("error_type")
+        s_filter = filters.get("search", "").lower()
+
+        filtered_logs = []
+        for cl in cycle_logs:
+            matched_details = []
+            for d in (cl.details or []):
+                if st_filter and d.get("status") != st_filter:
+                    continue
+                if err_filter and d.get("error_type") != err_filter:
+                    continue
+                if s_filter and s_filter not in (d.get("group_identifier") or "").lower():
+                    continue
+                matched_details.append(d)
+
+            cl_copy = BroadcastLog(
+                id=cl.id,
+                job_id=cl.job_id,
+                cycle_number=cl.cycle_number,
+                total_groups=cl.total_groups,
+                sent_count=sum(1 for d in matched_details if d.get("status") == "success"),
+                fail_count=sum(1 for d in matched_details if d.get("status") == "error"),
+                duration_ms=cl.duration_ms,
+                created_at=cl.created_at,
+                details=matched_details,
+            )
+            filtered_logs.append(cl_copy)
+        return filtered_logs
+
+    return cycle_logs
 
 
 # ── Broadcast Execution (runs as asyncio.Task in-process) ─────────────────────
@@ -602,6 +631,83 @@ async def _get_broadcast_job_status(jid: uuid.UUID | str) -> str | None:
         return res.scalar_one_or_none()
 
 
+async def _flush_cycle_logs(
+    job_uuid: uuid.UUID | str,
+    cycle_number: int,
+    details: list[dict],
+    total_groups: int = 0,
+    sent: int | None = None,
+    failed: int | None = None,
+    progress: int | None = None,
+    duration_ms: int | None = None,
+) -> None:
+    """Save or update the single cycle-level BroadcastLog row in PostgreSQL with JSONB details.
+
+    Also updates sent_count, fail_count, and progress on the BroadcastJob record.
+    """
+    if not details and sent is None and failed is None and progress is None:
+        return
+
+    from app.database import async_session_factory
+
+    try:
+        job_uuid_obj = uuid.UUID(str(job_uuid))
+    except (ValueError, TypeError):
+        job_uuid_obj = job_uuid
+
+    cycle_details_copy = list(details)
+    details.clear()
+
+    async with async_session_factory() as db:
+        if sent is not None or failed is not None or progress is not None:
+            job_res = await db.execute(
+                select(BroadcastJob).where(BroadcastJob.id == job_uuid_obj)
+            )
+            db_job = job_res.scalar_one_or_none()
+            if db_job:
+                if sent is not None:
+                    db_job.sent_count = sent
+                if failed is not None:
+                    db_job.fail_count = failed
+                if progress is not None:
+                    db_job.progress = progress
+
+        if cycle_details_copy:
+            # Check if this cycle log row already exists
+            log_res = await db.execute(
+                select(BroadcastLog).where(
+                    BroadcastLog.job_id == job_uuid_obj,
+                    BroadcastLog.cycle_number == cycle_number,
+                )
+            )
+            db_log = log_res.scalar_one_or_none()
+            if db_log:
+                existing_details = list(db_log.details or [])
+                existing_details.extend(cycle_details_copy)
+                db_log.details = existing_details
+                db_log.sent_count = sum(1 for d in existing_details if d.get("status") == "success")
+                db_log.fail_count = sum(1 for d in existing_details if d.get("status") == "error")
+                db_log.total_groups = max(total_groups, len(existing_details))
+                if duration_ms is not None:
+                    db_log.duration_ms = duration_ms
+            else:
+                cycle_sent = sum(1 for d in cycle_details_copy if d.get("status") == "success")
+                cycle_failed = sum(1 for d in cycle_details_copy if d.get("status") == "error")
+                new_log = BroadcastLog(
+                    job_id=job_uuid_obj,
+                    cycle_number=cycle_number,
+                    total_groups=total_groups or len(cycle_details_copy),
+                    sent_count=cycle_sent,
+                    fail_count=cycle_failed,
+                    duration_ms=duration_ms,
+                    created_at=datetime.now(timezone.utc),
+                    details=cycle_details_copy,
+                )
+                db.add(new_log)
+
+        await db.commit()
+
+
 async def execute_broadcast(job_id: str):
     """Execute a broadcast job. Runs as an asyncio.Task in the FastAPI process."""
     from app.database import async_session_factory
@@ -614,6 +720,14 @@ async def execute_broadcast(job_id: str):
 
     job_id_str = str(job_uuid)
     _get_current_status = _get_broadcast_job_status
+
+    pending_cycle_details: list[dict] = []
+    current_cycle_number: int = 1
+    cycle_start_time: float = time.time()
+    total_items_count: int = 0
+    sent: int = 0
+    failed: int = 0
+    last_progress: int = 0
 
     try:
         # ── Initial setup: copy DB data before any Telegram/network I/O ──
@@ -635,9 +749,11 @@ async def execute_broadcast(job_id: str):
             mode = job_orm.mode
             custom_text = job_orm.custom_text
             account_ids = list(job_orm.account_ids or [])
-            sent = job_orm.sent_count
-            failed = job_orm.fail_count
+            sent = job_orm.sent_count or 0
+            failed = job_orm.fail_count or 0
+            last_progress = job_orm.progress or 0
             total_groups = job_orm.total_groups
+            total_items_count = total_groups
             group_list_id = job_orm.group_list_id
             text_list_id = job_orm.text_list_id
 
@@ -656,6 +772,7 @@ async def execute_broadcast(job_id: str):
                 )
                 return
             items = list(group_list.items or [])
+            total_items_count = len(items)
             group_list_name = group_list.name
 
             texts = []
@@ -752,6 +869,8 @@ async def execute_broadcast(job_id: str):
         while True:
             is_looping = loop_enabled
             current_cycle = cycle_count + 1
+            current_cycle_number = current_cycle
+            cycle_start_time = time.time()
 
             # ── Every cycle, retry pending groups first ──
             if pending_pool and is_looping:
@@ -836,6 +955,16 @@ async def execute_broadcast(job_id: str):
                     if current_status is None or current_status == "cancelled":
                         break
                     while current_status == "paused":
+                        if pending_cycle_details:
+                            await _flush_cycle_logs(
+                                job_uuid,
+                                cycle_number=current_cycle_number,
+                                details=pending_cycle_details,
+                                total_groups=total_items_count,
+                                sent=sent,
+                                failed=failed,
+                                progress=last_progress,
+                            )
                         await _interruptible_sleep(
                             job_id_str, 86400
                         )  # Sleep indefinitely until woken
@@ -898,6 +1027,16 @@ async def execute_broadcast(job_id: str):
                     break
 
                 if not active_accounts:
+                    if pending_cycle_details:
+                        await _flush_cycle_logs(
+                            job_uuid,
+                            cycle_number=current_cycle_number,
+                            details=pending_cycle_details,
+                            total_groups=total_items_count,
+                            sent=sent,
+                            failed=failed,
+                            progress=last_progress,
+                        )
                     async with async_session_factory() as db_fail:
                         result = await db_fail.execute(
                             select(BroadcastJob).where(BroadcastJob.id == job_uuid)
@@ -967,32 +1106,24 @@ async def execute_broadcast(job_id: str):
                     }
                     failed += 1
 
-                    # Update progress & save log in fresh session
-                    async with async_session_factory() as fresh_db:
-                        job_res = await fresh_db.execute(
-                            select(BroadcastJob).where(BroadcastJob.id == job_uuid)
-                        )
-                        db_job = job_res.scalar_one_or_none()
-                        if db_job:
-                            db_job.progress = (
-                                int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
-                            )
-                            db_job.sent_count = sent
-                            db_job.fail_count = failed
+                    # Buffer log in-memory (committed at cycle end or graceful exit)
+                    current_progress = (
+                        int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                    )
+                    last_progress = current_progress
 
-                        db_log = BroadcastLog(
-                            job_id=job_uuid,
-                            cycle_number=current_cycle,
-                            group_identifier=group_identifier,
-                            account_id_used=_uuid.UUID(acc_id_str) if acc_id_str else None,
-                            sent_text=chosen_text,
-                            status=log_status,
-                            error_type=log_err_type,
-                            error_message=log_err_msg,
-                            sent_at=datetime.now(timezone.utc),
-                        )
-                        fresh_db.add(db_log)
-                        await fresh_db.commit()
+                    pending_cycle_details.append({
+                        "group_identifier": group_identifier,
+                        "group_id": None,
+                        "account_id_used": acc_id_str,
+                        "account_name": acc_name,
+                        "status": log_status,
+                        "error_type": log_err_type,
+                        "error_message": log_err_msg,
+                        "sent_text": chosen_text,
+                        "duration_ms": None,
+                        "sent_at": datetime.now(timezone.utc).isoformat(),
+                    })
 
                     await _push_broadcast(
                         job_id_str,
@@ -1254,34 +1385,24 @@ async def execute_broadcast(job_id: str):
                             if current_acc_idx >= len(active_accounts) and active_accounts:
                                 current_acc_idx = 0
 
-                # Save log and update progress
-                async with async_session_factory() as fresh_db:
-                    job_res = await fresh_db.execute(
-                        select(BroadcastJob).where(BroadcastJob.id == job_uuid)
-                    )
-                    db_job = job_res.scalar_one_or_none()
-                    if db_job:
-                        db_job.progress = (
-                            int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
-                        )
-                        db_job.sent_count = sent
-                        db_job.fail_count = failed
+                # Buffer log in-memory (committed at cycle end or graceful exit)
+                current_progress = (
+                    int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                )
+                last_progress = current_progress
 
-                    db_log = BroadcastLog(
-                        job_id=job_uuid,
-                        cycle_number=current_cycle,
-                        group_identifier=group_identifier,
-                        account_id_used=_uuid.UUID(acc_id_str) if acc_id_str else None,
-                        sent_text=chosen_text,
-                        status=log_status,
-                        error_type=log_err_type,
-                        error_message=log_err_msg,
-                        duration_ms=log_duration_ms,
-                        group_id=log_group_id,
-                        sent_at=datetime.now(timezone.utc),
-                    )
-                    fresh_db.add(db_log)
-                    await fresh_db.commit()
+                pending_cycle_details.append({
+                    "group_identifier": group_identifier,
+                    "group_id": log_group_id,
+                    "account_id_used": acc_id_str,
+                    "account_name": acc_name,
+                    "status": log_status,
+                    "error_type": log_err_type,
+                    "error_message": log_err_msg,
+                    "sent_text": chosen_text,
+                    "duration_ms": log_duration_ms,
+                    "sent_at": datetime.now(timezone.utc).isoformat(),
+                })
 
                 await _push_broadcast(
                     job_id_str,
@@ -1331,6 +1452,16 @@ async def execute_broadcast(job_id: str):
                 logger.warning(
                     "Broadcast Job %s has been stopped because there is no valid group", job_id_str
                 )
+                if pending_cycle_details:
+                    await _flush_cycle_logs(
+                        job_uuid,
+                        cycle_number=current_cycle_number,
+                        details=pending_cycle_details,
+                        total_groups=total_items_count,
+                        sent=sent,
+                        failed=failed,
+                        progress=last_progress,
+                    )
                 log_msg = (
                     f"Broadcast Job {job_id_str} has been stopped because there is no valid group"
                 )
@@ -1365,6 +1496,20 @@ async def execute_broadcast(job_id: str):
                 )
                 break
 
+            # Flush cycle logs to database as 1 cycle row with JSONB details
+            cycle_duration_ms = int((time.time() - cycle_start_time) * 1000)
+            cycle_details_snapshot = list(pending_cycle_details)
+            await _flush_cycle_logs(
+                job_uuid,
+                cycle_number=current_cycle,
+                details=pending_cycle_details,
+                total_groups=len(items),
+                sent=sent,
+                failed=failed,
+                progress=100 if len(items) > 0 else 0,
+                duration_ms=cycle_duration_ms,
+            )
+
             if is_looping:
                 cycle_count += 1
                 await _push_broadcast(
@@ -1383,9 +1528,6 @@ async def execute_broadcast(job_id: str):
                     from app.services.broadcast_log_sender import send_cycle_summary
 
                     async with async_session_factory() as db_summary:
-                        cycle_logs = await get_job_logs(
-                            db_summary, job_id_str, {"cycle": cycle_count}, limit=9999
-                        )
                         # Re-fetch database job to satisfy send_cycle_summary dependencies
                         result = await db_summary.execute(
                             select(BroadcastJob).where(BroadcastJob.id == job_uuid)
@@ -1408,7 +1550,7 @@ async def execute_broadcast(job_id: str):
                             group_list_name=group_list_name or "—",
                             total_groups=len(items),
                             active_this_round=len(items),
-                            cycle_logs=cycle_logs,
+                            cycle_logs=cycle_details_snapshot,
                             accounts_by_id=accounts_by_id,
                             item_type_by_identifier=item_type_by_id,
                         )
@@ -1435,6 +1577,16 @@ async def execute_broadcast(job_id: str):
                         ):
                             break
                         while current_status == "paused":
+                            if pending_cycle_details:
+                                await _flush_cycle_logs(
+                                    job_uuid,
+                                    cycle_number=current_cycle_number,
+                                    details=pending_cycle_details,
+                                    total_groups=total_items_count,
+                                    sent=sent,
+                                    failed=failed,
+                                    progress=last_progress,
+                                )
                             await _interruptible_sleep(
                                 job_id_str, 86400
                             )  # Sleep indefinitely until woken
@@ -1462,6 +1614,23 @@ async def execute_broadcast(job_id: str):
         # Mark completed (only for non-looping jobs)
         current_status = await _get_current_status(job_uuid)
         if current_status == "running" and not loop_enabled:
+            # Ensure pending cycle logs are flushed as a cycle row
+            if pending_cycle_details:
+                cycle_details_snapshot = list(pending_cycle_details)
+                cycle_duration_ms = int((time.time() - cycle_start_time) * 1000)
+                await _flush_cycle_logs(
+                    job_uuid,
+                    cycle_number=current_cycle_number,
+                    details=pending_cycle_details,
+                    total_groups=total_items_count,
+                    sent=sent,
+                    failed=failed,
+                    progress=100,
+                    duration_ms=cycle_duration_ms,
+                )
+            elif "cycle_details_snapshot" not in locals():
+                cycle_details_snapshot = []
+
             async with async_session_factory() as db_complete:
                 result = await db_complete.execute(
                     select(BroadcastJob).where(BroadcastJob.id == job_uuid)
@@ -1490,9 +1659,6 @@ async def execute_broadcast(job_id: str):
                         from app.services.broadcast_log_sender import send_cycle_summary
 
                         final_cycle = (cycle_count or 0) + 1
-                        cycle_logs = await get_job_logs(
-                            db_complete, job_id_str, {"cycle": final_cycle}, limit=9999
-                        )
                         accounts_by_id = {
                             a["account_id"]: await _account_for_log(a["account_id"], db_complete)
                             for a in active_accounts
@@ -1509,7 +1675,7 @@ async def execute_broadcast(job_id: str):
                                 group_list_name=group_list_name or "—",
                                 total_groups=len(items),
                                 active_this_round=len(items),
-                                cycle_logs=cycle_logs,
+                                cycle_logs=cycle_details_snapshot,
                                 accounts_by_id=accounts_by_id,
                                 item_type_by_identifier=item_type_by_id,
                             )
@@ -1537,6 +1703,32 @@ async def execute_broadcast(job_id: str):
                 )
         except Exception:
             pass
+    finally:
+        if pending_cycle_details:
+            try:
+                logger.info(
+                    "Graceful exit: Flushing %d pending cycle details for job %s (cycle %d)",
+                    len(pending_cycle_details),
+                    job_id_str,
+                    current_cycle_number,
+                )
+                await asyncio.shield(
+                    _flush_cycle_logs(
+                        job_uuid,
+                        cycle_number=current_cycle_number,
+                        details=pending_cycle_details,
+                        total_groups=total_items_count,
+                        sent=sent,
+                        failed=failed,
+                        progress=last_progress,
+                    )
+                )
+            except Exception as flush_exc:
+                logger.exception(
+                    "Failed to flush pending cycle logs for job %s during graceful exit: %s",
+                    job_id_str,
+                    flush_exc,
+                )
 
 
 def start_broadcast_task(job_id: str | uuid.UUID) -> bool:

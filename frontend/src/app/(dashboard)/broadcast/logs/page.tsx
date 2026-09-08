@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAccounts } from "@/hooks/use-accounts";
-import { type BroadcastJob, type BroadcastLog } from "@/hooks/use-broadcast";
+import { type BroadcastJob, type BroadcastLog, type BroadcastCycleDetail } from "@/hooks/use-broadcast";
 import { cn, formatDate } from "@/lib/utils";
 import { TableSkeleton } from "@/components/ui/skeleton-cards";
 import {
@@ -68,7 +68,7 @@ export default function BroadcastLogsPage() {
 
   const selectedJob: BroadcastJob | undefined = jobs?.find((j) => j.id === selectedJobId);
 
-  // Fetch all logs for the selected job (limit 500, polled if running)
+  // Fetch all cycle logs for the selected job (limit 500, polled if running)
   const {
     data: allLogs,
     isLoading: logsLoading,
@@ -85,26 +85,15 @@ export default function BroadcastLogsPage() {
     refetchInterval: selectedJob?.status === "running" ? 3000 : false,
   });
 
-  // Group logs by cycle_number to produce cycle summaries
+  // Each log in allLogs represents one cycle directly
   const cycleSummaries: CycleSummary[] = useMemo(() => {
     if (!allLogs || allLogs.length === 0) return [];
-    const map = new Map<number, { total: number; success: number; error: number }>();
-    for (const log of allLogs) {
-      const key = log.cycle_number;
-      if (!map.has(key)) {
-        map.set(key, { total: 0, success: 0, error: 0 });
-      }
-      const entry = map.get(key)!;
-      entry.total += 1;
-      if (log.status === "success") entry.success += 1;
-      else if (log.status === "error") entry.error += 1;
-    }
-    return Array.from(map.entries())
-      .map(([cycleNumber, counts]) => ({
-        cycleNumber,
-        totalCount: counts.total,
-        successCount: counts.success,
-        errorCount: counts.error,
+    return allLogs
+      .map((log) => ({
+        cycleNumber: log.cycle_number,
+        totalCount: log.total_groups,
+        successCount: log.sent_count,
+        errorCount: log.fail_count,
       }))
       .sort((a, b) => a.cycleNumber - b.cycleNumber);
   }, [allLogs]);
@@ -155,20 +144,22 @@ export default function BroadcastLogsPage() {
     []
   );
 
-  // Filter logs for the currently expanded cycle
-  const logsForCycle = useMemo(() => {
+  // Filter detail items for the currently expanded cycle
+  const logsForCycle = useMemo<BroadcastCycleDetail[]>(() => {
     if (!allLogs || expandedCycle === null) return [];
-    let filtered = allLogs.filter((l) => l.cycle_number === expandedCycle);
+    const targetCycle = allLogs.find((l) => l.cycle_number === expandedCycle);
+    if (!targetCycle || !targetCycle.details) return [];
+    let list = targetCycle.details;
     if (statusFilter) {
-      filtered = filtered.filter((l) => l.status === statusFilter);
+      list = list.filter((l) => l.status === statusFilter);
     }
     if (searchFilter) {
       const q = searchFilter.toLowerCase();
-      filtered = filtered.filter((l) =>
-        l.group_identifier.toLowerCase().includes(q)
+      list = list.filter((l) =>
+        (l.group_identifier || "").toLowerCase().includes(q)
       );
     }
-    return filtered;
+    return list;
   }, [allLogs, expandedCycle, statusFilter, searchFilter]);
 
   async function handleExport(format: "csv" | "json") {
@@ -326,16 +317,16 @@ export default function BroadcastLogsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {logs.map((log) => {
-                          const accountName = log.account_id_used
+                        {logs.map((log, idx) => {
+                          const accountName = log.account_name || (log.account_id_used
                             ? accountMap.get(log.account_id_used) || "Deleted Account"
-                            : "—";
+                            : "—");
                           return (
-                            <tr key={log.id} className="hover:bg-gray-50 transition">
+                            <tr key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-gray-50 transition">
                               <td className="px-4 py-3">
                                 <span className="inline-flex items-center gap-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
                                   <Layers className="h-3 w-3" />
-                                  C{log.cycle_number}
+                                  C{expandedCycle}
                                 </span>
                               </td>
                               <td className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">

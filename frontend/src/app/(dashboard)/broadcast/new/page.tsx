@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,6 +62,25 @@ export default function NewBroadcastPage() {
   const [wsLogs, setWsLogs] = useState<any[]>([]);
   const { data: activeJob, refetch: refetchJob } = useBroadcastJob(activeJobId || "");
   const { data: jobLogs, refetch: refetchLogs } = useBroadcastLogs(activeJobId || "");
+  const historicalLogs = useMemo(() => {
+    if (!jobLogs || jobLogs.length === 0) return [];
+    const items: Array<{ id: string; cycle_number: number; group_identifier: string; status: string; error_type: string | null }> = [];
+    for (const cycle of jobLogs) {
+      if (cycle.details) {
+        for (let i = 0; i < cycle.details.length; i++) {
+          const d = cycle.details[i];
+          items.push({
+            id: `${cycle.id}-${cycle.cycle_number}-${i}`,
+            cycle_number: cycle.cycle_number,
+            group_identifier: d.group_identifier,
+            status: d.status,
+            error_type: d.error_type,
+          });
+        }
+      }
+    }
+    return items;
+  }, [jobLogs]);
   const actionMutation = useBroadcastAction();
   const queryClient = useQueryClient();
 
@@ -683,10 +702,10 @@ export default function NewBroadcastPage() {
           </div>
 
           {/* Live log feed (merged: REST logs + WebSocket live logs) */}
-          {(jobLogs && jobLogs.length > 0) || wsLogs.length > 0 ? (
+          {historicalLogs.length > 0 || wsLogs.length > 0 ? (
             <div className="border border-gray-100 rounded-lg max-h-60 overflow-y-auto divide-y divide-gray-100">
               {/* Show REST logs (historical) */}
-              {(jobLogs || []).slice(-30).reverse().map((log) => (
+              {historicalLogs.slice(-30).reverse().map((log) => (
                 <div key={log.id} className="px-3 py-2 text-sm flex items-center gap-2">
                   <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium font-mono">
                     C{log.cycle_number || "?"}
