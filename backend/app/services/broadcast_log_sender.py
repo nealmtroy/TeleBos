@@ -26,6 +26,13 @@ def _parse_dest(dest: str):
     # Automatically prepend @ for usernames
     return f"@{dest}"
 
+def _get_val(obj, attr, default=None):
+    """Retrieve attribute or dict key safely."""
+    if isinstance(obj, dict):
+        return obj.get(attr, default)
+    return getattr(obj, attr, default)
+
+
 def _format_cycle_summary(
     job_name: str,
     cycle_number: int,
@@ -42,11 +49,6 @@ def _format_cycle_summary(
     elapsed = end_time - start_time
     minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
     duration_str = f"{minutes}m {seconds}s"
-
-    def _get_val(obj, attr, default=None):
-        if isinstance(obj, dict):
-            return obj.get(attr, default)
-        return getattr(obj, attr, default)
 
     success_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "success")
     error_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "error")
