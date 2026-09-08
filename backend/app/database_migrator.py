@@ -497,16 +497,31 @@ def run_migrations(connection):
     connection.execute(
         text("CREATE INDEX IF NOT EXISTS ix_invite_jobs_user_id ON invite_jobs (user_id)")
     )
-    connection.execute(
-        text(
-            "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_sent ON broadcast_logs (job_id, sent_at)"
+    broadcast_cols = [c["name"] for c in inspector.get_columns("broadcast_logs")]
+    if "sent_at" in broadcast_cols:
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_sent ON broadcast_logs (job_id, sent_at)"
+            )
         )
-    )
-    connection.execute(
-        text(
-            "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_account_used ON broadcast_logs (account_id_used)"
+    if "account_id_used" in broadcast_cols:
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_account_used ON broadcast_logs (account_id_used)"
+            )
         )
-    )
+    if "cycle_number" in broadcast_cols:
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_cycle ON broadcast_logs (job_id, cycle_number)"
+            )
+        )
+    if "created_at" in broadcast_cols:
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_job_created ON broadcast_logs (job_id, created_at)"
+            )
+        )
     connection.execute(
         text(
             "CREATE INDEX IF NOT EXISTS ix_invite_logs_job_invited ON invite_logs (job_id, invited_at)"

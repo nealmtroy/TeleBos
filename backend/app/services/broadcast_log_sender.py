@@ -177,8 +177,14 @@ async def send_cycle_summary(
         end_time = datetime.now(timezone.utc)
         start_time = job.created_at  # Approximate start time for cycle
         if cycle_logs:
-            first_log = min(cycle_logs, key=lambda l: l.sent_at)
-            start_time = first_log.sent_at
+            raw_sent_at = _get_val(cycle_logs[0], "sent_at")
+            if isinstance(raw_sent_at, str):
+                try:
+                    start_time = datetime.fromisoformat(raw_sent_at)
+                except Exception:
+                    start_time = job.created_at
+            elif isinstance(raw_sent_at, datetime):
+                start_time = raw_sent_at
             
         # Extract account phone/name mappings
         accounts_map = {}
