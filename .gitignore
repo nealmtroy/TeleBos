@@ -5,6 +5,8 @@ __pycache__/
 venv/
 .venv/
 *.egg-info/
+uv.lock
+*.lock
 dist/
 build/
 
@@ -42,8 +44,7 @@ coverage/
 .playwright-mcp/
 testing/
 
-# Celery & Logs
-celerybeat-schedule
+# Worker & Logs
 *.log
 
 # Telegram Session Data (Sensitive!)

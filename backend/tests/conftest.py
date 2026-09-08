@@ -10,8 +10,6 @@ os.environ.update(
         "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5432/test",
         "DATABASE_URL_SYNC": "postgresql://test:test@localhost:5432/test",
         "REDIS_URL": "redis://localhost:6379/15",
-        "CELERY_BROKER_URL": "redis://localhost:6379/14",
-        "CELERY_RESULT_BACKEND": "redis://localhost:6379/13",
         "TELEBOS_ENV": "test",
         "PRODUCTION": "false",
     }

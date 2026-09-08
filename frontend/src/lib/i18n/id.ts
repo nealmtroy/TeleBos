@@ -1162,7 +1162,7 @@ const id: Dict = {
     section4Title: "Retensi Data",
     section4Desc: "Kami menyimpan informasi akun Anda selama akun Anda aktif. Anda dapat menghapus akun Anda kapan saja, yang akan menghapus data pribadi Anda dan memutuskan semua akun Telegram yang terhubung. Log siaran mungkin disimpan untuk tujuan audit.",
     section5Title: "Layanan Pihak Ketiga",
-    section5Desc: "TeleBos terintegrasi dengan Telegram melalui pustaka Telethon. Kami juga menggunakan PostgreSQL untuk penyimpanan data, Redis untuk caching dan antrian tugas, dan Celery untuk pemrosesan latar belakang. Layanan ini dioperasikan di infrastruktur kami sendiri dan data Anda tidak meninggalkan kendali kami.",
+    section5Desc: "TeleBos terintegrasi dengan Telegram melalui pustaka Telethon. Kami juga menggunakan PostgreSQL untuk penyimpanan data, Redis untuk caching dan antrian tugas, dan worker asinkron mandiri untuk pemrosesan latar belakang. Layanan ini dioperasikan di infrastruktur kami sendiri dan data Anda tidak meninggalkan kendali kami.",
     section6Title: "Hubungi Kami",
     section6Desc: "Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami melalui repositori GitHub kami atau hubungi pengelola proyek.",
   },

@@ -38,7 +38,7 @@ from app.utils.telethon_helpers import (
 
 logger = logging.getLogger(__name__)
 
-# In-process task tracker for background broadcast jobs (replaces Celery)
+# Worker-local task tracker for background broadcast jobs
 _running_tasks: dict[str, asyncio.Task] = {}
 
 from app.utils.async_helpers import (
@@ -262,8 +262,9 @@ async def start_broadcast(
     await db.commit()
     await db.refresh(job)
 
-    # Run broadcast in background asyncio task (no Celery needed)
-    start_broadcast_task(job.id)
+    # Enqueue broadcast job to Redis for dedicated async worker
+    from app.utils.redis_dispatcher import enqueue_job
+    await enqueue_job("broadcast", job.id)
 
     return job
 
@@ -393,8 +394,9 @@ async def retry_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob
     await db.commit()
     await db.refresh(job)
 
-    # Run broadcast in background asyncio task
-    start_broadcast_task(job.id)
+    # Enqueue broadcast job to Redis for dedicated async worker
+    from app.utils.redis_dispatcher import enqueue_job
+    await enqueue_job("broadcast", job.id)
 
     return job
 
@@ -460,15 +462,22 @@ async def get_job_logs(
 
 async def _push_broadcast(job_id: str, event_type: str, data: dict) -> None:
     """Push a real-time event to WebSocket clients subscribed to this job."""
+    channel = f"broadcast:{job_id}"
+    payload = {"type": event_type, **data}
+    try:
+        from app.utils.redis_dispatcher import publish_ws_event
+
+        await publish_ws_event(channel, payload)
+    except Exception as push_exc:
+        logger.warning("Redis WS push failed for job %s: %s", job_id, push_exc)
+
     try:
         from app.api.ws import manager
 
-        await manager.broadcast(
-            f"broadcast:{job_id}",
-            {"type": event_type, **data},
-        )
-    except Exception as push_exc:
-        logger.warning("WS push failed for job %s: %s", job_id, push_exc)
+        if manager.get_channel_count(channel) > 0:
+            await manager.broadcast(channel, payload)
+    except Exception:
+        pass
 
 
 async def _account_for_log(

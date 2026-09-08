@@ -98,6 +98,8 @@ async def pause_invite_job(
     if job.status != "running":
         raise HTTPException(status_code=400, detail="Job is not running")
     await invite_service.update_invite_job_status(db, job, "paused")
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("invite", job.id, "pause")
     return {"message": "Paused"}
 
 
@@ -114,7 +116,8 @@ async def resume_invite_job(
         raise HTTPException(status_code=400, detail="Job is not paused")
     await invite_service.update_invite_job_status(db, job, "running")
     await db.commit()
-    invite_service.start_invite_task(job.id)
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("invite", job.id, "resume")
     return {"message": "Resumed"}
 
 
@@ -130,6 +133,8 @@ async def stop_invite_job(
     if job.status not in ("running", "paused", "pending"):
         raise HTTPException(status_code=400, detail="Job cannot be stopped")
     await invite_service.update_invite_job_status(db, job, "cancelled")
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("invite", job.id, "stop")
     return {"message": "Stopped"}
 
 

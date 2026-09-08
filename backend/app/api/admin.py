@@ -996,6 +996,8 @@ async def admin_pause_broadcast(
 
     await broadcast_service.update_job_status(db, job, "paused")
     await db.commit()
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("broadcast", job.id, "pause")
     return {"message": "Job paused successfully", "job_id": job_id, "status": "paused"}
 
 
@@ -1022,8 +1024,8 @@ async def admin_resume_broadcast(
     await broadcast_service.update_job_status(db, job, "running")
     await db.commit()
 
-    # Re-spawn in-memory background task if not running
-    broadcast_service.start_broadcast_task(job.id)
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("broadcast", job.id, "resume")
 
     return {"message": "Job resumed successfully", "job_id": job_id, "status": "running"}
 
@@ -1050,6 +1052,8 @@ async def admin_stop_broadcast(
 
     await broadcast_service.update_job_status(db, job, "cancelled")
     await db.commit()
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("broadcast", job.id, "stop")
     return {"message": "Job stopped successfully", "job_id": job_id, "status": "cancelled"}
 
 

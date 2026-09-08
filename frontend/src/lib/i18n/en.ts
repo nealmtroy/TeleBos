@@ -1162,7 +1162,7 @@ const en: Dict = {
     section4Title: "Data Retention",
     section4Desc: "We retain your account information for as long as your account is active. You may delete your account at any time, which will remove your personal data and disconnect all linked Telegram accounts. Broadcast logs may be retained for audit purposes.",
     section5Title: "Third-Party Services",
-    section5Desc: "TeleBos integrates with Telegram via the Telethon library. We also use PostgreSQL for data storage, Redis for caching and task queues, and Celery for background job processing. These services are operated on our own infrastructure and your data does not leave our control.",
+    section5Desc: "TeleBos integrates with Telegram via the Telethon library. We also use PostgreSQL for data storage, Redis for caching and task queues, and a dedicated asynchronous worker for background job processing. These services are operated on our own infrastructure and your data does not leave our control.",
     section6Title: "Contact Us",
     section6Desc: "If you have questions about this Privacy Policy, please contact us through our GitHub repository or reach out to the project maintainers.",
   },

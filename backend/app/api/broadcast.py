@@ -209,6 +209,8 @@ async def pause_job(
     if job.status != "running":
         raise HTTPException(status_code=400, detail="Job is not running")
     await broadcast_service.update_job_status(db, job, "paused")
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("broadcast", job.id, "pause")
     return {"message": "Paused"}
 
 
@@ -225,7 +227,8 @@ async def resume_job(
         raise HTTPException(status_code=400, detail="Job is not paused")
     await broadcast_service.update_job_status(db, job, "running")
     await db.commit()
-    broadcast_service.start_broadcast_task(job.id)
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("broadcast", job.id, "resume")
     return {"message": "Resumed"}
 
 
@@ -241,6 +244,8 @@ async def stop_job(
     if job.status not in ("running", "paused", "pending"):
         raise HTTPException(status_code=400, detail="Job cannot be stopped")
     await broadcast_service.update_job_status(db, job, "cancelled")
+    from app.utils.redis_dispatcher import publish_job_control
+    await publish_job_control("broadcast", job.id, "stop")
     return {"message": "Stopped"}
 
 

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[2b64ae2e](https://github.com/nealmtroy/TeleBos/commit/2b64ae2e)**: fix(migrator): remove legacy sent_at and account_id_used indexes
 - **[d3f32d42](https://github.com/nealmtroy/TeleBos/commit/d3f32d42)**: fix(migrator): guard legacy index creation and handle sent_at in log sender
 - **[43fdc464](https://github.com/nealmtroy/TeleBos/commit/43fdc464)**: fix(migrator): add created_at column for broadcast_logs
 - **[5475461c](https://github.com/nealmtroy/TeleBos/commit/5475461c)**: fix(migrator): align database_migrator with cycle-level broadcast_logs schema

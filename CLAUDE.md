@@ -25,14 +25,14 @@ Use one detailed owner per topic; do not copy long specifications between docume
 | --- | --- |
 | Frontend | Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui, React Query, Zustand |
 | Backend | FastAPI, Python 3.12, async SQLAlchemy, Telethon |
-| Workers | Celery with Redis |
+| Workers | Dedicated Async Worker with Redis Queue & Pub/Sub |
 | Storage | PostgreSQL 16 via asyncpg |
 | Authentication | Better Auth backed by PostgreSQL sessions |
-| Real time | Native FastAPI WebSockets |
+| Real time | Native FastAPI WebSockets with Redis Pub/Sub bridge |
 
 - `backend/app/api/` holds thin request handlers; validate there and delegate business rules to `backend/app/services/`.
 - `backend/app/models/` holds SQLAlchemy models; `backend/app/schemas/` holds Pydantic v2 request/response models.
-- `backend/app/workers/` contains Celery task entry points; workers bridge to async with `asyncio.run()` and create their own database sessions.
+- `backend/app/workers/` contains the dedicated async worker daemon (`async_worker.py`) processing broadcast and invite background jobs independently from the webserver.
 - `frontend/src/app/` contains routes, `components/` UI, `hooks/` React Query/WebSocket integrations, `lib/` clients/utilities, and `store/` Zustand state.
 
 ## API capability inventory
@@ -71,7 +71,7 @@ cd backend
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
-celery -A app.workers.celery_app worker --loglevel=info
+python -m app.workers.async_worker
 python -m pytest
 ruff check app tests
 ruff format --check tests
@@ -101,7 +101,7 @@ curl http://localhost:8000/api/v1/health
 
 ## Engineering invariants
 
-- **Async boundaries:** never add synchronous database or Telethon access to async application paths. Celery is the only sync-to-async bridge.
+- **Async boundaries:** never add synchronous database or Telethon access to async application paths. All background workers run natively on asyncio.
 - **Layering:** keep API controllers thin; put business behavior in services. Avoid circular imports; deferred imports are acceptable when crossing sensitive layers.
 - **Encryption:** use `app.utils.encryption.encrypt()`/`decrypt()` for new Telegram-sensitive values. Never store session strings or 2FA passwords in plaintext.
 - **Security:** read `SECURITY.md` before changing authentication, roles, keys, uploads, token formats, WebSockets, or deployment behavior.

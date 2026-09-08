@@ -298,15 +298,6 @@ async def lifespan(app: FastAPI):
         reconnected = await session_manager.reconnect_all(db)
         logger.info("Auto-reconnected %d accounts with real-time handlers", reconnected)
 
-        # Resume any running broadcast and invite jobs
-        from app.services.broadcast_service import resume_running_broadcasts_on_startup
-        from app.services.invite_service import resume_running_invites_on_startup
-
-        resumed_broadcasts = await resume_running_broadcasts_on_startup(db)
-        logger.info("Auto-resumed %d running broadcast jobs", resumed_broadcasts)
-
-        resumed_invites = await resume_running_invites_on_startup(db)
-        logger.info("Auto-resumed %d running invite jobs", resumed_invites)
 
         # Seed: ensure nealmtroy@gmail.com is owner
         from sqlalchemy import select
@@ -362,6 +353,12 @@ async def lifespan(app: FastAPI):
     media_cleanup_task = asyncio.create_task(background_media_cleanup_loop())
     logger.info("Message media cache cleanup background task started (daily interval)")
 
+    # 8. Spawn Redis WebSocket bridge (relays worker progress events to frontend WebSockets)
+    from app.services.redis_ws_bridge import redis_ws_bridge_loop
+
+    redis_ws_bridge_task = asyncio.create_task(redis_ws_bridge_loop())
+    logger.info("Redis WebSocket bridge background task started")
+
     yield
     # Shutdown
     logger.info("Shutting down TeleBos API...")
@@ -416,22 +413,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Error closing SMM HTTP client: %s", e)
 
-    # 4. Gracefully cancel in-flight broadcast and invite background tasks
+    # 4. Cancel Redis WebSocket bridge
+    redis_ws_bridge_task.cancel()
     try:
-        from app.services.broadcast_service import cancel_all_broadcast_tasks
-
-        cancelled_b = await cancel_all_broadcast_tasks()
-        logger.info("Shutdown: Cancelled %d active broadcast tasks", cancelled_b)
-    except Exception as exc:
-        logger.warning("Shutdown: Error cancelling broadcast tasks: %s", exc)
-
-    try:
-        from app.services.invite_service import cancel_all_invite_tasks
-
-        cancelled_i = await cancel_all_invite_tasks()
-        logger.info("Shutdown: Cancelled %d active invite tasks", cancelled_i)
-    except Exception as exc:
-        logger.warning("Shutdown: Error cancelling invite tasks: %s", exc)
+        await redis_ws_bridge_task
+    except asyncio.CancelledError:
+        pass
 
     # 5. Stop Telegram clients while Redis and DB connections are still active
     await session_manager.stop()

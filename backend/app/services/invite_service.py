@@ -71,8 +71,9 @@ async def start_invite(
     await db.commit()
     await db.refresh(job)
 
-    # Run invite in background asyncio task
-    start_invite_task(job.id)
+    # Enqueue invite job to Redis for dedicated async worker
+    from app.utils.redis_dispatcher import enqueue_job
+    await enqueue_job("invite", job.id)
 
     return job
 
@@ -138,8 +139,9 @@ async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> Invit
     await db.commit()
     await db.refresh(job)
 
-    # Run invite in background asyncio task
-    start_invite_task(job.id)
+    # Enqueue invite job to Redis for dedicated async worker
+    from app.utils.redis_dispatcher import enqueue_job
+    await enqueue_job("invite", job.id)
 
     return job
 
@@ -177,15 +179,22 @@ async def get_invite_logs(
 
 async def _push_invite(job_id: str, event_type: str, data: dict) -> None:
     """Push a real-time event to WebSocket clients subscribed to this invite job."""
+    channel = f"invite:{job_id}"
+    payload = {"type": event_type, **data}
+    try:
+        from app.utils.redis_dispatcher import publish_ws_event
+
+        await publish_ws_event(channel, payload)
+    except Exception as push_exc:
+        logger.warning("Redis WS push failed for invite job %s: %s", job_id, push_exc)
+
     try:
         from app.api.ws import manager
 
-        await manager.broadcast(
-            f"invite:{job_id}",
-            {"type": event_type, **data},
-        )
-    except Exception as push_exc:
-        logger.warning("WS push failed for invite job %s: %s", job_id, push_exc)
+        if manager.get_channel_count(channel) > 0:
+            await manager.broadcast(channel, payload)
+    except Exception:
+        pass
 
 
 async def _resolve_group(client, item_type: str, group_identifier: str, telethon_mod):

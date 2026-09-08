@@ -18,10 +18,10 @@ TeleBos is a powerful multi-account Telegram manager web app. It lets users add 
 
 - **Frontend:** Next.js 14 (App Router), Tailwind CSS 3, shadcn/ui, React Query, Zustand, Recharts
 - **Backend:** FastAPI (Python 3.12), Telethon, SQLAlchemy 2.0 (async)
-- **Workers:** Celery (Redis broker)
+- **Workers:** Dedicated Async Worker (Redis Queue & Pub/Sub)
 - **Database:** PostgreSQL 16 (async via asyncpg)
 - **Cache/Queue:** Redis 7
-- **Real-time:** Native WebSocket (FastAPI)
+- **Real-time:** Native WebSocket (FastAPI) with Redis bridge
 
 ## Key Features
 

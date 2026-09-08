@@ -33,10 +33,11 @@ For exact first-party request/response contracts, start the backend and open:
 | Layer | Technology |
 | --- | --- |
 | Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui, React Query, Zustand |
-| Backend | FastAPI, Python 3.12, Telethon, Celery |
+| Backend | FastAPI, Python 3.12, Telethon |
+| Workers | Dedicated Async Worker (`app.workers.async_worker`) |
 | Database | PostgreSQL 16 via asyncpg |
-| Cache / queue | Redis 7 |
-| Real-time | Native FastAPI WebSockets |
+| Cache / queue | Redis 7 (Queue & Pub/Sub) |
+| Real-time | Native FastAPI WebSockets with Redis bridge |
 
 ## Quick Start
 
@@ -92,11 +93,11 @@ pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-Run the Celery worker in a separate terminal:
+Run the background async worker in a separate terminal:
 
 ```bash
 cd backend
-celery -A app.workers.celery_app worker --loglevel=info
+python -m app.workers.async_worker
 ```
 
 **Frontend**

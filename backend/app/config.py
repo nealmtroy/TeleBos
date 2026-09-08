@@ -19,10 +19,6 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Celery
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
-
     # App secret — used for signed photo URLs and other HMAC operations
     APP_SECRET_KEY: str = "change-this-secret-key-in-production"
 

@@ -23,7 +23,7 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 [Browser] ←── HTTPS ──→ [FastAPI Backend] ←── Telethon MTProto ──→ [Telegram]
                               │
                               ├── [PostgreSQL] (encrypted session data at rest)
-                              └── [Redis] (Celery broker, ephemeral only)
+                              └── [Redis] (Queue, Pub/Sub, rate limit, ephemeral only)
 ```
 
 - **Between browser and backend**: The primary trust boundary. Better Auth session token validation (via `x-better-auth-token` header or cookies) is enforced on all protected endpoints.
@@ -116,15 +116,16 @@ User enters code → POST /verify-code → Backend signs in, encrypts session st
 ### Broadcast Execution
 
 ```
-User → POST /broadcast/start → Creates BroadcastJob → Celery task queued
+User → POST /broadcast/start → Creates BroadcastJob → Enqueued to Redis Queue
                                                            │
-                                                     Worker decrypts session string
+                                                     Async Worker daemon consumes job
+                                                     Decrypts session string
                                                      Connects TelegramClient
                                                      Iterates groups, sends messages
-                                                     Logs per-group results
+                                                     Publishes logs & WS events
 ```
 
-**Risks**: Decrypted session string lives in Celery worker memory for the job duration. Consider zeroing the variable after use (though Python garbage collection makes this advisory only).
+**Risks**: Decrypted session string lives in worker memory for the job duration. Consider zeroing the variable after use (though Python garbage collection makes this advisory only).
 
 ## Incident Response
 
