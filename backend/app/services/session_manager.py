@@ -145,15 +145,16 @@ class SessionManager:
         self._last_marketplace_session_check = 0.0
         self._marketplace_session_check_task: asyncio.Task[None] | None = None
 
-    async def start(self) -> None:
+    async def start(self, enable_spam_checks: bool = False) -> None:
         """Start the periodic health check loop."""
         global _shutdown
         if self._running:
             return
         _shutdown = False
         self._running = True
+        self._enable_spam_checks = enable_spam_checks
         self._task = asyncio.create_task(self._health_loop())
-        logger.info("Session manager started")
+        logger.info("Session manager started (enable_spam_checks=%s)", enable_spam_checks)
 
     async def stop(self) -> None:
         """Stop the health check loop and all manager-owned background work."""
@@ -183,18 +184,19 @@ class SessionManager:
             except Exception as exc:
                 logger.warning("Session health check error: %s", exc)
 
-            # Periodic spam status check (runs every 1 hour)
-            try:
-                import time
-                current_time = time.time()
-                if self._last_spam_check == 0.0:
-                    # Initialize last spam check to avoid heavy queries on immediate startup, run it after 60s
-                    self._last_spam_check = current_time - 3540  # will trigger in 60s
-                elif current_time - self._last_spam_check > 3600:
-                    self._last_spam_check = current_time
-                    asyncio.create_task(self._check_all_accounts_spam())
-            except Exception as exc:
-                logger.warning("Periodic spam check trigger error: %s", exc)
+            # Periodic spam status check (only if explicitly enabled)
+            if getattr(self, "_enable_spam_checks", False):
+                try:
+                    import time
+                    current_time = time.time()
+                    if self._last_spam_check == 0.0:
+                        # Initialize last spam check to avoid heavy queries on immediate startup, run it after 60s
+                        self._last_spam_check = current_time - 3540  # will trigger in 60s
+                    elif current_time - self._last_spam_check > 3600:
+                        self._last_spam_check = current_time
+                        asyncio.create_task(self._check_all_accounts_spam())
+                except Exception as exc:
+                    logger.warning("Periodic spam check trigger error: %s", exc)
 
             should_check_marketplace_sessions = (
                 self._marketplace_session_check_task is None
@@ -273,14 +275,17 @@ class SessionManager:
         for account_id, phone in accounts_to_check:
             if not self._running:
                 break
-            logger.info("Auto checking spam status for account: %s", phone)
             try:
                 async with async_session_factory() as db:
+                    if await self.is_account_in_active_job(db, account_id):
+                        logger.info("Auto checking spam: skipping account %s (claimed by active worker job)", phone)
+                        continue
                     result = await db.execute(
                         select(TelegramAccount).where(TelegramAccount.id == account_id)
                     )
                     account = result.scalar_one_or_none()
                     if account:
+                        logger.info("Auto checking spam status for account: %s", phone)
                         await check_spam_status(db, account)
                         await db.commit()
             except Exception as e:

@@ -128,7 +128,12 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
     try:
         data = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
     except asyncio.TimeoutError:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+        try:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+        except Exception:
+            pass
+        return None
+    except WebSocketDisconnect:
         return None
 
     try:

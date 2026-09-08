@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[092df497](https://github.com/nealmtroy/TeleBos/commit/092df497)**: fix(core): block WS on-demand connection for active worker accounts and remove redundant sync
 - **[0f2af4ce](https://github.com/nealmtroy/TeleBos/commit/0f2af4ce)**: feat(core): consolidate Telegram background sync into async worker and harden log sender
 - **[07942365](https://github.com/nealmtroy/TeleBos/commit/07942365)**: fix(core): prevent concurrent MTProto session collisions between backend and worker
 - **[feabe416](https://github.com/nealmtroy/TeleBos/commit/feabe416)**: feat(worker): auto-resume running broadcast and invite jobs with smooth stagger
