@@ -90,3 +90,51 @@ async def test_send_cycle_summary_does_not_fail():
             text_list_name="Promo Text",
         )
         mock_send.assert_awaited_once()
+
+
+def test_format_cycle_summary_truncates_large_lists():
+    """Verify that cycle summary caps display to prevent exceeding Telegram 4096 character limit."""
+    start_time = datetime.now(timezone.utc)
+    end_time = datetime.now(timezone.utc)
+
+    # 100 successful targets and 100 error targets
+    cycle_logs = [
+        {"status": "success", "group_identifier": f"@success_group_{i}", "sent_at": start_time.isoformat()}
+        for i in range(100)
+    ] + [
+        {"status": "error", "group_identifier": f"@error_group_{i}", "error_type": "FloodWait", "sent_at": end_time.isoformat()}
+        for i in range(100)
+    ]
+
+    summary = _format_cycle_summary(
+        job_name="Huge Job",
+        cycle_number=4,
+        start_time=start_time,
+        end_time=end_time,
+        text_list_name="Promo",
+        group_list_name="Many Groups",
+        total_groups=200,
+        active_this_round=200,
+        cycle_logs=cycle_logs,
+        accounts_by_id={},
+        item_type_by_identifier={},
+    )
+
+    assert len(summary) <= 4000
+    assert "dan 75 grup lainnya" in summary
+    assert "dan 75 target gagal lainnya" in summary
+
+
+@pytest.mark.asyncio
+async def test_send_message_safe_handles_flood_wait():
+    """Verify that _send_message_safe catches FloodWaitError without propagating."""
+    from telethon.errors import FloodWaitError
+    from app.services.broadcast_log_sender import _send_message_safe
+
+    mock_client = AsyncMock()
+    mock_client.get_me = AsyncMock(return_value=SimpleNamespace(id=999))
+    mock_client.get_entity = AsyncMock(side_effect=FloodWaitError(request=None, capture=8676))
+
+    # Should not raise exception
+    await _send_message_safe(mock_client, "@teleboslogging_bot", "Test log message")
+

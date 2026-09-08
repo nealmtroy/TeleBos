@@ -293,13 +293,8 @@ async def lifespan(app: FastAPI):
 
     await session_manager.start()
 
-    # Auto-reconnect all active accounts and attach real-time event handlers
+    # Seed: ensure nealmtroy@gmail.com is owner
     async with async_session_factory() as db:
-        reconnected = await session_manager.reconnect_all(db)
-        logger.info("Auto-reconnected %d accounts with real-time handlers", reconnected)
-
-
-        # Seed: ensure nealmtroy@gmail.com is owner
         from sqlalchemy import select
         from app.models.user import User
 
@@ -321,25 +316,13 @@ async def lifespan(app: FastAPI):
 
     cleanup_task = asyncio.create_task(clean_pending_logins_task())
 
-    # 3. Spawn background stats updater (runs daily)
-    from app.services.stats_service import background_stats_updater
-
-    stats_updater_task = asyncio.create_task(background_stats_updater())
-
-    # 4. Spawn cached 2FA metadata updater (runs every 6 hours)
-    from app.services.twofa_sync_service import background_twofa_updater
-
-    twofa_sync_task = asyncio.create_task(background_twofa_updater())
-
-    # 5. Spawn background schedulers (adaptive sync, SMM services, SMM orders polling)
+    # 3. Spawn SMM background schedulers (services sync, orders polling)
+    # Note: Telegram MTProto schedulers (adaptive sync, stats updater, 2FA updater)
+    # have been consolidated into async-worker to prevent session collisions.
     from app.schedulers.background_tasks import (
-        adaptive_sequential_sync_loop,
         smm_services_sync_loop,
         smm_orders_poll_loop,
     )
-
-    adaptive_sync_task = asyncio.create_task(adaptive_sequential_sync_loop())
-    logger.info("Adaptive sequential background sync task started (coalesced loop)")
 
     smm_sync_task = asyncio.create_task(smm_services_sync_loop())
     logger.info("SMM services background sync task started (12-hour interval)")
@@ -364,27 +347,9 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down TeleBos API...")
 
     # 3. Cancel background tasks
-    twofa_sync_task.cancel()
-    try:
-        await twofa_sync_task
-    except asyncio.CancelledError:
-        pass
-
     cleanup_task.cancel()
     try:
         await cleanup_task
-    except asyncio.CancelledError:
-        pass
-
-    stats_updater_task.cancel()
-    try:
-        await stats_updater_task
-    except asyncio.CancelledError:
-        pass
-
-    adaptive_sync_task.cancel()
-    try:
-        await adaptive_sync_task
     except asyncio.CancelledError:
         pass
 

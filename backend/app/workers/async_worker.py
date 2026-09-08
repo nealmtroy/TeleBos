@@ -22,6 +22,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+# Suppress verbose Telethon logs
+logging.getLogger("telethon").setLevel(logging.WARNING)
+logging.getLogger("telethon.client.users").setLevel(logging.ERROR)
+logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
+
 logger = logging.getLogger("telebos.async_worker")
 
 shutdown_event = asyncio.Event()
@@ -154,18 +159,38 @@ async def main() -> None:
         resumed_i = await invite_service.resume_running_invites_on_startup(db)
         logger.info("Startup complete: Auto-resumed %d broadcast jobs and %d invite jobs", resumed_b, resumed_i)
 
-    # 3. Start background loops
+    # 4. Start background loops
     consumer_task = asyncio.create_task(queue_consumer_loop())
     control_task = asyncio.create_task(control_subscriber_loop())
+
+    # 5. Start background Telegram schedulers (adaptive sync, stats updater, 2FA updater)
+    from app.schedulers.background_tasks import adaptive_sequential_sync_loop
+    from app.services.stats_service import background_stats_updater
+    from app.services.twofa_sync_service import background_twofa_updater
+
+    adaptive_sync_task = asyncio.create_task(adaptive_sequential_sync_loop())
+    stats_updater_task = asyncio.create_task(background_stats_updater())
+    twofa_sync_task = asyncio.create_task(background_twofa_updater())
+    logger.info("Worker background schedulers started: adaptive sync, stats updater, 2fa updater")
 
     # Wait until shutdown signal
     await shutdown_event.wait()
 
-    # 4. Graceful shutdown
-    logger.info("Shutting down worker tasks...")
+    # 6. Graceful shutdown
+    logger.info("Shutting down worker tasks and background schedulers...")
     consumer_task.cancel()
     control_task.cancel()
-    await asyncio.gather(consumer_task, control_task, return_exceptions=True)
+    adaptive_sync_task.cancel()
+    stats_updater_task.cancel()
+    twofa_sync_task.cancel()
+    await asyncio.gather(
+        consumer_task,
+        control_task,
+        adaptive_sync_task,
+        stats_updater_task,
+        twofa_sync_task,
+        return_exceptions=True,
+    )
 
     cancelled_b = await broadcast_service.cancel_all_broadcast_tasks()
     cancelled_i = await invite_service.cancel_all_invite_tasks()

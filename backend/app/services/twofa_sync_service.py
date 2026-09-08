@@ -41,7 +41,18 @@ def _status_payload(account: TelegramAccount, status: dict | None = None) -> dic
 
 async def broadcast_cached_twofa_status(account: TelegramAccount) -> None:
     """Push safe cached 2FA metadata after an account-scoped mutation."""
-    await manager.broadcast(f"chats:{account.id}", _status_payload(account))
+    from app.utils.redis_dispatcher import publish_ws_event
+
+    channel = f"chats:{account.id}"
+    payload = _status_payload(account)
+    try:
+        await publish_ws_event(channel, payload)
+    except Exception:
+        pass
+    try:
+        await manager.broadcast(channel, payload)
+    except Exception:
+        pass
 
 
 async def sync_account_twofa(account_id: str) -> bool:

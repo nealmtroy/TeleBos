@@ -125,28 +125,25 @@ async def adaptive_sequential_sync_loop() -> None:
                         logger.info("Adaptive Sync: Completed sync for account %s (%s).", account_id, db_acc.phone)
 
                         # Step E: Broadcast WS notifications to invalidate frontend query caches
+                        # Dispatch via Redis so webserver relays it to frontend WebSockets across processes
+                        from app.utils.redis_dispatcher import publish_ws_event
                         from app.api.ws import manager as ws_manager
                         try:
-                            await ws_manager.broadcast(
-                                f"chats:{account_id}",
-                                {"type": "chats_synced", "account_id": account_id}
-                            )
-                            await ws_manager.broadcast(
-                                f"chats:{account_id}",
-                                {"type": "folders_synced", "account_id": account_id}
-                            )
-                            await ws_manager.broadcast(
-                                f"chats:{account_id}",
-                                {"type": "profile_sync", "account_id": account_id}
-                            )
+                            channel = f"chats:{account_id}"
+                            for event_payload in [
+                                {"type": "chats_synced", "account_id": account_id},
+                                {"type": "folders_synced", "account_id": account_id},
+                                {"type": "profile_sync", "account_id": account_id},
+                            ]:
+                                await publish_ws_event(channel, event_payload)
+                                if ws_manager.has_channel(channel):
+                                    await ws_manager.broadcast(channel, event_payload)
                         except Exception as ws_exc:
                             logger.warning("Adaptive Sync: WS push failed for %s: %s", account_id, ws_exc)
 
-                        # Step F: Immediately release client if not needed for real-time features (WS or auto-reply)
-                        # to prevent accumulating idle MTProto sockets in backend
+                        # Step F: Immediately release client after background sync to prevent idle socket accumulation
                         from app.services.telegram_client import client_pool
-                        if not (db_acc.auto_reply_enabled or ws_manager.has_channel(f"chats:{account_id}")):
-                            await client_pool.remove(account_id, save_state=True)
+                        await client_pool.remove(account_id, save_state=True)
 
             except Exception as sync_err:
                 logger.error("Adaptive Sync: Error syncing account %s: %s", account_id, sync_err)

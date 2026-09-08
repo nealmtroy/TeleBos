@@ -74,47 +74,72 @@ def _format_cycle_summary(
     success_logs = [log for log in cycle_logs if _get_val(log, "status") == "success"]
     error_logs = [log for log in cycle_logs if _get_val(log, "status") == "error"]
 
+    MAX_LIST_DISPLAY = 25
     if success_logs:
         lines.append("")
         lines.append("<b>Berhasil Terkirim</b>:")
-        for log in success_logs:
+        for log in success_logs[:MAX_LIST_DISPLAY]:
             target_display = html.escape(str(_get_val(log, "group_identifier") or ""))
             lines.append(f"✅ {target_display}")
+        if len(success_logs) > MAX_LIST_DISPLAY:
+            lines.append(f"<i>... dan {len(success_logs) - MAX_LIST_DISPLAY} grup lainnya</i>")
 
     if error_logs:
         lines.append("")
         lines.append("<b>Gagal Terkirim</b>:")
-        for log in error_logs:
+        for log in error_logs[:MAX_LIST_DISPLAY]:
             target_display = html.escape(str(_get_val(log, "group_identifier") or ""))
             reason = html.escape(str(_get_val(log, "error_type") or "Unknown Error"))
             lines.append(f"❌ {target_display} — {reason}")
+        if len(error_logs) > MAX_LIST_DISPLAY:
+            lines.append(f"<i>... dan {len(error_logs) - MAX_LIST_DISPLAY} target gagal lainnya</i>")
 
-    return "\n".join(lines)
+    formatted = "\n".join(lines)
+    # Telegram strict limit is 4096 characters
+    if len(formatted) > 4000:
+        formatted = formatted[:3900] + "\n\n<i>[Log dipotong karena batas karakter Telegram]</i>"
+    return formatted
 
 
 async def _send_message_safe(client: TelegramClient, target, message: str, **kwargs) -> None:
     """Send a message to target, starting a configured log bot when needed."""
-    from telethon.errors import PeerIdInvalidError, YouBlockedUserError
+    from telethon.errors import PeerIdInvalidError, YouBlockedUserError, FloodWaitError
+
+    # Hard guard: Ensure message length does not exceed Telegram 4096 limit
+    if len(message) > 4000:
+        message = message[:3900] + "\n\n<i>[Log dipotong karena batas karakter Telegram]</i>"
 
     me = await client.get_me()
     cache_key = (me.id, str(target))
-    
+
     # Try using cached entity first
     entity = _resolved_dest_cache.get(cache_key)
-    
+
     if not entity:
         try:
             entity = await client.get_entity(target)
             _resolved_dest_cache[cache_key] = entity
+        except FloodWaitError as fw:
+            logger.warning(
+                "FloodWait (%ds) resolving log destination %s for account %s. Skipping log dispatch.",
+                fw.seconds, target, me.id,
+            )
+            return
         except Exception:
             pass
-        
+
     try:
         await client.send_message(entity or target, message, **kwargs)
+    except FloodWaitError as fw:
+        logger.warning(
+            "FloodWait (%ds) sending log message to %s for account %s. Skipping log dispatch.",
+            fw.seconds, target, me.id,
+        )
+        return
     except (PeerIdInvalidError, ValueError, YouBlockedUserError) as exc:
         _resolved_dest_cache.pop(cache_key, None)
         is_bot = bool(getattr(entity, "bot", False)) or str(target).lower().lstrip("@").endswith("bot")
-        
+
         # If the target is blocked, attempt to unblock first
         if isinstance(exc, YouBlockedUserError) or "you blocked this user" in str(exc).lower():
             try:
@@ -128,6 +153,9 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
             # Attempt direct retry after unblocking
             try:
                 await client.send_message(entity or target, message, **kwargs)
+                return
+            except FloodWaitError as fw:
+                logger.warning("FloodWait (%ds) sending log after unblock. Skipping.", fw.seconds)
                 return
             except Exception as retry_exc:
                 if not is_bot:
@@ -144,6 +172,12 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
             entity = await client.get_entity(target)
             _resolved_dest_cache[cache_key] = entity
             await client.send_message(entity, message, **kwargs)
+        except FloodWaitError as fw:
+            logger.warning(
+                "FloodWait (%ds) starting log bot %s for account %s. Skipping log delivery.",
+                fw.seconds, target, me.id,
+            )
+            return
         except Exception as start_exc:
             logger.debug("Failed to start log bot %s: %s", target, start_exc)
             raise exc
