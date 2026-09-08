@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-08
+- **[feabe416](https://github.com/nealmtroy/TeleBos/commit/feabe416)**: feat(worker): auto-resume running broadcast and invite jobs with smooth stagger
 - **[f39b69a0](https://github.com/nealmtroy/TeleBos/commit/f39b69a0)**: fix(broadcast): move _get_val to module scope in broadcast_log_sender
 - **[3c015db6](https://github.com/nealmtroy/TeleBos/commit/3c015db6)**: fix(worker): set outbound-only mode for worker clients and prevent startup stampede
 - **[24367d76](https://github.com/nealmtroy/TeleBos/commit/24367d76)**: refactor(worker): decouple broadcast and invite jobs into dedicated async worker

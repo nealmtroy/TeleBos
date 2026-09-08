@@ -228,3 +228,69 @@ async def test_check_connections_protects_syncing_and_non_idle_accounts():
     client_pool._clients.pop(acc_recent, None)
 
 
+@pytest.mark.asyncio
+async def test_check_connections_disconnects_worker_job_accounts():
+    """Verify that _check_connections disconnects healthy clients if claimed by active worker jobs."""
+    from app.services.session_manager import session_manager
+    from app.services.telegram_client import client_pool
+
+    mock_client = MagicMock()
+    mock_client.is_connected.return_value = True
+
+    acc_job = "acc-in-worker-job"
+    client_pool._clients[acc_job] = {"client": mock_client, "last_accessed": 100.0}
+
+    with patch.object(client_pool, "remove", new_callable=AsyncMock) as mock_remove:
+        with patch("app.database.async_session_factory") as mock_db_factory:
+            mock_db = AsyncMock()
+            mock_db_factory.return_value.__aenter__.return_value = mock_db
+            mock_acc = MagicMock()
+            mock_acc.auto_reply_enabled = True  # Even with auto_reply enabled!
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none.return_value = mock_acc
+            mock_db.execute.return_value = mock_result
+
+            # Account is claimed by an active worker job
+            with patch.object(session_manager, "is_account_in_active_job", return_value=True):
+                with patch("app.api.ws.manager.has_channel", return_value=False):
+                    await session_manager._check_connections()
+
+        mock_remove.assert_called_once_with(acc_job)
+
+    client_pool._clients.pop(acc_job, None)
+
+
+@pytest.mark.asyncio
+async def test_check_connections_does_not_reconnect_worker_job_accounts():
+    """Verify that _check_connections does NOT auto-reconnect stale clients claimed by active worker jobs."""
+    from app.services.session_manager import session_manager
+    from app.services.telegram_client import client_pool
+
+    mock_client = MagicMock()
+    mock_client.is_connected.return_value = False  # Stale / disconnected
+
+    acc_job = "acc-stale-in-job"
+    client_pool._clients[acc_job] = {"client": mock_client, "last_accessed": 100.0}
+
+    with patch.object(session_manager, "ensure_connected_on_demand", new_callable=AsyncMock) as mock_reconnect:
+        with patch("app.database.async_session_factory") as mock_db_factory:
+            mock_db = AsyncMock()
+            mock_db_factory.return_value.__aenter__.return_value = mock_db
+            mock_acc = MagicMock()
+            mock_acc.auto_reply_enabled = True
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none.return_value = mock_acc
+            mock_db.execute.return_value = mock_result
+
+            # Account is in an active worker job
+            with patch.object(session_manager, "is_account_in_active_job", return_value=True):
+                with patch("app.api.ws.manager.has_channel", return_value=False):
+                    await session_manager._check_connections()
+
+        # Reconnect must NOT be called because the worker owns this session!
+        mock_reconnect.assert_not_called()
+
+    client_pool._clients.pop(acc_job, None)
+
+
+

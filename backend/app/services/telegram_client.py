@@ -98,7 +98,34 @@ class TelegramClientPool:
                 
                 if stale_uuids:
                     async with async_session_factory() as db:
-                        # 1. Protect active accounts with auto-reply enabled
+                        from app.models.broadcast_job import BroadcastJob
+                        from app.models.invite_job import InviteJob
+
+                        # Find accounts claimed by active worker jobs
+                        busy_ids: set[uuid.UUID] = set()
+                        bj_query = await db.execute(
+                            select(BroadcastJob.account_ids).where(
+                                BroadcastJob.status.in_(["pending", "running"])
+                            )
+                        )
+                        for acc_list in bj_query.scalars():
+                            if isinstance(acc_list, list):
+                                for a in acc_list:
+                                    try:
+                                        busy_ids.add(uuid.UUID(str(a)))
+                                    except (ValueError, TypeError):
+                                        pass
+
+                        ij_query = await db.execute(
+                            select(InviteJob.account_id).where(
+                                InviteJob.status.in_(["pending", "running"])
+                            )
+                        )
+                        for a in ij_query.scalars():
+                            if a:
+                                busy_ids.add(a)
+
+                        # Protect active accounts with auto-reply enabled (unless claimed by worker jobs)
                         auto_reply_query = await db.execute(
                             select(TelegramAccount.id).where(
                                 TelegramAccount.id.in_(stale_uuids),
@@ -107,20 +134,8 @@ class TelegramClientPool:
                             )
                         )
                         for row in auto_reply_query.scalars():
-                            protected_keys.add(str(row))
-                        
-                        # 2. Protect accounts in active broadcast jobs (pending, running, paused)
-                        active_jobs_query = await db.execute(
-                            select(BroadcastJob.account_ids).where(
-                                BroadcastJob.status.in_(["pending", "running", "paused"])
-                            )
-                        )
-                        active_job_accounts = active_jobs_query.scalars().all()
-                        for acc_list in active_job_accounts:
-                            if isinstance(acc_list, list):
-                                for acc_id in acc_list:
-                                    if str(acc_id) in stale_keys:
-                                        protected_keys.add(str(acc_id))
+                            if row not in busy_ids:
+                                protected_keys.add(str(row))
             except Exception as exc:
                 logger.error("Error checking protected clients in DB: %s", exc)
                 # Play safe on DB error, protect everyone

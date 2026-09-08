@@ -23,18 +23,50 @@ async def adaptive_sequential_sync_loop() -> None:
     while True:
         try:
             # 1. Fetch the active account with the oldest last_sync_at (or None)
+            # Exclude accounts actively claimed by worker jobs to avoid concurrent MTProto session conflicts.
             async with async_session_factory() as db:
+                from app.models.broadcast_job import BroadcastJob
+                from app.models.invite_job import InviteJob
+                import uuid
+
+                busy_ids: set[uuid.UUID] = set()
+                bj_res = await db.execute(
+                    select(BroadcastJob.account_ids).where(
+                        BroadcastJob.status.in_(["pending", "running"])
+                    )
+                )
+                for acc_list in bj_res.scalars():
+                    if isinstance(acc_list, list):
+                        for a in acc_list:
+                            try:
+                                busy_ids.add(uuid.UUID(str(a)))
+                            except (ValueError, TypeError):
+                                pass
+
+                ij_res = await db.execute(
+                    select(InviteJob.account_id).where(
+                        InviteJob.status.in_(["pending", "running"])
+                    )
+                )
+                for acc_id in ij_res.scalars():
+                    if acc_id:
+                        busy_ids.add(acc_id)
+
                 stmt = select(TelegramAccount).where(
                     TelegramAccount.is_active == True,
                     TelegramAccount.session_string != "",
-                ).order_by(
+                )
+                if busy_ids:
+                    stmt = stmt.where(TelegramAccount.id.not_in(busy_ids))
+
+                stmt = stmt.order_by(
                     TelegramAccount.last_sync_at.asc().nullsfirst()
                 ).limit(1)
                 res = await db.execute(stmt)
                 account = res.scalar_one_or_none()
 
                 if not account:
-                    logger.info("Adaptive Sync: No active accounts found. Sleeping for 30 seconds.")
+                    logger.debug("Adaptive Sync: No eligible active accounts found (or all currently busy in worker jobs). Sleeping for 30s.")
                     await asyncio.sleep(30)
                     continue
 
@@ -109,6 +141,12 @@ async def adaptive_sequential_sync_loop() -> None:
                             )
                         except Exception as ws_exc:
                             logger.warning("Adaptive Sync: WS push failed for %s: %s", account_id, ws_exc)
+
+                        # Step F: Immediately release client if not needed for real-time features (WS or auto-reply)
+                        # to prevent accumulating idle MTProto sockets in backend
+                        from app.services.telegram_client import client_pool
+                        if not (db_acc.auto_reply_enabled or ws_manager.has_channel(f"chats:{account_id}")):
+                            await client_pool.remove(account_id, save_state=True)
 
             except Exception as sync_err:
                 logger.error("Adaptive Sync: Error syncing account %s: %s", account_id, sync_err)

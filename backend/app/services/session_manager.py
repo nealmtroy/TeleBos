@@ -298,11 +298,11 @@ class SessionManager:
         except ValueError:
             return False
 
-        # 1. Check active BroadcastJobs
+        # 1. Check active BroadcastJobs (only pending or running jobs actively use the account)
         try:
             broadcast_query = await db.execute(
                 select(BroadcastJob.account_ids).where(
-                    BroadcastJob.status.in_(["pending", "running", "paused"])
+                    BroadcastJob.status.in_(["pending", "running"])
                 )
             )
             for job_accs in broadcast_query.scalars():
@@ -311,12 +311,12 @@ class SessionManager:
         except Exception as e:
             logger.debug("Failed to check BroadcastJob for account %s: %s", account_id, e)
 
-        # 2. Check active InviteJobs
+        # 2. Check active InviteJobs (only pending or running jobs actively use the account)
         try:
             invite_query = await db.execute(
                 select(InviteJob.id).where(
                     InviteJob.account_id == acc_uuid,
-                    InviteJob.status.in_(["pending", "running", "paused"])
+                    InviteJob.status.in_(["pending", "running"])
                 )
             )
             if invite_query.first() is not None:
@@ -481,7 +481,10 @@ class SessionManager:
                                 is_syncing = account_id in _sync_tasks and not _sync_tasks[account_id].done()
                                 is_idle = client_pool.is_client_idle(account_id, max_idle_seconds=300.0)
 
-                                if not (has_auto_reply or has_active_ws or has_active_job or is_syncing) and is_idle:
+                                if has_active_job:
+                                    logger.info("Lazy Connection: disconnecting client %s (claimed by worker job)", account_id)
+                                    lazy_disconnect_ids.append(account_id)
+                                elif not (has_auto_reply or has_active_ws or is_syncing) and is_idle:
                                     logger.info("Lazy Connection: disconnecting idle unneeded client for account %s", account_id)
                                     lazy_disconnect_ids.append(account_id)
                                 elif is_syncing:
@@ -504,6 +507,7 @@ class SessionManager:
 
         # Phase 3: Reconnect stale accounts. The account check is short-lived;
         # Telegram connection and handler attachment happen after it closes.
+        # NEVER reconnect if claimed by an active worker job.
         for account_id in stale_ids:
             try:
                 should_reconnect = False
@@ -516,11 +520,12 @@ class SessionManager:
                     )
                     account = result.scalar_one_or_none()
                     if account:
-                        should_reconnect = (
-                            account.auto_reply_enabled
-                            or ws_manager._connections.get(f"chats:{account_id}") is not None
-                            or await self.is_account_in_active_job(db, account_id)
-                        )
+                        in_active_job = await self.is_account_in_active_job(db, account_id)
+                        if not in_active_job:
+                            should_reconnect = (
+                                account.auto_reply_enabled
+                                or ws_manager.has_channel(f"chats:{account_id}")
+                            )
                 if should_reconnect:
                     await self.ensure_connected_on_demand(account_id)
             except Exception as exc:
@@ -543,6 +548,9 @@ class SessionManager:
         for account_id in account_ids:
             if not self._running:
                 break
+            if await self.is_account_in_active_job(db, account_id):
+                logger.info("Skipping backend startup reconnect for %s (claimed by worker job)", account_id)
+                continue
             if await self._connect_account(account_id):
                 success += 1
         logger.info(
