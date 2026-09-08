@@ -44,13 +44,17 @@ async def adaptive_sequential_sync_loop() -> None:
                                 pass
 
                 ij_res = await db.execute(
-                    select(InviteJob.account_id).where(
+                    select(InviteJob.account_ids).where(
                         InviteJob.status.in_(["pending", "running"])
                     )
                 )
-                for acc_id in ij_res.scalars():
-                    if acc_id:
-                        busy_ids.add(acc_id)
+                for acc_list in ij_res.scalars():
+                    if isinstance(acc_list, list):
+                        for a in acc_list:
+                            try:
+                                busy_ids.add(uuid.UUID(str(a)))
+                            except (ValueError, TypeError):
+                                pass
 
                 stmt = select(TelegramAccount).where(
                     TelegramAccount.is_active == True,

@@ -319,13 +319,13 @@ class SessionManager:
         # 2. Check active InviteJobs (only pending or running jobs actively use the account)
         try:
             invite_query = await db.execute(
-                select(InviteJob.id).where(
-                    InviteJob.account_id == acc_uuid,
+                select(InviteJob.account_ids).where(
                     InviteJob.status.in_(["pending", "running"])
                 )
             )
-            if invite_query.first() is not None:
-                return True
+            for job_accs in invite_query.scalars():
+                if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
+                    return True
         except Exception as e:
             logger.debug("Failed to check InviteJob for account %s: %s", account_id, e)
 
