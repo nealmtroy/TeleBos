@@ -98,11 +98,17 @@ CREATE TABLE IF NOT EXISTS "twoFactor" (
   "backupCodes" TEXT NOT NULL,
   "userId"    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   verified    BOOLEAN NOT NULL DEFAULT TRUE,
+  "failedVerificationCount" INTEGER NOT NULL DEFAULT 0,
+  "lockedUntil" TIMESTAMPTZ DEFAULT NULL,
   "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_twoFactor_userId ON "twoFactor"("userId");
 CREATE INDEX IF NOT EXISTS idx_twoFactor_secret ON "twoFactor"(secret);
+
+-- Ensure twoFactor columns exist on pre-existing tables (idempotent ALTER)
+ALTER TABLE IF EXISTS "twoFactor" ADD COLUMN IF NOT EXISTS "failedVerificationCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS "twoFactor" ADD COLUMN IF NOT EXISTS "lockedUntil" TIMESTAMPTZ DEFAULT NULL;
 
 -- ── rate limit table (Better Auth built-in rate limiter) ─────────────────
 CREATE TABLE IF NOT EXISTS "rateLimit" (

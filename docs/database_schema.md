@@ -142,7 +142,7 @@ Penyimpan kredensial otentikasi (Password / OAuth Provider).
 
 #### 4. `"verification"` & `"twoFactor"` & `"rateLimit"`
 * **`verification`**: Tabel verifikasi email (`id`, `identifier`, `value`, `expiresAt`, `createdAt`, `updatedAt`).
-* **`twoFactor`**: Tabel plugin Better Auth 2FA (`id`, `secret`, `backupCodes`, `userId` FK, `verified`, `createdAt`, `updatedAt`).
+* **`twoFactor`**: Tabel plugin Better Auth 2FA (`id`, `secret`, `backupCodes`, `userId` FK, `verified`, `failedVerificationCount`, `lockedUntil`, `createdAt`, `updatedAt`).
 * **`rateLimit`**: Tabel in-database rate limiter Better Auth (`id`, `key` UNIQUE, `count`, `lastRequest`).
 
 ---

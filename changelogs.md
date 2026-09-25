@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-26
+- **[f4cbb4a9](https://github.com/nealmtroy/TeleBos/commit/f4cbb4a9)**: fix: prevent infinite api-keys GET loop in settings and memoize useT
 - **[87f4e534](https://github.com/nealmtroy/TeleBos/commit/87f4e534)**: feat: split member invite into dedicated history and logs pages, fix contact export 422, and resolve contact photo 404
 - **[4024d77a](https://github.com/nealmtroy/TeleBos/commit/4024d77a)**: feat: add contact import/export, display account age/spam/contacts on buy/sell accounts, and enforce auth.logOut on account logout
 - **[25aee2ad](https://github.com/nealmtroy/TeleBos/commit/25aee2ad)**: feat: add auto join groups/channels page, clarify danger zone logout, and fix orders modal backdrop blur
