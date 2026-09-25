@@ -63,6 +63,12 @@ const broadcastSubItems: SubItem[] = [
   { href: "/broadcast/logs", labelKey: "nav.broadcastLogs", icon: ClipboardList },
 ];
 
+const inviteSubItems: SubItem[] = [
+  { href: "/invite", labelKey: "invite.newInvite", icon: Plus, exact: true },
+  { href: "/invite/history", labelKey: "invite.inviteHistory", icon: Clock },
+  { href: "/invite/logs", labelKey: "invite.inviteLogs", icon: ClipboardList },
+];
+
 const groupsChannelsSubItems: SubItem[] = [
   { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone, exact: true },
   { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search, exact: true },
@@ -136,6 +142,7 @@ export function Sidebar() {
   const locale = useI18nStore((s) => s.locale);
 
   const isAccountsPage = pathname.startsWith("/accounts");
+  const isInvitePage = pathname.startsWith("/invite");
   const isBroadcastPage = pathname.startsWith("/broadcast");
   const isGroupsChannelsPage = pathname.startsWith("/groups-channels");
   const isServicesOpen = servicesSubItems.some((sub) =>
@@ -152,6 +159,7 @@ export function Sidebar() {
   );
 
   const [accountsOpen, setAccountsOpen] = useState(isAccountsPage);
+  const [inviteOpen, setInviteOpen] = useState(isInvitePage);
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
   const [servicesOpen, setServicesOpen] = useState(isServicesOpen);
@@ -167,6 +175,7 @@ export function Sidebar() {
   // Auto-open sections on mount / pathname change
   useEffect(() => {
     if (isAccountsPage) setAccountsOpen(true);
+    if (isInvitePage) setInviteOpen(true);
     if (isBroadcastPage) setBroadcastOpen(true);
     if (isGroupsChannelsPage) setGroupsChannelsOpen(true);
     if (isServicesOpen) setServicesOpen(true);
@@ -255,7 +264,14 @@ export function Sidebar() {
       labelKey: locale === "id" ? "AUTOMASI" : "AUTOMATION",
       items: [
         { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 1 },
-        { href: "/invite", labelKey: "invite.navLabel", icon: UserPlus, minRole: 1 },
+        {
+          href: "/invite",
+          labelKey: "invite.navLabel",
+          icon: UserPlus,
+          hasSubItems: true,
+          subItems: inviteSubItems,
+          minRole: 1,
+        },
         {
           href: "/broadcast",
           labelKey: "nav.broadcast",
@@ -339,6 +355,7 @@ export function Sidebar() {
 
   const getSubmenuState = (href: string) => {
     if (href.startsWith("/accounts")) return { isOpen: accountsOpen, setIsOpen: setAccountsOpen };
+    if (href.startsWith("/invite")) return { isOpen: inviteOpen, setIsOpen: setInviteOpen };
     if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
     if (href.startsWith("/groups-channels")) return { isOpen: groupsChannelsOpen, setIsOpen: setGroupsChannelsOpen };
     if (href === "/orders-services") return { isOpen: servicesOpen, setIsOpen: setServicesOpen };

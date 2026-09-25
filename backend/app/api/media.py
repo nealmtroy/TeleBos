@@ -92,10 +92,11 @@ async def get_chat_photo(
         )
     )
     chat = chat_result.scalar_one_or_none()
-    if chat is None or chat.photo_version is None:
+    
+    photo_version = str(chat.photo_version) if chat and chat.photo_version is not None else request.query_params.get("v")
+    if not photo_version or photo_version in ("0", "None", ""):
         raise HTTPException(status_code=404, detail="No profile photo")
 
-    photo_version = chat.photo_version
     etag = f'W/"{account.id}-{chat_id}-{photo_version}"'
     headers = {
         "Cache-Control": "public, max-age=31536000, immutable",
@@ -123,17 +124,20 @@ async def get_chat_photo(
         raise HTTPException(status_code=400, detail="Account is disconnected")
 
     try:
-        entity = await resolve_chat_entity(client, account.id, chat_id)
+        try:
+            entity = await resolve_chat_entity(client, account.id, chat_id)
+        except Exception:
+            entity = await client.get_entity(chat_id)
+
         photo_result = await client.download_profile_photo(
             entity, file=cached_path, download_big=False
         )
         if not photo_result or not os.path.exists(cached_path) or os.path.getsize(cached_path) == 0:
             if os.path.exists(cached_path):
                 os.remove(cached_path)
-            # Telegram can remove a photo between dialog sync and the cache miss.
-            # Clear the stale metadata so subsequent UI refreshes render locally.
-            chat.photo_version = None
-            await db.flush()
+            if chat is not None:
+                chat.photo_version = None
+                await db.flush()
             raise HTTPException(status_code=404, detail="No profile photo")
         return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
     except HTTPException:
