@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-25
+- **[ae89a7b0](https://github.com/nealmtroy/TeleBos/commit/ae89a7b0)**: feat: implement auto-reply audit fixes and scalability architecture
+
 ## 2026-09-08
 - **[81599016](https://github.com/nealmtroy/TeleBos/commit/81599016)**: fix: correct InviteJob.account_ids in pool cleanup and add FloodWait destination cache
 - **[19391729](https://github.com/nealmtroy/TeleBos/commit/19391729)**: fix(sync): query InviteJob.account_ids list instead of non-existent account_id

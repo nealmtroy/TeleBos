@@ -50,11 +50,26 @@ export interface ApiError {
 
 export const getPhotoUrl = getAccountPhotoUrl;
 
-export function useAccounts() {
+export interface UseAccountsParams {
+  limit?: number;
+  status?: string;
+  is_active?: boolean;
+}
+
+export function useAccounts(params?: UseAccountsParams) {
+  const limit = params?.limit ?? 1000;
+  const status = params?.status;
+  const isActive = params?.is_active;
+
   return useQuery<Account[]>({
-    queryKey: ["accounts"],
+    queryKey: ["accounts", { limit, status, is_active: isActive }],
     queryFn: async () => {
-      const { data } = await api.get("/accounts?limit=100");
+      const searchParams = new URLSearchParams();
+      searchParams.append("limit", limit.toString());
+      if (status) searchParams.append("status", status);
+      if (isActive !== undefined) searchParams.append("is_active", String(isActive));
+
+      const { data } = await api.get(`/accounts?${searchParams.toString()}`);
       return data.accounts || [];
     },
   });

@@ -39,7 +39,7 @@ export default function AutoReplyPage() {
   const _ = useT();
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
-  const { data: rawAccounts, isLoading, error, refetch } = useAccounts();
+  const { data: rawAccounts, isLoading, error, refetch } = useAccounts({ is_active: true, limit: 1000 });
   const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
 
   // Role check

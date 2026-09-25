@@ -568,7 +568,10 @@ async def login_with_session(
 
 
 async def get_accounts_for_user(
-    db: AsyncSession, user: User, limit: int | None = None
+    db: AsyncSession,
+    user: User,
+    limit: int | None = None,
+    is_active: bool | None = None,
 ) -> list[TelegramAccount]:
     from sqlalchemy.orm import defer
     query = (
@@ -584,6 +587,8 @@ async def get_accounts_for_user(
         )
         .order_by(TelegramAccount.created_at.desc())
     )
+    if is_active is not None:
+        query = query.where(TelegramAccount.is_active == is_active)
     if limit is not None:
         query = query.limit(limit)
     result = await db.execute(query)
@@ -598,6 +603,7 @@ async def get_accounts_paginated(
     search: str | None = None,
     folder_id: str | None = None,
     status: str | None = None,
+    is_active: bool | None = None,
 ) -> tuple[list[TelegramAccount], int]:
     """Get paginated accounts for a user with optional search, folder and status filters."""
     from sqlalchemy import or_, cast, String, func
@@ -652,6 +658,11 @@ async def get_accounts_paginated(
                     TelegramAccount.spam_status.is_(None)
                 )
             )
+        elif status in ("all_active", "active_all"):
+            query = query.where(
+                TelegramAccount.is_active == True,
+                TelegramAccount.for_sale == False,
+            )
         elif status == "limited":
             query = query.where(
                 TelegramAccount.is_active == True,
@@ -665,6 +676,12 @@ async def get_accounts_paginated(
                 TelegramAccount.is_active == False,
                 TelegramAccount.for_sale == False
             )
+
+    # Apply direct is_active filter if provided
+    if is_active is not None:
+        query = query.where(TelegramAccount.is_active == is_active)
+        if is_active is True:
+            query = query.where(TelegramAccount.for_sale == False)
 
     # Get total count (before pagination limit/offset)
     count_query = select(func.count()).select_from(query.subquery())

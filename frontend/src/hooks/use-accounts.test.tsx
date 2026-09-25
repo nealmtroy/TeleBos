@@ -18,13 +18,22 @@ describe("account hooks", () => {
     expect(getPhotoUrl("account-1", 4)).toBe("/api/v1/accounts/account-1/photo?v=4");
   });
 
-  it("maps account-list responses", async () => {
+  it("maps account-list responses with default limit 1000", async () => {
     api.get.mockResolvedValueOnce({ data: { accounts: [{ id: "account-1" }] } });
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useAccounts(), { wrapper });
 
     await waitFor(() => expect(result.current.data).toEqual([{ id: "account-1" }]));
-    expect(api.get).toHaveBeenCalledWith("/accounts");
+    expect(api.get).toHaveBeenCalledWith("/accounts?limit=1000");
+  });
+
+  it("passes custom filter params to API", async () => {
+    api.get.mockResolvedValueOnce({ data: { accounts: [{ id: "account-1" }] } });
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => useAccounts({ is_active: true, limit: 500 }), { wrapper });
+
+    await waitFor(() => expect(result.current.data).toEqual([{ id: "account-1" }]));
+    expect(api.get).toHaveBeenCalledWith("/accounts?limit=500&is_active=true");
   });
 
   it("deletes an account and invalidates account queries", async () => {

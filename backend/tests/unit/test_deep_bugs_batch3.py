@@ -30,6 +30,24 @@ async def test_accounts_pagination_negative_page():
     assert total == 0
 
 
+@pytest.mark.asyncio
+async def test_accounts_pagination_is_active_filter():
+    """Verify accounts pagination correctly accepts is_active parameter and status all_active."""
+    db = AsyncMock()
+    user = User(id=uuid4())
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    db.scalar.return_value = 118
+    db.execute.return_value = mock_result
+
+    accounts, total = await account_service.get_accounts_paginated(
+        db, user, page=1, limit=1000, is_active=True
+    )
+    assert total == 118
+    assert accounts == []
+
+
 def test_chat_service_non_text_message_preview():
     """Verify OBO-02: non-text message produces '[non-text message]' instead of empty string."""
     # Simulate non-text message (photo/sticker with text = "")
