@@ -48,7 +48,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { motion, AnimatePresence } from "framer-motion";
 
-const broadcastSubItems = [
+interface SubItem {
+  href: string;
+  labelKey: string;
+  icon: any;
+  exact?: boolean;
+}
+
+const broadcastSubItems: SubItem[] = [
   { href: "/broadcast/new", labelKey: "nav.newBroadcast", icon: Plus },
   { href: "/broadcast/group-lists", labelKey: "nav.groupLists", icon: Users },
   { href: "/broadcast/text-lists", labelKey: "nav.textLists", icon: FileText },
@@ -56,24 +63,24 @@ const broadcastSubItems = [
   { href: "/broadcast/logs", labelKey: "nav.broadcastLogs", icon: ClipboardList },
 ];
 
-const groupsChannelsSubItems = [
-  { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone },
-  { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search },
+const groupsChannelsSubItems: SubItem[] = [
+  { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone, exact: true },
+  { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search, exact: true },
 ];
 
-const accountsSubItems = [
+const accountsSubItems: SubItem[] = [
   { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, exact: true },
   { href: "/accounts/age-checker", labelKey: "nav.ageChecker", icon: Clock },
 ];
 
-const servicesSubItems = [
+const servicesSubItems: SubItem[] = [
   { href: "/orders/members", labelKey: "nav.telegramMembers", icon: Users },
   { href: "/orders/reactions", labelKey: "nav.telegramReactions", icon: Sparkles },
   { href: "/orders/auto-reactions", labelKey: "nav.telegramAutoReactions", icon: Clock },
   { href: "/orders/post-views", labelKey: "nav.telegramPostViews", icon: Eye },
 ];
 
-const administrationsSubItems = [
+const administrationsSubItems: SubItem[] = [
   { href: "/admin", exact: true, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
@@ -81,12 +88,12 @@ const administrationsSubItems = [
   { href: "/admin/account-prices", exact: false, labelKey: "Account Prices", icon: Tag },
 ];
 
-const adminRedeemSubItems = [
+const adminRedeemSubItems: SubItem[] = [
   { href: "/admin/redeem-codes", exact: false, labelKey: "adminRedeem.title", icon: Ticket },
   { href: "/admin/redeem-logs", exact: false, labelKey: "adminRedeem.logs", icon: ClipboardList },
 ];
 
-const adminSmmSubItems = [
+const adminSmmSubItems: SubItem[] = [
   { href: "/admin/smm/services", exact: false, labelKey: "adminSmm.services", icon: Package },
   { href: "/admin/smm/orders", exact: false, labelKey: "adminSmm.allOrders", icon: ShoppingCart },
   { href: "/admin/smm/settings", exact: true, labelKey: "adminSmm.settings", icon: Settings },
@@ -99,13 +106,6 @@ const ROLE_HIERARCHY: Record<string, number> = {
   premium: 2,
   owner: 3,
 };
-
-interface SubItem {
-  href: string;
-  labelKey: string;
-  icon: any;
-  exact?: boolean;
-}
 
 interface NavItem {
   href: string;
@@ -137,19 +137,18 @@ export function Sidebar() {
   const isAccountsPage = pathname.startsWith("/accounts");
   const isBroadcastPage = pathname.startsWith("/broadcast");
   const isGroupsChannelsPage = pathname.startsWith("/groups-channels");
-  const isServicesOpen =
-    pathname.startsWith("/orders/members") ||
-    pathname.startsWith("/orders/reactions") ||
-    pathname.startsWith("/orders/auto-reactions") ||
-    pathname.startsWith("/orders/post-views");
-  const isAdministrationsOpen =
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/users") ||
-    pathname.startsWith("/admin/account-prices");
-  const isAdminRedeemOpen =
-    pathname.startsWith("/admin/redeem-codes") ||
-    pathname.startsWith("/admin/redeem-logs");
-  const isAdminSmmOpen = pathname.startsWith("/admin/smm");
+  const isServicesOpen = servicesSubItems.some((sub) =>
+    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
+  );
+  const isAdministrationsOpen = administrationsSubItems.some((sub) =>
+    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
+  );
+  const isAdminRedeemOpen = adminRedeemSubItems.some((sub) =>
+    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
+  );
+  const isAdminSmmOpen = adminSmmSubItems.some((sub) =>
+    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
+  );
 
   const [accountsOpen, setAccountsOpen] = useState(isAccountsPage);
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
@@ -307,7 +306,12 @@ export function Sidebar() {
           icon: Shield,
           hasSubItems: true,
           subItems: administrationsSubItems,
-          matchPrefixes: ["/admin/users", "/admin/account-prices"],
+          matchPrefixes: [
+            "/admin/users",
+            "/admin/broadcasts",
+            "/admin/auto-replies",
+            "/admin/account-prices",
+          ],
           minRole: 3,
         },
         {
@@ -416,6 +420,12 @@ export function Sidebar() {
                 {visibleItems.map((item) => {
                   const isActive = (() => {
                     if (item.href === "/dashboard") return pathname === "/dashboard";
+                    if (item.hasSubItems && item.subItems) {
+                      const hasActiveSub = item.subItems.some((sub) =>
+                        sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
+                      );
+                      if (hasActiveSub) return true;
+                    }
                     if (item.matchPrefixes) {
                       return item.matchPrefixes.some((pref) => pathname.startsWith(pref)) || (item.exact ? pathname === item.href : pathname.startsWith(item.href));
                     }

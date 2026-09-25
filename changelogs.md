@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-25
+- **[0edf6a6f](https://github.com/nealmtroy/TeleBos/commit/0edf6a6f)**: fix(accounts): fetch all active accounts up to limit 1000 with is_active filter in auto-reply
 - **[ae89a7b0](https://github.com/nealmtroy/TeleBos/commit/ae89a7b0)**: feat: implement auto-reply audit fixes and scalability architecture
 
 ## 2026-09-08
