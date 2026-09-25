@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { create } from "zustand";
 import en from "./en";
 import id from "./id";
@@ -77,26 +78,29 @@ export function useDict(): Dict {
  */
 export function useT() {
   const locale = useI18nStore((s) => s.locale);
-  return (path: string, params?: Record<string, string | number>) => {
-    const dict = dictionaries[locale] || en;
-    const keys = path.split(".");
-    let value: any = dict;
-    for (const key of keys) {
-      value = value?.[key];
-    }
-    if (typeof value !== "string") {
-      let fallback: any = en;
+  return useCallback(
+    (path: string, params?: Record<string, string | number>) => {
+      const dict = dictionaries[locale] || en;
+      const keys = path.split(".");
+      let value: any = dict;
       for (const key of keys) {
-        fallback = fallback?.[key];
+        value = value?.[key];
       }
-      value = typeof fallback === "string" ? fallback : path;
-    }
-    if (params) {
-      return value.replace(/\{(\w+)\}/g, (_match: string, key: string) => {
-        const v = params[key];
-        return v !== undefined ? String(v) : `{${key}}`;
-      });
-    }
-    return value;
-  };
+      if (typeof value !== "string") {
+        let fallback: any = en;
+        for (const key of keys) {
+          fallback = fallback?.[key];
+        }
+        value = typeof fallback === "string" ? fallback : path;
+      }
+      if (params) {
+        return value.replace(/\{(\w+)\}/g, (_match: string, key: string) => {
+          const v = params[key];
+          return v !== undefined ? String(v) : `{${key}}`;
+        });
+      }
+      return value;
+    },
+    [locale]
+  );
 }

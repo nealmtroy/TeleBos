@@ -200,7 +200,7 @@ export default function SettingsPage() {
       .then((response) => setApiKeys(response.data))
       .catch(() => toast.error(_("settings.failedLoadApiKeys")))
       .finally(() => setApiKeysLoading(false));
-  }, [_]);
+  }, []);
 
   const toggleApiScope = (scope: string) => {
     setApiKeyScopes((current) => current.includes(scope)
