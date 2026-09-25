@@ -840,6 +840,13 @@ async def execute_broadcast(job_id: str):
             try:
                 client = await get_active_client(snapshot)
                 client_pool.touch_client(acc_id_str)
+                # Attach event_relay so auto-reply continues functioning during broadcast
+                try:
+                    decrypted_session = decrypt(snapshot.get("session_string"))
+                    if decrypted_session:
+                        await event_relay.attach(acc_id_str, decrypted_session)
+                except Exception as attach_exc:
+                    logger.warning("Could not attach event_relay for account %s during broadcast: %s", acc_id_str, attach_exc)
                 active_accounts.append(
                     {
                         "account_id": acc_id_str,
@@ -1713,6 +1720,22 @@ async def execute_broadcast(job_id: str):
         except Exception:
             pass
     finally:
+        # Clean up event relay and pooled clients on worker, then notify webserver to auto-reconnect
+        try:
+            for snapshot in account_snapshots:
+                acc_id_str = snapshot.get("account_id")
+                if acc_id_str:
+                    try:
+                        await event_relay.detach(acc_id_str)
+                        await client_pool.remove(acc_id_str)
+                    except Exception:
+                        pass
+            if account_ids:
+                from app.utils.redis_dispatcher import publish_job_completed
+                await publish_job_completed("broadcast", job_id_str, account_ids)
+        except Exception as cleanup_exc:
+            logger.warning("Error cleaning up broadcast job %s post-run: %s", job_id_str, cleanup_exc)
+
         if pending_cycle_details:
             try:
                 logger.info(

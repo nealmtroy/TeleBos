@@ -337,6 +337,7 @@ class SessionManager:
             return False
         clients = await client_pool.get_connected_clients()
         if account_id in clients:
+            client_pool.touch_client(account_id)
             from app.database import async_session_factory
             import uuid
             try:
@@ -514,6 +515,7 @@ class SessionManager:
 
         # Disconnect unneeded clients
         for account_id in lazy_disconnect_ids:
+            await event_relay.detach(account_id)
             await client_pool.remove(account_id)
 
         # Phase 3: Reconnect stale accounts. The account check is short-lived;
@@ -571,6 +573,45 @@ class SessionManager:
         )
         return success
 
+    async def on_job_completed(self, account_ids: list[str]) -> None:
+        """Called when a worker job completes; reconnect accounts that need auto-reply or have active ws channels."""
+        if _shutdown or not self._running:
+            return
+        import uuid
+        from app.database import async_session_factory
+        from app.api.ws import manager as ws_manager
+
+        for account_id in account_ids:
+            try:
+                acc_uuid = uuid.UUID(account_id)
+            except (ValueError, TypeError):
+                continue
+            try:
+                should_reconnect = False
+                async with async_session_factory() as db:
+                    result = await db.execute(
+                        select(TelegramAccount).where(
+                            TelegramAccount.id == acc_uuid,
+                            TelegramAccount.is_active.is_(True),
+                        )
+                    )
+                    account = result.scalar_one_or_none()
+                    if not account:
+                        continue
+                    in_job = await self.is_account_in_active_job(db, account_id)
+                    if in_job:
+                        continue
+                    should_reconnect = (
+                        account.auto_reply_enabled
+                        or ws_manager.has_channel(f"chats:{account_id}")
+                    )
+                if should_reconnect:
+                    logger.info("Auto-reconnecting account %s post-job for auto-reply / websocket", account_id)
+                    await self.ensure_connected_on_demand(account_id)
+            except Exception as exc:
+                logger.warning("Failed to auto-reconnect account %s post-job: %s", account_id, exc)
+
 
 # Singleton
 session_manager = SessionManager()
+

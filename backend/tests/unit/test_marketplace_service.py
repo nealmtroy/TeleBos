@@ -163,7 +163,7 @@ async def test_purchase_notifies_buyer_and_seller():
     seller = SimpleNamespace(id=seller_id, balance=0)
     db = SimpleNamespace(
         execute=AsyncMock(
-            side_effect=[FakeResult([account]), FakeResult([buyer]), FakeResult([seller])]
+            side_effect=[FakeResult([account]), FakeResult([buyer]), FakeResult([seller]), FakeResult([])]
         ),
         add=MagicMock(),
         flush=AsyncMock(),
@@ -182,3 +182,5 @@ async def test_purchase_notifies_buyer_and_seller():
     }
     assert buyer.balance == 4500
     assert seller.balance == 5500
+    assert account.auto_reply_enabled is False
+    assert account.auto_reply_text is None

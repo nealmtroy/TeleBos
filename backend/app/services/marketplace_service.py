@@ -6,11 +6,12 @@ import os
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.telegram_account import TelegramAccount
+from app.models.auto_reply_log import AutoReplyLog
 from app.models.user import User
 from app.models.account_audit_log import AccountAuditLog
 from app.models.smm_setting import SmmSetting
@@ -178,6 +179,10 @@ async def sell_accounts(
         account.seller_id = user.id
         account.is_active = False
         account.auto_reply_enabled = False
+        account.auto_reply_text = None
+        await db.execute(delete(AutoReplyLog).where(AutoReplyLog.account_id == account.id))
+        from app.utils.redis import invalidate_auto_reply_config
+        await invalidate_auto_reply_config(str(account.id))
         account.sale_listed_at = datetime.now(timezone.utc)
 
         db.add(
@@ -460,6 +465,11 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     account.sold_at = datetime.now(timezone.utc)
     # Set purchased account to active upon purchase
     account.is_active = True
+    account.auto_reply_enabled = False
+    account.auto_reply_text = None
+    await db.execute(delete(AutoReplyLog).where(AutoReplyLog.account_id == account.id))
+    from app.utils.redis import invalidate_auto_reply_config
+    await invalidate_auto_reply_config(str(account.id))
 
     # 4. Create transaction audit log
     audit_seller = AccountAuditLog(

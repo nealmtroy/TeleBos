@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { AutoReplyEditor } from "@/components/accounts/auto-reply-editor";
 import {
   MessageCircleReply,
   Shield,
@@ -331,12 +332,12 @@ export default function AutoReplyPage() {
               </span>
             </div>
             <div className="flex-1">
-              <textarea
+              <AutoReplyEditor
                 value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
+                onChange={setBulkText}
                 placeholder={_("autoReply.globalMessagePlaceholder")}
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none bg-white"
+                disabled={bulkSaving}
               />
             </div>
           </div>
@@ -552,15 +553,15 @@ export default function AutoReplyPage() {
                           </span>
                         </div>
 
-                        <textarea
+                        <AutoReplyEditor
                           value={draftText}
-                          onChange={(e) => {
-                            setDraftText(e.target.value);
+                          onChange={(val) => {
+                            setDraftText(val);
                             setDraftDirty(true);
                           }}
                           placeholder={_("autoReply.replyPlaceholder")}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none resize-none bg-white"
+                          disabled={perSaving}
                         />
 
                         <div className="flex items-center gap-3">

@@ -180,13 +180,13 @@ class AccountResponse(BaseModel):
 
 class AutoReplyUpdateRequest(BaseModel):
     auto_reply_enabled: bool
-    auto_reply_text: str | None = None
+    auto_reply_text: str | None = Field(None, max_length=4096)
 
 
 class BulkAutoReplyUpdateRequest(BaseModel):
     account_ids: list[str]
     auto_reply_enabled: bool
-    auto_reply_text: str | None = None
+    auto_reply_text: str | None = Field(None, max_length=4096)
 
 
 class UserAccountsSummaryResponse(BaseModel):

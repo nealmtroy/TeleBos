@@ -136,6 +136,14 @@ def register_autoreply_handlers(client):
             db_acc.auto_reply_enabled = new_status
             await session.commit()
 
+        from app.utils.redis import set_auto_reply_config
+        await set_auto_reply_config(str(acc_uuid), new_status, db_acc.auto_reply_text)
+
+        if new_status:
+            import asyncio
+            from app.services.session_manager import session_manager
+            asyncio.create_task(session_manager.ensure_connected_on_demand(str(acc_uuid)))
+
         await event.answer(
             f"Auto-Reply untuk {'@' + db_acc.username if db_acc.username else db_acc.phone} "
             f"berhasil {'diaktifkan' if new_status else 'dinonaktifkan'}."

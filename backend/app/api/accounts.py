@@ -670,6 +670,11 @@ async def update_auto_reply(
     account.auto_reply_enabled = payload.auto_reply_enabled
     account.auto_reply_text = payload.auto_reply_text or None
     await db.flush()
+    from app.utils.redis import set_auto_reply_config
+    await set_auto_reply_config(account_id, account.auto_reply_enabled, account.auto_reply_text)
+    if account.auto_reply_enabled:
+        from app.services.session_manager import session_manager
+        asyncio.create_task(session_manager.ensure_connected_on_demand(str(account.id)))
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
     return account
@@ -688,6 +693,7 @@ async def bulk_update_auto_reply(
         raise HTTPException(status_code=429, detail="Too many requests. Try later.")
     from sqlalchemy import select
     from app.models.telegram_account import TelegramAccount
+    from app.utils.redis import set_auto_reply_config
 
     result = await db.execute(
         select(TelegramAccount).where(
@@ -704,9 +710,14 @@ async def bulk_update_auto_reply(
             continue
         account.auto_reply_enabled = payload.auto_reply_enabled
         account.auto_reply_text = payload.auto_reply_text or None
+        await set_auto_reply_config(str(account.id), account.auto_reply_enabled, account.auto_reply_text)
         updated += 1
 
     await db.flush()
+    if payload.auto_reply_enabled:
+        from app.services.session_manager import session_manager
+        for account in accounts:
+            asyncio.create_task(session_manager.ensure_connected_on_demand(str(account.id)))
     return {"updated": updated, "total": len(payload.account_ids)}
 
 

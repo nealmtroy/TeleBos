@@ -315,61 +315,124 @@ class TelegramEventRelay:
             return
         if sender is None or getattr(sender, "bot", False):
             return
+        sender_id = getattr(sender, "id", None)
+        if sender_id is None:
+            return
+        # Do not reply to Telegram service notification accounts or SpamBot (777000, 42777, 178220800)
+        if sender_id in (777000, 42777, 178220800):
+            return
+        sender_username = getattr(sender, "username", "") or ""
+        if sender_username.lower() in ("spambot", "telegram"):
+            return
+        # Do not reply to oneself
+        if getattr(sender, "is_self", False) or sender_id == self._tg_id_map.get(account_id):
+            return
 
-        async with async_session_factory() as db:
+        from app.utils.redis import (
+            get_auto_reply_config,
+            set_auto_reply_config,
+            check_auto_reply_rate_limit,
+            record_auto_reply_sent,
+            is_auto_reply_sent_to_user,
+            mark_auto_reply_sent_to_user,
+            redis_client,
+        )
+        import uuid
+
+        try:
+            acc_uuid = uuid.UUID(account_id)
+        except (ValueError, TypeError):
+            return
+
+        try:
+            # 1. Fast cache check: if auto-reply is disabled or empty in Redis cache, exit in 0ms without DB
+            cached_config = await get_auto_reply_config(account_id)
+            if cached_config is not None:
+                if not cached_config["enabled"] or not cached_config["text"]:
+                    return
+                reply_text = cached_config["text"]
+            else:
+                reply_text = None
+
+            # 2. Fast cache check: if already replied to this sender, exit in 0ms without DB
+            if await is_auto_reply_sent_to_user(account_id, sender_id):
+                return
+
+            # 3. Cache miss: Fetch account settings within bounded DB semaphore
+            if reply_text is None:
+                async with self._db_sem:
+                    async with async_session_factory() as db:
+                        result = await db.execute(
+                            select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
+                        )
+                        account = result.scalar_one_or_none()
+                        if account is None:
+                            return
+                        await set_auto_reply_config(
+                            account_id, account.auto_reply_enabled, account.auto_reply_text
+                        )
+                        if not account.auto_reply_enabled or not account.auto_reply_text:
+                            return
+                        reply_text = account.auto_reply_text
+
+            # 4. Check DB deduplication log if not confirmed in Redis cache
+            async with self._db_sem:
+                async with async_session_factory() as db:
+                    log_result = await db.execute(
+                        select(AutoReplyLog).where(
+                            AutoReplyLog.account_id == acc_uuid,
+                            AutoReplyLog.sender_id == sender_id,
+                        )
+                    )
+                    if log_result.scalar_one_or_none() is not None:
+                        await mark_auto_reply_sent_to_user(account_id, sender_id)
+                        return
+
+            # 5. Check Redis rate limit and cooldown (per-sender and account hourly limit)
+            if not await check_auto_reply_rate_limit(account_id, sender_id):
+                logger.warning(
+                    "Auto-reply skipped for account %s / sender %s due to rate limit/cooldown",
+                    account_id,
+                    sender_id,
+                )
+                return
+
+            # 6. Distributed atomic lock to prevent concurrent duplicate auto-replies
+            lock_key = f"lock:autoreply:{account_id}:{sender_id}"
+            acquired = await redis_client.set(lock_key, "1", nx=True, ex=60)
+            if not acquired:
+                return
+
+            # 7. First DM — send auto-reply as a reply to the incoming message
+            if chat is None:
+                return
+
+            # Send with HTML parse_mode; fallback safely to plain text if malformed markup
             try:
-                # 1. Fetch account + auto-reply settings
-                result = await db.execute(
-                    select(TelegramAccount).where(TelegramAccount.id == account_id)
+                await event.client.send_message(
+                    chat, reply_text, reply_to=msg.id, parse_mode="html"
                 )
-                account = result.scalar_one_or_none()
-                if account is None:
-                    return
-                if not account.auto_reply_enabled or not account.auto_reply_text:
-                    return
-
-                # Check Redis rate limit and cooldown
-                from app.utils.redis import check_auto_reply_rate_limit, record_auto_reply_sent, redis_client
-
-                if not await check_auto_reply_rate_limit(account_id):
-                    logger.warning(
-                        "Auto-reply skipped for account %s due to rate limit/cooldown", account_id
-                    )
-                    return
-
-                # 2. Fast path: check DB log for existing reply
-                sender_id = sender.id
-                log_result = await db.execute(
-                    select(AutoReplyLog).where(
-                        AutoReplyLog.account_id == account.id,
-                        AutoReplyLog.sender_id == sender_id,
-                    )
+            except Exception as parse_err:
+                logger.warning(
+                    "Auto-reply HTML parse failed for account %s, falling back to plain text: %s",
+                    account_id,
+                    parse_err,
                 )
-                if log_result.scalar_one_or_none() is not None:
-                    return  # Already replied to this user
+                await event.client.send_message(
+                    chat, reply_text, reply_to=msg.id, parse_mode=None
+                )
 
-                # Distributed atomic lock to prevent concurrent duplicate auto-replies
-                lock_key = f"lock:autoreply:{account.id}:{sender_id}"
-                acquired = await redis_client.set(lock_key, "1", nx=True, ex=60)
-                if not acquired:
-                    return  # Another concurrent event is already sending the auto-reply
+            # 8. Log the reply in DB and Redis so we never reply to this user again
+            async with self._db_sem:
+                async with async_session_factory() as db:
+                    db.add(AutoReplyLog(account_id=acc_uuid, sender_id=sender_id))
+                    await db.commit()
 
-                # 3. First DM — send auto-reply as a reply to the incoming message
-                if chat is None:
-                    return
+            await mark_auto_reply_sent_to_user(account_id, sender_id)
+            await record_auto_reply_sent(account_id, sender_id)
 
-                await event.client.send_message(chat, account.auto_reply_text, reply_to=msg.id)
-
-                # 4. Log the reply so we never reply to this user again
-                db.add(AutoReplyLog(account_id=account.id, sender_id=sender_id))
-                await db.flush()
-                await db.commit()
-
-                # Record the sent reply to enforce rate limit/cooldown in Redis
-                await record_auto_reply_sent(account_id)
-
-            except Exception as exc:
-                logger.error("Auto-reply error for account %s: %s", account_id, exc)
+        except Exception as exc:
+            logger.error("Auto-reply error for account %s: %s", account_id, exc)
 
     async def _on_outgoing_message(self, account_id: str, event) -> None:
         """Fire when we send a message."""

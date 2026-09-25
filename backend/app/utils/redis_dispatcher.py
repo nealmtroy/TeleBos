@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 JOBS_QUEUE_KEY = "telebos:jobs:queue"
 JOBS_CONTROL_CHANNEL = "telebos:jobs:control"
 WS_EVENTS_CHANNEL = "telebos:ws:events"
+JOBS_COMPLETED_CHANNEL = "telebos:jobs:completed"
 
 
 async def enqueue_job(job_type: str, job_id: str | uuid.UUID) -> bool:
@@ -76,3 +77,23 @@ async def publish_ws_event(channel: str, event_data: dict[str, Any]) -> bool:
     except Exception as exc:
         logger.warning("Failed to publish WS event for channel %s: %s", channel, exc)
         return False
+
+
+async def publish_job_completed(
+    job_type: str, job_id: str | uuid.UUID, account_ids: list[str]
+) -> bool:
+    """Publish a completion signal to notify webservers that accounts are freed from worker job."""
+    try:
+        payload = json.dumps({
+            "action": "completed",
+            "job_type": job_type,
+            "job_id": str(job_id),
+            "account_ids": [str(a) for a in account_ids],
+        })
+        await redis_client.publish(JOBS_COMPLETED_CHANNEL, payload)
+        logger.info("Published job completed signal for %s job %s", job_type, job_id)
+        return True
+    except Exception as exc:
+        logger.error("Failed to publish job completed signal for %s job %s: %s", job_type, job_id, exc)
+        return False
+

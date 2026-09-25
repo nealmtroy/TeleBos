@@ -1223,6 +1223,12 @@ async def execute_invite(job_id: str):
                 await acc["client"].disconnect()
             except Exception:
                 pass
+        try:
+            if accounts_data:
+                from app.utils.redis_dispatcher import publish_job_completed
+                await publish_job_completed("invite", job_id, [str(a["id"]) for a in accounts_data])
+        except Exception:
+            pass
 
 
 def start_invite_task(job_id: str | uuid.UUID) -> bool:
