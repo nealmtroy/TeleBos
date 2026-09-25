@@ -37,3 +37,19 @@ class ContactDetail(BaseModel):
     photo_version: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ContactImportItem(BaseModel):
+    phone: str
+    first_name: str | None = None
+    last_name: str | None = None
+
+
+class ContactImportRequest(BaseModel):
+    contacts: list[ContactImportItem]
+
+
+class ContactImportResponse(BaseModel):
+    total_submitted: int
+    imported_count: int
+    imported_users: list[ContactItem] = []

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, Suspense, useEffect, useCallback } from "react";
+import { useState, Suspense, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
@@ -9,13 +10,18 @@ import {
   useContacts,
   useContactDetail,
   useDeleteContact,
+  useImportContacts,
+  downloadContactsExport,
   type ContactItem,
+  type ContactImportItem,
 } from "@/hooks/use-contacts";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
 import { ChatAvatar } from "@/components/chat/ChatAvatar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/store/auth-store";
+import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import {
   Users,
   Search,
@@ -31,6 +37,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Send,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FileCode,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Plus,
 } from "lucide-react";
 
 export default function ContactsPage() {
@@ -72,7 +87,19 @@ function ContactsContent() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ContactItem | null>(null);
   const _ = useT();
+  const { toast } = useToast();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // ── Import / Export State ──────────────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importTab, setImportTab] = useState<"manual" | "file">("manual");
+  const [importText, setImportText] = useState("");
+  const [parsedContacts, setParsedContacts] = useState<ContactImportItem[]>([]);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<"csv" | "vcf" | "json" | null>(null);
+
+  const importMutation = useImportContacts(selectedAccount);
 
   const getApiUrl = useCallback(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
@@ -141,6 +168,152 @@ function ContactsContent() {
 
   const totalPages = Math.max(1, Math.ceil(total / 50));
 
+  // ── Parser logic ───────────────────────────────────────────────────────────
+  function parseTextLines(text: string): ContactImportItem[] {
+    const lines = text.split("\n");
+    const results: ContactImportItem[] = [];
+    const seenPhones = new Set<string>();
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      // Delimiter could be comma, tab, or semicolon
+      const parts = line.split(/[,;\t]/).map((p) => p.trim());
+      const rawPhone = parts[0];
+      // Clean phone: keep '+' if at start, strip out formatting
+      const cleanPhone = rawPhone.replace(/[^\d+]/g, "");
+      if (cleanPhone.length < 6 || seenPhones.has(cleanPhone)) continue;
+
+      seenPhones.add(cleanPhone);
+      const firstName = parts[1] || "";
+      const lastName = parts.slice(2).join(" ") || "";
+
+      results.push({
+        phone: cleanPhone,
+        first_name: firstName || undefined,
+        last_name: lastName || undefined,
+      });
+    }
+    return results;
+  }
+
+  // Update parsed items when manual text changes
+  useEffect(() => {
+    if (importTab === "manual") {
+      setParsedContacts(parseTextLines(importText));
+    }
+  }, [importText, importTab]);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsingFile(true);
+    try {
+      const content = await file.text();
+      const ext = file.name.split(".").pop()?.toLowerCase();
+
+      if (ext === "vcf") {
+        // Parse vCard format
+        const vcards = content.split(/BEGIN:VCARD/i).slice(1);
+        const list: ContactImportItem[] = [];
+        const seenPhones = new Set<string>();
+
+        for (const vcard of vcards) {
+          const telMatch = vcard.match(/TEL[^:]*:([^\r\n]+)/i);
+          const fnMatch = vcard.match(/FN[^:]*:([^\r\n]+)/i);
+          const nMatch = vcard.match(/N[^:]*:([^\r\n]+)/i);
+
+          if (telMatch) {
+            const rawPhone = telMatch[1].trim();
+            const cleanPhone = rawPhone.replace(/[^\d+]/g, "");
+            if (cleanPhone.length >= 6 && !seenPhones.has(cleanPhone)) {
+              seenPhones.add(cleanPhone);
+              let first = "";
+              let last = "";
+
+              if (fnMatch) {
+                const names = fnMatch[1].trim().split(" ");
+                first = names[0];
+                last = names.slice(1).join(" ");
+              } else if (nMatch) {
+                const parts = nMatch[1].split(";");
+                last = parts[0]?.trim() || "";
+                first = parts[1]?.trim() || "";
+              }
+
+              list.push({
+                phone: cleanPhone,
+                first_name: first || undefined,
+                last_name: last || undefined,
+              });
+            }
+          }
+        }
+        setParsedContacts(list);
+      } else {
+        // CSV or TXT file
+        setParsedContacts(parseTextLines(content));
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: "error",
+        title: "File Parse Error",
+        description: "Gagal membaca file kontak. Pastikan format file valid (.csv, .vcf, .txt).",
+      });
+    } finally {
+      setIsParsingFile(false);
+    }
+  }
+
+  async function handleExecuteImport() {
+    if (parsedContacts.length === 0) return;
+    try {
+      const res = await importMutation.mutateAsync(parsedContacts);
+      toast({
+        variant: "success",
+        title: _("contacts.importSuccess", { count: String(res.imported_count) }),
+        description: `${res.imported_count} dari ${res.total_submitted} kontak berhasil ditambahkan.`,
+      });
+      setImportOpen(false);
+      setImportText("");
+      setParsedContacts([]);
+      refetch();
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        variant: "error",
+        title: "Import Gagal",
+        description: err?.response?.data?.detail || "Terjadi kesalahan saat mengimpor kontak ke Telegram.",
+      });
+    }
+  }
+
+  async function handleExecuteExport(fmt: "csv" | "vcf" | "json") {
+    if (!selectedAccount) return;
+    setExportingFormat(fmt);
+    try {
+      await downloadContactsExport(selectedAccount, fmt);
+      toast({
+        variant: "success",
+        title: "Download Dimulai",
+        description: `Kontak akun berhasil diekspor sebagai .${fmt}`,
+      });
+      setExportOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        variant: "error",
+        title: "Ekspor Gagal",
+        description: err?.response?.data?.detail || "Gagal mengunduh kontak dari server.",
+      });
+    } finally {
+      setExportingFormat(null);
+    }
+  }
+
   return (
     <>
     <div className="flex h-[calc(100vh-7rem)] -m-6 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
@@ -174,6 +347,32 @@ function ContactsContent() {
               </option>
             ))}
           </select>
+
+          {/* Action buttons: Import & Export */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={!selectedAccount}
+              onClick={() => {
+                setParsedContacts([]);
+                setImportText("");
+                setImportOpen(true);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition"
+            >
+              <Upload className="h-3.5 w-3.5 text-primary-600" />
+              {_("contacts.importContacts")}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedAccount || total === 0}
+              onClick={() => setExportOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition"
+            >
+              <Download className="h-3.5 w-3.5 text-emerald-600" />
+              {_("contacts.exportContacts")}
+            </button>
+          </div>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -456,6 +655,290 @@ function ContactsContent() {
       cancelText={_("navbar.cancel")}
       variant="danger"
     />
+
+    {/* ── Import Contacts Modal ─────────────────────────────────────────── */}
+    {importOpen &&
+      typeof document !== "undefined" &&
+      createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600">
+                  <Upload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">{_("contacts.importContacts")}</h3>
+                  <p className="text-xs text-gray-500">{_("contacts.importContactsDesc")}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImportOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Tab switch */}
+            <div className="px-5 pt-4">
+              <div className="flex rounded-xl bg-gray-100 p-1 border border-gray-200/60">
+                <button
+                  type="button"
+                  onClick={() => setImportTab("manual")}
+                  className={cn(
+                    "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                    importTab === "manual" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-800"
+                  )}
+                >
+                  {_("contacts.bulkInput")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportTab("file")}
+                  className={cn(
+                    "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                    importTab === "file" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-800"
+                  )}
+                >
+                  {_("contacts.uploadFile")} (.csv, .vcf, .txt)
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {importTab === "manual" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Masukkan Nomor & Nama (1 per baris):
+                    </label>
+                    <span className="text-[11px] font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+                      Format: nomor, nama depan, nama belakang
+                    </span>
+                  </div>
+                  <textarea
+                    rows={6}
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                    placeholder={"+628123456789, Budi, Santoso\n+628987654321, Siti\n+628111222333"}
+                    className="w-full p-3 font-mono text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="block text-xs font-semibold text-gray-700">Pilih File Kontak</label>
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-primary-400 bg-gray-50/50 hover:bg-primary-50/20 rounded-xl p-6 cursor-pointer transition">
+                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                    <span className="text-xs font-medium text-gray-700">Klik untuk memilih file kontak</span>
+                    <span className="text-[11px] text-gray-400 mt-1">Mendukung format .CSV, .VCF (vCard), .TXT</span>
+                    <input
+                      type="file"
+                      accept=".csv,.vcf,.txt"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {isParsingFile && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-primary-600 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Sedang membaca dan mem-parse file...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Preview of Parsed Contacts */}
+              {parsedContacts.length > 0 && (
+                <div className="space-y-2 border border-emerald-100 bg-emerald-50/30 rounded-xl p-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-emerald-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      {parsedContacts.length} Kontak Siap Diimpor
+                    </span>
+                    <span className="text-[11px] text-emerald-600 font-medium">Pratinjau (Maks 5 pertama)</span>
+                  </div>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {parsedContacts.slice(0, 5).map((c, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-emerald-100 text-xs"
+                      >
+                        <span className="font-mono font-semibold text-gray-900">{c.phone}</span>
+                        <span className="text-gray-500 truncate max-w-[180px]">
+                          {c.first_name || ""} {c.last_name || ""}
+                        </span>
+                      </div>
+                    ))}
+                    {parsedContacts.length > 5 && (
+                      <p className="text-[11px] text-gray-400 text-center pt-1 italic">
+                        +{parsedContacts.length - 5} kontak lainnya
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-gray-50">
+              <span className="text-xs text-gray-500">
+                Akun: <strong className="text-gray-800">{accounts?.find((a) => a.id === selectedAccount)?.phone || "—"}</strong>
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportOpen(false)}
+                  className="rounded-xl text-xs"
+                >
+                  Batal
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={parsedContacts.length === 0 || importMutation.isPending}
+                  onClick={handleExecuteImport}
+                  className="rounded-xl text-xs font-semibold"
+                >
+                  {importMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      {_("contacts.importing")}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      Impor ({parsedContacts.length})
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+    {/* ── Export Contacts Modal ─────────────────────────────────────────── */}
+    {exportOpen &&
+      typeof document !== "undefined" &&
+      createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                  <Download className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">{_("contacts.exportContacts")}</h3>
+                  <p className="text-xs text-gray-500">{_("contacts.exportContactsDesc")}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExportOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-3">
+              <p className="text-xs text-gray-600">
+                Total <strong>{total} kontak</strong> akan diekspor dari akun Telegram ini:
+              </p>
+
+              {/* Format options */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled={exportingFormat !== null}
+                  onClick={() => handleExecuteExport("csv")}
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/20 text-left transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                      <FileSpreadsheet className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Format CSV (.csv)</p>
+                      <p className="text-xs text-gray-400">Cocok untuk Excel, Google Sheets, atau aplikasi spreadsheet</p>
+                    </div>
+                  </div>
+                  {exportingFormat === "csv" ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                  ) : (
+                    <Download className="h-4 w-4 text-gray-400 group-hover:text-emerald-600 transition" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={exportingFormat !== null}
+                  onClick={() => handleExecuteExport("vcf")}
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/20 text-left transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Format vCard / VCF (.vcf)</p>
+                      <p className="text-xs text-gray-400">Dapat langsung diimpor ke kontak HP (Android / iOS)</p>
+                    </div>
+                  </div>
+                  {exportingFormat === "vcf" ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  ) : (
+                    <Download className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={exportingFormat !== null}
+                  onClick={() => handleExecuteExport("json")}
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50/20 text-left transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
+                      <FileCode className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Format JSON (.json)</p>
+                      <p className="text-xs text-gray-400">Data mentah terstruktur untuk developer / integrasi API</p>
+                    </div>
+                  </div>
+                  {exportingFormat === "json" ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                  ) : (
+                    <Download className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end p-4 border-t border-gray-100 bg-gray-50">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setExportOpen(false)}
+                className="rounded-xl text-xs"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

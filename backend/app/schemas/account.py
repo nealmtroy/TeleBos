@@ -111,6 +111,8 @@ class AccountResponse(BaseModel):
     est_reg_date_age: str | None = None
     est_reg_date_status: str | None = None
 
+    contacts_count: int = 0
+
     folder_ids: list[UUID] = []
 
     model_config = {"from_attributes": True}

@@ -20,6 +20,11 @@ export interface MarketplaceAccountSummary {
   twofa_enabled: boolean;
   recovery_email_available: boolean;
   sell_price: number | null;
+  contacts_count?: number;
+  spam_status?: string | null;
+  est_reg_date?: string | null;
+  est_reg_date_age?: string | null;
+  est_reg_date_status?: string | null;
 }
 
 export interface MarketplaceBuyResponse {

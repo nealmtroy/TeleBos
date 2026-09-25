@@ -2,9 +2,10 @@
 
 import logging
 
-from telethon.tl.functions.contacts import GetContactsRequest, DeleteContactsRequest
+from telethon.tl.functions.contacts import GetContactsRequest, DeleteContactsRequest, ImportContactsRequest
 from telethon.tl.functions.users import GetFullUserRequest
-from telethon.tl.types import InputUser
+from telethon.tl.types import InputUser, InputPhoneContact
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.telegram_account import TelegramAccount
 from app.services.telegram_client import client_pool
@@ -134,3 +135,98 @@ async def delete_contact(
     except Exception as exc:
         logger.error("Failed to delete contact %d: %s", contact_id, exc)
         raise RuntimeError(str(exc)) from exc
+
+
+async def get_all_contacts(account: TelegramAccount) -> list[dict]:
+    """Fetch all Telegram contacts for an account without pagination."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    try:
+        result = await client(GetContactsRequest(0))
+    except Exception as exc:
+        logger.error("Failed to get all contacts for account %s: %s", account.id, exc)
+        raise RuntimeError(str(exc)) from exc
+
+    users = result.users if result else []
+    contact_list = []
+    for user in users:
+        photo = getattr(user, "photo", None)
+        photo_version = getattr(photo, "photo_id", None) if photo else None
+        contact_list.append({
+            "contact_id": user.id,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "username": user.username or "",
+            "phone": user.phone or "",
+            "mutual": getattr(user, "mutual_contact", False),
+            "photo_version": photo_version,
+        })
+    return contact_list
+
+
+async def import_contacts(
+    db: AsyncSession,
+    account: TelegramAccount,
+    contacts: list[dict],
+) -> tuple[int, list[dict]]:
+    """Import contacts by phone numbers into Telegram address book."""
+    session_str = decrypt(account.session_string)
+    client = await client_pool.get(str(account.id), session_str)
+    if client is None:
+        raise RuntimeError("Account is disconnected. Please re-login.")
+
+    input_contacts = []
+    for idx, c in enumerate(contacts):
+        phone = str(c.get("phone") or "").strip()
+        if not phone:
+            continue
+        first_name = str(c.get("first_name") or "").strip() or phone
+        last_name = str(c.get("last_name") or "").strip()
+        input_contacts.append(
+            InputPhoneContact(
+                client_id=idx + 1,
+                phone=phone,
+                first_name=first_name,
+                last_name=last_name,
+            )
+        )
+
+    if not input_contacts:
+        return 0, []
+
+    imported_users = []
+    total_imported = 0
+
+    # Batch in chunks of 50
+    for i in range(0, len(input_contacts), 50):
+        batch = input_contacts[i:i + 50]
+        try:
+            res = await client(ImportContactsRequest(contacts=batch))
+            if res:
+                total_imported += len(getattr(res, "imported", []))
+                for u in getattr(res, "users", []):
+                    imported_users.append({
+                        "contact_id": u.id,
+                        "first_name": u.first_name or "",
+                        "last_name": u.last_name,
+                        "username": u.username,
+                        "phone": u.phone,
+                        "mutual": getattr(u, "mutual_contact", False),
+                    })
+        except Exception as exc:
+            logger.error("Failed importing contacts batch for account %s: %s", account.id, exc)
+            raise RuntimeError(str(exc)) from exc
+
+    # Refresh contacts_count in DB
+    try:
+        fresh = await client(GetContactsRequest(0))
+        if fresh:
+            account.contacts_count = len(getattr(fresh, "users", []))
+            await db.commit()
+    except Exception as count_exc:
+        logger.debug("Failed to update contacts_count for %s: %s", account.id, count_exc)
+
+    return total_imported, imported_users

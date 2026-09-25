@@ -67,3 +67,53 @@ export function useDeleteContact(accountId: string) {
     },
   });
 }
+
+export interface ContactImportItem {
+  phone: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface ContactImportResponse {
+  total_submitted: number;
+  imported_count: number;
+  imported_users: ContactItem[];
+}
+
+export function useImportContacts(accountId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<ContactImportResponse, Error, ContactImportItem[]>({
+    mutationFn: async (contacts: ContactImportItem[]) => {
+      const { data } = await api.post(`/accounts/${accountId}/contacts/import`, {
+        contacts,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts", accountId] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+}
+
+export async function downloadContactsExport(accountId: string, format: "csv" | "vcf" | "json") {
+  const response = await api.get(`/accounts/${accountId}/contacts/export?format=${format}`, {
+    responseType: "blob",
+  });
+  const blob = new Blob([response.data], {
+    type:
+      format === "csv"
+        ? "text/csv"
+        : format === "vcf"
+        ? "text/vcard"
+        : "application/json",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `contacts_${accountId.slice(0, 8)}.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}

@@ -33,6 +33,7 @@ export interface Account {
   est_reg_date?: string | null;
   est_reg_date_age?: string | null;
   est_reg_date_status?: string | null;
+  contacts_count?: number;
 }
 
 export interface ApiError {

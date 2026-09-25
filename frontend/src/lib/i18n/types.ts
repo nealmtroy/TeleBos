@@ -1187,6 +1187,19 @@ export interface Dict {
     contactsCount: string;
     chat: string;
     sendMessage: string;
+    importContacts: string;
+    importContactsDesc: string;
+    exportContacts: string;
+    exportContactsDesc: string;
+    bulkInput: string;
+    uploadFile: string;
+    importSuccess: string;
+    importing: string;
+    exporting: string;
+    accountAge: string;
+    spamStatus: string;
+    clean: string;
+    limited: string;
   };
 
   // Member Invite

@@ -969,11 +969,25 @@ from app.utils.photo_helper import (
 )
 
 
-async def remove_account(db: AsyncSession, account: TelegramAccount) -> None:
-    """Disconnect client, clean up cached photo, clear flood state, and delete account from DB."""
+async def remove_account(db: AsyncSession, account: TelegramAccount, logout_session: bool = True) -> None:
+    """Disconnect client, optionally terminate Telegram session via auth.logOut, clean up cached photo, clear flood state, and delete account from DB."""
     # Detach event relay handlers first to clean up listeners and references
     from app.services.event_relay import event_relay
     await event_relay.detach(str(account.id))
+
+    if logout_session and account.session_string:
+        try:
+            session_str = decrypt(account.session_string)
+            client = await client_pool.get(str(account.id), session_str)
+            if client is not None:
+                try:
+                    logger.info("Calling Telegram auth.logOut for account %s (%s)...", account.id, account.phone)
+                    await asyncio.wait_for(client.log_out(), timeout=8.0)
+                    logger.info("Successfully logged out session from Telegram for account %s (%s)", account.id, account.phone)
+                except Exception as log_err:
+                    logger.warning("Telegram auth.logOut failed or timed out for account %s: %s", account.id, log_err)
+        except Exception as exc:
+            logger.warning("Could not initiate Telegram client logout for account %s: %s", account.id, exc)
 
     await client_pool.remove(str(account.id))
 

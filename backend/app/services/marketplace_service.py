@@ -66,6 +66,17 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
     # Inject sell_price from prefix pricing (not persisted, just for display)
     await resolve_prices_for_accounts(db, accounts)
 
+    from app.services.telegram_reg_date_service import reg_date_service
+    telegram_ids = [acc.telegram_id for acc in accounts if getattr(acc, "telegram_id", None)]
+    if telegram_ids:
+        estimates = await reg_date_service.estimate_registration_dates_batch(db, telegram_ids)
+        for acc in accounts:
+            if acc.telegram_id and acc.telegram_id in estimates:
+                est = estimates[acc.telegram_id]
+                acc.est_reg_date = est["date"].isoformat() if est.get("date") else None
+                acc.est_reg_date_age = est["age"]
+                acc.est_reg_date_status = est["status"]
+
     return accounts
 
 
@@ -358,10 +369,15 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
     )
     accounts = result.scalars().all()
 
+    from app.services.telegram_reg_date_service import reg_date_service
+    telegram_ids = [acc.telegram_id for acc in accounts if getattr(acc, "telegram_id", None)]
+    estimates = await reg_date_service.estimate_registration_dates_batch(db, telegram_ids) if telegram_ids else {}
+
     matched = []
     for acc in accounts:
         prefix, _ = get_country_code_and_name(acc.phone)
         if prefix == country_code:
+            est = estimates.get(acc.telegram_id) if acc.telegram_id else None
             matched.append(
                 {
                     "id": acc.id,
@@ -369,6 +385,11 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
                     "twofa_enabled": acc.twofa_enabled,
                     "recovery_email_available": acc.recovery_email is not None,
                     "sell_price": acc.sell_price,
+                    "contacts_count": getattr(acc, "contacts_count", 0) or 0,
+                    "spam_status": getattr(acc, "spam_status", "unknown") or "unknown",
+                    "est_reg_date": est["date"].isoformat() if est and est.get("date") else None,
+                    "est_reg_date_age": est["age"] if est else None,
+                    "est_reg_date_status": est["status"] if est else None,
                 }
             )
 

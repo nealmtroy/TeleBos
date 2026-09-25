@@ -8,6 +8,10 @@ import {
   AlertCircle,
   Wallet,
   Hash,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -165,6 +169,9 @@ export default function SellAccountsPage() {
                   />
                 </th>
                 <th className="py-3 px-4 text-left">Telegram Account</th>
+                <th className="py-3 px-3 text-center">Umur Akun</th>
+                <th className="py-3 px-3 text-center">Spam Bot</th>
+                <th className="py-3 px-3 text-center">Kontak</th>
                 <th className="py-3 px-4 text-left">Username</th>
                 <th className="py-3 px-4 text-left">Telegram ID</th>
                 <th className="py-3 px-4 text-center">Price (Rp)</th>
@@ -203,6 +210,33 @@ export default function SellAccountsPage() {
                           <p className="text-xs font-mono text-gray-500">{acc.phone}</p>
                         </div>
                       </div>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-700 font-medium">
+                        <Clock className="h-3 w-3 text-gray-400" />
+                        {acc.est_reg_date_age || "—"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      {acc.spam_status === "normal" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" /> Bersih
+                        </span>
+                      ) : acc.spam_status === "limited" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <AlertTriangle className="h-3 w-3" /> Terbatas
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200">
+                          Belum Dicek
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium text-gray-700">
+                        <Users className="h-3 w-3 text-gray-400" />
+                        {acc.contacts_count || 0}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-gray-600 font-mono text-xs">
                       {acc.username ? `@${acc.username}` : "—"}

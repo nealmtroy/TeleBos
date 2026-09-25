@@ -12,6 +12,10 @@ import {
   AlertCircle,
   Wallet,
   Tag,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -349,11 +353,14 @@ function CountryAccountsList({
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 text-gray-500 font-medium">
-                <th className="text-left py-2.5 px-5">Telegram User ID</th>
-                <th className="text-center py-2.5 px-5">2FA Password Status</th>
-                <th className="text-center py-2.5 px-5">Recovery Email</th>
-                <th className="text-center py-2.5 px-5">Price</th>
-                <th className="text-right py-2.5 px-5">Action</th>
+                <th className="text-left py-2.5 px-4">Telegram User ID</th>
+                <th className="text-center py-2.5 px-3">Umur Akun</th>
+                <th className="text-center py-2.5 px-3">Spam Bot</th>
+                <th className="text-center py-2.5 px-3">Kontak</th>
+                <th className="text-center py-2.5 px-3">2FA Password</th>
+                <th className="text-center py-2.5 px-3">Recovery Email</th>
+                <th className="text-center py-2.5 px-4">Price</th>
+                <th className="text-right py-2.5 px-4">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -361,10 +368,37 @@ function CountryAccountsList({
                 const price = acc.sell_price || 7000;
                 return (
                   <tr key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
-                    <td className="py-3 px-5 font-mono text-gray-900 font-semibold">
+                    <td className="py-3 px-4 font-mono text-gray-900 font-semibold">
                       {acc.telegram_id || "—"}
                     </td>
-                    <td className="py-3 px-5 text-center">
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 text-gray-700 font-medium">
+                        <Clock className="h-3 w-3 text-gray-400" />
+                        {acc.est_reg_date_age || "—"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      {acc.spam_status === "normal" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" /> Bersih
+                        </span>
+                      ) : acc.spam_status === "limited" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <AlertTriangle className="h-3 w-3" /> Terbatas
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200">
+                          Belum Dicek
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center gap-1 font-mono text-gray-700 font-medium">
+                        <Users className="h-3 w-3 text-gray-400" />
+                        {acc.contacts_count || 0}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-center">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
                         acc.twofa_enabled
@@ -375,7 +409,7 @@ function CountryAccountsList({
                         {acc.twofa_enabled ? "Required" : "Not Required"}
                       </span>
                     </td>
-                    <td className="py-3 px-5 text-center">
+                    <td className="py-3 px-3 text-center">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
                         acc.recovery_email_available
@@ -386,13 +420,13 @@ function CountryAccountsList({
                         {acc.recovery_email_available ? "Available" : "Not Available"}
                       </span>
                     </td>
-                    <td className="py-3 px-5 text-center">
+                    <td className="py-3 px-4 text-center">
                       <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
                         <Tag className="h-3 w-3 text-primary-500" />
                         Rp {price.toLocaleString()}
                       </span>
                     </td>
-                    <td className="py-3 px-5 text-right">
+                    <td className="py-3 px-4 text-right">
                       <Button
                         size="sm"
                         onClick={() => onBuyClick(acc)}
@@ -418,6 +452,38 @@ function CountryAccountsList({
                 <div className="flex justify-between items-start">
                   <span className="text-xs text-gray-400 font-medium">User ID:</span>
                   <span className="text-sm font-semibold text-gray-900 font-mono">{acc.telegram_id || "—"}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="space-y-1">
+                    <p className="text-gray-400 font-medium">Umur Akun</p>
+                    <span className="inline-flex items-center gap-1 font-medium text-gray-800">
+                      <Clock className="h-3 w-3 text-gray-400" />
+                      {acc.est_reg_date_age || "—"}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-gray-400 font-medium">Spam Bot</p>
+                    {acc.spam_status === "normal" ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" /> Bersih
+                      </span>
+                    ) : acc.spam_status === "limited" ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <AlertTriangle className="h-3 w-3" /> Terbatas
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200">
+                        Belum Dicek
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-gray-400 font-medium">Kontak</p>
+                    <span className="inline-flex items-center gap-1 font-mono font-medium text-gray-800">
+                      <Users className="h-3 w-3 text-gray-400" />
+                      {acc.contacts_count || 0}
+                    </span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="space-y-1">

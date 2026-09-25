@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-26
+- **[25aee2ad](https://github.com/nealmtroy/TeleBos/commit/25aee2ad)**: feat: add auto join groups/channels page, clarify danger zone logout, and fix orders modal backdrop blur
+
 ## 2026-09-25
 - **[c30023e6](https://github.com/nealmtroy/TeleBos/commit/c30023e6)**: fix(frontend): remove manual scan dialogs from age-checker and fix sidebar active states
 - **[0edf6a6f](https://github.com/nealmtroy/TeleBos/commit/0edf6a6f)**: fix(accounts): fetch all active accounts up to limit 1000 with is_active filter in auto-reply
