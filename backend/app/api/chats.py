@@ -19,7 +19,7 @@ from app.schemas.chat import (
     JoinChatRequest,
     JoinChatResponse,
 )
-from app.services import account_service, chat_service
+from app.services import account_service, chat_service, group_admin_service
 from app.utils.rate_limiter import rate_limiter
 from app.utils.sanitize import sanitize_exception
 
@@ -82,7 +82,7 @@ async def join_chat(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        result = await chat_service.join_chat(account, payload.identifier)
+        result = await group_admin_service.join_chat(account, payload.identifier)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except ValueError as exc:

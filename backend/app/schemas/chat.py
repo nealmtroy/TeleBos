@@ -130,6 +130,7 @@ class JoinChatResponse(BaseModel):
     title: str
     username: str | None = None
     chat_type: str
+    already_joined: bool = False
 
 
 # ── Batch actions ──────────────────────────────────────────────────────────────

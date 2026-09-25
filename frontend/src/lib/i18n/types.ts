@@ -862,6 +862,8 @@ export interface Dict {
     myChats: string;
     allChats: string;
     noPublicChats: string;
+    autoJoin: string;
+    autoJoinDesc: string;
   };
 
   // 404 Not Found

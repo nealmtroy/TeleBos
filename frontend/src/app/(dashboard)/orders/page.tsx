@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useOrderHistory, useRefreshAllOrders, useRefreshOrderStatus } from "@/hooks/use-orders";
@@ -100,6 +101,20 @@ export default function OrderHistoryPage() {
 
   // Detail Modal
   const [selectedDetail, setSelectedDetail] = useState<UnifiedOrder | null>(null);
+
+  // Prevent body scroll and close on ESC when detail modal is open
+  useEffect(() => {
+    if (!selectedDetail) return;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedDetail(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedDetail]);
 
   // Fetch data
   const { data: orders, isLoading: isSmmLoading, error: smmError } = useOrderHistory();
@@ -825,77 +840,86 @@ export default function OrderHistoryPage() {
       )}
 
       {/* Order Detail Modal */}
-      {selectedDetail && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedDetail(null)}>
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" />
+      {selectedDetail &&
+        createPortal(
           <div
-            className="relative bg-white rounded-2xl shadow-2xl border border-gray-250 w-full max-w-lg p-6 z-10 animate-in fade-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            onClick={() => setSelectedDetail(null)}
           >
-            <div className="flex items-center justify-between border-b border-gray-150 pb-3.5 mb-4">
-              <div>
-                <span className="font-mono text-sm font-bold text-gray-900">{selectedDetail.orderIdDisplay}</span>
-                <h3 className="text-base font-bold text-gray-900 mt-1">{selectedDetail.serviceName}</h3>
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              style={{ animation: "fadeIn 0.2s ease-out" }}
+            />
+            <div
+              className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg p-6 z-10"
+              style={{ animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3.5 mb-4">
+                <div>
+                  <span className="font-mono text-sm font-bold text-gray-900">{selectedDetail.orderIdDisplay}</span>
+                  <h3 className="text-base font-bold text-gray-900 mt-1">{selectedDetail.serviceName}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDetail(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDetail(null)}
-                className="p-1.5 text-gray-400 hover:text-gray-650 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            <div className="space-y-3.5 text-xs text-gray-700">
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Tipe Order</span>
-                <span className="font-bold text-gray-900 col-span-2">{selectedDetail.typeName}</span>
+              <div className="space-y-3.5 text-xs text-gray-700">
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Tipe Order</span>
+                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.typeName}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Kategori</span>
+                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.serviceSublabel}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Detail Target</span>
+                  <span className="font-mono text-gray-900 col-span-2 whitespace-pre-line leading-relaxed">{selectedDetail.detail}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Jumlah</span>
+                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.quantityDisplay}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Harga</span>
+                  <span className="font-extrabold text-primary-600 col-span-2">{selectedDetail.priceDisplay}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Status</span>
+                  <span className="col-span-2">
+                    <Badge variant="outline" className={cn("px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-white", STATUS_COLORS[selectedDetail.status] || "bg-gray-50 text-gray-700 border-gray-200")}>
+                      {selectedDetail.status}
+                    </Badge>
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
+                  <span className="font-semibold text-gray-500 col-span-1">Progress</span>
+                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.progressPercent}%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 py-2">
+                  <span className="font-semibold text-gray-500 col-span-1">Waktu Transaksi</span>
+                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.dateStr} pukul {selectedDetail.timeStr}</span>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Kategori</span>
-                <span className="font-bold text-gray-900 col-span-2">{selectedDetail.serviceSublabel}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Detail Target</span>
-                <span className="font-mono text-gray-900 col-span-2 whitespace-pre-line leading-relaxed">{selectedDetail.detail}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Jumlah</span>
-                <span className="font-bold text-gray-900 col-span-2">{selectedDetail.quantityDisplay}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Harga</span>
-                <span className="font-extrabold text-primary-600 col-span-2">{selectedDetail.priceDisplay}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Status</span>
-                <span className="col-span-2">
-                  <Badge variant="outline" className={cn("px-2 py-0.2 text-[10px] font-bold uppercase tracking-wide bg-white", STATUS_COLORS[selectedDetail.status] || "bg-gray-50 text-gray-700 border-gray-200")}>
-                    {selectedDetail.status}
-                  </Badge>
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                <span className="font-semibold text-gray-500 col-span-1">Progress</span>
-                <span className="font-bold text-gray-900 col-span-2">{selectedDetail.progressPercent}%</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 py-2">
-                <span className="font-semibold text-gray-500 col-span-1">Waktu Transaksi</span>
-                <span className="font-bold text-gray-900 col-span-2">{selectedDetail.dateStr} pukul {selectedDetail.timeStr}</span>
-              </div>
-            </div>
 
-            <div className="mt-6 flex justify-end">
-              <Button
-                onClick={() => setSelectedDetail(null)}
-                className="rounded-xl px-5 font-bold"
-              >
-                Tutup
-              </Button>
+              <div className="mt-6 flex justify-end">
+                <Button
+                  onClick={() => setSelectedDetail(null)}
+                  className="rounded-xl px-5 font-bold"
+                >
+                  Tutup
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

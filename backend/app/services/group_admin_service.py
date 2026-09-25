@@ -51,6 +51,7 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         invite_hash = ident[1:]
 
     entity = None
+    already_joined = False
 
     if invite_hash:
         # ── Invite link path ──────────────────────────────────────────────
@@ -60,10 +61,19 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
             info = await client(telethon.tl.functions.messages.CheckChatInviteRequest(hash=hash_clean))
             if isinstance(info, telethon.tl.types.ChatInviteAlready):
                 entity = info.chat  # already a member
+                already_joined = True
             else:
                 result = await client(telethon.tl.functions.messages.ImportChatInviteRequest(hash=hash_clean))
                 if hasattr(result, "chats") and result.chats:
                     entity = result.chats[0]
+        except telethon.errors.FloodWaitError as fwe:
+            raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+        except telethon.errors.UserAlreadyParticipantError:
+            already_joined = True
+            try:
+                entity = await client.get_entity(hash_clean)
+            except Exception:
+                pass
         except Exception as exc:
             # Maybe we are already a member — try get_entity from the chat link
             err_msg = str(exc)
@@ -73,11 +83,14 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                     entity = await client.get_entity(hash_clean)
                     try:
                         await client.get_permissions(entity, "me")
+                        already_joined = True
                     except Exception:
                         try:
                             await client(funcs.channels.JoinChannelRequest(entity))
                         except Exception:
                             pass
+            except telethon.errors.FloodWaitError as fwe:
+                raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
             except Exception:
                 raise RuntimeError(f"Failed to join: {err_msg}") from exc
     else:
@@ -86,6 +99,8 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         # Try resolving first
         try:
             entity = await client.get_entity(username)
+        except telethon.errors.FloodWaitError as fwe:
+            raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
         except Exception:
             pass
 
@@ -94,15 +109,25 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
             try:
                 await client(funcs.channels.JoinChannelRequest(username))
                 entity = await client.get_entity(username)
+            except telethon.errors.FloodWaitError as fwe:
+                raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+            except telethon.errors.UserAlreadyParticipantError:
+                already_joined = True
+                entity = await client.get_entity(username)
             except Exception as exc:
                 raise RuntimeError(f"Failed to join: {exc}") from exc
         else:
             # Already resolved — check membership; join if needed
             try:
                 await client.get_permissions(entity, "me")
+                already_joined = True
             except Exception:
                 try:
                     await client(funcs.channels.JoinChannelRequest(entity))
+                except telethon.errors.FloodWaitError as fwe:
+                    raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+                except telethon.errors.UserAlreadyParticipantError:
+                    already_joined = True
                 except Exception:
                     pass  # we have entity anyway
 
@@ -122,6 +147,7 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         "title": title,
         "username": username,
         "chat_type": chat_type,
+        "already_joined": already_joined,
     }
 
 

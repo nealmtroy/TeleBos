@@ -66,6 +66,7 @@ const broadcastSubItems: SubItem[] = [
 const groupsChannelsSubItems: SubItem[] = [
   { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone, exact: true },
   { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search, exact: true },
+  { href: "/groups-channels/auto-join", labelKey: "groupsChannels.autoJoin", icon: UserPlus, exact: true },
 ];
 
 const accountsSubItems: SubItem[] = [
