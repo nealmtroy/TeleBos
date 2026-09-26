@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-26
+- **[76c81b3d](https://github.com/nealmtroy/TeleBos/commit/76c81b3d)**: style(subscriptions): resolve impeccable audit findings, contrast issues, and ai tells
 - **[1a8ed2dc](https://github.com/nealmtroy/TeleBos/commit/1a8ed2dc)**: feat(theme): implement dark and light theme system with anti-fouc and settings control
 - **[f382e331](https://github.com/nealmtroy/TeleBos/commit/f382e331)**: style(sidebar): reduce profile avatar, name, and plan text sizes for compact layout
 - **[30bcd059](https://github.com/nealmtroy/TeleBos/commit/30bcd059)**: feat(sidebar): redesign profile card and popup menu to ChatGPT style

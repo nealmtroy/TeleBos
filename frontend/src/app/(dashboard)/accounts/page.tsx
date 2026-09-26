@@ -113,13 +113,13 @@ export default function AccountsListPage() {
         <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <button
             onClick={() => setFolderManagerOpen(true)}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition"
           >
             <FolderOpen className="h-4 w-4" />
             {_("accountFolders.manageFolders")}
           </button>
           {atLimit ? (
-            <span className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
+            <span className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
               <Info className="h-4 w-4" />
               Limit Reached
             </span>
