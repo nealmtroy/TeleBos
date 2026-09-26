@@ -742,6 +742,16 @@ const en: Dict = {
     enterPasswordConfirmDesc: "Please enter your password to confirm this action.",
     passwordRequired: "Password is required.",
     done: "Done",
+    appearanceTab: "Appearance",
+    appearanceDesc: "Customize the theme and visual appearance of your workspace.",
+    themeMode: "Theme Mode",
+    themeModeDesc: "Choose your preferred color theme or match your operating system.",
+    themeLight: "Light",
+    themeLightDesc: "Clean, crisp light appearance for bright environments.",
+    themeDark: "Dark",
+    themeDarkDesc: "Deep slate palette designed for sustained, low-glare work.",
+    themeSystem: "System",
+    themeSystemDesc: "Automatically synchronize with your operating system settings.",
   },
 
   // ── Account Settings (per-account) ──────────────────────────────────────
@@ -1624,6 +1634,16 @@ const en: Dict = {
   // ── Actions ─────────────────────────────────────────────────────────────
   actions: {
     refresh: "Refresh",
+  },
+
+  // ── Theme ───────────────────────────────────────────────────────────────
+  theme: {
+    title: "Theme",
+    light: "Light",
+    dark: "Dark",
+    system: "System",
+    appearance: "Appearance",
+    toggleTheme: "Toggle theme",
   },
 };
 

@@ -88,7 +88,7 @@ export function ConfirmDialog({
       {/* Dialog */}
       <div
         ref={dialogRef}
-        className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm p-6"
+        className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-sm p-6"
         style={{
           animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
@@ -98,14 +98,14 @@ export function ConfirmDialog({
           <div className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-4`}>
             <Icon className={`h-6 w-6 ${fg}`} />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
-          <div className="text-sm text-gray-500 mb-6">{message}</div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-1">{title}</h3>
+          <div className="text-sm text-gray-500 dark:text-slate-400 mb-6">{message}</div>
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-xl transition-all duration-200 active:scale-[0.98]"
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl transition-all duration-200 active:scale-[0.98] cursor-pointer"
           >
             {cancelText}
           </button>

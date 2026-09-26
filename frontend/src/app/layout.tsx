@@ -97,9 +97,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${publicDisplay.variable} ${publicMono.variable}`}
     >
       <head>
+        {/* Anti-FOUC: resolve dark/light theme before paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('telebos_theme');var isDark=t==='dark'||(!t&&true)||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(isDark){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}else{document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}}catch(e){}})();`,
+          }}
+        />
         {/* Content-Security-Policy — defense in depth.
              Note: frame-ancestors and X-Frame-Options only work in HTTP headers
              (set by the backend SecurityHeadersMiddleware). We include the

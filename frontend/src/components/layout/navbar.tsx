@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -86,20 +87,21 @@ export function Navbar() {
 
   return (
     <>
-      <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 relative z-30">
+      <header className="h-16 bg-white dark:bg-slate-900/90 dark:backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 relative z-30 transition-colors">
         <button
           onClick={toggleSidebar}
-          className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors duration-200 active:scale-95"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200 active:scale-95"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         <div className="flex-1" />
 
-        <NotificationCenter />
-
-        {/* Language Switcher */}
-        <LanguageSwitcher />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <NotificationCenter />
+          <ThemeToggle />
+          <LanguageSwitcher />
+        </div>
 
         {/* Profile section */}
         <div className="relative lg:hidden" ref={dropdownRef}>
@@ -128,7 +130,7 @@ export function Navbar() {
           {profileOpen && (
             <div
               className={cn(
-                "absolute right-0 top-full mt-2 z-50 w-56 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5 overflow-hidden",
+                "absolute right-0 top-full mt-2 z-50 w-56 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-lg dark:shadow-2xl py-1.5 overflow-hidden",
                 animating
                   ? "opacity-100 translate-y-0 scale-100"
                   : "opacity-0 -translate-y-2 scale-95"

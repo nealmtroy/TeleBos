@@ -691,6 +691,16 @@ export interface Dict {
     enterPasswordConfirmDesc: string;
     passwordRequired: string;
     done: string;
+    appearanceTab: string;
+    appearanceDesc: string;
+    themeMode: string;
+    themeModeDesc: string;
+    themeLight: string;
+    themeLightDesc: string;
+    themeDark: string;
+    themeDarkDesc: string;
+    themeSystem: string;
+    themeSystemDesc: string;
   };
 
   // Account Settings (per-account)
@@ -1625,5 +1635,15 @@ export interface Dict {
   // Actions
   actions: {
     refresh: string;
+  };
+
+  // Theme
+  theme: {
+    title: string;
+    light: string;
+    dark: string;
+    system: string;
+    appearance: string;
+    toggleTheme: string;
   };
 }

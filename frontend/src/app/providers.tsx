@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { useI18nStore } from "@/lib/i18n";
+import { useThemeStore } from "@/store/theme-store";
 import { ToastProvider } from "@/components/ui/toast";
 import { Toaster } from "sonner";
 
@@ -42,8 +43,33 @@ function LanguageSync() {
   return null;
 }
 
+/** Sync the <html> dark class and colorScheme with current theme preference. */
+function ThemeSync() {
+  const hydrate = useThemeStore((s) => s.hydrate);
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  // Listen to OS theme changes if theme is "system"
+  useEffect(() => {
+    if (theme !== "system") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      setTheme("system");
+    };
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [theme, setTheme]);
+
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
+  const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -55,8 +81,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <LanguageSync />
+        <ThemeSync />
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" theme={resolvedTheme} />
       </ToastProvider>
     </QueryClientProvider>
   );

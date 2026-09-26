@@ -26,6 +26,9 @@ import {
   ExternalLink,
   Sparkles,
   UserCheck,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -33,8 +36,9 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import QRCode from "react-qr-code";
 import { useAuthStore } from "@/store/auth-store";
+import { useThemeStore } from "@/store/theme-store";
 
-type TabKey = "security" | "2fa" | "api-keys";
+type TabKey = "security" | "2fa" | "api-keys" | "appearance";
 
 type ApiKey = {
   id: string;
@@ -52,6 +56,17 @@ export default function SettingsPage() {
 
   // Navigation tab
   const [activeTab, setActiveTab] = useState<TabKey>("security");
+  const { theme, setTheme } = useThemeStore();
+
+  // Listen to tab query parameter (e.g. /settings?tab=appearance)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (tabParam === "appearance" || tabParam === "security" || tabParam === "2fa" || tabParam === "api-keys") {
+      setActiveTab(tabParam as TabKey);
+    }
+  }, []);
 
   // Auth & Session
   const { data: session } = authClient.useSession();
@@ -449,6 +464,20 @@ export default function SettingsPage() {
               {apiKeys.filter((k) => !k.revoked_at).length}
             </span>
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("appearance")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap cursor-pointer",
+            activeTab === "appearance"
+              ? "bg-white text-slate-900 shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          )}
+        >
+          <Sparkles className="h-4 w-4 text-slate-500" />
+          <span>{_("settings.appearanceTab")}</span>
         </button>
       </div>
 
@@ -1487,6 +1516,165 @@ export default function SettingsPage() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: APPEARANCE / PERSONALISASI ──────────────────────────────────── */}
+      {activeTab === "appearance" && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">
+                {_("settings.themeMode")}
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                {_("settings.themeModeDesc")}
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Option 1: Light */}
+                <button
+                  type="button"
+                  onClick={() => setTheme("light")}
+                  className={cn(
+                    "flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative",
+                    theme === "light"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                  )}
+                >
+                  {/* Visual mockup preview */}
+                  <div className="w-full h-28 rounded-lg bg-white border border-slate-200 p-2.5 flex flex-col justify-between mb-4 shadow-xs overflow-hidden select-none">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="w-12 h-2 rounded bg-slate-200" />
+                      <div className="w-4 h-4 rounded-full bg-slate-200" />
+                    </div>
+                    <div className="space-y-1.5 py-1">
+                      <div className="w-3/4 h-2.5 rounded bg-slate-800" />
+                      <div className="w-1/2 h-2 rounded bg-slate-300" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-14 h-4 rounded bg-primary" />
+                      <div className="w-10 h-4 rounded bg-slate-100" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2 mt-auto">
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4 text-amber-500 shrink-0" />
+                      <span className="font-semibold text-sm text-slate-900">
+                        {_("settings.themeLight")}
+                      </span>
+                    </div>
+                    {theme === "light" && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    {_("settings.themeLightDesc")}
+                  </p>
+                </button>
+
+                {/* Option 2: Dark */}
+                <button
+                  type="button"
+                  onClick={() => setTheme("dark")}
+                  className={cn(
+                    "flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative",
+                    theme === "dark"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                  )}
+                >
+                  {/* Visual mockup preview */}
+                  <div className="w-full h-28 rounded-lg bg-slate-950 border border-slate-800 p-2.5 flex flex-col justify-between mb-4 shadow-xs overflow-hidden select-none">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                      <div className="w-12 h-2 rounded bg-slate-700" />
+                      <div className="w-4 h-4 rounded-full bg-slate-700" />
+                    </div>
+                    <div className="space-y-1.5 py-1">
+                      <div className="w-3/4 h-2.5 rounded bg-slate-100" />
+                      <div className="w-1/2 h-2 rounded bg-slate-500" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-14 h-4 rounded bg-primary" />
+                      <div className="w-10 h-4 rounded bg-slate-800" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2 mt-auto">
+                    <div className="flex items-center gap-2">
+                      <Moon className="h-4 w-4 text-blue-400 shrink-0" />
+                      <span className="font-semibold text-sm text-slate-900">
+                        {_("settings.themeDark")}
+                      </span>
+                    </div>
+                    {theme === "dark" && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    {_("settings.themeDarkDesc")}
+                  </p>
+                </button>
+
+                {/* Option 3: System */}
+                <button
+                  type="button"
+                  onClick={() => setTheme("system")}
+                  className={cn(
+                    "flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative",
+                    theme === "system"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                  )}
+                >
+                  {/* Visual mockup preview (split) */}
+                  <div className="w-full h-28 rounded-lg border border-slate-300 dark:border-slate-700 flex overflow-hidden mb-4 shadow-xs select-none">
+                    <div className="w-1/2 bg-white p-2.5 flex flex-col justify-between border-r border-slate-200">
+                      <div className="w-8 h-2 rounded bg-slate-200" />
+                      <div className="space-y-1">
+                        <div className="w-full h-2 rounded bg-slate-800" />
+                        <div className="w-2/3 h-1.5 rounded bg-slate-300" />
+                      </div>
+                      <div className="w-8 h-3 rounded bg-primary" />
+                    </div>
+                    <div className="w-1/2 bg-slate-950 p-2.5 flex flex-col justify-between">
+                      <div className="w-8 h-2 rounded bg-slate-700" />
+                      <div className="space-y-1">
+                        <div className="w-full h-2 rounded bg-slate-100" />
+                        <div className="w-2/3 h-1.5 rounded bg-slate-500" />
+                      </div>
+                      <div className="w-8 h-3 rounded bg-primary" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2 mt-auto">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4 text-slate-500 shrink-0" />
+                      <span className="font-semibold text-sm text-slate-900">
+                        {_("settings.themeSystem")}
+                      </span>
+                    </div>
+                    {theme === "system" && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    {_("settings.themeSystemDesc")}
+                  </p>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

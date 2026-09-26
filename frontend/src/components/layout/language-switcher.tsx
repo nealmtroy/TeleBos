@@ -61,7 +61,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
           "public-focus flex min-h-10 items-center gap-1.5 rounded-[6px] border px-2 py-1.5 text-xs font-medium transition-colors duration-150",
           variant === "public"
             ? "border-transparent text-[#a1a4a5] hover:border-[#292d30] hover:text-white"
-            : "border-transparent text-gray-400 hover:border-gray-200 hover:bg-gray-100 hover:text-gray-600"
+            : "border-transparent text-gray-400 dark:text-slate-400 hover:border-gray-200 dark:hover:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-slate-200"
         )}
         title={t("common.language")}
       >
@@ -78,7 +78,9 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div role="menu" className={cn(
             "absolute right-0 top-full z-20 mt-1 w-36 rounded-[6px] border py-1",
-            variant === "public" ? "border-[#292d30] bg-black" : "border-gray-200 bg-white shadow-lg"
+            variant === "public"
+              ? "border-[#292d30] bg-black"
+              : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg dark:shadow-2xl"
           )}>
             <button
               type="button"
@@ -89,7 +91,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
                 "public-focus flex min-h-10 w-full items-center gap-2 rounded-[6px] px-3 py-2 text-left text-sm transition-colors duration-150",
                 variant === "public"
                   ? locale === "en" ? "font-semibold text-[#2AABEE]" : "text-[#f0f0f0] hover:bg-[#0b0e14]"
-                  : locale === "en" ? "bg-primary-50 font-semibold text-primary-600" : "text-gray-700 hover:bg-gray-50"
+                  : locale === "en" ? "bg-primary-50 dark:bg-primary-950/40 font-semibold text-primary-600 dark:text-primary-400" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/80"
               )}
             >
               <FlagUK className="h-4 w-auto rounded-[2px] shadow-sm" />
@@ -104,7 +106,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
                 "public-focus flex min-h-10 w-full items-center gap-2 rounded-[6px] px-3 py-2 text-left text-sm transition-colors duration-150",
                 variant === "public"
                   ? locale === "id" ? "font-semibold text-[#2AABEE]" : "text-[#f0f0f0] hover:bg-[#0b0e14]"
-                  : locale === "id" ? "bg-primary-50 font-semibold text-primary-600" : "text-gray-700 hover:bg-gray-50"
+                  : locale === "id" ? "bg-primary-50 dark:bg-primary-950/40 font-semibold text-primary-600 dark:text-primary-400" : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/80"
               )}
             >
               <FlagID className="h-4 w-auto rounded-[2px] shadow-sm" />

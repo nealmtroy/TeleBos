@@ -742,6 +742,16 @@ const id: Dict = {
     enterPasswordConfirmDesc: "Silakan masukkan kata sandi Anda untuk mengonfirmasi tindakan ini.",
     passwordRequired: "Kata sandi diperlukan.",
     done: "Selesai",
+    appearanceTab: "Tampilan",
+    appearanceDesc: "Sesuaikan tema dan tampilan visual ruang kerja Anda.",
+    themeMode: "Mode Tema",
+    themeModeDesc: "Pilih tema warna favorit Anda atau sesuaikan dengan sistem operasi.",
+    themeLight: "Terang",
+    themeLightDesc: "Tampilan cerah yang bersih dan jelas untuk ruangan terang.",
+    themeDark: "Gelap",
+    themeDarkDesc: "Palet deep slate yang nyaman di mata untuk pemakaian jangka panjang.",
+    themeSystem: "Sistem",
+    themeSystemDesc: "Sinkronisasi otomatis mengikuti preferensi sistem operasi Anda.",
   },
 
   // ── Pengaturan Akun ─────────────────────────────────────────────────────
@@ -1624,6 +1634,16 @@ const id: Dict = {
   // ── Tindakan ────────────────────────────────────────────────────────────
   actions: {
     refresh: "Segarkan",
+  },
+
+  // ── Tema ─────────────────────────────────────────────────────────────────
+  theme: {
+    title: "Tema",
+    light: "Terang",
+    dark: "Gelap",
+    system: "Sistem",
+    appearance: "Tampilan",
+    toggleTheme: "Ganti tema",
   },
 };
 

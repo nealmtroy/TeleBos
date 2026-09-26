@@ -150,7 +150,7 @@ export function NotificationCenter() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
         aria-label={_("notifications.open")}
         aria-expanded={open}
       >
@@ -165,12 +165,12 @@ export function NotificationCenter() {
       {open && (
         <section
           aria-label={_("notifications.title")}
-          className="fixed inset-x-3 top-[4.5rem] z-50 flex max-h-[calc(100dvh-5.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(32rem,calc(100dvh-6rem))] sm:w-96"
+          className="fixed inset-x-3 top-[4.5rem] z-50 flex max-h-[calc(100dvh-5.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg dark:shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(32rem,calc(100dvh-6rem))] sm:w-96"
         >
-          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold text-slate-950">{_("notifications.title")}</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-100">{_("notifications.title")}</h2>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 {unreadCount > 0 ? _("notifications.unreadCount", { count: unreadCount }) : _("notifications.allCaughtUp")}
               </p>
             </div>
@@ -180,7 +180,7 @@ export function NotificationCenter() {
                   type="button"
                   onClick={() => markAllRead.mutate()}
                   disabled={markAllRead.isPending}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary-700 dark:text-primary-400 transition-colors hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
                 >
                   <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   {_("notifications.markAllRead")}
@@ -191,7 +191,7 @@ export function NotificationCenter() {
                   type="button"
                   onClick={() => clear.mutate()}
                   disabled={clear.isPending}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-700 dark:hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
                   aria-label={_("notifications.clearAll")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -201,27 +201,27 @@ export function NotificationCenter() {
           </header>
 
           {isLoading ? (
-            <div className="flex min-h-44 items-center justify-center px-6 text-sm text-slate-500">
+            <div className="flex min-h-44 items-center justify-center px-6 text-sm text-slate-500 dark:text-slate-400">
               {_("notifications.loading")}
             </div>
           ) : isError && !data ? (
             <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
-              <p className="text-sm font-medium text-slate-800">{_("notifications.loadError")}</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{_("notifications.loadError")}</p>
               <button
                 type="button"
                 onClick={() => refetch()}
-                className="mt-3 rounded-lg px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                className="mt-3 rounded-lg px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               >
                 {_("notifications.retry")}
               </button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                 <Bell className="h-5 w-5" aria-hidden="true" />
               </div>
-              <p className="text-sm font-medium text-slate-800">{_("notifications.emptyTitle")}</p>
-              <p className="mt-1 max-w-56 text-xs leading-5 text-slate-500">{_("notifications.emptyDescription")}</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{_("notifications.emptyTitle")}</p>
+              <p className="mt-1 max-w-56 text-xs leading-5 text-slate-500 dark:text-slate-400">{_("notifications.emptyDescription")}</p>
             </div>
           ) : (
             <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-live="polite">
@@ -229,29 +229,29 @@ export function NotificationCenter() {
                 const Icon = notificationIcons[notification.kind];
                 const content = getNotificationContent(notification, _);
                 return (
-                  <li key={notification.id} className="border-b border-slate-100 last:border-b-0">
-                    <div className={cn("group flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50", !notification.read_at && "bg-primary-50/50")}>
+                  <li key={notification.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+                    <div className={cn("group flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60", !notification.read_at && "bg-primary-50/50 dark:bg-primary-950/20")}>
                       <button
                         type="button"
                         onClick={() => handleNotificationClick(notification)}
-                        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none"
+                        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none cursor-pointer"
                       >
                         <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", notificationStyles[notification.kind])}>
                           <Icon className="h-4 w-4" aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-start justify-between gap-3">
-                            <span className="truncate text-sm font-medium text-slate-900">{content.title}</span>
-                            <time className="shrink-0 pt-0.5 text-[11px] text-slate-500">{formatNotificationTime(notification.created_at, locale)}</time>
+                            <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{content.title}</span>
+                            <time className="shrink-0 pt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{formatNotificationTime(notification.created_at, locale)}</time>
                           </span>
-                          {content.message && <span className="mt-0.5 block text-xs leading-5 text-slate-600">{content.message}</span>}
+                          {content.message && <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">{content.message}</span>}
                         </span>
                       </button>
                       <button
                         type="button"
                         onClick={() => remove.mutate(notification.id)}
                         disabled={remove.isPending}
-                        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-6 sm:w-6 sm:text-slate-400 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100"
+                        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-6 sm:w-6 sm:text-slate-400 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100 cursor-pointer"
                         aria-label={_("notifications.dismiss")}
                       >
                         <X className="h-3.5 w-3.5" aria-hidden="true" />

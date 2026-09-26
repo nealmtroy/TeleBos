@@ -74,7 +74,7 @@ export default function AnnouncementBanner() {
       <Banner
         variant="normal"
         changeLayout={false}
-        className="bg-blue-50/90 border-b border-blue-200 text-blue-800"
+        className="bg-blue-50/90 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300"
       >
         <div className="flex items-center justify-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin shrink-0 text-blue-600" />
@@ -91,7 +91,7 @@ export default function AnnouncementBanner() {
         id="telegram-status-unknown"
         variant="normal"
         changeLayout={false}
-        className="bg-gray-50/90 border-b border-gray-200 text-gray-700"
+        className="bg-gray-50/90 dark:bg-slate-900/80 border-b border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300"
       >
         <div className="flex items-center justify-center gap-2">
           <HelpCircle className="h-4 w-4 shrink-0 text-gray-500" />
@@ -108,7 +108,7 @@ export default function AnnouncementBanner() {
         id="telegram-status-down"
         variant="rainbow"
         changeLayout={false}
-        className="border-b border-red-200 text-red-900 font-semibold"
+        className="border-b border-red-200 dark:border-red-950 text-red-900 dark:text-red-300 font-semibold"
         rainbowColors={[
           "rgba(255, 0, 0, 0.15)",
           "rgba(239, 68, 68, 0.25)",
@@ -120,7 +120,7 @@ export default function AnnouncementBanner() {
         ]}
       >
         <div className="flex items-center justify-center gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 animate-pulse" />
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 animate-pulse" />
           <span>{_("announcement.telegramDown")}</span>
         </div>
       </Banner>
@@ -134,7 +134,7 @@ export default function AnnouncementBanner() {
         id="telegram-status-degraded"
         variant="rainbow"
         changeLayout={false}
-        className="border-b border-amber-200 text-amber-900 font-semibold"
+        className="border-b border-amber-200 dark:border-amber-950 text-amber-900 dark:text-amber-300 font-semibold"
         rainbowColors={[
           "rgba(245, 158, 11, 0.15)",
           "rgba(251, 191, 36, 0.25)",

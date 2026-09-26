@@ -36,33 +36,33 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47.4% 11.2%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 17.5%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 217.2 32.6% 17.5%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 22%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 20%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217.2 32.6% 22%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 217.2 32.6% 20%;
+    --input: 217.2 32.6% 20%;
+    --ring: 221.2 83.2% 53.3%;
   }
 }
 
@@ -77,9 +77,11 @@
   body,
   .bg-white,
   .bg-slate-50,
-  .dark .bg-slate-50,
+  .bg-gray-50,
   .border-slate-100,
   .border-slate-200,
+  .border-gray-100,
+  .border-gray-200,
   .border-b,
   .border-r,
   .border,
@@ -87,11 +89,64 @@
   textarea,
   select,
   header {
-    transition: background-color 0.25s ease-in-out, border-color 0.25s ease-in-out, color 0.25s ease-in-out, fill 0.25s ease-in-out, stroke 0.25s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
   }
 }
 
 @layer utilities {
+  /* TeleBos Dark Mode Bridge: maps legacy hardcoded utilities to calibrated theme tokens */
+  .dark .bg-white {
+    background-color: hsl(var(--card));
+  }
+  .dark .bg-slate-50,
+  .dark .bg-gray-50 {
+    background-color: hsl(var(--background));
+  }
+  .dark .bg-slate-100,
+  .dark .bg-gray-100 {
+    background-color: hsl(var(--secondary));
+  }
+  .dark .border-slate-100,
+  .dark .border-slate-200,
+  .dark .border-gray-100,
+  .dark .border-gray-200 {
+    border-color: hsl(var(--border));
+  }
+  .dark .text-slate-900,
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: hsl(var(--foreground));
+  }
+  .dark .text-slate-600,
+  .dark .text-slate-500,
+  .dark .text-slate-400,
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: hsl(var(--muted-foreground));
+  }
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-slate-50:hover {
+    background-color: hsl(var(--muted) / 0.5);
+  }
+  .dark .hover\:bg-gray-100:hover,
+  .dark .hover\:bg-slate-100:hover {
+    background-color: hsl(var(--muted));
+  }
+  .dark .hover\:bg-gray-200:hover,
+  .dark .hover\:bg-slate-200:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+  }
+  .dark .hover\:text-gray-900:hover,
+  .dark .hover\:text-slate-900:hover {
+    color: hsl(var(--foreground));
+  }
+  .dark .shadow-lg,
+  .dark .shadow-md,
+  .dark .shadow-sm {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+  }
+
   .public-theme {
     --public-canvas: #000000;
     --public-border: #292d30;
