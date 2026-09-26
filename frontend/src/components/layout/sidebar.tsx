@@ -637,7 +637,7 @@ export function Sidebar() {
                     if (profileOpen) setActiveSubmenu(null);
                   }}
                   className={cn(
-                    "px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider shrink-0 ml-2 cursor-pointer",
+                    "px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider shrink-0 ml-2 cursor-pointer",
                     roleColor
                   )}
                 >

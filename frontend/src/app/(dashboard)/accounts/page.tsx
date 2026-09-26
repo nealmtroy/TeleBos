@@ -101,11 +101,11 @@ export default function AccountsListPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("accountsList.title")}</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{_("accountsList.title")}</h1>
+          <p className="text-gray-500 dark:text-slate-400 mt-1">
             {_("accountsList.subtitle")}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">
             {totalUsedAccounts}/{accountLimit} accounts used
             {user?.role !== "owner" && ` (${user?.role || "basic"} plan)`}
           </p>
@@ -113,7 +113,7 @@ export default function AccountsListPage() {
         <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <button
             onClick={() => setFolderManagerOpen(true)}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
           >
             <FolderOpen className="h-4 w-4" />
             {_("accountFolders.manageFolders")}
@@ -126,7 +126,7 @@ export default function AccountsListPage() {
           ) : (
             <Link
               href="/accounts/add"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
             >
               <Plus className="h-4 w-4" />
               {_("accountsList.addAccount")}
@@ -139,14 +139,14 @@ export default function AccountsListPage() {
       <div className="flex flex-col gap-4">
         {/* Status filters & Search bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/70 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar">
             <button
               onClick={() => handleSelectStatus("active")}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "active"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
+                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
               )}
             >
               {_("accountsList.statusActive")}
@@ -154,10 +154,10 @@ export default function AccountsListPage() {
             <button
               onClick={() => handleSelectStatus("limited")}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "limited"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
+                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
               )}
             >
               {_("accountsList.statusLimited")}
@@ -165,10 +165,10 @@ export default function AccountsListPage() {
             <button
               onClick={() => handleSelectStatus("inactive")}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "inactive"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
+                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
               )}
             >
               {_("accountsList.statusInactive")}
@@ -176,10 +176,10 @@ export default function AccountsListPage() {
             <button
               onClick={() => handleSelectStatus("expired")}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "expired"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
+                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
               )}
             >
               {_("accountsList.statusExpired")}
@@ -187,10 +187,10 @@ export default function AccountsListPage() {
             <button
               onClick={() => handleSelectStatus("all")}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition",
+                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "all"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
+                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
               )}
             >
               {_("accountsList.statusAll")}
@@ -198,20 +198,20 @@ export default function AccountsListPage() {
           </div>
 
           <div className="relative w-full md:w-72 shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
             <input
               type="text"
               placeholder={_("accountsList.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
             />
           </div>
         </div>
 
         {/* Folder filter bar */}
         {folders.length > 0 && (
-          <div className="border-t border-gray-100 pt-3">
+          <div className="border-t border-gray-100 dark:border-slate-800 pt-3">
             <FolderFilterBar
               folders={folders}
               selectedFolderId={selectedFolderId}
@@ -239,9 +239,9 @@ export default function AccountsListPage() {
           </button>
         </div>
       ) : accounts.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <Smartphone className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 mb-4">
+        <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800">
+          <Smartphone className="h-12 w-12 text-gray-300 dark:text-slate-600 mx-auto mb-3" />
+          <p className="text-gray-500 dark:text-slate-400 mb-4">
             {selectedFolderId
               ? "No accounts in this folder."
               : debouncedSearch
@@ -251,7 +251,7 @@ export default function AccountsListPage() {
           {selectedFolderId ? (
             <button
               onClick={() => handleSelectFolder(null)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
             >
               {_("accountFolders.allAccounts")}
             </button>
@@ -261,14 +261,14 @@ export default function AccountsListPage() {
                 setSearch("");
                 setDebouncedSearch("");
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
             >
               Clear Search
             </button>
           ) : (
             <Link
               href="/accounts/add"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
             >
               <Plus className="h-4 w-4" />
               {_("accountsList.addYourFirst")}
@@ -292,9 +292,9 @@ export default function AccountsListPage() {
       {!isLoading && !error && totalItems > 0 && totalPages > 0 && (
         <nav
           aria-label="Account pagination"
-          className="mt-6 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between"
+          className="mt-6 flex flex-col gap-3 border-t border-gray-200 dark:border-slate-800 pt-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             {_("accountsList.showingAccounts", {
               start: (page - 1) * PAGE_SIZE + 1,
               end: Math.min(page * PAGE_SIZE, totalItems),
@@ -306,14 +306,14 @@ export default function AccountsListPage() {
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
               disabled={page === 1}
               aria-label={_("accountsList.prev")}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               title={_("accountsList.prev")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             {generatePageNumbers(page, totalPages).map((pageNumber, index) =>
               pageNumber === "…" ? (
-                <span key={`ellipsis-${index}`} aria-hidden="true" className="inline-flex size-9 shrink-0 items-center justify-center text-sm text-gray-400">
+                <span key={`ellipsis-${index}`} aria-hidden="true" className="inline-flex size-9 shrink-0 items-center justify-center text-sm text-gray-400 dark:text-slate-500">
                   …
                 </span>
               ) : (
@@ -323,10 +323,10 @@ export default function AccountsListPage() {
                   aria-current={page === pageNumber ? "page" : undefined}
                   aria-label={`Page ${pageNumber}`}
                   className={cn(
-                    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border text-sm font-medium transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                     page === pageNumber
                       ? "border-primary-600 bg-primary-600 text-white"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      : "border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
                   )}
                 >
                   {pageNumber}
@@ -337,7 +337,7 @@ export default function AccountsListPage() {
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page === totalPages}
               aria-label={_("accountsList.next")}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               title={_("accountsList.next")}
             >
               <ChevronRight className="h-4 w-4" />

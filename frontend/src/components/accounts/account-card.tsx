@@ -150,7 +150,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const isExpired = !account.is_active && !account.for_sale;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 hover:shadow-md transition h-full flex flex-col justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 transition-colors h-full flex flex-col justify-between">
       {/* Profile section */}
       <div className="p-5 pb-3">
         <div className="flex items-start gap-3">
@@ -167,21 +167,21 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             size="xl"
           />
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-gray-900 truncate">
+            <h2 className="font-semibold text-sm text-gray-900 dark:text-slate-100 truncate">
               {account.first_name || _("accountCard.unnamed")} {account.last_name || ""}
-            </h3>
+            </h2>
             {account.username && (
-              <p className="text-xs text-gray-500 truncate">@{account.username}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 truncate">@{account.username}</p>
             )}
-            <p className="text-xs text-gray-500 truncate">{account.phone}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{account.phone}</p>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[10px] text-gray-400">User ID:</span>
+              <span className="text-[11px] text-gray-500 dark:text-slate-400 font-medium">User ID:</span>
               <CopyableId id={account.telegram_id} />
             </div>
             {account.est_reg_date_age && (
-              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-gray-500">
-                <span className="text-gray-400">Est. Age:</span>
-                <span className="font-semibold text-gray-800" title={account.est_reg_date_status || undefined}>
+              <div className="flex items-center gap-1 mt-0.5 text-[11px] text-gray-500 dark:text-slate-400">
+                <span className="text-gray-500 dark:text-slate-400 font-medium">Est. Age:</span>
+                <span className="font-semibold text-gray-800 dark:text-slate-200" title={account.est_reg_date_status || undefined}>
                   {account.est_reg_date_age}
                 </span>
               </div>
@@ -190,8 +190,8 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="px-5 py-2.5 border-y border-gray-100 bg-gray-50/50">
+      {/* Stats row - flat divider without nested card background */}
+      <div className="px-5 py-2.5 border-y border-gray-100 dark:border-slate-800/80">
         {statsLoading ? (
           <div className="flex gap-3">
             <Skeleton className="h-4 w-20" />
@@ -202,30 +202,30 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
               {stats.contacts_count > 0 && (
                 <div>
-                  <span className="text-gray-400">{_("accountDetail.contacts")}: </span>
-                  <span className="font-medium text-gray-800">{stats.contacts_count}</span>
+                  <span className="text-gray-500 dark:text-slate-400">{_("accountDetail.contacts")}: </span>
+                  <span className="font-medium text-gray-800 dark:text-slate-200">{stats.contacts_count}</span>
                 </div>
               )}
               <div>
-                <span className="text-gray-400">{_("accountDetail.groups")}: </span>
-                <span className="font-medium text-gray-800">
+                <span className="text-gray-500 dark:text-slate-400">{_("accountDetail.groups")}: </span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">
                   {formatOwned(stats.total_groups, stats.owned_groups)}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400">{_("accountDetail.channels")}: </span>
-                <span className="font-medium text-gray-800">
+                <span className="text-gray-500 dark:text-slate-400">{_("accountDetail.channels")}: </span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">
                   {formatOwned(stats.total_channels, stats.owned_channels)}
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-400">
+            <div className="flex items-center gap-1 mt-1.5 text-[11px] text-gray-500 dark:text-slate-400">
               <Clock className="h-3 w-3" />
               <span>Updated {timeAgo(stats.stats_updated_at)}</span>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing || isRestricted}
-                className="ml-auto hover:text-primary-600 transition disabled:opacity-50"
+                className="ml-auto hover:text-primary-600 dark:hover:text-primary-400 transition disabled:opacity-50"
                 title="Refresh stats now"
               >
                 <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
@@ -233,32 +233,32 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             </div>
           </>
         ) : (
-          <p className="text-xs text-gray-400">—</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500">—</p>
         )}
       </div>
 
       {/* Badges */}
-      <div className="px-5 py-2.5 flex items-center gap-1.5">
+      <div className="px-5 py-2.5 flex items-center gap-1.5 flex-wrap">
         {account.for_sale ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
             {_("accountCard.inactive")}
           </span>
         ) : account.is_active ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
             {_("accountCard.active")}
           </span>
         ) : (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200/50 dark:border-red-800/50">
             {_("accountCard.expired")}
           </span>
         )}
         {account.spam_status === "limited" && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-yellow-100 text-yellow-800 animate-pulse">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50 animate-pulse">
             Limited
           </span>
         )}
         {account.is_resale && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
             Resale
           </span>
         )}
@@ -269,7 +269,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         <div className="grid grid-cols-2 gap-1.5">
           <button
             onClick={() => onView(account.id)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             <Eye className="h-3.5 w-3.5" />
             {_("accountCard.viewDetails")}
@@ -277,7 +277,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
           <Link
             href={`/chats?account=${account.id}`}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors",
               isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
             tabIndex={isRestricted ? -1 : undefined}
@@ -290,7 +290,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
           <Link
             href={`/contacts?account=${account.id}`}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors",
               isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
             tabIndex={isRestricted ? -1 : undefined}
@@ -301,7 +301,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
           <Link
             href={`/accounts/${account.id}/groups-channels`}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors",
               isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
             tabIndex={isRestricted ? -1 : undefined}
@@ -316,7 +316,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               setPendingDelete(account.id);
               setDeleteOpen(true);
             }}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 dark:text-rose-300 bg-red-50 dark:bg-rose-950/30 hover:bg-red-100 dark:hover:bg-rose-900/40 rounded-lg transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
             {_("accountCard.delete")}
@@ -324,7 +324,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
           {account.for_sale ? (
             <button
               onClick={() => setCancelSellOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 dark:text-rose-300 bg-red-50 dark:bg-rose-950/30 hover:bg-red-100 dark:hover:bg-rose-900/40 rounded-lg transition-colors"
             >
               <X className="h-3.5 w-3.5" />
               {_("orders.cancelSell")}
@@ -334,7 +334,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               onClick={() => setSellOpen(true)}
               disabled={isRestricted}
               className={cn(
-                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition",
+                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors",
                 isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
               )}
             >
@@ -385,7 +385,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
               {account.is_resale && (
                 <div className="flex justify-between items-center text-purple-700 font-medium">
                   <span>Status Akun:</span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-800">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300">
                     Resale (Akun dari Marketplace)
                   </span>
                 </div>

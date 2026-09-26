@@ -18,10 +18,10 @@ export function FolderFilterBar({ folders, selectedFolderId, onSelect }: FolderF
       <button
         onClick={() => onSelect(null)}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition shrink-0",
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
           selectedFolderId === null
-            ? "bg-primary-600 text-white shadow-sm"
-            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            ? "bg-primary-600 text-white"
+            : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
         )}
       >
         <FolderOpen className="h-3.5 w-3.5" />
@@ -32,10 +32,10 @@ export function FolderFilterBar({ folders, selectedFolderId, onSelect }: FolderF
           key={folder.id}
           onClick={() => onSelect(folder.id)}
           className={cn(
-            "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition shrink-0",
+            "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
             selectedFolderId === folder.id
-              ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              ? "bg-primary-600 text-white"
+              : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
           )}
         >
           {folder.name}
