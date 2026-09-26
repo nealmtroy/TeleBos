@@ -282,10 +282,10 @@ export default function AutoReplyPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
             {_("autoReply.title")}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 max-w-xl">
             {_("autoReply.desc")}
           </p>
         </div>
@@ -384,9 +384,9 @@ export default function AutoReplyPage() {
       </div>
 
       {/* Account Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
         {/* Table header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50/80 text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-800 text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
           <label className="flex items-center cursor-pointer shrink-0">
             <input
               type="checkbox"
@@ -407,7 +407,7 @@ export default function AutoReplyPage() {
             {search ? "No accounts match your search." : "No active accounts."}
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-slate-800/80">
             {paginatedFiltered.map((account) => {
               const isExpanded = expandedId === account.id;
               const isSelected = selectedIds.has(account.id);
@@ -419,9 +419,9 @@ export default function AutoReplyPage() {
                   <div
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer select-none",
-                      isExpanded && "bg-primary-50/50",
-                      isSelected && !isExpanded && "bg-blue-50/40",
-                      !isExpanded && !isSelected && "hover:bg-gray-50"
+                      isExpanded && "bg-primary-50/50 dark:bg-primary-950/40",
+                      isSelected && !isExpanded && "bg-blue-50/40 dark:bg-blue-950/30",
+                      !isExpanded && !isSelected && "hover:bg-gray-50 dark:hover:bg-slate-800/50"
                     )}
                   >
                     {/* Checkbox */}
@@ -455,11 +455,11 @@ export default function AutoReplyPage() {
                         size="sm"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">
                           {account.first_name || _("accountCard.unnamed")}{" "}
                           {account.last_name || ""}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                           {account.username
                             ? `@${account.username}`
                             : account.phone}
@@ -473,12 +473,12 @@ export default function AutoReplyPage() {
                       onClick={() => handleExpand(account)}
                     >
                       {hasMessage ? (
-                        <span className="text-xs text-gray-500 truncate block max-w-full">
+                        <span className="text-xs text-gray-500 dark:text-slate-400 truncate block max-w-full">
                           {account.auto_reply_text!.slice(0, 40)}
                           {account.auto_reply_text!.length > 40 ? "…" : ""}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-300 italic">
+                        <span className="text-xs text-gray-300 dark:text-slate-600 italic">
                           No message set
                         </span>
                       )}
@@ -488,10 +488,10 @@ export default function AutoReplyPage() {
                     <div className="w-20 text-center" onClick={() => handleExpand(account)}>
                       <span
                         className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium",
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold",
                           account.auto_reply_enabled
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300"
+                            : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
                         )}
                       >
                         {account.auto_reply_enabled
@@ -653,10 +653,10 @@ export default function AutoReplyPage() {
                   key={pageNum}
                   onClick={() => setPage(pageNum)}
                   className={cn(
-                    "inline-flex items-center justify-center w-9 h-9 rounded-lg border text-sm font-medium transition",
+                    "inline-flex items-center justify-center w-9 h-9 rounded-lg border text-sm font-medium transition-colors",
                     page === pageNum
-                      ? "bg-primary-600 border-primary-600 text-white shadow-sm"
-                      : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                      ? "bg-primary-600 border-primary-600 text-white"
+                      : "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
                   )}
                 >
                   {pageNum}

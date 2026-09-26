@@ -192,16 +192,16 @@ function GroupsChannelsContent() {
     : chats;
 
   return (
-    <div className="h-[calc(100vh-7rem)] -m-6 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm flex flex-col">
+    <div className="h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800 flex flex-col">
       {/* Header with account selector */}
-      <div className="p-4 border-b border-gray-100 space-y-3">
+      <div className="p-4 border-b border-gray-100 dark:border-slate-800 space-y-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-gray-900">{_("groupsChannels.title")}</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-slate-100">{_("groupsChannels.title")}</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSync}
               disabled={!selectedAccount || isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
               {isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}
@@ -209,7 +209,7 @@ function GroupsChannelsContent() {
             {filtered.some(chat => getInviteLink(chat)) && (
               <button
                 onClick={handleCopyAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition"
               >
                 <LinkIcon className="h-3.5 w-3.5" />
                 {copiedAll ? _("groupsChannels.copiedAllLinks") : _("groupsChannels.copyAllLinks")}
@@ -229,7 +229,7 @@ function GroupsChannelsContent() {
         <select
           value={selectedAccount}
           onChange={(e) => setSelectedAccount(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 text-gray-700"
+          className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
         >
           <option value="">{_("chats.selectAccount")}</option>
           {(Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : []).map((acc) => (
@@ -240,7 +240,7 @@ function GroupsChannelsContent() {
         </select>
 
         {selectedAccount && syncedAt && (
-          <div className="text-[11px] text-gray-500 flex items-center justify-between">
+          <div className="text-xs text-gray-500 dark:text-slate-400 flex items-center justify-between">
             <span>
               {_("groupsChannels.lastSynced").replace("{time}", new Date(syncedAt).toLocaleString())}
             </span>

@@ -157,7 +157,7 @@ export function Navbar() {
                   </div>
                 </div>
                 {/* Role Badge */}
-                <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide", roleColor)}>
+                <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wide", roleColor)}>
                   <RoleIcon className="h-3 w-3" />
                   {roleText}
                 </div>
