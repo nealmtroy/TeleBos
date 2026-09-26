@@ -353,25 +353,25 @@ export default function OrderHistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header + Balance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-250 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("orders.history") || "Order History"}</h1>
-          <p className="text-gray-550 mt-1 text-sm">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">{_("orders.history") || "Order History"}</h1>
+          <p className="text-gray-500 dark:text-slate-400 mt-1 text-sm">
             {locale === "id" ? "Riwayat semua pesanan yang pernah kamu buat." : "History of all orders you have made."}
           </p>
         </div>
         {user && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-100 rounded-xl self-start sm:self-auto shadow-sm">
-            <Wallet className="h-4 w-4 text-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-800 whitespace-nowrap">
-              {_("orders.yourBalance")}: <span className="text-sm font-bold text-emerald-700 ml-1">Rp {user.balance?.toLocaleString() || 0}</span>
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl self-start sm:self-auto shadow-sm">
+            <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 whitespace-nowrap">
+              {_("orders.yourBalance")}: <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 ml-1">Rp {user.balance?.toLocaleString() || 0}</span>
             </span>
           </div>
         )}
       </div>
 
       {/* Tabs Menu (Underline style) */}
-      <div className="border-b border-gray-200 w-full">
+      <div className="border-b border-gray-200 dark:border-slate-800 w-full">
         <div className="flex gap-6 -mb-px overflow-x-auto no-scrollbar">
           {tabs.map((t) => (
             <button
@@ -381,7 +381,7 @@ export default function OrderHistoryPage() {
                 "flex items-center gap-2 pb-3.5 px-1 text-sm font-semibold transition-all border-b-2 whitespace-nowrap focus:outline-none",
                 activeTab === t.id
                   ? "border-primary text-primary"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600"
               )}
             >
               <t.icon className="h-4 w-4" />
@@ -395,13 +395,13 @@ export default function OrderHistoryPage() {
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder={locale === "id" ? "Cari ID Order / Layanan / Username..." : "Search Order ID / Service / Username..."}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
 
@@ -411,7 +411,7 @@ export default function OrderHistoryPage() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">{locale === "id" ? "Semua Status" : "All Status"}</option>
             <option value="Selesai">{locale === "id" ? "Selesai" : "Completed"}</option>
@@ -433,7 +433,7 @@ export default function OrderHistoryPage() {
           <Button
             variant="outline"
             onClick={handleExport}
-            className="rounded-xl border-gray-200 text-xs font-semibold h-9 px-3.5 bg-white hover:bg-gray-50 text-gray-800 flex items-center gap-1.5 shadow-sm"
+            className="rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3.5 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 flex items-center gap-1.5 shadow-sm"
           >
             <Download className="h-4 w-4" /> Export
           </Button>
@@ -444,7 +444,7 @@ export default function OrderHistoryPage() {
             size="sm"
             onClick={() => refreshAll.mutate()}
             disabled={refreshAll.isPending}
-            className="rounded-xl border-gray-200 text-xs font-semibold h-9 px-3 bg-white hover:bg-gray-50 text-gray-800"
+            className="rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", refreshAll.isPending && "animate-spin")} />
           </Button>
@@ -455,27 +455,27 @@ export default function OrderHistoryPage() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-16 bg-white border border-gray-200 rounded-xl animate-pulse" />
+            <div key={i} className="h-16 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : isError ? (
-        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl text-red-800">
+        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-800/60 rounded-xl text-red-800 dark:text-red-300">
           <AlertCircle className="h-5 w-5" />
           <p className="text-sm font-medium">Failed to load order history</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl">
-          <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <h3 className="font-semibold text-gray-900 text-sm mb-1">{locale === "id" ? "Tidak ada pesanan ditemukan" : "No orders found"}</h3>
-          <p className="text-xs text-gray-550">{locale === "id" ? "Coba ganti kata kunci pencarian atau filter Anda." : "Try changing your search query or filters."}</p>
+        <div className="text-center py-16 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl">
+          <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-300 dark:text-slate-500" />
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100 text-sm mb-1">{locale === "id" ? "Tidak ada pesanan ditemukan" : "No orders found"}</h3>
+          <p className="text-xs text-gray-500 dark:text-slate-400">{locale === "id" ? "Coba ganti kata kunci pencarian atau filter Anda." : "Try changing your search query or filters."}</p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Desktop View Table */}
-          <div className="hidden lg:block overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm">
+          <div className="hidden lg:block overflow-hidden bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm">
             <table className="w-full text-xs text-left">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/75 text-gray-500 font-bold uppercase tracking-wider">
+                <tr className="border-b border-gray-200 dark:border-slate-700 bg-gray-50/75 dark:bg-slate-900/60 text-gray-500 dark:text-slate-300 font-bold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Order</th>
                   <th className="py-3.5 px-4 text-center">Tipe Order</th>
                   <th className="py-3.5 px-4">Layanan</th>
@@ -498,16 +498,16 @@ export default function OrderHistoryPage() {
                   <th className="py-3.5 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-150">
+              <tbody className="divide-y divide-gray-150 dark:divide-slate-700/60">
                 {paginatedItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50 transition-colors bg-white text-gray-800">
+                  <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/40 transition-colors bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200">
                     {/* Order ID */}
-                    <td className="py-4 px-4 whitespace-nowrap font-mono text-gray-900">
+                    <td className="py-4 px-4 whitespace-nowrap font-mono text-gray-900 dark:text-slate-100">
                       <div className="flex flex-col items-start gap-1">
                         <span className="font-bold">{item.orderIdDisplay}</span>
                         <button
                           onClick={() => handleCopy(item.orderIdDisplay)}
-                          className="text-gray-400 hover:text-gray-650 transition-colors p-0.5 rounded hover:bg-gray-100"
+                          className="text-gray-400 dark:text-slate-400 hover:text-gray-650 dark:hover:text-slate-200 transition-colors p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
                           title="Copy Order ID"
                         >
                           <Copy className="h-3 w-3" />
@@ -533,10 +533,10 @@ export default function OrderHistoryPage() {
                     {/* Layanan */}
                     <td className="py-4 px-4 max-w-[200px]">
                       <div className="flex flex-col gap-0.5">
-                        <span className="truncate font-bold text-gray-900" title={item.serviceName}>
+                        <span className="truncate font-bold text-gray-900 dark:text-slate-100" title={item.serviceName}>
                           {item.serviceName}
                         </span>
-                        <span className="text-[10px] text-gray-400 truncate" title={item.serviceSublabel}>
+                        <span className="text-[10px] text-gray-400 dark:text-slate-400 truncate" title={item.serviceSublabel}>
                           {item.serviceSublabel}
                         </span>
                       </div>
@@ -544,18 +544,18 @@ export default function OrderHistoryPage() {
 
                     {/* Detail */}
                     <td className="py-4 px-4 max-w-[180px]">
-                      <p className="text-[11px] text-gray-600 leading-relaxed font-mono whitespace-pre-line truncate" title={item.detail}>
+                      <p className="text-[11px] text-gray-600 dark:text-slate-300 leading-relaxed font-mono whitespace-pre-line truncate" title={item.detail}>
                         {item.detail}
                       </p>
                     </td>
 
                     {/* Jumlah */}
-                    <td className="py-4 px-4 text-right font-semibold text-gray-900 whitespace-nowrap">
+                    <td className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-slate-100 whitespace-nowrap">
                       {item.quantityDisplay}
                     </td>
 
                     {/* Harga */}
-                    <td className="py-4 px-4 text-right font-extrabold text-gray-900 whitespace-nowrap">
+                    <td className="py-4 px-4 text-right font-extrabold text-gray-900 dark:text-slate-100 whitespace-nowrap">
                       {item.priceDisplay}
                     </td>
 
@@ -590,8 +590,8 @@ export default function OrderHistoryPage() {
                     {/* Progress */}
                     <td className="py-4 px-4">
                       <div className="flex flex-col items-center justify-center min-w-[70px]">
-                        <span className="font-bold text-[10px] text-gray-800 mb-1">{item.progressPercent}%</span>
-                        <div className="w-full bg-gray-100 border border-gray-200 rounded-full h-1.5 overflow-hidden">
+                        <span className="font-bold text-[10px] text-gray-800 dark:text-slate-200 mb-1">{item.progressPercent}%</span>
+                        <div className="w-full bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full h-1.5 overflow-hidden">
                           <div
                             className={cn(
                               "h-1.5 rounded-full transition-all duration-500",
@@ -606,10 +606,10 @@ export default function OrderHistoryPage() {
                     </td>
 
                     {/* Date Time */}
-                    <td className="py-4 px-4 whitespace-nowrap text-gray-650 font-medium">
+                    <td className="py-4 px-4 whitespace-nowrap text-gray-650 dark:text-slate-300 font-medium">
                       <div className="flex flex-col">
                         <span>{item.dateStr}</span>
-                        <span className="text-[10px] text-gray-400 mt-0.5">{item.timeStr}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-slate-400 mt-0.5">{item.timeStr}</span>
                       </div>
                     </td>
 
@@ -620,7 +620,7 @@ export default function OrderHistoryPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedDetail(item)}
-                          className="h-8 px-2.5 rounded-lg border-gray-200 text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50"
+                          className="h-8 px-2.5 rounded-lg border-gray-200 dark:border-slate-700 text-[11px] font-bold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
                         >
                           Detail
                         </Button>
@@ -628,7 +628,7 @@ export default function OrderHistoryPage() {
                           <button
                             onClick={() => refreshOrder.mutate(item.id)}
                             disabled={refreshOrder.isPending}
-                            className="p-1 text-gray-400 hover:text-primary hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors shadow-sm"
+                            className="p-1 text-gray-400 hover:text-primary hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg transition-colors shadow-sm"
                             title={_("orders.refreshStatus")}
                           >
                             <RefreshCw className={cn("h-3.5 w-3.5", refreshOrder.isPending && "animate-spin")} />
@@ -645,13 +645,13 @@ export default function OrderHistoryPage() {
           {/* Mobile View Card List */}
           <div className="lg:hidden space-y-3">
             {paginatedItems.map((item) => (
-              <div key={item.id} className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-sm text-gray-950">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3 gap-2">
+              <div key={item.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 space-y-4 shadow-sm text-gray-900 dark:text-slate-100">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-3 gap-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-gray-900 text-sm">{item.orderIdDisplay}</span>
+                    <span className="font-mono font-bold text-gray-900 dark:text-slate-100 text-sm">{item.orderIdDisplay}</span>
                     <button
                       onClick={() => handleCopy(item.orderIdDisplay)}
-                      className="text-gray-400 hover:text-gray-650 transition-colors p-0.5 rounded"
+                      className="text-gray-400 hover:text-gray-650 dark:hover:text-slate-200 transition-colors p-0.5 rounded"
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </button>
@@ -670,21 +670,21 @@ export default function OrderHistoryPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <p className="font-bold text-sm text-gray-900 leading-snug">{item.serviceName}</p>
-                  <p className="text-[10px] text-gray-450">{item.serviceSublabel}</p>
+                  <p className="font-bold text-sm text-gray-900 dark:text-slate-100 leading-snug">{item.serviceName}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-slate-400">{item.serviceSublabel}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-1.5 border-t border-gray-55">
-                  <span className="font-semibold text-gray-500">Detail:</span>
-                  <span className="text-gray-800 font-mono text-[11px] text-right truncate" title={item.detail}>{item.detail.replace(/\n/g, " | ")}</span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-1.5 border-t border-gray-100 dark:border-slate-700">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400">Detail:</span>
+                  <span className="text-gray-800 dark:text-slate-200 font-mono text-[11px] text-right truncate" title={item.detail}>{item.detail.replace(/\n/g, " | ")}</span>
 
-                  <span className="font-semibold text-gray-500">Jumlah:</span>
-                  <span className="text-gray-850 font-bold text-right">{item.quantityDisplay}</span>
+                  <span className="font-semibold text-gray-500 dark:text-slate-400">Jumlah:</span>
+                  <span className="text-gray-900 dark:text-slate-100 font-bold text-right">{item.quantityDisplay}</span>
 
-                  <span className="font-semibold text-gray-500">Harga:</span>
-                  <span className="text-primary-600 font-bold text-right">{item.priceDisplay}</span>
+                  <span className="font-semibold text-gray-500 dark:text-slate-400">Harga:</span>
+                  <span className="text-primary-600 dark:text-primary-400 font-bold text-right">{item.priceDisplay}</span>
 
-                  <span className="font-semibold text-gray-500">Status:</span>
+                  <span className="font-semibold text-gray-500 dark:text-slate-400">Status:</span>
                   <span className="text-right">
                     {item.status === "Selesai" && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-150 rounded-full">
@@ -708,10 +708,10 @@ export default function OrderHistoryPage() {
                     )}
                   </span>
 
-                  <span className="font-semibold text-gray-500">Progress:</span>
+                  <span className="font-semibold text-gray-500 dark:text-slate-400">Progress:</span>
                   <div className="flex items-center justify-end gap-2">
-                    <span className="font-bold text-[10px] text-gray-800">{item.progressPercent}%</span>
-                    <div className="w-16 bg-gray-100 border border-gray-200 rounded-full h-1.5 overflow-hidden">
+                    <span className="font-bold text-[10px] text-gray-800 dark:text-slate-200">{item.progressPercent}%</span>
+                    <div className="w-16 bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full h-1.5 overflow-hidden">
                       <div
                         className={cn(
                           "h-1.5 rounded-full transition-all duration-500",
@@ -724,16 +724,16 @@ export default function OrderHistoryPage() {
                     </div>
                   </div>
 
-                  <span className="font-semibold text-gray-500">Waktu (WIB):</span>
-                  <span className="text-gray-700 font-medium text-right">{item.dateStr} {item.timeStr}</span>
+                  <span className="font-semibold text-gray-500 dark:text-slate-400">Waktu (WIB):</span>
+                  <span className="text-gray-700 dark:text-slate-300 font-medium text-right">{item.dateStr} {item.timeStr}</span>
                 </div>
 
-                <div className="flex gap-2 pt-3 border-t border-gray-100 justify-end">
+                <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-slate-700 justify-end">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedDetail(item)}
-                    className="h-8 px-3 rounded-xl border-gray-200 text-xs font-semibold bg-white text-gray-700"
+                    className="h-8 px-3 rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600"
                   >
                     Detail
                   </Button>
@@ -741,7 +741,7 @@ export default function OrderHistoryPage() {
                     <button
                       onClick={() => refreshOrder.mutate(item.id)}
                       disabled={refreshOrder.isPending}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-gray-50 border border-gray-200 rounded-xl shadow-sm bg-white"
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm bg-white dark:bg-slate-700"
                     >
                       <RefreshCw className={cn("h-3 w-3", refreshOrder.isPending && "animate-spin")} />
                       Refresh
@@ -754,13 +754,13 @@ export default function OrderHistoryPage() {
 
           {/* Pagination Component */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border border-gray-200 bg-white px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
+            <div className="flex items-center justify-between border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
               <div className="flex flex-1 justify-between sm:hidden">
                 <Button
                   variant="outline"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="rounded-xl border-gray-200"
+                  className="rounded-xl border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200"
                 >
                   Previous
                 </Button>
@@ -768,20 +768,20 @@ export default function OrderHistoryPage() {
                   variant="outline"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="rounded-xl border-gray-200"
+                  className="rounded-xl border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200"
                 >
                   Next
                 </Button>
               </div>
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs text-gray-550">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
                     {locale === "id" ? "Menampilkan" : "Showing"}{" "}
-                    <span className="font-bold text-gray-900">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
+                    <span className="font-bold text-gray-900 dark:text-slate-100">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
                     {locale === "id" ? "sampai" : "to"}{" "}
-                    <span className="font-bold text-gray-900">{Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}</span>{" "}
+                    <span className="font-bold text-gray-900 dark:text-slate-100">{Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}</span>{" "}
                     {locale === "id" ? "dari" : "of"}{" "}
-                    <span className="font-bold text-gray-900">{filteredItems.length}</span>{" "}
+                    <span className="font-bold text-gray-900 dark:text-slate-100">{filteredItems.length}</span>{" "}
                     {locale === "id" ? "order" : "orders"}
                   </p>
                 </div>
@@ -792,7 +792,7 @@ export default function OrderHistoryPage() {
                       size="sm"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="rounded-xl border-gray-200 px-3"
+                      className="rounded-xl border-gray-200 dark:border-slate-700 px-3 text-gray-700 dark:text-slate-200"
                     >
                       Previous
                     </Button>
@@ -800,10 +800,10 @@ export default function OrderHistoryPage() {
                       const pNum = idx + 1;
                       if (totalPages > 5 && pNum !== 1 && pNum !== totalPages && Math.abs(pNum - page) > 1) {
                         if (pNum === 2 && page > 3) {
-                          return <span key={pNum} className="px-2 text-gray-400">...</span>;
+                          return <span key={pNum} className="px-2 text-gray-400 dark:text-slate-500">...</span>;
                         }
                         if (pNum === totalPages - 1 && page < totalPages - 2) {
-                          return <span key={pNum} className="px-2 text-gray-400">...</span>;
+                          return <span key={pNum} className="px-2 text-gray-400 dark:text-slate-500">...</span>;
                         }
                         return null;
                       }
@@ -815,7 +815,7 @@ export default function OrderHistoryPage() {
                           onClick={() => setPage(pNum)}
                           className={cn(
                             "rounded-xl px-3",
-                            page === pNum ? "bg-primary text-white hover:bg-primary/90" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                            page === pNum ? "bg-primary text-white hover:bg-primary/90" : "border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                           )}
                         >
                           {pNum}
@@ -827,7 +827,7 @@ export default function OrderHistoryPage() {
                       size="sm"
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
-                      className="rounded-xl border-gray-200 px-3"
+                      className="rounded-xl border-gray-200 dark:border-slate-700 px-3 text-gray-700 dark:text-slate-200"
                     >
                       Next
                     </Button>
@@ -847,64 +847,64 @@ export default function OrderHistoryPage() {
             onClick={() => setSelectedDetail(null)}
           >
             <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/50 backdrop-blur-xs"
               style={{ animation: "fadeIn 0.2s ease-out" }}
             />
             <div
-              className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg p-6 z-10"
+              className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 w-full max-w-lg p-6 z-10"
               style={{ animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)" }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3.5 mb-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-3.5 mb-4">
                 <div>
-                  <span className="font-mono text-sm font-bold text-gray-900">{selectedDetail.orderIdDisplay}</span>
-                  <h3 className="text-base font-bold text-gray-900 mt-1">{selectedDetail.serviceName}</h3>
+                  <span className="font-mono text-sm font-bold text-gray-900 dark:text-slate-100">{selectedDetail.orderIdDisplay}</span>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mt-1">{selectedDetail.serviceName}</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedDetail(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="space-y-3.5 text-xs text-gray-700">
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Tipe Order</span>
-                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.typeName}</span>
+              <div className="space-y-3.5 text-xs text-gray-700 dark:text-slate-300">
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Tipe Order</span>
+                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.typeName}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Kategori</span>
-                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.serviceSublabel}</span>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Kategori</span>
+                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.serviceSublabel}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Detail Target</span>
-                  <span className="font-mono text-gray-900 col-span-2 whitespace-pre-line leading-relaxed">{selectedDetail.detail}</span>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Detail Target</span>
+                  <span className="font-mono text-gray-900 dark:text-slate-100 col-span-2 whitespace-pre-line leading-relaxed">{selectedDetail.detail}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Jumlah</span>
-                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.quantityDisplay}</span>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Jumlah</span>
+                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.quantityDisplay}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Harga</span>
-                  <span className="font-extrabold text-primary-600 col-span-2">{selectedDetail.priceDisplay}</span>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Harga</span>
+                  <span className="font-extrabold text-primary-600 dark:text-primary-400 col-span-2">{selectedDetail.priceDisplay}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Status</span>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Status</span>
                   <span className="col-span-2">
-                    <Badge variant="outline" className={cn("px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-white", STATUS_COLORS[selectedDetail.status] || "bg-gray-50 text-gray-700 border-gray-200")}>
+                    <Badge variant="outline" className={cn("px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-white dark:bg-slate-700", STATUS_COLORS[selectedDetail.status] || "bg-gray-50 text-gray-700 border-gray-200")}>
                       {selectedDetail.status}
                     </Badge>
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50">
-                  <span className="font-semibold text-gray-500 col-span-1">Progress</span>
-                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.progressPercent}%</span>
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Progress</span>
+                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.progressPercent}%</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 py-2">
-                  <span className="font-semibold text-gray-500 col-span-1">Waktu Transaksi</span>
-                  <span className="font-bold text-gray-900 col-span-2">{selectedDetail.dateStr} pukul {selectedDetail.timeStr}</span>
+                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Waktu Transaksi</span>
+                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.dateStr} pukul {selectedDetail.timeStr}</span>
                 </div>
               </div>
 

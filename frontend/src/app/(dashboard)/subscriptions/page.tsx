@@ -252,21 +252,21 @@ export default function SubscriptionPage() {
 
       {/* ── CURRENT PLAN STATUS BAR (Clean & Light) ── */}
       {isLoading ? (
-        <div className="h-20 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl animate-pulse" />
+        <div className="h-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl animate-pulse" />
       ) : error ? (
         <div className="flex items-center gap-3 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl text-rose-700 dark:text-rose-300">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <p className="text-sm">Gagal memuat informasi langganan aktif.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className={cn("p-2.5 rounded-xl border shrink-0", meta.iconBg, meta.badgeBg)}>
               <StatusIcon className={cn("h-5 w-5", meta.iconColor)} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{_("subscription.currentPlan")}:</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">{_("subscription.currentPlan")}:</span>
                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                   {currentPlan}
                 </span>
@@ -356,8 +356,8 @@ export default function SubscriptionPage() {
               className={cn(
                 "rounded-2xl transition-colors duration-150 flex flex-col justify-between p-6 sm:p-7 relative",
                 card.isPopular
-                  ? "bg-white dark:bg-slate-900 border-2 border-primary-500 dark:border-primary-500"
-                  : "bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700",
+                  ? "bg-white dark:bg-slate-800 border-2 border-primary-500 dark:border-primary-500 shadow-md"
+                  : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
                 card.isCurrent && !card.isPopular && "border-emerald-500/60 dark:border-emerald-500/60"
               )}
             >
@@ -375,7 +375,7 @@ export default function SubscriptionPage() {
                   <span
                     className={cn(
                       "text-xs font-bold uppercase tracking-wider",
-                      card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-500 dark:text-slate-400"
+                      card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-500 dark:text-slate-300"
                     )}
                   >
                     {card.title}
@@ -397,7 +397,7 @@ export default function SubscriptionPage() {
                   <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
                     {card.price}
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium ml-1.5">
+                  <span className="text-xs text-slate-500 dark:text-slate-300 font-medium ml-1.5">
                     {card.period}
                   </span>
                 </div>
@@ -414,7 +414,7 @@ export default function SubscriptionPage() {
                           ? "bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800"
                           : card.id === "pro"
                           ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700"
+                          : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-200 border border-slate-200 dark:border-slate-600"
                       )}
                     >
                       <Check className="h-3.5 w-3.5 shrink-0" />
@@ -424,7 +424,7 @@ export default function SubscriptionPage() {
                     <button
                       type="button"
                       disabled
-                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 cursor-default"
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-600 cursor-default"
                     >
                       {_("subscription.yourCurrentPlan")}
                     </button>

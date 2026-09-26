@@ -379,14 +379,14 @@ export default function AutoReplyPage() {
           placeholder={_("accountsList.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition"
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition"
         />
       </div>
 
       {/* Account Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
         {/* Table header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-800 text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">
           <label className="flex items-center cursor-pointer shrink-0">
             <input
               type="checkbox"
@@ -403,11 +403,11 @@ export default function AutoReplyPage() {
 
         {/* Rows */}
         {filtered.length === 0 ? (
-          <div className="text-center py-10 text-sm text-gray-400">
+          <div className="text-center py-10 text-sm text-gray-400 dark:text-slate-400">
             {search ? "No accounts match your search." : "No active accounts."}
           </div>
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-slate-800/80">
+          <div className="divide-y divide-gray-100 dark:divide-slate-700/80">
             {paginatedFiltered.map((account) => {
               const isExpanded = expandedId === account.id;
               const isSelected = selectedIds.has(account.id);
@@ -421,7 +421,7 @@ export default function AutoReplyPage() {
                       "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer select-none",
                       isExpanded && "bg-primary-50/50 dark:bg-primary-950/40",
                       isSelected && !isExpanded && "bg-blue-50/40 dark:bg-blue-950/30",
-                      !isExpanded && !isSelected && "hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                      !isExpanded && !isSelected && "hover:bg-gray-50 dark:hover:bg-slate-700/50"
                     )}
                   >
                     {/* Checkbox */}
@@ -459,7 +459,7 @@ export default function AutoReplyPage() {
                           {account.first_name || _("accountCard.unnamed")}{" "}
                           {account.last_name || ""}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                        <p className="text-xs text-gray-500 dark:text-slate-300 truncate">
                           {account.username
                             ? `@${account.username}`
                             : account.phone}
@@ -473,12 +473,12 @@ export default function AutoReplyPage() {
                       onClick={() => handleExpand(account)}
                     >
                       {hasMessage ? (
-                        <span className="text-xs text-gray-500 dark:text-slate-400 truncate block max-w-full">
+                        <span className="text-xs text-gray-500 dark:text-slate-300 truncate block max-w-full">
                           {account.auto_reply_text!.slice(0, 40)}
                           {account.auto_reply_text!.length > 40 ? "…" : ""}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-300 dark:text-slate-600 italic">
+                        <span className="text-xs text-gray-300 dark:text-slate-400 italic">
                           No message set
                         </span>
                       )}

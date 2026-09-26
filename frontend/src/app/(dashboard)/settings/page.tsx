@@ -407,18 +407,18 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Navigation Tabs ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 border border-slate-200/80 rounded-xl overflow-x-auto">
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-xl overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab("security")}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap",
             activeTab === "security"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:dark:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
           )}
         >
-          <KeyRound className="h-4 w-4 text-slate-500" />
+          <KeyRound className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           <span>{_("settings.changePassword")}</span>
         </button>
 
@@ -428,11 +428,11 @@ export default function SettingsPage() {
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap",
             activeTab === "2fa"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:dark:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
           )}
         >
-          <Shield className="h-4 w-4 text-slate-500" />
+          <Shield className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           <span>{_("settings.twoFactorTitle")}</span>
           <span
             className={cn(
@@ -453,14 +453,14 @@ export default function SettingsPage() {
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap",
             activeTab === "api-keys"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:dark:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
           )}
         >
-          <ShieldCheck className="h-4 w-4 text-slate-500" />
+          <ShieldCheck className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           <span>{_("settings.apiKeys")}</span>
           {apiKeys.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-md bg-slate-200 text-[11px] font-semibold text-slate-700">
+            <span className="px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-600 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
               {apiKeys.filter((k) => !k.revoked_at).length}
             </span>
           )}
@@ -472,11 +472,11 @@ export default function SettingsPage() {
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap cursor-pointer",
             activeTab === "appearance"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:dark:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
           )}
         >
-          <Sparkles className="h-4 w-4 text-slate-500" />
+          <Sparkles className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           <span>{_("settings.appearanceTab")}</span>
         </button>
       </div>
@@ -854,7 +854,7 @@ export default function SettingsPage() {
                 {/* QR Code container */}
                 <div className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200/80 rounded-xl text-center space-y-4">
                   {totpURI && (
-                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+                    <div data-keep-white="true" className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
                       <QRCode value={totpURI} size={180} />
                     </div>
                   )}
@@ -1523,12 +1523,12 @@ export default function SettingsPage() {
       {/* ── TAB 4: APPEARANCE / PERSONALISASI ──────────────────────────────────── */}
       {activeTab === "appearance" && (
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 {_("settings.themeMode")}
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                 {_("settings.themeModeDesc")}
               </p>
             </div>
@@ -1542,8 +1542,8 @@ export default function SettingsPage() {
                   className={cn(
                     "flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative",
                     theme === "light"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                      ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50"
                   )}
                 >
                   {/* Visual mockup preview */}
@@ -1565,7 +1565,7 @@ export default function SettingsPage() {
                   <div className="flex items-start justify-between gap-2 mt-auto">
                     <div className="flex items-center gap-2">
                       <Sun className="h-4 w-4 text-amber-500 shrink-0" />
-                      <span className="font-semibold text-sm text-slate-900">
+                      <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                         {_("settings.themeLight")}
                       </span>
                     </div>
@@ -1575,7 +1575,7 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-300 mt-1.5 leading-relaxed">
                     {_("settings.themeLightDesc")}
                   </p>
                 </button>
@@ -1587,8 +1587,8 @@ export default function SettingsPage() {
                   className={cn(
                     "flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative",
                     theme === "dark"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                      ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50"
                   )}
                 >
                   {/* Visual mockup preview */}
@@ -1610,7 +1610,7 @@ export default function SettingsPage() {
                   <div className="flex items-start justify-between gap-2 mt-auto">
                     <div className="flex items-center gap-2">
                       <Moon className="h-4 w-4 text-blue-400 shrink-0" />
-                      <span className="font-semibold text-sm text-slate-900">
+                      <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                         {_("settings.themeDark")}
                       </span>
                     </div>
@@ -1620,7 +1620,7 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-300 mt-1.5 leading-relaxed">
                     {_("settings.themeDarkDesc")}
                   </p>
                 </button>
@@ -1632,8 +1632,8 @@ export default function SettingsPage() {
                   className={cn(
                     "flex flex-col text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative",
                     theme === "system"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                      ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm"
+                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50"
                   )}
                 >
                   {/* Visual mockup preview (split) */}
@@ -1658,8 +1658,8 @@ export default function SettingsPage() {
 
                   <div className="flex items-start justify-between gap-2 mt-auto">
                     <div className="flex items-center gap-2">
-                      <Monitor className="h-4 w-4 text-slate-500 shrink-0" />
-                      <span className="font-semibold text-sm text-slate-900">
+                      <Monitor className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                      <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                         {_("settings.themeSystem")}
                       </span>
                     </div>
@@ -1669,7 +1669,7 @@ export default function SettingsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-300 mt-1.5 leading-relaxed">
                     {_("settings.themeSystemDesc")}
                   </p>
                 </button>

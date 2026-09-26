@@ -63,8 +63,8 @@ export default function BroadcastDashboardPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("broadcastDashboard.title")}</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{_("broadcastDashboard.title")}</h1>
+          <p className="text-gray-500 dark:text-slate-400 mt-1">
             {_("broadcastDashboard.desc")}
           </p>
         </div>
@@ -83,27 +83,27 @@ export default function BroadcastDashboardPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("broadcastDashboard.title")}</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{_("broadcastDashboard.title")}</h1>
+          <p className="text-gray-500 dark:text-slate-400 mt-1">
             {_("broadcastDashboard.desc")}
           </p>
         </div>
 
-        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
-          <div className="bg-primary-50 p-5 rounded-full text-primary-600 animate-pulse">
-            <UserPlus className="h-10 w-10 text-primary-600" />
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-primary-50 dark:bg-primary-950/50 p-5 rounded-full text-primary-600 dark:text-primary-400 animate-pulse">
+            <UserPlus className="h-10 w-10 text-primary-600 dark:text-primary-400" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
               {_("broadcastDashboard.noAccountsTitle")}
             </h2>
-            <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+            <p className="text-gray-500 dark:text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
               {_("broadcastDashboard.noAccountsDesc")}
             </p>
           </div>
           <Link
             href="/accounts"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow active:scale-98"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-semibold transition shadow-sm hover:shadow active:scale-98"
           >
             <Plus className="h-4 w-4" />
             {_("broadcastDashboard.noAccountsBtn")}
@@ -118,27 +118,27 @@ export default function BroadcastDashboardPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("broadcastDashboard.title")}</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{_("broadcastDashboard.title")}</h1>
+          <p className="text-gray-500 dark:text-slate-400 mt-1">
             {_("broadcastDashboard.desc")}
           </p>
         </div>
 
-        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
-          <div className="bg-blue-50 p-5 rounded-full text-blue-600 animate-pulse">
-            <List className="h-10 w-10 text-blue-600" />
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-blue-50 dark:bg-blue-950/50 p-5 rounded-full text-blue-600 dark:text-blue-400 animate-pulse">
+            <List className="h-10 w-10 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
               {_("broadcastDashboard.noGroupListsTitle")}
             </h2>
-            <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+            <p className="text-gray-500 dark:text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
               {_("broadcastDashboard.noGroupListsDesc")}
             </p>
           </div>
           <Link
             href="/broadcast/group-lists"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow active:scale-98"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-semibold transition shadow-sm hover:shadow active:scale-98"
           >
             <Plus className="h-4 w-4" />
             {_("broadcastDashboard.noGroupListsBtn")}
@@ -151,8 +151,8 @@ export default function BroadcastDashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("broadcastDashboard.title")}</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{_("broadcastDashboard.title")}</h1>
+        <p className="text-gray-500 dark:text-slate-400 mt-1">
           {_("broadcastDashboard.desc")}
         </p>
       </div>
@@ -162,7 +162,7 @@ export default function BroadcastDashboardPage() {
           <Link
             key={card.title}
             href={card.href}
-            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition group h-full flex flex-col justify-between"
+            className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition group h-full flex flex-col justify-between"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-4">
@@ -170,22 +170,22 @@ export default function BroadcastDashboardPage() {
                   <card.icon className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">
                     {card.title}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">{card.desc}</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{card.desc}</p>
                 </div>
               </div>
-              <ArrowRight className="h-5 w-5 text-gray-300 group-hover:text-primary-600 transition" />
+              <ArrowRight className="h-5 w-5 text-gray-300 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition" />
             </div>
           </Link>
         ))}
       </div>
 
       {/* Getting started */}
-      <div className="bg-primary-50 rounded-xl border border-primary-200 p-6">
-        <h3 className="font-semibold text-primary-800">{_("broadcastDashboard.gettingStarted")}</h3>
-        <ol className="mt-2 space-y-2 text-sm text-primary-700 list-decimal list-inside">
+      <div className="bg-primary-50 dark:bg-blue-950/30 rounded-xl border border-primary-200 dark:border-blue-900/50 p-6">
+        <h3 className="font-semibold text-primary-800 dark:text-blue-300">{_("broadcastDashboard.gettingStarted")}</h3>
+        <ol className="mt-2 space-y-2 text-sm text-primary-700 dark:text-blue-200/90 list-decimal list-inside">
           <li>{_("broadcastDashboard.step1")}</li>
           <li>{_("broadcastDashboard.step2")}</li>
           <li>{_("broadcastDashboard.step3")}</li>

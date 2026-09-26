@@ -139,14 +139,14 @@ export default function AccountsListPage() {
       <div className="flex flex-col gap-4">
         {/* Status filters & Search bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/70 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar border border-transparent dark:border-slate-700/60">
             <button
               onClick={() => handleSelectStatus("active")}
               className={cn(
                 "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "active"
-                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
-                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
+                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
               )}
             >
               {_("accountsList.statusActive")}
@@ -156,8 +156,8 @@ export default function AccountsListPage() {
               className={cn(
                 "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "limited"
-                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
-                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
+                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
               )}
             >
               {_("accountsList.statusLimited")}
@@ -167,8 +167,8 @@ export default function AccountsListPage() {
               className={cn(
                 "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "inactive"
-                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
-                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
+                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
               )}
             >
               {_("accountsList.statusInactive")}
@@ -178,8 +178,8 @@ export default function AccountsListPage() {
               className={cn(
                 "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "expired"
-                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
-                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
+                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
               )}
             >
               {_("accountsList.statusExpired")}
@@ -189,8 +189,8 @@ export default function AccountsListPage() {
               className={cn(
                 "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 statusFilter === "all"
-                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/60 dark:border-slate-700/60"
-                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
+                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
               )}
             >
               {_("accountsList.statusAll")}
@@ -204,7 +204,7 @@ export default function AccountsListPage() {
               placeholder={_("accountsList.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
             />
           </div>
         </div>
@@ -239,9 +239,9 @@ export default function AccountsListPage() {
           </button>
         </div>
       ) : accounts.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800">
-          <Smartphone className="h-12 w-12 text-gray-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-gray-500 dark:text-slate-400 mb-4">
+        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+          <Smartphone className="h-12 w-12 text-gray-300 dark:text-slate-500 mx-auto mb-3" />
+          <p className="text-gray-500 dark:text-slate-300 mb-4">
             {selectedFolderId
               ? "No accounts in this folder."
               : debouncedSearch
@@ -306,14 +306,14 @@ export default function AccountsListPage() {
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
               disabled={page === 1}
               aria-label={_("accountsList.prev")}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               title={_("accountsList.prev")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             {generatePageNumbers(page, totalPages).map((pageNumber, index) =>
               pageNumber === "…" ? (
-                <span key={`ellipsis-${index}`} aria-hidden="true" className="inline-flex size-9 shrink-0 items-center justify-center text-sm text-gray-400 dark:text-slate-500">
+                <span key={`ellipsis-${index}`} aria-hidden="true" className="inline-flex size-9 shrink-0 items-center justify-center text-sm text-gray-400 dark:text-slate-400">
                   …
                 </span>
               ) : (
@@ -326,7 +326,7 @@ export default function AccountsListPage() {
                     "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                     page === pageNumber
                       ? "border-primary-600 bg-primary-600 text-white"
-                      : "border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
+                      : "border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                   )}
                 >
                   {pageNumber}
@@ -337,7 +337,7 @@ export default function AccountsListPage() {
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page === totalPages}
               aria-label={_("accountsList.next")}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               title={_("accountsList.next")}
             >
               <ChevronRight className="h-4 w-4" />

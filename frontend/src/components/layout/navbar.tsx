@@ -130,7 +130,7 @@ export function Navbar() {
           {profileOpen && (
             <div
               className={cn(
-                "absolute right-0 top-full mt-2 z-50 w-56 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-lg dark:shadow-2xl py-1.5 overflow-hidden",
+                "absolute right-0 top-full mt-2 z-50 w-56 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg dark:shadow-2xl py-1.5 overflow-hidden",
                 animating
                   ? "opacity-100 translate-y-0 scale-100"
                   : "opacity-0 -translate-y-2 scale-95"
@@ -142,16 +142,16 @@ export function Navbar() {
               }}
             >
               {/* Profile header */}
-              <div className="px-4 py-3 border-b border-gray-100">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 truncate">
                       {user?.full_name || _("navbar.user")}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                       {user?.email}
                     </p>
                   </div>
@@ -164,10 +164,10 @@ export function Navbar() {
               </div>
 
               {/* Balance display */}
-              <div className="px-4 py-2 border-b border-gray-100">
-                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+              <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700">
+                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-transparent dark:border-emerald-800/60 rounded-lg">
                   <Wallet className="h-4 w-4 text-emerald-600" />
-                  <span className="text-xs text-emerald-700 font-medium">
+                  <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
                     Balance: <span className="font-bold">{(user?.balance || 0).toLocaleString()}</span>
                   </span>
                 </div>
@@ -177,9 +177,9 @@ export function Navbar() {
               <div className="py-1">
                 <button
                   onClick={handleSettings}
-                  className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150 group"
+                  className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors duration-150 group"
                 >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-primary-50 group-hover:text-primary-600 transition-all duration-200">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300 group-hover:bg-primary-50 dark:group-hover:bg-primary-950/40 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-all duration-200">
                     <Settings className="h-4 w-4" />
                   </div>
                   <span>{_("navbar.settings")}</span>
@@ -188,15 +188,15 @@ export function Navbar() {
               </div>
 
               {/* Divider */}
-              <div className="border-t border-gray-100" />
+              <div className="border-t border-gray-100 dark:border-slate-700" />
 
               {/* Logout */}
               <div className="py-1">
                 <button
                   onClick={handleLogoutClick}
-                  className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-rose-600 hover:bg-rose-50 transition-colors duration-150 group"
+                  className="flex items-center gap-3 px-4 py-2.5 w-full text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors duration-150 group"
                 >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-50 text-rose-500 group-hover:bg-rose-100 transition-all duration-200">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-500 dark:text-rose-400 group-hover:bg-rose-100 dark:group-hover:bg-rose-900/50 transition-all duration-200">
                     <LogOut className="h-4 w-4" />
                   </div>
                   <span>{_("navbar.logout")}</span>

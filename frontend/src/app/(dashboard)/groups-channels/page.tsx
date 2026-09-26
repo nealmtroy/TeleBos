@@ -192,9 +192,9 @@ function GroupsChannelsContent() {
     : chats;
 
   return (
-    <div className="h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800 flex flex-col">
+    <div className="h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 flex flex-col">
       {/* Header with account selector */}
-      <div className="p-4 border-b border-gray-100 dark:border-slate-800 space-y-3">
+      <div className="p-4 border-b border-gray-100 dark:border-slate-700 space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-gray-900 dark:text-slate-100">{_("groupsChannels.title")}</h1>
           <div className="flex items-center gap-2">
@@ -248,38 +248,38 @@ function GroupsChannelsContent() {
         )}
 
         {syncError && (
-          <div className="p-2 text-xs rounded-lg bg-red-50 border border-red-200 text-red-600">
+          <div className="p-2 text-xs rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-300">
             {syncError}
           </div>
         )}
 
         {syncSuccessMsg && (
-          <div className="p-2 text-xs rounded-lg bg-green-50 border border-green-200 text-green-700">
+          <div className="p-2 text-xs rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 text-green-700 dark:text-green-300">
             {syncSuccessMsg}
           </div>
         )}
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary-500 outline-none"
           />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-100 dark:border-slate-700 overflow-x-auto scrollbar-none">
         <button
           onClick={() => { setActiveTab("groups"); setPage(1); setSearch(""); }}
           className={cn(
             "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
             activeTab === "groups"
               ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              : "bg-gray-100 dark:bg-slate-700/60 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
           )}
         >
           <Users className="h-3 w-3 inline mr-1" />
@@ -291,7 +291,7 @@ function GroupsChannelsContent() {
             "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
             activeTab === "channels"
               ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              : "bg-gray-100 dark:bg-slate-700/60 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
           )}
         >
           <Hash className="h-3 w-3 inline mr-1" />
@@ -444,39 +444,39 @@ function GroupsChannelsContent() {
 
       {/* ── Join Modal ───────────────────────────────────────────────────────── */}
       {showJoinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowJoinModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs" onClick={() => setShowJoinModal(false)}>
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+            className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h2 className="text-base font-bold text-gray-900">{_("groupsChannels.joinNew")}</h2>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-slate-700/60">
+              <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">{_("groupsChannels.joinNew")}</h2>
               <button
                 onClick={() => setShowJoinModal(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 transition"
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition"
               >
-                <X className="h-5 w-5 text-gray-400" />
+                <X className="h-5 w-5 text-gray-400 dark:text-slate-400" />
               </button>
             </div>
 
             {/* Modal body */}
-            <div className="px-5 pb-5 space-y-4">
-              <p className="text-sm text-gray-500">{_("groupsChannels.joinDescription")}</p>
+            <div className="px-5 py-5 space-y-4">
+              <p className="text-sm text-gray-500 dark:text-slate-300">{_("groupsChannels.joinDescription")}</p>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1.5">
                   {_("groupsChannels.identifier")}
                 </label>
                 <div className="relative">
-                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
                   <input
                     type="text"
                     value={joinIdentifier}
                     onChange={(e) => { setJoinIdentifier(e.target.value); setJoinError(""); setJoinSuccess(""); setJoinResult(null); }}
                     placeholder={_("groupsChannels.joinPlaceholder")}
                     onKeyDown={(e) => { if (e.key === "Enter") handleJoin(); }}
-                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary-500 outline-none"
                     autoFocus
                   />
                 </div>
@@ -484,16 +484,16 @@ function GroupsChannelsContent() {
 
               {/* Error */}
               {joinError && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-sm text-red-600 dark:text-red-300">
                   {joinError}
                 </div>
               )}
 
               {/* Success */}
               {joinSuccess && joinResult && (
-                <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700 space-y-1">
+                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 text-sm text-green-700 dark:text-green-300 space-y-1">
                   <p className="font-medium">{joinSuccess}</p>
-                  <p className="text-green-600">
+                  <p className="text-green-600 dark:text-green-400">
                     <span className="font-medium">{joinResult.title}</span>
                     {" — "}
                     <span className="capitalize">{joinResult.chat_type}</span>
@@ -505,7 +505,7 @@ function GroupsChannelsContent() {
               <div className="flex items-center gap-2 pt-1">
                 <button
                   onClick={() => setShowJoinModal(false)}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition"
                 >
                   {joinResult ? _("common.close") : _("navbar.cancel")}
                 </button>

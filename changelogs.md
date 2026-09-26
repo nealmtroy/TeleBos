@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-26
+- **[c9f28665](https://github.com/nealmtroy/TeleBos/commit/c9f28665)**: fix(ui): eliminate nested cards, hairline shadows, and text floor violations on auto-join, groups-channels, and auto-reply
 - **[53e6e66c](https://github.com/nealmtroy/TeleBos/commit/53e6e66c)**: fix(ui): eliminate nested cards, undersized text, contrast issues, and toast layout transitions on accounts
 - **[b0a41e3a](https://github.com/nealmtroy/TeleBos/commit/b0a41e3a)**: fix(ui): resolve impeccable audit findings on settings, orders members, and accounts
 - **[76c81b3d](https://github.com/nealmtroy/TeleBos/commit/76c81b3d)**: style(subscriptions): resolve impeccable audit findings, contrast issues, and ai tells

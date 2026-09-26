@@ -457,28 +457,28 @@ export default function AutoJoinPage() {
         {/* Left Column: Source Input & Account Selection (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           {/* Card 1: Target Groups/Channels */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
-            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs">
                   1
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">Daftar Grup / Saluran Target</h2>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">Pilih sumber target yang akan diikuti</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-300">Pilih sumber target yang akan diikuti</p>
                 </div>
               </div>
 
               {/* Source Switcher Tabs */}
-              <div className="flex bg-gray-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+              <div className="flex bg-gray-100 dark:bg-slate-700/80 p-0.5 rounded-lg text-xs font-semibold border border-transparent dark:border-slate-600/50">
                 <button
                   type="button"
                   onClick={() => setSourceMode("bulk")}
                   className={cn(
                     "px-3 py-1.5 rounded-md transition-colors",
                     sourceMode === "bulk"
-                      ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/50 dark:border-slate-700"
-                      : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                      ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-200/50 dark:border-slate-600 shadow-xs"
+                      : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100"
                   )}
                 >
                   Input Massal
@@ -489,8 +489,8 @@ export default function AutoJoinPage() {
                   className={cn(
                     "px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5",
                     sourceMode === "saved"
-                      ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-200/50 dark:border-slate-700"
-                      : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100"
+                      ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-200/50 dark:border-slate-600 shadow-xs"
+                      : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100"
                   )}
                 >
                   <Bookmark className="h-3 w-3 text-primary-500" />
@@ -503,8 +503,8 @@ export default function AutoJoinPage() {
               {sourceMode === "bulk" ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-700">Tempel Link / Username per baris:</span>
-                    <span className="text-gray-400 font-mono">
+                    <span className="font-semibold text-gray-700 dark:text-slate-200">Tempel Link / Username per baris:</span>
+                    <span className="text-gray-400 dark:text-slate-400 font-mono">
                       {parsedTargets.length} target terdeteksi
                     </span>
                   </div>
@@ -514,14 +514,14 @@ export default function AutoJoinPage() {
                     onChange={(e) => setBulkText(e.target.value)}
                     disabled={isRunning}
                     placeholder={"https://t.me/telegram\nhttps://t.me/+AbCdEfGhIjK\n@channelusername\nhttps://t.me/joinchat/XyZ123\ngroupusername"}
-                    className="h-36 font-mono text-xs leading-relaxed bg-gray-50/50 border-gray-200 focus:bg-white resize-y"
+                    className="h-36 font-mono text-xs leading-relaxed bg-gray-50/50 dark:bg-slate-900/90 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 resize-y"
                   />
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                    <div className="text-gray-500 text-[11px] leading-relaxed">
-                      Format: <code className="bg-gray-100 px-1 py-0.5 rounded font-mono">@user</code>,{" "}
-                      <code className="bg-gray-100 px-1 py-0.5 rounded font-mono">t.me/name</code>, atau link private{" "}
-                      <code className="bg-gray-100 px-1 py-0.5 rounded font-mono">t.me/+hash</code>.
+                    <div className="text-gray-500 dark:text-slate-400 text-[11px] leading-relaxed">
+                      Format: <code className="bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-1 py-0.5 rounded font-mono">@user</code>,{" "}
+                      <code className="bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-1 py-0.5 rounded font-mono">t.me/name</code>, atau link private{" "}
+                      <code className="bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-1 py-0.5 rounded font-mono">t.me/+hash</code>.
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -636,15 +636,15 @@ export default function AutoJoinPage() {
           </div>
 
           {/* Card 2: Account Selection */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
-            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs">
                   2
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">Pilih Akun Telegram</h2>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                  <p className="text-xs text-gray-500 dark:text-slate-300">
                     {selectedAccountIds.size} dari {activeAccounts.length} akun aktif dipilih
                   </p>
                 </div>
@@ -659,12 +659,12 @@ export default function AutoJoinPage() {
                 >
                   Pilih Semua
                 </button>
-                <span className="text-gray-300 dark:text-slate-700">|</span>
+                <span className="text-gray-300 dark:text-slate-600">|</span>
                 <button
                   type="button"
                   onClick={deselectAllAccounts}
                   disabled={isRunning || selectedAccountIds.size === 0}
-                  className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 disabled:opacity-50"
+                  className="text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-white disabled:opacity-50"
                 >
                   Batal
                 </button>
@@ -673,12 +673,12 @@ export default function AutoJoinPage() {
 
             <div className="p-5">
               {accountsLoading ? (
-                <div className="flex items-center justify-center py-8 text-gray-400 text-xs gap-2">
+                <div className="flex items-center justify-center py-8 text-gray-400 dark:text-slate-400 text-xs gap-2">
                   <RefreshCw className="h-4 w-4 animate-spin text-primary-500" />
                   Memuat akun...
                 </div>
               ) : activeAccounts.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-xs">
+                <div className="text-center py-8 text-gray-400 dark:text-slate-400 text-xs">
                   Tidak ada akun aktif yang tersedia. Tambahkan atau sambungkan akun terlebih dahulu.
                 </div>
               ) : (
@@ -692,8 +692,8 @@ export default function AutoJoinPage() {
                         className={cn(
                           "flex items-center gap-3 p-2.5 rounded-xl transition-colors cursor-pointer select-none text-xs",
                           isSelected
-                            ? "bg-primary-50 dark:bg-primary-950/50 text-primary-950 dark:text-primary-200 font-medium"
-                            : "text-gray-700 dark:text-slate-300 hover:bg-gray-100/70 dark:hover:bg-slate-800/60",
+                            ? "bg-primary-50 dark:bg-primary-950/60 text-primary-950 dark:text-primary-200 font-medium"
+                            : "text-gray-700 dark:text-slate-200 hover:bg-gray-100/70 dark:hover:bg-slate-700/60",
                           isRunning && "pointer-events-none opacity-80"
                         )}
                       >
@@ -711,7 +711,7 @@ export default function AutoJoinPage() {
                           <p className="font-semibold text-gray-900 dark:text-slate-100 truncate">
                             {acc.first_name || "Tanpa Nama"} {acc.last_name || ""}
                           </p>
-                          <p className="text-[11px] text-gray-500 dark:text-slate-400 font-mono">{acc.phone}</p>
+                          <p className="text-[11px] text-gray-500 dark:text-slate-300 font-mono">{acc.phone}</p>
                         </div>
                         {acc.spam_status === "limited" ? (
                           <Badge variant="outline" className="text-[11px] font-semibold bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/50 shrink-0">
@@ -734,21 +734,21 @@ export default function AutoJoinPage() {
         {/* Right Column: Execution Config & Live Progress (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Card 3: Execution Settings */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-5 space-y-4">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100 dark:border-slate-700">
               <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs">
                 3
               </div>
               <div>
                 <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">Pengaturan Eksekusi</h2>
-                <p className="text-xs text-gray-500 dark:text-slate-400">Jeda dan distribusi tugas antar akun</p>
+                <p className="text-xs text-gray-500 dark:text-slate-300">Jeda dan distribusi tugas antar akun</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-gray-700 dark:text-slate-300">Jeda Antar Join:</span>
+                  <span className="font-semibold text-gray-700 dark:text-slate-200">Jeda Antar Join:</span>
                   <span className="font-bold text-primary-600 dark:text-primary-400 font-mono">{delaySeconds} Detik</span>
                 </div>
                 <input
@@ -760,17 +760,17 @@ export default function AutoJoinPage() {
                   disabled={isRunning}
                   className="w-full accent-primary-600 cursor-pointer"
                 />
-                <div className="flex justify-between text-[11px] text-gray-400 dark:text-slate-400 font-mono mt-0.5">
+                <div className="flex justify-between text-[11px] text-gray-400 dark:text-slate-300 font-mono mt-0.5">
                   <span>2s (Cepat)</span>
                   <span>5s (Disarankan)</span>
                   <span>30s (Sangat Aman)</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100 dark:border-slate-800">
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100 dark:border-slate-700">
                 <div>
-                  <span className="font-semibold text-gray-800 dark:text-slate-200">Randomize Jitter (± 2s)</span>
-                  <p className="text-xs text-gray-400 dark:text-slate-400">Variasi jeda agar lebih natural</p>
+                  <span className="font-semibold text-gray-800 dark:text-slate-100">Randomize Jitter (± 2s)</span>
+                  <p className="text-xs text-gray-400 dark:text-slate-300">Variasi jeda agar lebih natural</p>
                 </div>
                 <input
                   type="checkbox"
@@ -781,8 +781,8 @@ export default function AutoJoinPage() {
                 />
               </div>
 
-              <div className="pt-2 border-t border-gray-100 dark:border-slate-800 space-y-2">
-                <span className="text-xs font-semibold text-gray-800 dark:text-slate-200 block">Metode Distribusi Akun:</span>
+              <div className="pt-2 border-t border-gray-100 dark:border-slate-700 space-y-2">
+                <span className="text-xs font-semibold text-gray-800 dark:text-slate-100 block">Metode Distribusi Akun:</span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
                     type="button"
@@ -792,11 +792,11 @@ export default function AutoJoinPage() {
                       "p-2.5 rounded-xl border text-left transition-colors",
                       distributionMode === "all"
                         ? "bg-primary-50/50 dark:bg-primary-950/40 border-primary-500/40 text-primary-950 dark:text-primary-200 font-bold"
-                        : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                        : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                     )}
                   >
                     <span className="block text-[11px] font-bold">Semua Akun</span>
-                    <span className="text-[11px] text-gray-500 dark:text-slate-400 font-normal">Tiap akun join ke semua target</span>
+                    <span className="text-[11px] text-gray-500 dark:text-slate-300 font-normal">Tiap akun join ke semua target</span>
                   </button>
 
                   <button
@@ -807,17 +807,17 @@ export default function AutoJoinPage() {
                       "p-2.5 rounded-xl border text-left transition-colors",
                       distributionMode === "distribute"
                         ? "bg-primary-50/50 dark:bg-primary-950/40 border-primary-500/40 text-primary-950 dark:text-primary-200 font-bold"
-                        : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                        : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                     )}
                   >
                     <span className="block text-[11px] font-bold">Bagi Rata (Round-Robin)</span>
-                    <span className="text-[11px] text-gray-500 dark:text-slate-400 font-normal">Bagi target antar akun</span>
+                    <span className="text-[11px] text-gray-500 dark:text-slate-300 font-normal">Bagi target antar akun</span>
                   </button>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center gap-2">
+              <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center gap-2">
                 {!isRunning ? (
                   <Button
                     onClick={handleStart}
@@ -862,8 +862,8 @@ export default function AutoJoinPage() {
           </div>
 
           {/* Card 4: Live Progress Stats */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700">
               <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary-500" />
                 Progres Eksekusi
@@ -878,13 +878,13 @@ export default function AutoJoinPage() {
 
             {/* Progress Bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-slate-300">
                 <span>
                   Progres: {currentProgress.current} / {currentProgress.total}
                 </span>
                 <span className="font-bold text-gray-900 dark:text-slate-100">{progressPercent}%</span>
               </div>
-              <div className="w-full bg-gray-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-gray-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
                 <div
                   className="bg-primary-600 h-full transition-all duration-300 rounded-full"
                   style={{ width: `${progressPercent}%` }}
@@ -916,12 +916,12 @@ export default function AutoJoinPage() {
       </div>
 
       {/* Live Log Console Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary-500" />
             <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">Log Aktivitas Real-Time</h2>
-            <Badge variant="outline" className="text-[11px] bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 font-mono ml-1">
+            <Badge variant="outline" className="text-[11px] bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-200 font-mono ml-1">
               {logs.length} catatan
             </Badge>
           </div>
@@ -939,13 +939,13 @@ export default function AutoJoinPage() {
 
         <div className="p-0">
           {logs.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-xs">
+            <div className="text-center py-12 text-gray-400 dark:text-slate-400 text-xs">
               Belum ada log aktivitas. Mulai auto join untuk melihat hasil di sini.
             </div>
           ) : (
             <div className="overflow-x-auto max-h-80 overflow-y-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-slate-800/70 text-gray-500 dark:text-slate-400 font-semibold sticky top-0 border-b border-gray-100 dark:border-slate-800">
+                <thead className="bg-gray-50 dark:bg-slate-700/70 text-gray-500 dark:text-slate-200 font-semibold sticky top-0 border-b border-gray-100 dark:border-slate-700">
                   <tr>
                     <th className="py-2.5 px-4 w-24">Waktu</th>
                     <th className="py-2.5 px-4 w-36">Akun</th>
@@ -954,7 +954,7 @@ export default function AutoJoinPage() {
                     <th className="py-2.5 px-4">Detail</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 font-mono text-[11px]">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-700 font-mono text-[11px]">
                   {logs.map((log) => {
                     const statusConfig = {
                       success: { text: "Sukses", badge: "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
@@ -964,11 +964,11 @@ export default function AutoJoinPage() {
                     }[log.status];
 
                     return (
-                      <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="py-2.5 px-4 text-gray-400 dark:text-slate-500 whitespace-nowrap">{log.time}</td>
+                      <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="py-2.5 px-4 text-gray-400 dark:text-slate-300 whitespace-nowrap">{log.time}</td>
                         <td className="py-2.5 px-4 whitespace-nowrap">
                           <span className="font-semibold text-gray-900 dark:text-slate-100 block font-sans">{log.accountName}</span>
-                          <span className="text-gray-400 dark:text-slate-500 text-[11px]">{log.accountPhone}</span>
+                          <span className="text-gray-400 dark:text-slate-300 text-[11px]">{log.accountPhone}</span>
                         </td>
                         <td className="py-2.5 px-4 text-gray-800 dark:text-slate-200 font-bold max-w-xs truncate" title={log.target}>
                           {log.target}
@@ -978,7 +978,7 @@ export default function AutoJoinPage() {
                             {statusConfig.text}
                           </Badge>
                         </td>
-                        <td className="py-2.5 px-4 text-gray-600 dark:text-slate-400 font-sans max-w-md truncate" title={log.message}>
+                        <td className="py-2.5 px-4 text-gray-600 dark:text-slate-300 font-sans max-w-md truncate" title={log.message}>
                           {log.message}
                         </td>
                       </tr>
