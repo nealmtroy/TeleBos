@@ -592,26 +592,26 @@ export function Sidebar() {
         </nav>
 
         {/* Footer (Profile Section) */}
-        <div className="p-2.5 border-t border-slate-900 shrink-0 relative" ref={profileRef}>
+        <div className="p-2 border-t border-slate-900 shrink-0 relative" ref={profileRef}>
           {/* Profile Card / Trigger */}
           {sidebarOpen ? (
-            <div className="flex items-center justify-between w-full p-1.5 hover:bg-slate-900/60 rounded-xl transition-all duration-200 select-none">
+            <div className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-slate-900/60 rounded-xl transition-all duration-200 select-none">
               <button
                 type="button"
                 onClick={() => {
                   setProfileOpen(!profileOpen);
                   if (profileOpen) setActiveSubmenu(null);
                 }}
-                className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
+                className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">
+                <div className="w-7 h-7 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[11px] font-medium shrink-0 shadow-sm">
                   {initials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate leading-tight">
+                  <p className="text-xs font-medium text-white truncate leading-tight">
                     {user?.full_name || _("navbar.user")}
                   </p>
-                  <p className="text-xs text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
+                  <p className="text-[10px] text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
                     {planName}
                   </p>
                 </div>
@@ -624,7 +624,7 @@ export function Sidebar() {
                     e.stopPropagation();
                     router.push("/subscriptions");
                   }}
-                  className="px-3 py-1 text-xs font-medium text-white bg-[#2f2f2f] hover:bg-[#3d3d3d] border border-neutral-700/80 rounded-full transition-all duration-150 shrink-0 shadow-sm active:scale-95 ml-2 cursor-pointer"
+                  className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-[#2f2f2f] hover:bg-[#3d3d3d] border border-neutral-700/80 rounded-full transition-all duration-150 shrink-0 shadow-sm active:scale-95 ml-2 cursor-pointer"
                 >
                   Upgrade
                 </button>
@@ -635,7 +635,7 @@ export function Sidebar() {
                     if (profileOpen) setActiveSubmenu(null);
                   }}
                   className={cn(
-                    "px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 cursor-pointer",
+                    "px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider shrink-0 ml-2 cursor-pointer",
                     roleColor
                   )}
                 >
@@ -651,7 +651,7 @@ export function Sidebar() {
                   setProfileOpen(!profileOpen);
                   if (profileOpen) setActiveSubmenu(null);
                 }}
-                className="w-9 h-9 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-xs font-semibold hover:ring-2 hover:ring-white/20 transition-all shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                className="w-7 h-7 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[11px] font-medium hover:ring-2 hover:ring-white/20 transition-all shrink-0 shadow-sm active:scale-95 cursor-pointer"
                 title={user?.full_name || user?.email || "Profile"}
               >
                 {initials}
@@ -681,24 +681,24 @@ export function Sidebar() {
                     type="button"
                     onClick={() => setActiveSubmenu(activeSubmenu === "account" ? null : "account")}
                     className={cn(
-                      "flex items-center justify-between w-full p-2 rounded-xl text-left transition-colors cursor-pointer",
+                      "flex items-center justify-between w-full px-2 py-1.5 rounded-xl text-left transition-colors cursor-pointer",
                       activeSubmenu === "account" ? "bg-[#2f2f2f] text-white" : "hover:bg-[#2a2a2a] text-neutral-200"
                     )}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-8 h-8 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-7 h-7 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[11px] font-medium shrink-0 shadow-sm">
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white truncate leading-tight">
+                        <p className="text-xs font-medium text-white truncate leading-tight">
                           {user?.full_name || _("navbar.user")}
                         </p>
-                        <p className="text-xs text-neutral-400 capitalize truncate leading-tight mt-0.5">
+                        <p className="text-[10px] text-neutral-400 capitalize truncate leading-tight mt-0.5">
                           {planName}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0 ml-1.5" />
+                    <ChevronRight className="h-3.5 w-3.5 text-neutral-400 shrink-0 ml-1.5" />
                   </button>
 
                   {/* Account Flyout Submenu */}

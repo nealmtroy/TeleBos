@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-26
+- **[30bcd059](https://github.com/nealmtroy/TeleBos/commit/30bcd059)**: feat(sidebar): redesign profile card and popup menu to ChatGPT style
 - **[93923b86](https://github.com/nealmtroy/TeleBos/commit/93923b86)**: refactor(subscriptions): remove business tier toggle and streamline 3 core plans
 - **[b575b989](https://github.com/nealmtroy/TeleBos/commit/b575b989)**: feat(subscriptions): redesign subscription page matching ChatGPT layout in light theme
 - **[b07a88d9](https://github.com/nealmtroy/TeleBos/commit/b07a88d9)**: fix(i18n): fix missing translation keys for invite, settings, and other pages
