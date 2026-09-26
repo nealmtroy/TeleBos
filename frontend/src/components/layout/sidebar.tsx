@@ -92,7 +92,7 @@ const administrationsSubItems: SubItem[] = [
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
   { href: "/admin/auto-replies", exact: false, labelKey: "admin.manageAutoReplies", icon: Bot },
-  { href: "/admin/account-prices", exact: false, labelKey: "Account Prices", icon: Tag },
+  { href: "/admin/account-prices", exact: false, labelKey: "admin.accountPrices", icon: Tag },
 ];
 
 const adminRedeemSubItems: SubItem[] = [

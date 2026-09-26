@@ -133,7 +133,7 @@ export default function SettingsPage() {
       return;
     }
     if (newPassword.length < 8) {
-      setPasswordError(_("settings.passwordMinLength") || "Kata sandi minimal 8 karakter");
+      setPasswordError(_("settings.passwordMinLength"));
       return;
     }
     if (currentPassword === newPassword) {
@@ -1103,7 +1103,7 @@ export default function SettingsPage() {
                           </h2>
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            {_("settings.active") || "Aktif"}
+                            {_("settings.active")}
                           </span>
                         </div>
                         <p className="text-sm text-slate-500 mt-1 max-w-xl">
@@ -1172,7 +1172,7 @@ export default function SettingsPage() {
                           </h2>
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                            {_("settings.off") || "Tidak Aktif"}
+                            {_("settings.off")}
                           </span>
                         </div>
                         <p className="text-sm text-slate-500 mt-1 max-w-xl">

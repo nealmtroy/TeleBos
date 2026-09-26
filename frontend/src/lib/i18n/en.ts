@@ -358,6 +358,7 @@ const en: Dict = {
     appealCaptchaResuming: "Continuing...",
     appealFailedTitle: "Appeal Failed",
     appealFailedDesc: "An error occurred while submitting appeal to @spambot: {error}",
+    nameRequired: "Appeal reason cannot be empty",
   },
 
   // ── Broadcast Dashboard ─────────────────────────────────────────────────
@@ -475,6 +476,7 @@ const en: Dict = {
     addTextPlaceholder: "Add a message text...",
     add: "Add",
     deleteConfirm: "Delete this text list?",
+    delete: "Delete",
   },
 
   // ── Broadcast History ───────────────────────────────────────────────────
@@ -517,6 +519,9 @@ const en: Dict = {
     title: "Broadcast Logs",
     desc: "View detailed delivery results per cycle",
     selectJob: "Select a broadcast job...",
+    sent: "Sent",
+    failed: "Failed",
+    searchGroup: "Search group...",
     allStatuses: "All Statuses",
     success: "Success",
     error: "Error",
@@ -680,6 +685,8 @@ const en: Dict = {
     passwordStrong: "Strong password",
     passwordsMatch: "✓ Passwords match",
     passwordsNoMatch: "✗ Passwords do not match",
+    passwordMinLength: "Password must be at least 8 characters long",
+    passwordMustDiffer: "New password cannot be the same as your current password",
     changePasswordBtn: "Change Password",
     changingPassword: "Changing password...",
     sessionExpired: "Session expired. Please login again.",
@@ -713,6 +720,8 @@ const en: Dict = {
     twoFactorDesc: "Add an extra layer of security to your account using a TOTP authenticator app.",
     twoFactorEnabledStatus: "Two-Factor Authentication is active.",
     twoFactorDisabledStatus: "Two-Factor Authentication is not active.",
+    active: "Active",
+    off: "Disabled",
     enable2FA: "Enable 2FA",
     disable2FA: "Disable 2FA",
     setup2FATitle: "Setup Two-Factor Authentication",
@@ -1269,6 +1278,26 @@ const en: Dict = {
     colErrorType: "Error Type",
     colErrorMessage: "Error Message",
     colTime: "Time",
+    selectAccounts: "Select Accounts",
+    selected: "selected",
+    selectAll: "Select All",
+    deselectAll: "Deselect All",
+    searchAccountsPlaceholder: "Search accounts by name or phone...",
+    noActiveAccounts: "No active accounts available for invite.",
+    destUsernameLabel: "Destination Group @username",
+    destLinkLabel: "Destination Group Invite Link",
+    destGroupIdLabel: "Destination Group ID",
+    sourcesAdded: "sources added",
+    delaysConfig: "Delay & Batch Configuration",
+    colAccount: "Executor Account",
+    historyDesc: "Monitor and manage all your member invite tasks.",
+    logsDesc: "Detailed logs of member invite executions.",
+    searchLogsPlaceholder: "Search username, name, or error...",
+    metricTotalTasks: "Total Tasks",
+    metricRunning: "Running",
+    metricCompleted: "Completed",
+    metricTotalInvited: "Total Invited",
+    target: "Target",
     floodWait: "Flood Wait",
     peerFlood: "Peer Flood",
     privacyRestricted: "Privacy Restricted",
@@ -1450,6 +1479,7 @@ const en: Dict = {
     userOverview: "User Overview",
     accountHealth: "Telegram Account Health",
     broadcastStats: "Broadcast Statistics",
+    accountPrices: "Account Prices",
   },
 
   // ── Subscription ────────────────────────────────────────────────────────
@@ -1571,6 +1601,11 @@ const en: Dict = {
     scanButton: "Scan Dialogs for Datapoints",
     scanning: "Scanning...",
     scanSuccess: "Successfully scanned and harvested {count} new registration datapoints!",
+  },
+
+  // ── Actions ─────────────────────────────────────────────────────────────
+  actions: {
+    refresh: "Refresh",
   },
 };
 

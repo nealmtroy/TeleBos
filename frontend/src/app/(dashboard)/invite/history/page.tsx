@@ -65,7 +65,7 @@ export default function InviteHistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("invite.inviteHistory")}</h1>
-          <p className="text-gray-500 mt-1">Pantau dan kelola seluruh riwayat tugas undangan member Anda.</p>
+          <p className="text-gray-500 mt-1">{_("invite.historyDesc")}</p>
         </div>
         <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
           <Link
@@ -96,28 +96,28 @@ export default function InviteHistoryPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Total Tugas</span>
+            <span>{_("invite.metricTotalTasks")}</span>
             <Layers className="h-4 w-4 text-gray-400" />
           </div>
           <p className="text-xl font-bold text-gray-900">{jobs?.length ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-blue-600">
-            <span>Sedang Berjalan</span>
+            <span>{_("invite.metricRunning")}</span>
             <Play className="h-4 w-4 text-blue-500" />
           </div>
           <p className="text-xl font-bold text-blue-600">{runningCount}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-emerald-600">
-            <span>Selesai</span>
+            <span>{_("invite.metricCompleted")}</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </div>
           <p className="text-xl font-bold text-emerald-600">{completedCount}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-gray-600">
-            <span>Total Terundang</span>
+            <span>{_("invite.metricTotalInvited")}</span>
             <UserPlus className="h-4 w-4 text-primary-500" />
           </div>
           <p className="text-xl font-bold text-primary-600">{totalInvited.toLocaleString()}</p>

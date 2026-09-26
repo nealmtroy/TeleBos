@@ -358,6 +358,7 @@ export interface Dict {
     appealCaptchaResuming: string;
     appealFailedTitle: string;
     appealFailedDesc: string;
+    nameRequired: string;
   };
 
   // Broadcast Dashboard
@@ -475,6 +476,7 @@ export interface Dict {
     addTextPlaceholder: string;
     add: string;
     deleteConfirm: string;
+    delete: string;
   };
 
   // Broadcast History
@@ -517,6 +519,9 @@ export interface Dict {
     title: string;
     desc: string;
     selectJob: string;
+    sent: string;
+    failed: string;
+    searchGroup: string;
     allStatuses: string;
     success: string;
     error: string;
@@ -629,6 +634,8 @@ export interface Dict {
     passwordStrong: string;
     passwordsMatch: string;
     passwordsNoMatch: string;
+    passwordMinLength: string;
+    passwordMustDiffer: string;
     changePasswordBtn: string;
     changingPassword: string;
     sessionExpired: string;
@@ -662,6 +669,8 @@ export interface Dict {
     twoFactorDesc: string;
     twoFactorEnabledStatus: string;
     twoFactorDisabledStatus: string;
+    active: string;
+    off: string;
     enable2FA: string;
     disable2FA: string;
     setup2FATitle: string;
@@ -1268,6 +1277,26 @@ export interface Dict {
     colErrorType: string;
     colErrorMessage: string;
     colTime: string;
+    selectAccounts: string;
+    selected: string;
+    selectAll: string;
+    deselectAll: string;
+    searchAccountsPlaceholder: string;
+    noActiveAccounts: string;
+    destUsernameLabel: string;
+    destLinkLabel: string;
+    destGroupIdLabel: string;
+    sourcesAdded: string;
+    delaysConfig: string;
+    colAccount: string;
+    historyDesc: string;
+    logsDesc: string;
+    searchLogsPlaceholder: string;
+    metricTotalTasks: string;
+    metricRunning: string;
+    metricCompleted: string;
+    metricTotalInvited: string;
+    target: string;
     floodWait: string;
     peerFlood: string;
     privacyRestricted: string;
@@ -1449,6 +1478,7 @@ export interface Dict {
     userOverview: string;
     accountHealth: string;
     broadcastStats: string;
+    accountPrices: string;
   };
 
   // Subscription
@@ -1572,5 +1602,10 @@ export interface Dict {
     scanButton: string;
     scanning: string;
     scanSuccess: string;
+  };
+
+  // Actions
+  actions: {
+    refresh: string;
   };
 }

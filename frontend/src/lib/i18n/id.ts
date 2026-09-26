@@ -358,6 +358,7 @@ const id: Dict = {
     appealCaptchaResuming: "Melanjutkan...",
     appealFailedTitle: "Banding Gagal",
     appealFailedDesc: "Terjadi kesalahan saat mengajukan banding ke @spambot: {error}",
+    nameRequired: "Alasan banding tidak boleh kosong",
   },
 
   // ── Dasbor Siaran ───────────────────────────────────────────────────────
@@ -475,6 +476,7 @@ const id: Dict = {
     addTextPlaceholder: "Tambah teks pesan...",
     add: "Tambah",
     deleteConfirm: "Hapus daftar teks ini?",
+    delete: "Hapus",
   },
 
   // ── Riwayat Siaran ──────────────────────────────────────────────────────
@@ -517,6 +519,9 @@ const id: Dict = {
     title: "Log Siaran",
     desc: "Lihat hasil pengiriman detail per siklus",
     selectJob: "Pilih pekerjaan siaran...",
+    sent: "Terkirim",
+    failed: "Gagal",
+    searchGroup: "Cari grup...",
     allStatuses: "Semua Status",
     success: "Sukses",
     error: "Gagal",
@@ -680,6 +685,8 @@ const id: Dict = {
     passwordStrong: "Kata sandi kuat",
     passwordsMatch: "✓ Kata sandi cocok",
     passwordsNoMatch: "✗ Kata sandi tidak cocok",
+    passwordMinLength: "Kata sandi minimal 8 karakter",
+    passwordMustDiffer: "Kata sandi baru tidak boleh sama dengan kata sandi saat ini",
     changePasswordBtn: "Ubah Kata Sandi",
     changingPassword: "Mengubah kata sandi...",
     sessionExpired: "Sesi berakhir. Silakan login lagi.",
@@ -713,6 +720,8 @@ const id: Dict = {
     twoFactorDesc: "Tambahkan lapisan keamanan ekstra ke akun Anda menggunakan aplikasi autentikator TOTP.",
     twoFactorEnabledStatus: "Autentikasi Dua Faktor aktif.",
     twoFactorDisabledStatus: "Autentikasi Dua Faktor tidak aktif.",
+    active: "Aktif",
+    off: "Tidak Aktif",
     enable2FA: "Aktifkan 2FA",
     disable2FA: "Nonaktifkan 2FA",
     setup2FATitle: "Atur Autentikasi Dua Faktor",
@@ -1269,6 +1278,26 @@ const id: Dict = {
     colErrorType: "Tipe Error",
     colErrorMessage: "Pesan Error",
     colTime: "Waktu",
+    selectAccounts: "Pilih Akun",
+    selected: "terpilih",
+    selectAll: "Pilih Semua",
+    deselectAll: "Batalkan Pilih Semua",
+    searchAccountsPlaceholder: "Cari akun berdasarkan nama atau nomor...",
+    noActiveAccounts: "Tidak ada akun aktif yang tersedia untuk invite.",
+    destUsernameLabel: "@username Grup Tujuan",
+    destLinkLabel: "Link Undangan Grup Tujuan",
+    destGroupIdLabel: "ID Grup Tujuan",
+    sourcesAdded: "sumber ditambahkan",
+    delaysConfig: "Pengaturan Jeda & Batch",
+    colAccount: "Akun Eksekutor",
+    historyDesc: "Pantau dan kelola seluruh riwayat tugas undangan member Anda.",
+    logsDesc: "Rincian log eksekusi undangan member secara mendalam.",
+    searchLogsPlaceholder: "Cari username, nama, atau error...",
+    metricTotalTasks: "Total Tugas",
+    metricRunning: "Sedang Berjalan",
+    metricCompleted: "Selesai",
+    metricTotalInvited: "Total Terundang",
+    target: "Target",
     floodWait: "Flood Wait",
     peerFlood: "Peer Flood",
     privacyRestricted: "Dibatasi Privasi",
@@ -1450,6 +1479,7 @@ const id: Dict = {
     userOverview: "Ringkasan Pengguna",
     accountHealth: "Kesehatan Akun Telegram",
     broadcastStats: "Statistik Broadcast",
+    accountPrices: "Harga Akun",
   },
 
   // ── Subscription ────────────────────────────────────────────────────────
@@ -1571,6 +1601,11 @@ const id: Dict = {
     scanButton: "Pindai Dialog untuk Data Registrasi",
     scanning: "Memindai...",
     scanSuccess: "Berhasil memindai dan mengumpulkan {count} data registrasi baru!",
+  },
+
+  // ── Tindakan ────────────────────────────────────────────────────────────
+  actions: {
+    refresh: "Segarkan",
   },
 };
 

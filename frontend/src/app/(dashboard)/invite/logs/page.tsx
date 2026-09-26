@@ -79,7 +79,7 @@ function InviteLogsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("invite.inviteLogs")}</h1>
-          <p className="text-gray-500 mt-1">Rincian log eksekusi undangan member secara mendalam.</p>
+          <p className="text-gray-500 mt-1">{_("invite.logsDesc")}</p>
         </div>
         <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
           <Link
@@ -140,7 +140,7 @@ function InviteLogsContent() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari username, nama, atau error..."
+              placeholder={_("invite.searchLogsPlaceholder")}
               className="w-full pl-9 pr-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
@@ -149,17 +149,17 @@ function InviteLogsContent() {
         {selectedJob && (
           <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between text-xs text-gray-500 gap-2">
             <span>
-              Target: <strong className="text-gray-900 font-mono">{selectedJob.destination_group}</strong>
+              {_("invite.target")}: <strong className="text-gray-900 font-mono">{selectedJob.destination_group}</strong>
             </span>
             <div className="flex items-center gap-3">
               <span>
-                Status: <strong className="uppercase font-bold text-gray-900">{selectedJob.status}</strong>
+                {_("invite.status")}: <strong className="uppercase font-bold text-gray-900">{selectedJob.status}</strong>
               </span>
               <span>
-                Sukses: <strong className="text-emerald-700">{selectedJob.invited_count}</strong>
+                {_("invite.success")}: <strong className="text-emerald-700">{selectedJob.invited_count}</strong>
               </span>
               <span>
-                Gagal: <strong className="text-rose-700">{selectedJob.fail_count}</strong>
+                {_("invite.failed")}: <strong className="text-rose-700">{selectedJob.fail_count}</strong>
               </span>
             </div>
           </div>
@@ -187,7 +187,7 @@ function InviteLogsContent() {
                   <th className="text-left px-4 py-3">{_("invite.colUser")}</th>
                   <th className="text-left px-4 py-3">{_("invite.colUsername")}</th>
                   <th className="text-left px-4 py-3">{_("invite.colSource")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colAccount") || "Akun Eksekutor"}</th>
+                  <th className="text-left px-4 py-3">{_("invite.colAccount")}</th>
                   <th className="text-left px-4 py-3">{_("invite.colStatus")}</th>
                   <th className="text-left px-4 py-3">{_("invite.colErrorType")}</th>
                   <th className="text-left px-4 py-3">{_("invite.colTime")}</th>
