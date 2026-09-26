@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
-
+import React, { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { useMySubscription } from "@/hooks/use-subscriptions";
+import { useMySubscription, useRedeemCode } from "@/hooks/use-subscriptions";
 import { useAuthStore } from "@/store/auth-store";
-import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   Crown,
   Star,
@@ -19,9 +19,33 @@ import {
   Ticket,
   Minus,
   Check,
-  X,
+  MessageSquare,
+  Smartphone,
+  Search,
+  Shield,
+  Radio,
+  Bot,
+  Users,
+  FolderSync,
+  Sliders,
+  FileText,
+  Sparkles,
+  UserPlus,
+  ShieldCheck,
+  CheckCircle2,
+  HelpCircle,
+  Loader2,
+  ChevronDown,
+  Table as TableIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const PLAN_KEYS = ["basic", "pro", "premium"] as const;
 type PlanKey = (typeof PLAN_KEYS)[number];
@@ -36,6 +60,7 @@ const PLAN_META: Record<
     cardRing: string;
     iconColor: string;
     iconBg: string;
+    badgeBg: string;
   }
 > = {
   basic: {
@@ -45,56 +70,61 @@ const PLAN_META: Record<
     cardRing: "ring-slate-200",
     iconColor: "text-slate-500",
     iconBg: "bg-slate-100",
+    badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
   },
   pro: {
     icon: Star,
-    statusBg: "bg-primary-50",
+    statusBg: "bg-primary-50/60",
     statusText: "text-primary-700",
     cardRing: "ring-primary-200",
     iconColor: "text-primary-600",
     iconBg: "bg-primary-50",
+    badgeBg: "bg-primary-50 text-primary-700 border-primary-200",
   },
   premium: {
     icon: Crown,
-    statusBg: "bg-amber-50",
+    statusBg: "bg-amber-50/60",
     statusText: "text-amber-700",
     cardRing: "ring-amber-200",
     iconColor: "text-amber-600",
     iconBg: "bg-amber-50",
+    badgeBg: "bg-amber-50 text-amber-700 border-amber-200",
   },
   owner: {
     icon: Crown,
-    statusBg: "bg-indigo-50",
+    statusBg: "bg-indigo-50/60",
     statusText: "text-indigo-700",
     cardRing: "ring-indigo-200",
     iconColor: "text-indigo-600",
     iconBg: "bg-indigo-50",
+    badgeBg: "bg-indigo-50 text-indigo-700 border-indigo-200",
   },
 };
 
 // Features matrix: which features are included in which plans
 const FEATURE_MATRIX: { key: string; basic: boolean; pro: boolean; premium: boolean }[] = [
-  { key: "featureAccounts", basic: false, pro: true, premium: true },
   { key: "featureChat", basic: true, pro: true, premium: true },
+  { key: "featureAccounts", basic: false, pro: true, premium: true },
   { key: "featureBroadcast", basic: false, pro: true, premium: true },
-  { key: "featureInvite", basic: false, pro: true, premium: true },
   { key: "featureAutoReply", basic: false, pro: true, premium: true },
   { key: "featureContacts", basic: false, pro: true, premium: true },
+  { key: "featureInvite", basic: false, pro: false, premium: true },
   { key: "featurePriority", basic: false, pro: false, premium: true },
   { key: "featureAllFuture", basic: false, pro: false, premium: true },
 ];
 
-// Features listed per plan card
-const PLAN_FEATURES: Record<PlanKey, string[]> = {
-  basic: ["featureChat"],
-  pro: ["featureAccounts", "featureBroadcast", "featureInvite", "featureAutoReply", "featureContacts"],
-  premium: ["featureAccounts", "featureBroadcast", "featureInvite", "featureAutoReply", "featureContacts", "featurePriority", "featureAllFuture"],
-};
-
 export default function SubscriptionPage() {
   const _ = useT();
   const user = useAuthStore((s) => s.user);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
   const { data: subscription, isLoading, error } = useMySubscription();
+  const redeemMutation = useRedeemCode();
+
+  const [billingAudience, setBillingAudience] = useState<"personal" | "business">("personal");
+  const [showMatrix, setShowMatrix] = useState(false);
+  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [redeemError, setRedeemError] = useState<string | null>(null);
 
   const currentPlan = (subscription?.plan || user?.role || "basic") as CurrentPlanKey;
   const isActive = subscription?.is_active ?? false;
@@ -104,265 +134,452 @@ export default function SubscriptionPage() {
   const meta = PLAN_META[currentPlan] || PLAN_META.basic;
   const StatusIcon = meta.icon;
 
-  // The next tier up from current plan (for "recommended" badge)
-  const nextTier: PlanKey | null =
-    currentPlan === "basic" ? "pro" : currentPlan === "pro" ? "premium" : null;
-
   // Progress bar percentage (based on 30-day cycle as default)
   const progressPercent =
     daysRemaining !== null && daysRemaining >= 0
       ? Math.min(100, Math.max(0, (daysRemaining / 30) * 100))
       : 0;
 
-  return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">{_("subscription.title")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{_("subscription.desc")}</p>
-        </div>
-        <Link
-          href="/redeem"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
-        >
-          <Ticket className="h-4 w-4" />
-          {_("subscription.redeemBtn")}
+  async function handleRedeemSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!voucherCode.trim()) return;
+
+    setRedeemError(null);
+    try {
+      await redeemMutation.mutateAsync(voucherCode.trim().toUpperCase());
+      toast.success(_("redeem.success") || "Voucher successfully activated!");
+      setVoucherCode("");
+      setRedeemOpen(false);
+      await fetchMe();
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || _("redeem.error") || "Failed to redeem code";
+      setRedeemError(msg);
+      toast.error(msg);
+    }
+  }
+
+  // Define tier card data matching ChatGPT style layout
+  const tierCards: {
+    id: PlanKey;
+    title: string;
+    tagline: string;
+    desc: string;
+    price: string;
+    period: string;
+    isCurrent: boolean;
+    isPopular: boolean;
+    headerFeature: string;
+    features: { icon: React.ElementType; text: string }[];
+    footnote: React.ReactNode;
+  }[] = [
+    {
+      id: "basic",
+      title: "Free",
+      tagline: _("subscription.tryTelebos"),
+      desc: "Jelajahi pengelolaan akun Telegram, fitur direct chat, dan perkiraan umur akun secara mudah.",
+      price: "Rp 0",
+      period: _("subscription.perMonth"),
+      isCurrent: currentPlan === "basic",
+      isPopular: false,
+      headerFeature: _("subscription.startWithBasics"),
+      features: [
+        { icon: MessageSquare, text: "Obrolan teks & manajemen chat langsung" },
+        { icon: Smartphone, text: "1 akun Telegram aktif terhubung" },
+        { icon: Search, text: "Pencarian katalog channel & grup publik" },
+        { icon: Clock, text: "Alat estimasi umur nomor & ID Telegram" },
+        { icon: Shield, text: "Dukungan proxy & sesi terenkripsi standar" },
+      ],
+      footnote: (
+        <Link href="/help" className="hover:underline flex items-center gap-1">
+          {_("subscription.billingHelp")}
+          <ArrowRight className="h-3 w-3 shrink-0" />
         </Link>
+      ),
+    },
+    {
+      id: "pro",
+      title: "TeleBos Pro",
+      tagline: _("subscription.expandedAccess"),
+      desc: "Kirim pesan siaran massal dan aktifkan bot penjawab otomatis dengan kapasitas diperluas.",
+      price: billingAudience === "personal" ? "Rp 99.000" : "Rp 299.000",
+      period: _("subscription.perMonth"),
+      isCurrent: currentPlan === "pro",
+      isPopular: false,
+      headerFeature: _("subscription.everythingInFree"),
+      features: [
+        { icon: Radio, text: "Siaran broadcast pesan massal & terjadwal" },
+        { icon: Bot, text: "Auto-reply responder otomatis untuk pesan masuk" },
+        { icon: Users, text: "Kelola hingga 10 akun Telegram terhubung" },
+        { icon: FolderSync, text: "Manajemen folder akun & filter kategori" },
+        { icon: Sliders, text: "Pengaturan jeda anti flood-wait kustom" },
+        { icon: FileText, text: "Sinkronisasi kontak Telegram & histori log" },
+      ],
+      footnote: "Pilihan terbaik untuk pengelola channel & grup Telegram aktif.",
+    },
+    {
+      id: "premium",
+      title: "TeleBos Premium",
+      tagline: _("subscription.yourTelegramAssistant"),
+      desc: "Solusi terlengkap: scraper lead anggota grup, auto-invite target, dan prioritas server tercepat.",
+      price: billingAudience === "personal" ? "Rp 249.000" : "Rp 599.000",
+      period: _("subscription.perMonth"),
+      isCurrent: currentPlan === "premium",
+      isPopular: true,
+      headerFeature: _("subscription.everythingInPro"),
+      features: [
+        { icon: Crown, text: "Koneksi akun Telegram tanpa batas (Unlimited)" },
+        { icon: UserPlus, text: "Scrape member target & auto-invite ke grup Anda" },
+        { icon: Zap, text: "Antrean eksekusi server tercepat & prioritas tinggi" },
+        { icon: Sparkles, text: "Otomasi reaksi postingan & booster views" },
+        { icon: ShieldCheck, text: "Banding otomatis status SpamBot Telegram" },
+        { icon: FolderSync, text: "Filter rotasi proxy & proteksi multi-sesi" },
+        { icon: CheckCircle2, text: "Semua fitur masa depan & support prioritas 24/7" },
+      ],
+      footnote: "Paling banyak dipilih oleh digital marketer & agensi profesional.",
+    },
+  ];
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 py-2 sm:py-6">
+      {/* ── TOP HEADER SECTION (ChatGPT Style) ── */}
+      <div className="text-center space-y-4 max-w-2xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          {_("subscription.upgradeYourPlan")}
+        </h1>
+        <p className="text-slate-500 text-sm leading-relaxed">
+          Pilih paket automasi Telegram terbaik untuk kebutuhan personal atau tim bisnis Anda.
+        </p>
+
+        {/* Audience Pill Switcher */}
+        <div className="flex justify-center pt-2">
+          <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-full border border-slate-200/80 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setBillingAudience("personal")}
+              className={cn(
+                "px-6 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer",
+                billingAudience === "personal"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              )}
+            >
+              {_("subscription.personal")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingAudience("business")}
+              className={cn(
+                "px-6 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer",
+                billingAudience === "business"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              )}
+            >
+              {_("subscription.business")}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Current Plan Status */}
+      {/* ── CURRENT PLAN STATUS BAR (Clean & Light) ── */}
       {isLoading ? (
-        <div className="h-36 bg-muted rounded-xl animate-pulse" />
+        <div className="h-20 bg-white border border-slate-200 rounded-2xl animate-pulse" />
       ) : error ? (
-        <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive">
+        <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
-          <p className="text-sm">Failed to load subscription info</p>
+          <p className="text-sm">Gagal memuat informasi langganan aktif.</p>
         </div>
       ) : (
-        <Card className={cn("overflow-visible")}>
-          <CardContent className="p-0">
-            <div className={cn("flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6", meta.statusBg, "rounded-xl")}>
-              {/* Plan Icon & Name */}
-              <div className="flex items-center gap-4 min-w-0">
-                <div className={cn("p-3.5 rounded-xl", meta.iconBg)}>
-                  <StatusIcon className={cn("h-7 w-7", meta.iconColor)} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">{_("subscription.currentPlan")}</p>
-                  <p className={cn("text-2xl font-semibold capitalize", meta.statusText)}>{_(`subscription.plan${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}` as any)}</p>
-                </div>
-              </div>
-
-              {/* Status & Expiry */}
-              <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-end w-full">
-                {currentPlan !== "basic" ? (
-                  <>
-                    {/* Active / Expired badge */}
-                    <div
-                      className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold",
-                        isActive
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-red-100 text-red-700"
-                      )}
-                    >
-                      {isActive ? (
-                        <CheckCircle className="h-3.5 w-3.5" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5" />
-                      )}
-                      {isActive ? _("subscription.active") : _("subscription.expired")}
-                    </div>
-
-                    {/* Expiry info */}
-                    {currentPlan === "owner" ? (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>
-                          {_("subscription.expiresAt")}:{" "}
-                          <span className="font-medium text-foreground">
-                            {_("subscription.lifetime")}
-                          </span>
-                        </span>
-                      </div>
-                    ) : expiresAt ? (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>
-                          {_("subscription.expiresAt")}:{" "}
-                          <span className="font-medium text-foreground">
-                            {new Date(expiresAt).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </span>
-                      </div>
-                    ) : null}
-
-                    {/* Days remaining */}
-                    {daysRemaining !== null && isActive && (
-                      <div className="text-xs font-semibold text-primary-600">
-                        {daysRemaining} {_("subscription.daysRemaining")}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
-                    <p className="text-sm text-muted-foreground">{_("subscription.noSubscription")}</p>
-                    <Link
-                      href="/redeem"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors flex-wrap"
-                    >
-                      {_("subscription.upgradePrompt")}
-                      <ArrowRight className="h-3 w-3 shrink-0" />
-                    </Link>
-                  </div>
-                )}
-              </div>
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className={cn("p-2.5 rounded-xl border shrink-0", meta.iconBg, meta.badgeBg)}>
+              <StatusIcon className={cn("h-5 w-5", meta.iconColor)} />
             </div>
-
-            {/* Progress bar — only for active non-basic plans */}
-            {currentPlan !== "basic" && currentPlan !== "owner" && isActive && daysRemaining !== null && (
-              <div className="px-6 pb-5 pt-3">
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
-                  <span>{_("subscription.daysRemaining")}</span>
-                  <span className="font-medium text-foreground">{daysRemaining} / 30</span>
-                </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      progressPercent > 30 ? "bg-primary-500" : progressPercent > 10 ? "bg-amber-500" : "bg-red-500"
-                    )}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-slate-500">{_("subscription.currentPlan")}:</span>
+                <span className="text-sm font-bold text-slate-900 uppercase">
+                  {currentPlan}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
+                    currentPlan === "owner"
+                      ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                      : isActive
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200"
+                  )}
+                >
+                  {currentPlan === "owner" ? (
+                    <Crown className="h-3 w-3" />
+                  ) : isActive ? (
+                    <CheckCircle className="h-3 w-3 text-emerald-600" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-slate-400" />
+                  )}
+                  {currentPlan === "owner"
+                    ? _("subscription.lifetime")
+                    : isActive
+                    ? _("subscription.active")
+                    : _("subscription.expired")}
+                </span>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Expiry detail */}
+              {currentPlan !== "basic" && currentPlan !== "owner" && expiresAt && (
+                <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                  <span>
+                    {_("subscription.expiresAt")}:{" "}
+                    <strong className="text-slate-700 font-medium">
+                      {new Date(expiresAt).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </strong>
+                  </span>
+                  {daysRemaining !== null && isActive && (
+                    <span className="text-primary-600 font-semibold">
+                      ({daysRemaining} {_("subscription.daysRemaining")})
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Redeem Voucher Button */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setRedeemOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Ticket className="h-3.5 w-3.5 text-amber-400" />
+              <span>{_("subscription.voucherRedeemTitle")}</span>
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Plan Comparison Cards */}
-      <div>
-        <h2 className="text-base font-semibold text-foreground mb-4">{_("subscription.upgradePlans")}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {PLAN_KEYS.map((planKey) => {
-            const isCurrent = currentPlan === planKey;
-            const isRecommended = nextTier === planKey;
-            const pm = PLAN_META[planKey];
-            const PlanIcon = pm.icon;
-            const features = PLAN_FEATURES[planKey];
-            const descKey = `subscription.${planKey}Desc` as any;
-
-            return (
-              <Card
-                key={planKey}
-                className={cn(
-                  "relative transition-all duration-200",
-                  isCurrent && "ring-2 ring-primary-500",
-                  isRecommended && !isCurrent && "ring-2 ring-primary-300",
-                  !isCurrent && !isRecommended && "hover:ring-2 hover:ring-foreground/15"
-                )}
-              >
-                {/* Current / Recommended badge */}
-                {(isCurrent || isRecommended) && (
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
-                    <span
-                      className={cn(
-                        "text-[11px] font-semibold px-3 py-0.5 rounded-full whitespace-nowrap",
-                        isCurrent
-                          ? "bg-primary-600 text-white"
-                          : "bg-primary-100 text-primary-700"
-                      )}
-                    >
-                      {isCurrent ? _("subscription.currentPlan") : _("subscription.recommended")}
-                    </span>
-                  </div>
-                )}
-
-                <CardContent className="p-5 pt-6 space-y-4">
-                  {/* Plan Header */}
-                  <div className="flex items-center gap-3">
-                    <div className={cn("p-2 rounded-lg", pm.iconBg)}>
-                      <PlanIcon className={cn("h-5 w-5", pm.iconColor)} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground capitalize">{_(`subscription.plan${planKey.charAt(0).toUpperCase() + planKey.slice(1)}` as any)}</p>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-xs text-muted-foreground leading-relaxed">{_(descKey)}</p>
-
-                  {/* Feature List */}
-                  <ul className="space-y-2 pt-1">
-                    {features.map((featureKey, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-foreground/80">
-                        <Check className={cn("h-4 w-4 mt-0.5 shrink-0", pm.iconColor)} />
-                        <span>{_(`subscription.${featureKey}` as any)}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA for upgrade */}
-                  {!isCurrent && currentPlan !== "owner" && (
-                    <Link
-                      href="/redeem"
-                      className={cn(
-                        "flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors mt-2",
-                        isRecommended
-                          ? "bg-primary-600 text-white hover:bg-primary-700"
-                          : "bg-slate-100 text-foreground hover:bg-slate-200"
-                      )}
-                    >
-                      <Ticket className="h-3.5 w-3.5" />
-                      {_("subscription.redeemBtn")}
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+      {/* Progress bar for active expiry countdown */}
+      {currentPlan !== "basic" && currentPlan !== "owner" && isActive && daysRemaining !== null && (
+        <div className="-mt-4 px-2">
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                progressPercent > 30 ? "bg-primary-500" : progressPercent > 10 ? "bg-amber-500" : "bg-rose-500"
+              )}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
+      )}
+
+      {/* ── 3 CHATGPT-STYLE PLAN CARDS (Light Theme) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        {tierCards.map((card) => {
+          return (
+            <div
+              key={card.id}
+              className={cn(
+                "rounded-2xl transition-all duration-200 flex flex-col justify-between p-6 sm:p-7 relative",
+                card.isPopular
+                  ? "bg-gradient-to-b from-blue-50/50 via-white to-white border-2 border-primary-500 shadow-md ring-4 ring-primary-500/10"
+                  : "bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 hover:shadow-sm",
+                card.isCurrent && !card.isPopular && "ring-2 ring-emerald-500/20 border-emerald-500/60"
+              )}
+            >
+              {/* RECOMMENDED BADGE (Exact match with reference) */}
+              {card.isPopular && (
+                <span className="absolute -top-3 right-6 bg-primary-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                  {_("subscription.recommended")}
+                </span>
+              )}
+
+              {/* CARD TOP HALF */}
+              <div>
+                {/* Plan Name */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "text-xs font-bold uppercase tracking-wider",
+                      card.isPopular ? "text-primary-600" : "text-slate-500"
+                    )}
+                  >
+                    {card.title}
+                  </span>
+                </div>
+
+                {/* Big Punchy Tagline */}
+                <h2 className="text-xl font-bold text-slate-900 mt-1.5 tracking-tight">
+                  {card.tagline}
+                </h2>
+
+                {/* Description */}
+                <p className="text-xs text-slate-500 mt-2 min-h-[38px] leading-relaxed">
+                  {card.desc}
+                </p>
+
+                {/* Price Display */}
+                <div className="mt-5 flex items-baseline">
+                  <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {card.price}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium ml-1.5">
+                    {card.period}
+                  </span>
+                </div>
+
+                {/* Action CTA Button */}
+                <div className="mt-5">
+                  {card.isCurrent ? (
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(
+                        "w-full py-2.5 rounded-xl text-xs font-semibold cursor-default text-center transition flex items-center justify-center gap-1.5",
+                        card.isPopular
+                          ? "bg-primary-50 text-primary-700 border border-primary-200"
+                          : card.id === "pro"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-slate-100 text-slate-400 border border-slate-200"
+                      )}
+                    >
+                      <Check className="h-3.5 w-3.5 shrink-0" />
+                      {_("subscription.yourCurrentPlan")}
+                    </button>
+                  ) : card.id === "basic" ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 cursor-default"
+                    >
+                      {_("subscription.yourCurrentPlan")}
+                    </button>
+                  ) : card.isPopular ? (
+                    <button
+                      type="button"
+                      onClick={() => setRedeemOpen(true)}
+                      className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                    >
+                      <span>+</span>
+                      <span>{_("subscription.upgradeToPremium")}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setRedeemOpen(true)}
+                      className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                    >
+                      {_("subscription.upgradeToPro")}
+                    </button>
+                  )}
+                </div>
+
+                {/* Feature Header */}
+                <div className="mt-7 mb-3.5">
+                  <p className="text-xs font-semibold text-slate-900">
+                    {card.headerFeature}
+                  </p>
+                </div>
+
+                {/* Features List with Clean Icons */}
+                <ul className="space-y-3">
+                  {card.features.map((f, idx) => {
+                    const IconComponent = f.icon;
+                    return (
+                      <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 leading-snug">
+                        <IconComponent
+                          className={cn(
+                            "h-4 w-4 shrink-0 mt-0.5",
+                            card.isPopular ? "text-primary-600" : "text-slate-400"
+                          )}
+                        />
+                        <span>{f.text}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              {/* CARD BOTTOM FOOTNOTE */}
+              <div className="mt-8 pt-4 border-t border-slate-100 text-[11px] text-slate-400 leading-relaxed">
+                {card.footnote}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Feature Comparison Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="p-5 pb-3">
-            <h3 className="text-sm font-semibold text-foreground">{_("subscription.compareFeatures")}</h3>
+      {/* ── EXPANDABLE FEATURE COMPARISON TABLE ── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowMatrix((prev) => !prev)}
+          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50/75 transition cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <TableIcon className="h-4 w-4 text-primary-600" />
+            <span className="text-sm font-bold text-slate-900">
+              {_("subscription.compareFeatures")}
+            </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+            <span>{showMatrix ? "Sembunyikan" : "Tampilkan Rincian"}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-slate-400 transition-transform duration-200",
+                showMatrix && "rotate-180"
+              )}
+            />
+          </div>
+        </button>
+
+        {showMatrix && (
+          <div className="border-t border-slate-200 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-t border-b border-border">
-                  <th className="text-left py-3 px-5 text-xs font-medium text-muted-foreground whitespace-nowrap">{_("subscription.feature")}</th>
-                  {PLAN_KEYS.map((pk) => (
-                    <th key={pk} className="text-center py-3 px-4 text-xs font-medium text-muted-foreground capitalize whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {React.createElement(PLAN_META[pk].icon, {
-                          className: cn("h-3.5 w-3.5", PLAN_META[pk].iconColor),
-                        })}
-                        {_(`subscription.plan${pk.charAt(0).toUpperCase() + pk.slice(1)}` as any)}
-                      </div>
-                    </th>
-                  ))}
+                <tr className="bg-slate-50/80 border-b border-slate-200">
+                  <th className="text-left py-3 px-6 text-xs font-semibold text-slate-500 whitespace-nowrap">
+                    {_("subscription.feature")}
+                  </th>
+                  {PLAN_KEYS.map((pk) => {
+                    const pm = PLAN_META[pk];
+                    return (
+                      <th
+                        key={pk}
+                        className="text-center py-3 px-4 text-xs font-semibold text-slate-700 capitalize whitespace-nowrap"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <pm.icon className={cn("h-3.5 w-3.5", pm.iconColor)} />
+                          <span>{pk}</span>
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {FEATURE_MATRIX.map((row, i) => (
-                  <tr key={row.key} className={cn("border-b border-border last:border-0", i % 2 === 0 && "bg-muted/30")}>
-                    <td className="py-2.5 px-5 text-foreground/80 whitespace-nowrap">{_(`subscription.${row.key}` as any)}</td>
+                  <tr
+                    key={row.key}
+                    className={cn(
+                      "hover:bg-slate-50/50 transition-colors",
+                      i % 2 === 0 ? "bg-white" : "bg-slate-50/25"
+                    )}
+                  >
+                    <td className="py-3 px-6 text-xs font-medium text-slate-800 whitespace-nowrap">
+                      {_(`subscription.${row.key}` as any)}
+                    </td>
                     {PLAN_KEYS.map((pk) => {
                       const included = row[pk];
                       return (
-                        <td key={pk} className="text-center py-2.5 px-4">
+                        <td key={pk} className="text-center py-3 px-4">
                           {included ? (
-                            <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+                            <Check className="h-4 w-4 text-emerald-600 mx-auto" />
                           ) : (
                             <Minus className="h-4 w-4 text-slate-300 mx-auto" />
                           )}
@@ -374,8 +591,84 @@ export default function SubscriptionPage() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
+
+      {/* ── MODAL DIALOG: QUICK VOUCHER REDEEM ── */}
+      <Dialog open={redeemOpen} onOpenChange={setRedeemOpen}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 text-slate-900 rounded-2xl shadow-xl">
+          <form onSubmit={handleRedeemSubmit}>
+            <DialogHeader className="space-y-1.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-1">
+                <Ticket className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                {_("subscription.voucherRedeemTitle")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {_("subscription.voucherRedeemDesc")}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Kode Voucher / Redeem Code
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={voucherCode}
+                  onChange={(e) => {
+                    setVoucherCode(e.target.value.toUpperCase());
+                    setRedeemError(null);
+                  }}
+                  placeholder="TELEBOS-PRO-XXXX"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                />
+              </div>
+
+              {redeemError && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{redeemError}</span>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                {_("subscription.contactSupportPrompt")}
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setRedeemOpen(false);
+                  setRedeemError(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={redeemMutation.isPending || !voucherCode.trim()}
+                className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50 transition shadow-sm cursor-pointer"
+              >
+                {redeemMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menukarkan...</span>
+                  </>
+                ) : (
+                  <span>{_("subscription.redeemCodeAction")}</span>
+                )}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

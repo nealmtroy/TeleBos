@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-26
+- **[b07a88d9](https://github.com/nealmtroy/TeleBos/commit/b07a88d9)**: fix(i18n): fix missing translation keys for invite, settings, and other pages
 - **[5bad5184](https://github.com/nealmtroy/TeleBos/commit/5bad5184)**: feat(marketplace): enable account resale, add resale badges, and cleanup legacy is_sold flag
 - **[e26d836e](https://github.com/nealmtroy/TeleBos/commit/e26d836e)**: feat(ui): redesign settings page into modern security and integration hub
 - **[33c47912](https://github.com/nealmtroy/TeleBos/commit/33c47912)**: fix(auth): add missing failedVerificationCount and lockedUntil to twoFactor table

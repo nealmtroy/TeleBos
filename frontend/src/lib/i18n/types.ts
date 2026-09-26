@@ -1517,6 +1517,24 @@ export interface Dict {
     notIncluded: string;
     compareFeatures: string;
     feature: string;
+    upgradeYourPlan: string;
+    personal: string;
+    business: string;
+    yourCurrentPlan: string;
+    startWithBasics: string;
+    everythingInFree: string;
+    everythingInPro: string;
+    tryTelebos: string;
+    expandedAccess: string;
+    yourTelegramAssistant: string;
+    billingHelp: string;
+    upgradeToPro: string;
+    upgradeToPremium: string;
+    voucherRedeemTitle: string;
+    voucherRedeemDesc: string;
+    voucherCodePlaceholder: string;
+    redeemCodeAction: string;
+    contactSupportPrompt: string;
   };
 
   // Redeem
