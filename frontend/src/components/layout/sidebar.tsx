@@ -396,7 +396,7 @@ export function Sidebar() {
         {/* Sidebar rail collapse button (visible on hover on desktop) */}
         <button
           onClick={toggleSidebar}
-          className="absolute right-[-12px] top-6 z-50 w-6 h-6 rounded-full border border-slate-800 bg-slate-950 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-900 cursor-pointer shadow-md transition-all duration-200 opacity-0 group-hover/sidebar:opacity-100 hidden lg:flex active:scale-95"
+          className="absolute right-2 top-5 z-50 w-6 h-6 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer transition-colors duration-150 opacity-0 group-hover/sidebar:opacity-100 hidden lg:flex active:scale-95"
           aria-label="Toggle Sidebar"
         >
           {sidebarOpen ? (
@@ -438,7 +438,7 @@ export function Sidebar() {
               <div key={group.id} className="space-y-1">
                 {/* Group Title or Divider */}
                 {sidebarOpen ? (
-                  <div className="text-[10px] font-bold text-slate-400 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
+                  <div className="text-[11px] font-bold text-slate-400 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
                     {group.labelKey}
                   </div>
                 ) : (
@@ -476,10 +476,10 @@ export function Sidebar() {
                             }
                           }}
                           className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200 text-left relative",
+                            "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-colors duration-150 text-left relative",
                             isActive
-                              ? "bg-primary-500/10 text-primary-400 border-l-2 border-primary-500 pl-[10px] rounded-l-none"
-                              : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100 pl-3"
+                              ? "bg-primary-500/15 text-primary-400 font-semibold"
+                              : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                           )}
                         >
                           <item.icon
@@ -558,10 +558,10 @@ export function Sidebar() {
                         href={item.href}
                         onClick={handleNavClick}
                         className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative",
+                          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 relative",
                           isActive
-                            ? "bg-primary-500/10 text-primary-400 border-l-2 border-primary-500 pl-[10px] rounded-l-none"
-                            : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100 pl-3"
+                            ? "bg-primary-500/15 text-primary-400 font-semibold"
+                            : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                         )}
                       >
                         <item.icon
@@ -606,14 +606,14 @@ export function Sidebar() {
                 }}
                 className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
               >
-                <div className="w-7 h-7 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[11px] font-medium shrink-0 shadow-sm">
+                <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
                   {initials}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-white truncate leading-tight">
                     {user?.full_name || _("navbar.user")}
                   </p>
-                  <p className="text-[10px] text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
+                  <p className="text-[11px] text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
                     {planName}
                   </p>
                 </div>
@@ -626,7 +626,7 @@ export function Sidebar() {
                     e.stopPropagation();
                     router.push("/subscriptions");
                   }}
-                  className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-[#2f2f2f] hover:bg-[#3d3d3d] border border-neutral-700/80 rounded-full transition-all duration-150 shrink-0 shadow-sm active:scale-95 ml-2 cursor-pointer"
+                  className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-full transition-colors duration-150 shrink-0 active:scale-95 ml-2 cursor-pointer"
                 >
                   Upgrade
                 </button>
@@ -653,7 +653,7 @@ export function Sidebar() {
                   setProfileOpen(!profileOpen);
                   if (profileOpen) setActiveSubmenu(null);
                 }}
-                className="w-7 h-7 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[11px] font-medium hover:ring-2 hover:ring-white/20 transition-all shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold hover:ring-2 hover:ring-white/20 transition-all shrink-0 active:scale-95 cursor-pointer"
                 title={user?.full_name || user?.email || "Profile"}
               >
                 {initials}
@@ -688,14 +688,14 @@ export function Sidebar() {
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="w-7 h-7 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[11px] font-medium shrink-0 shadow-sm">
+                      <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium text-white truncate leading-tight">
                           {user?.full_name || _("navbar.user")}
                         </p>
-                        <p className="text-[10px] text-neutral-400 capitalize truncate leading-tight mt-0.5">
+                        <p className="text-[11px] text-neutral-400 capitalize truncate leading-tight mt-0.5">
                           {planName}
                         </p>
                       </div>
@@ -719,7 +719,7 @@ export function Sidebar() {
                         {/* Active Account with Checkmark */}
                         <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-[#2a2a2a] text-white my-1">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-6 h-6 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[10px] font-semibold shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
                               {initials}
                             </div>
                             <span className="text-sm font-medium truncate">{user?.full_name || "User"}</span>
@@ -968,9 +968,9 @@ export function Sidebar() {
                     setActiveSubmenu(null);
                     setShowLogoutDialog(true);
                   }}
-                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-rose-400 hover:bg-rose-950/20 rounded-xl transition-colors text-left cursor-pointer"
+                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-medium text-rose-300 hover:text-rose-100 hover:bg-rose-950/50 rounded-xl transition-colors text-left cursor-pointer"
                 >
-                  <LogOut className="h-4 w-4 text-neutral-400 hover:text-rose-400 shrink-0" />
+                  <LogOut className="h-4 w-4 text-rose-400 shrink-0" />
                   <span>{_("navbar.logout")}</span>
                 </button>
               </motion.div>
