@@ -120,7 +120,6 @@ export default function SubscriptionPage() {
   const { data: subscription, isLoading, error } = useMySubscription();
   const redeemMutation = useRedeemCode();
 
-  const [billingAudience, setBillingAudience] = useState<"personal" | "business">("personal");
   const [showMatrix, setShowMatrix] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
@@ -201,7 +200,7 @@ export default function SubscriptionPage() {
       title: "TeleBos Pro",
       tagline: _("subscription.expandedAccess"),
       desc: "Kirim pesan siaran massal dan aktifkan bot penjawab otomatis dengan kapasitas diperluas.",
-      price: billingAudience === "personal" ? "Rp 99.000" : "Rp 299.000",
+      price: "Rp 99.000",
       period: _("subscription.perMonth"),
       isCurrent: currentPlan === "pro",
       isPopular: false,
@@ -221,7 +220,7 @@ export default function SubscriptionPage() {
       title: "TeleBos Premium",
       tagline: _("subscription.yourTelegramAssistant"),
       desc: "Solusi terlengkap: scraper lead anggota grup, auto-invite target, dan prioritas server tercepat.",
-      price: billingAudience === "personal" ? "Rp 249.000" : "Rp 599.000",
+      price: "Rp 249.000",
       period: _("subscription.perMonth"),
       isCurrent: currentPlan === "premium",
       isPopular: true,
@@ -242,43 +241,13 @@ export default function SubscriptionPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-8 py-2 sm:py-6">
       {/* ── TOP HEADER SECTION (ChatGPT Style) ── */}
-      <div className="text-center space-y-4 max-w-2xl mx-auto">
+      <div className="text-center space-y-2 max-w-2xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
           {_("subscription.upgradeYourPlan")}
         </h1>
         <p className="text-slate-500 text-sm leading-relaxed">
-          Pilih paket automasi Telegram terbaik untuk kebutuhan personal atau tim bisnis Anda.
+          Pilih paket automasi Telegram terbaik untuk mengoptimalkan operasional dan skala akun Anda.
         </p>
-
-        {/* Audience Pill Switcher */}
-        <div className="flex justify-center pt-2">
-          <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-full border border-slate-200/80 shadow-xs">
-            <button
-              type="button"
-              onClick={() => setBillingAudience("personal")}
-              className={cn(
-                "px-6 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer",
-                billingAudience === "personal"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              {_("subscription.personal")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingAudience("business")}
-              className={cn(
-                "px-6 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer",
-                billingAudience === "business"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              {_("subscription.business")}
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* ── CURRENT PLAN STATUS BAR (Clean & Light) ── */}
