@@ -34,6 +34,8 @@ export interface Account {
   est_reg_date_age?: string | null;
   est_reg_date_status?: string | null;
   contacts_count?: number;
+  sold_at?: string | null;
+  is_resale?: boolean;
 }
 
 export interface ApiError {

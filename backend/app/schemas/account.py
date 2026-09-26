@@ -114,12 +114,25 @@ class AccountResponse(BaseModel):
     contacts_count: int = 0
 
     folder_ids: list[UUID] = []
+    sold_at: datetime | None = None
+    is_resale: bool = False
 
     model_config = {"from_attributes": True}
 
     @model_validator(mode="before")
     @classmethod
     def extract_folder_ids(cls, data: Any) -> Any:
+        # Check resale status
+        sold_at = data.get("sold_at") if isinstance(data, dict) else getattr(data, "sold_at", None)
+        if isinstance(data, dict):
+            if "is_resale" not in data or data["is_resale"] is None:
+                data["is_resale"] = bool(sold_at)
+        else:
+            try:
+                setattr(data, "is_resale", bool(sold_at))
+            except Exception:
+                pass
+
         # Avoid lazy loading during serialization (MissingGreenlet)
         if isinstance(data, dict):
             if "folders" in data:

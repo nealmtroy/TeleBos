@@ -151,7 +151,7 @@ async def resolve_prices_for_accounts(db: AsyncSession, accounts: list[TelegramA
 
     # Resolve price in-memory for each account using cached sorted prefix rules
     for account in accounts:
-        if account.for_sale or account.is_sold:
+        if account.for_sale:
             if account.sell_price is not None:
                 continue
 
@@ -175,7 +175,6 @@ async def get_available_prefixes(db: AsyncSession) -> list[str]:
         select(TelegramAccount.telegram_id).where(
             TelegramAccount.telegram_id.isnot(None),
             TelegramAccount.for_sale == False,
-            TelegramAccount.is_sold == False,
         )
     )
     ids = result.scalars().all()

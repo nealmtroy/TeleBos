@@ -56,7 +56,6 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
                 TelegramAccount.user_id == user.id,
                 TelegramAccount.phone_verified == True,
                 TelegramAccount.for_sale == False,
-                TelegramAccount.is_sold == False,
             )
         )
         .order_by(TelegramAccount.created_at.desc())
@@ -130,8 +129,8 @@ async def sell_accounts(
 
     accounts = [accounts_by_id[account_id] for account_id in account_uuids]
     for account in accounts:
-        if account.for_sale or account.is_sold:
-            raise ValueError(f"Account is already listed for sale or sold: {account.phone}")
+        if account.for_sale:
+            raise ValueError(f"Account is already listed for sale: {account.phone}")
 
     from app.services.marketplace_profile_service import prepare_account_for_sale
     import app.services.user_account_price_service as price_service
@@ -390,6 +389,7 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
                     "est_reg_date": est["date"].isoformat() if est and est.get("date") else None,
                     "est_reg_date_age": est["age"] if est else None,
                     "est_reg_date_status": est["status"] if est else None,
+                    "is_resale": getattr(acc, "sold_at", None) is not None,
                 }
             )
 

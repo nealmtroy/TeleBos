@@ -369,7 +369,14 @@ function CountryAccountsList({
                 return (
                   <tr key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
                     <td className="py-3 px-4 font-mono text-gray-900 font-semibold">
-                      {acc.telegram_id || "—"}
+                      <div className="flex items-center gap-1.5">
+                        <span>{acc.telegram_id || "—"}</span>
+                        {acc.is_resale && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 font-sans">
+                            Resale
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-3 text-center">
                       <span className="inline-flex items-center gap-1 text-gray-700 font-medium">
@@ -451,7 +458,14 @@ function CountryAccountsList({
               <div key={acc.id} className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <span className="text-xs text-gray-400 font-medium">User ID:</span>
-                  <span className="text-sm font-semibold text-gray-900 font-mono">{acc.telegram_id || "—"}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-gray-900 font-mono">{acc.telegram_id || "—"}</span>
+                    {acc.is_resale && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                        Resale
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="space-y-1">

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-26
+- **[e26d836e](https://github.com/nealmtroy/TeleBos/commit/e26d836e)**: feat(ui): redesign settings page into modern security and integration hub
 - **[33c47912](https://github.com/nealmtroy/TeleBos/commit/33c47912)**: fix(auth): add missing failedVerificationCount and lockedUntil to twoFactor table
 - **[f4cbb4a9](https://github.com/nealmtroy/TeleBos/commit/f4cbb4a9)**: fix: prevent infinite api-keys GET loop in settings and memoize useT
 - **[87f4e534](https://github.com/nealmtroy/TeleBos/commit/87f4e534)**: feat: split member invite into dedicated history and logs pages, fix contact export 422, and resolve contact photo 404

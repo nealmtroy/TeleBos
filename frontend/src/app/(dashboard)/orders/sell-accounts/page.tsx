@@ -204,9 +204,16 @@ export default function SellAccountsPage() {
                           {acc.first_name ? acc.first_name[0].toUpperCase() : "U"}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">
-                            {acc.first_name || "Unnamed"} {acc.last_name || ""}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-gray-900">
+                              {acc.first_name || "Unnamed"} {acc.last_name || ""}
+                            </p>
+                            {acc.is_resale && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                Resale
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs font-mono text-gray-500">{acc.phone}</p>
                         </div>
                       </div>

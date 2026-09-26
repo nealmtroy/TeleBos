@@ -184,3 +184,38 @@ async def test_purchase_notifies_buyer_and_seller():
     assert seller.balance == 5500
     assert account.auto_reply_enabled is False
     assert account.auto_reply_text is None
+
+
+async def test_resell_account_succeeds_for_previously_bought_or_sold_account(monkeypatch):
+    owner_id = uuid.uuid4()
+    # Account previously purchased with is_sold=True (legacy) and sold_at set
+    account = make_account(owner_id, for_sale=False, sell_price=None)
+    account.is_sold = True
+    account.sold_at = "2026-09-01T00:00:00Z"
+    db = FakeDatabase(account)
+    # Return account for FOR UPDATE query, then empty lists for broadcast/invite jobs
+    db.execute = AsyncMock(
+        side_effect=[
+            FakeResult([account]),
+            FakeResult([]),  # BroadcastJob query
+            FakeResult([]),  # InviteJob query
+            FakeResult([]),  # AutoReplyLog delete query
+        ]
+    )
+    user = SimpleNamespace(id=owner_id)
+    prepare = AsyncMock()
+
+    monkeypatch.setattr(marketplace_profile_service, "prepare_account_for_sale", prepare)
+    monkeypatch.setattr(
+        "app.services.user_account_price_service.resolve_telegram_id_price",
+        AsyncMock(return_value=5500),
+    )
+
+    total_listed = await marketplace_service.sell_accounts(db, user, [str(account.id)])
+
+    assert total_listed == 1
+    prepare.assert_awaited_once()
+    assert account.for_sale is True
+    assert account.is_sold is False
+    assert account.seller_id == owner_id
+    assert account.sell_price == 5500

@@ -25,6 +25,7 @@ export interface MarketplaceAccountSummary {
   est_reg_date?: string | null;
   est_reg_date_age?: string | null;
   est_reg_date_status?: string | null;
+  is_resale?: boolean;
 }
 
 export interface MarketplaceBuyResponse {

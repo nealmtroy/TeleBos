@@ -81,7 +81,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
       await sellAccountsMutation.mutateAsync([account.id]);
       void fetchMe();
       setSellOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       const isUnknownOutcome = isMarketplaceSellUnknownOutcome(err);
       toast({
@@ -89,7 +89,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         title: isUnknownOutcome ? "Sale status needs confirmation" : "Unable to sell account",
         description: isUnknownOutcome
           ? "Telegram may have finished updating this account. We refreshed your accounts—check its sale status before trying again."
-          : "The account was not listed. Please try again.",
+          : err?.response?.data?.detail || "The account was not listed. Please try again.",
       });
       if (isUnknownOutcome) {
         setSellOpen(false);
@@ -257,6 +257,11 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             Limited
           </span>
         )}
+        {account.is_resale && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            Resale
+          </span>
+        )}
       </div>
 
       {/* Action buttons */}
@@ -377,6 +382,14 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
                   Rp {(account.sell_price ?? pricing?.sell_price ?? 5500).toLocaleString()}
                 </span>
               </div>
+              {account.is_resale && (
+                <div className="flex justify-between items-center text-purple-700 font-medium">
+                  <span>Status Akun:</span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-800">
+                    Resale (Akun dari Marketplace)
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         }

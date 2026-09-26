@@ -240,6 +240,14 @@ def run_migrations(connection):
             )
         )
 
+    # ── Reset legacy is_sold flags so purchased/resale accounts can be sold again ──
+    try:
+        connection.execute(
+            text("UPDATE telegram_accounts SET is_sold = false WHERE is_sold = true")
+        )
+    except Exception as e:
+        logger.warning("Could not backfill is_sold=false: %s", e)
+
     # ── Auto-reply logs table ───────────────────────────────────────────
     tables = inspector.get_table_names()
     if "auto_reply_logs" not in tables:

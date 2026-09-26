@@ -32,6 +32,7 @@ class MarketplaceAccountSummary(BaseModel):
     est_reg_date: str | None = None
     est_reg_date_age: str | None = None
     est_reg_date_status: str | None = None
+    is_resale: bool = False
 
 
 class MarketplaceBuyResponse(BaseModel):
