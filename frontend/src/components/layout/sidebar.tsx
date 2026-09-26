@@ -41,6 +41,11 @@ import {
   User,
   Eye,
   Sparkles,
+  Check,
+  Info,
+  Bug,
+  Keyboard,
+  Sliders,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
@@ -167,6 +172,7 @@ export function Sidebar() {
   const [adminRedeemOpen, setAdminRedeemOpen] = useState(isAdminRedeemOpen);
   const [adminSmmOpen, setAdminSmmOpen] = useState(isAdminSmmOpen);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<"account" | "help" | null>(null);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -196,6 +202,7 @@ export function Sidebar() {
     function handleClickOutside(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+        setActiveSubmenu(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -231,6 +238,7 @@ export function Sidebar() {
   const RoleIcon = roleDisplay[userRole as keyof typeof roleDisplay]?.icon || User;
   const roleColor = roleDisplay[userRole as keyof typeof roleDisplay]?.color || roleDisplay.basic.color;
   const roleText = roleDisplay[userRole as keyof typeof roleDisplay]?.text || "Basic";
+  const planName = userRole === "basic" ? "Free" : roleText;
 
   // Navigation grouping
   const navGroups: NavGroup[] = [
@@ -584,102 +592,377 @@ export function Sidebar() {
         </nav>
 
         {/* Footer (Profile Section) */}
-        <div className="p-3 border-t border-slate-900 shrink-0 relative hidden lg:block" ref={profileRef}>
-          {/* Profile Card */}
-          <button
-            onClick={() => setProfileOpen(!profileOpen)}
-            className={cn(
-              "flex items-center gap-3 w-full p-2 hover:bg-slate-900/60 rounded-xl transition-all duration-200 text-left active:scale-98 select-none",
-              !sidebarOpen && "justify-center px-0 hover:bg-slate-900"
-            )}
-          >
-            <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-semibold shadow-md shrink-0">
-              {initials}
-            </div>
-            {sidebarOpen && (
-              <>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-white truncate">
+        <div className="p-2.5 border-t border-slate-900 shrink-0 relative" ref={profileRef}>
+          {/* Profile Card / Trigger */}
+          {sidebarOpen ? (
+            <div className="flex items-center justify-between w-full p-1.5 hover:bg-slate-900/60 rounded-xl transition-all duration-200 select-none">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(!profileOpen);
+                  if (profileOpen) setActiveSubmenu(null);
+                }}
+                className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white truncate leading-tight">
                     {user?.full_name || _("navbar.user")}
                   </p>
-                  <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
+                  <p className="text-xs text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
+                    {planName}
+                  </p>
                 </div>
-                <ChevronDown
+              </button>
+
+              {userRole === "basic" ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push("/subscriptions");
+                  }}
+                  className="px-3 py-1 text-xs font-medium text-white bg-[#2f2f2f] hover:bg-[#3d3d3d] border border-neutral-700/80 rounded-full transition-all duration-150 shrink-0 shadow-sm active:scale-95 ml-2 cursor-pointer"
+                >
+                  Upgrade
+                </button>
+              ) : (
+                <div
+                  onClick={() => {
+                    setProfileOpen(!profileOpen);
+                    if (profileOpen) setActiveSubmenu(null);
+                  }}
                   className={cn(
-                    "h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0",
-                    profileOpen && "rotate-180"
+                    "px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 cursor-pointer",
+                    roleColor
                   )}
-                />
-              </>
-            )}
-          </button>
+                >
+                  {roleText}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex justify-center w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(!profileOpen);
+                  if (profileOpen) setActiveSubmenu(null);
+                }}
+                className="w-9 h-9 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-xs font-semibold hover:ring-2 hover:ring-white/20 transition-all shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                title={user?.full_name || user?.email || "Profile"}
+              >
+                {initials}
+              </button>
+            </div>
+          )}
 
           {/* Floating Dropdown Popover */}
           <AnimatePresence>
             {profileOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                exit={{ opacity: 0, y: 8, scale: 0.96 }}
                 transition={{ duration: 0.12, ease: "easeOut" }}
                 className={cn(
-                  "absolute bottom-16 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-3 z-50 text-slate-300",
-                  sidebarOpen ? "left-3 right-3" : "left-2 w-56"
+                  "absolute bottom-16 bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl p-1.5 z-50 text-neutral-200 select-none",
+                  sidebarOpen ? "left-2 right-2" : "left-2 w-[260px]"
                 )}
               >
-                {/* Profile Details */}
-                <div className="px-2 py-2 border-b border-slate-850 mb-2">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-semibold shadow-md">
-                      {initials}
+                {/* 1. Account item (with flyout submenu) */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setActiveSubmenu("account")}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubmenu(activeSubmenu === "account" ? null : "account")}
+                    className={cn(
+                      "flex items-center justify-between w-full p-2 rounded-xl text-left transition-colors cursor-pointer",
+                      activeSubmenu === "account" ? "bg-[#2f2f2f] text-white" : "hover:bg-[#2a2a2a] text-neutral-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate leading-tight">
+                          {user?.full_name || _("navbar.user")}
+                        </p>
+                        <p className="text-xs text-neutral-400 capitalize truncate leading-tight mt-0.5">
+                          {planName}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">
-                        {user?.full_name || _("navbar.user")}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
+                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0 ml-1.5" />
+                  </button>
+
+                  {/* Account Flyout Submenu */}
+                  {activeSubmenu === "account" && (
+                    <div
+                      className="absolute left-full bottom-0 pl-2 w-64 z-50 max-sm:left-0 max-sm:bottom-full max-sm:mb-2 max-sm:pl-0 max-sm:w-full"
+                      onMouseLeave={() => setActiveSubmenu(null)}
+                    >
+                      <div className="bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl p-2 text-neutral-200">
+                        {/* Email Row */}
+                        <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-neutral-400 border-b border-neutral-800 pb-2 mb-1">
+                          <User className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span className="truncate">{user?.email || "user@telebos.com"}</span>
+                        </div>
+
+                        {/* Active Account with Checkmark */}
+                        <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-[#2a2a2a] text-white my-1">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-6 h-6 rounded-full bg-[#9d7d47] text-white flex items-center justify-center text-[10px] font-semibold shrink-0">
+                              {initials}
+                            </div>
+                            <span className="text-sm font-medium truncate">{user?.full_name || "User"}</span>
+                          </div>
+                          <Check className="h-4 w-4 text-white shrink-0 ml-2" />
+                        </div>
+
+                        {/* Balance Row */}
+                        <div className="flex items-center justify-between px-2.5 py-1.5 text-xs text-neutral-300">
+                          <span className="flex items-center gap-1.5 text-neutral-400">
+                            <Wallet className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                            {locale === "id" ? "Saldo" : "Balance"}
+                          </span>
+                          <span className="font-semibold text-emerald-400">Rp {(user?.balance || 0).toLocaleString()}</span>
+                        </div>
+
+                        <div className="border-t border-neutral-800 my-1" />
+
+                        {/* Add Account */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/accounts");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Plus className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Tambah akun" : "Add account"}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  {/* Role Badge */}
-                  <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[9px] font-extrabold uppercase tracking-wider", roleColor)}>
-                    <RoleIcon className="h-2.5 w-2.5 shrink-0" />
-                    {roleText}
-                  </div>
+                  )}
                 </div>
 
-                {/* Wallet / Balance */}
-                <div className="px-2 py-1.5 border-b border-slate-850 mb-2">
-                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-emerald-400">
-                    <Wallet className="h-3.5 w-3.5 shrink-0" />
-                    <span className="text-[11px] font-medium truncate">
-                      Balance: <span className="font-bold">{(user?.balance || 0).toLocaleString()}</span>
-                    </span>
-                  </div>
+                <div className="border-t border-neutral-800 my-1" />
+
+                {/* 2. Upgrade plan */}
+                <button
+                  type="button"
+                  onMouseEnter={() => setActiveSubmenu(null)}
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setActiveSubmenu(null);
+                    router.push("/subscriptions");
+                  }}
+                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                >
+                  <Sparkles className="h-4 w-4 text-neutral-300 shrink-0" />
+                  <span>{locale === "id" ? "Tingkatkan paket" : "Upgrade plan"}</span>
+                </button>
+
+                {/* 3. Personalization */}
+                <button
+                  type="button"
+                  onMouseEnter={() => setActiveSubmenu(null)}
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setActiveSubmenu(null);
+                    router.push("/settings");
+                  }}
+                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                >
+                  <Sliders className="h-4 w-4 text-neutral-300 shrink-0" />
+                  <span>{locale === "id" ? "Personalisasi" : "Personalization"}</span>
+                </button>
+
+                {/* 4. Profile */}
+                <button
+                  type="button"
+                  onMouseEnter={() => setActiveSubmenu(null)}
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setActiveSubmenu(null);
+                    router.push("/settings");
+                  }}
+                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                >
+                  <User className="h-4 w-4 text-neutral-300 shrink-0" />
+                  <span>{locale === "id" ? "Profil" : "Profile"}</span>
+                </button>
+
+                {/* 5. Settings */}
+                <button
+                  type="button"
+                  onMouseEnter={() => setActiveSubmenu(null)}
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setActiveSubmenu(null);
+                    router.push("/settings");
+                  }}
+                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                >
+                  <Settings className="h-4 w-4 text-neutral-300 shrink-0" />
+                  <span>{_("navbar.settings")}</span>
+                </button>
+
+                <div className="border-t border-neutral-800 my-1" />
+
+                {/* 6. Help item (with flyout submenu) */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setActiveSubmenu("help")}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubmenu(activeSubmenu === "help" ? null : "help")}
+                    className={cn(
+                      "flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-left text-xs font-normal transition-colors cursor-pointer",
+                      activeSubmenu === "help" ? "bg-[#2f2f2f] text-white" : "hover:bg-[#2a2a2a] text-neutral-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <HelpCircle className="h-4 w-4 text-neutral-300 shrink-0" />
+                      <span>{locale === "id" ? "Bantuan" : "Help"}</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" />
+                  </button>
+
+                  {/* Help Flyout Submenu */}
+                  {activeSubmenu === "help" && (
+                    <div
+                      className="absolute left-full bottom-0 pl-2 w-60 z-50 max-sm:left-0 max-sm:bottom-full max-sm:mb-2 max-sm:pl-0 max-sm:w-full"
+                      onMouseLeave={() => setActiveSubmenu(null)}
+                    >
+                      <div className="bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl p-1.5 text-neutral-200 space-y-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/help");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <HelpCircle className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Pusat Bantuan" : "Help center"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/privacy");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Shield className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Pusat Privasi" : "Privacy center"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/help#release-notes");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Catatan Rilis" : "Release notes"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/help");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Smartphone className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Unduh Aplikasi" : "Download apps"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/help#shortcuts");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Keyboard className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Pintasan Keyboard" : "Keyboard shortcuts"}</span>
+                        </button>
+
+                        <div className="border-t border-neutral-800 my-1" />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/tos");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Ketentuan Layanan" : "Terms of Service"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/privacy");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Info className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Kebijakan Privasi" : "Privacy Policy"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setActiveSubmenu(null);
+                            router.push("/help");
+                          }}
+                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Bug className="h-4 w-4 text-neutral-400 shrink-0" />
+                          <span>{locale === "id" ? "Laporkan Bug" : "Report a bug"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="space-y-0.5">
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      router.push("/settings");
-                    }}
-                    className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors group text-left"
-                  >
-                    <Settings className="h-3.5 w-3.5 text-slate-400 group-hover:text-white shrink-0" />
-                    <span>{_("navbar.settings")}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      setShowLogoutDialog(true);
-                    }}
-                    className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 rounded-lg transition-colors group text-left"
-                  >
-                    <LogOut className="h-3.5 w-3.5 text-rose-500 group-hover:text-rose-400 shrink-0" />
-                    <span>{_("navbar.logout")}</span>
-                  </button>
-                </div>
+                {/* 7. Log out */}
+                <button
+                  type="button"
+                  onMouseEnter={() => setActiveSubmenu(null)}
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setActiveSubmenu(null);
+                    setShowLogoutDialog(true);
+                  }}
+                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-rose-400 hover:bg-rose-950/20 rounded-xl transition-colors text-left cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4 text-neutral-400 hover:text-rose-400 shrink-0" />
+                  <span>{_("navbar.logout")}</span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
