@@ -61,7 +61,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
           "public-focus flex min-h-10 items-center gap-1.5 rounded-[6px] border px-2 py-1.5 text-xs font-medium transition-colors duration-150",
           variant === "public"
             ? "border-transparent text-[#a1a4a5] hover:border-[#292d30] hover:text-white"
-            : "border-transparent text-gray-400 dark:text-slate-400 hover:border-gray-200 dark:hover:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-slate-200"
+            : "border-transparent text-gray-600 dark:text-slate-400 hover:border-gray-200 dark:hover:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-200"
         )}
         title={t("common.language")}
       >

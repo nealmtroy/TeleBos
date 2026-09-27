@@ -79,8 +79,8 @@ export default function DashboardPage() {
       <div className="relative rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 mb-2 text-blue-400">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <div className="flex items-center gap-1.5 mb-2 text-blue-300">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-300" />
               <span className="text-xs font-medium">
                 {_("dashboard.systemOnline")}
               </span>
@@ -94,6 +94,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/accounts/add"
+            data-keep-white
             className={cn(
               "inline-flex items-center gap-2 px-4 py-2.5 bg-white text-slate-900 rounded-xl text-sm font-semibold",
               "hover:bg-white/90 transition-all duration-200 shadow-lg shadow-black/20",
