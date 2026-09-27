@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-27
+- **[756ad9c4](https://github.com/nealmtroy/TeleBos/commit/756ad9c4)**: fix(theme): close the dark-mode bridge gaps that broke text contrast
+
 ## 2026-09-26
 - **[82af4d5c](https://github.com/nealmtroy/TeleBos/commit/82af4d5c)**: fix(theme): fix dark theme contrast, surface elevations, and typography across all pages
 - **[c9f28665](https://github.com/nealmtroy/TeleBos/commit/c9f28665)**: fix(ui): eliminate nested cards, hairline shadows, and text floor violations on auto-join, groups-channels, and auto-reply
