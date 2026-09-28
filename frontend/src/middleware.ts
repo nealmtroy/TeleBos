@@ -15,6 +15,9 @@ const PUBLIC_PATHS = [
   "/_next/static",
   "/favicon.ico",
   "/og-image.png",
+  "/monitoring",
+  "/sentry-example-page",
+  "/api/sentry-example-api",
 ];
 
 // ── Middleware ──────────────────────────────────────────────────────────────

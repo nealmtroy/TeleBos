@@ -29,6 +29,26 @@ logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
 
 logger = logging.getLogger("telebos.async_worker")
 
+# Initialize Sentry for background worker
+from app.config import get_settings
+
+worker_settings = get_settings()
+if worker_settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=worker_settings.SENTRY_DSN,
+            environment=worker_settings.SENTRY_ENVIRONMENT
+            if worker_settings.SENTRY_ENVIRONMENT
+            else ("production" if worker_settings.PRODUCTION else "development"),
+            release=worker_settings.SENTRY_RELEASE,
+            traces_sample_rate=1.0 if worker_settings.DEBUG else worker_settings.SENTRY_TRACES_SAMPLE_RATE,
+        )
+        logger.info("Sentry monitoring initialized for TeleBos Async Worker")
+    except ImportError:
+        logger.warning("SENTRY_DSN configured but sentry-sdk is not installed.")
+
 shutdown_event = asyncio.Event()
 
 

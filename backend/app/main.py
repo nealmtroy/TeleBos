@@ -87,6 +87,26 @@ from app.services.session_manager import session_manager
 app_settings = get_settings()
 logger = logging.getLogger(__name__)
 
+# Initialize Sentry SDK before FastAPI app creation
+if app_settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=app_settings.SENTRY_DSN,
+            environment=app_settings.SENTRY_ENVIRONMENT
+            if app_settings.SENTRY_ENVIRONMENT
+            else ("production" if app_settings.PRODUCTION else "development"),
+            release=app_settings.SENTRY_RELEASE,
+            traces_sample_rate=1.0 if app_settings.DEBUG else app_settings.SENTRY_TRACES_SAMPLE_RATE,
+            profiles_sample_rate=1.0 if app_settings.DEBUG else app_settings.SENTRY_PROFILES_SAMPLE_RATE,
+            send_default_pii=True,
+            _experiments={"suppress_asgi_chained_exceptions": False},
+        )
+        logger.info("Sentry monitoring initialized for TeleBos API")
+    except ImportError:
+        logger.warning("SENTRY_DSN configured but sentry-sdk is not installed.")
+
 
 # Cloudflare IPv4 ranges — https://www.cloudflare.com/ips-v4/
 # Cloudflare IPv6 ranges — https://www.cloudflare.com/ips-v6/

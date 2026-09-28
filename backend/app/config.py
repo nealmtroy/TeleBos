@@ -103,6 +103,13 @@ class Settings(BaseSettings):
     SMM_API_KEY: str = ""
     SMM_SECRET_KEY: str = ""
 
+    # Sentry Monitoring
+    SENTRY_DSN: str | None = None
+    SENTRY_ENVIRONMENT: str | None = None
+    SENTRY_RELEASE: str | None = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
+    SENTRY_PROFILES_SAMPLE_RATE: float = 0.1
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
