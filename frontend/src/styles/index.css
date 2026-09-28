@@ -1,0 +1,10 @@
+/* ===================================================================
+   TeleBos Design System & Global Styles Index
+   =================================================================== */
+
+@import "./tokens.css";
+@import "./base.css";
+@import "./dark-bridge.css";
+@import "./animations.css";
+@import "./public-theme.css";
+@import "./utilities.css";

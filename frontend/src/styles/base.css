@@ -1,0 +1,27 @@
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  body,
+  .bg-white,
+  .bg-slate-50,
+  .bg-gray-50,
+  .border-slate-100,
+  .border-slate-200,
+  .border-gray-100,
+  .border-gray-200,
+  .border-b,
+  .border-r,
+  .border,
+  input,
+  textarea,
+  select,
+  header {
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  }
+}
