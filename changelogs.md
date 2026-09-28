@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-28
+- **[c961d882](https://github.com/nealmtroy/TeleBos/commit/c961d882)**: fix(telemetry): disconnect pooled Telegram clients on shutdown and demote benign log noise
 - **[e8afabdb](https://github.com/nealmtroy/TeleBos/commit/e8afabdb)**: fix(worker): configure Redis socket timeouts and soften retry log level
 - **[62550e8f](https://github.com/nealmtroy/TeleBos/commit/62550e8f)**: fix(db): right-size connection pool and retry startup init
 - **[1bc4fed3](https://github.com/nealmtroy/TeleBos/commit/1bc4fed3)**: fix(chat-service): resolve basic groups and bots to the correct peer type

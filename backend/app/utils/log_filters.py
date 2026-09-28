@@ -8,16 +8,21 @@ errors only adds noise to alerting.
 
 import logging
 
-# Telethon's Connection._send_loop logs this at exception level whenever a
-# write races with a transport teardown. The RuntimeError below is raised by
-# uvloop's UVHandle._ensure_alive when the handler has already been closed --
-# exactly the disconnect path the loop is about to take anyway.
-_BENIGN_SEND_LOOP_MESSAGES = (
+# Telethon's Connection._send_loop / _recv_loop log these at exception level
+# whenever a read or write races a transport teardown, then handle it by
+# disconnecting. Note the exact wording is "receive loop", not "recv loop"
+# (PYTHON-FASTAPI-Q was the send/recv counterpart slipping through).
+_BENIGN_LOOP_MESSAGES = (
     "Unexpected exception in the send loop",
-    "Unexpected exception in the recv loop",
+    "Unexpected exception in the receive loop",
 )
 _BENIGN_TRANSPORT_ERRORS = (
+    # uvloop UVHandle._ensure_alive, when the handler closed under a write.
     "the handler is closed",
+    # asyncio StreamReader._wait_for_data, when a second read starts on a
+    # stream another coroutine is already draining.
+    "readexactly() called while another coroutine is already waiting",
+    "read() called while another coroutine is already waiting",
     "Event loop is closed",
 )
 
@@ -33,7 +38,7 @@ class TelethonTransportNoiseFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         if record.levelno < logging.ERROR:
             return True
-        if not any(msg in record.getMessage() for msg in _BENIGN_SEND_LOOP_MESSAGES):
+        if not any(msg in record.getMessage() for msg in _BENIGN_LOOP_MESSAGES):
             return True
 
         # Only demote when the underlying error is a known teardown race; a

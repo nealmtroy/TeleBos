@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from app.utils.log_filters import TelethonTransportNoiseFilter
+from app.utils.log_filters import _BENIGN_LOOP_MESSAGES, TelethonTransportNoiseFilter
 
 
 def _send_loop_record(msg: str, exc: Exception | None) -> logging.LogRecord:
@@ -68,3 +68,31 @@ def test_leaves_non_telethon_records_untouched():
 
     assert TelethonTransportNoiseFilter().filter(record) is True
     assert record.levelno == logging.WARNING
+
+
+def test_demotes_readexactly_concurrency_race():
+    """Q: a second read on a stream another coroutine is already draining."""
+    exc = RuntimeError(
+        "readexactly() called while another coroutine is already waiting for incoming data"
+    )
+    record = _send_loop_record("Unexpected exception in the receive loop", exc)
+
+    assert TelethonTransportNoiseFilter().filter(record) is True
+    assert record.levelno == logging.WARNING
+
+
+def test_filter_covers_every_exception_log_telethon_emits():
+    """Guard against drift: Telethon logs at exception level in exactly these
+    two places, and both must be covered or they reach Sentry as errors."""
+    import inspect
+    import re
+
+    import telethon.network.connection.connection as conn
+
+    logged = set(re.findall(r"_log\.exception\('([^']+)'", inspect.getsource(conn.Connection)))
+
+    assert logged, "could not read Telethon's source; test would pass vacuously"
+    assert logged <= set(_BENIGN_LOOP_MESSAGES), (
+        f"Telethon logs {logged - set(_BENIGN_LOOP_MESSAGES)} at exception level "
+        "but the filter does not cover it"
+    )
