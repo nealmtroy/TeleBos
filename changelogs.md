@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-28
+- **[d5a74f47](https://github.com/nealmtroy/TeleBos/commit/d5a74f47)**: refactor(monitoring): remove public dummy test routes for clean production Sentry monitoring
 - **[e000ad38](https://github.com/nealmtroy/TeleBos/commit/e000ad38)**: build(docker): pass NEXT_PUBLIC_SENTRY_DSN to frontend builder and runtime
 - **[c0fb1379](https://github.com/nealmtroy/TeleBos/commit/c0fb1379)**: feat(monitoring): integrate Sentry SDK for Next.js frontend, FastAPI backend, and async worker
 - **[5c45d97e](https://github.com/nealmtroy/TeleBos/commit/5c45d97e)**: fix(invite): resolve Impeccable typography, cyan neon palette, and layout height animation

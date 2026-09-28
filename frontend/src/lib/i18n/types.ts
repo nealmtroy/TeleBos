@@ -701,6 +701,14 @@ export interface Dict {
     themeDarkDesc: string;
     themeSystem: string;
     themeSystemDesc: string;
+    languageSection: string;
+    languageSectionDesc: string;
+    languageEn: string;
+    languageEnDesc: string;
+    languageId: string;
+    languageIdDesc: string;
+    languageSystem: string;
+    languageSystemDesc: string;
   };
 
   // Account Settings (per-account)

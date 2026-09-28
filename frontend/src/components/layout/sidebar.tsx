@@ -51,8 +51,6 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { BrandLogo } from "@/components/ui/brand-logo";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { useThemeStore } from "@/store/theme-store";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SubItem {
@@ -787,14 +785,6 @@ export function Sidebar() {
                   <Sliders className="h-4 w-4 text-neutral-300 shrink-0" />
                   <span>{locale === "id" ? "Personalisasi" : "Personalization"}</span>
                 </button>
-
-                {/* Theme Mode Segmented Switcher */}
-                <div className="px-2.5 py-1.5 bg-[#1e1e1e] rounded-xl my-1 border border-neutral-800">
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1.5 px-0.5">
-                    <span>{locale === "id" ? "Tema" : "Theme"}</span>
-                  </div>
-                  <ThemeToggle variant="segmented" />
-                </div>
 
                 {/* 4. Profile */}
                 <button

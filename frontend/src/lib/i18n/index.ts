@@ -4,28 +4,46 @@ import en from "./en";
 import id from "./id";
 import type { Dict } from "./types";
 
-type Locale = "en" | "id";
+export type Locale = "en" | "id";
+export type LanguagePreference = "system" | "en" | "id";
 
 const dictionaries: Record<Locale, Dict> = { en, id };
 
+export function getSystemLocale(): Locale {
+  if (typeof navigator === "undefined") return "en";
+  const browserLang = (navigator.language || "").slice(0, 2).toLowerCase();
+  return browserLang === "id" ? "id" : "en";
+}
+
 interface I18nState {
   locale: Locale;
+  preference: LanguagePreference;
   setLocale: (locale: Locale) => void;
+  setPreference: (preference: LanguagePreference) => void;
 }
 
 function getInitialLocale(): Locale {
   // Always return "en" during SSR so hydration can match.
-  // The actual persisted locale is read from localStorage in a
-  // useEffect inside the Providers wrapper, which flips the store
-  // after the first client paint — no hydration mismatch.
+  // The actual persisted preference is read from localStorage in LanguageSync
+  // inside Providers, which updates the store after first client paint.
   return "en";
 }
 
 export const useI18nStore = create<I18nState>((set) => ({
   locale: getInitialLocale(),
+  preference: "system",
   setLocale: (locale) => {
-    localStorage.setItem("telebo_locale", locale);
-    set({ locale });
+    try {
+      localStorage.setItem("telebo_locale", locale);
+    } catch {}
+    set({ locale, preference: locale });
+  },
+  setPreference: (preference) => {
+    try {
+      localStorage.setItem("telebo_locale", preference);
+    } catch {}
+    const resolvedLocale = preference === "system" ? getSystemLocale() : preference;
+    set({ preference, locale: resolvedLocale });
   },
 }));
 

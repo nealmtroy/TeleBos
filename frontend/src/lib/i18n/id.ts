@@ -752,6 +752,14 @@ const id: Dict = {
     themeDarkDesc: "Palet deep slate yang nyaman di mata untuk pemakaian jangka panjang.",
     themeSystem: "Sistem",
     themeSystemDesc: "Sinkronisasi otomatis mengikuti preferensi sistem operasi Anda.",
+    languageSection: "Bahasa",
+    languageSectionDesc: "Pilih bahasa antarmuka yang Anda inginkan atau ikuti pengaturan sistem Anda.",
+    languageEn: "English",
+    languageEnDesc: "Tampilan antarmuka berbahasa Inggris.",
+    languageId: "Bahasa Indonesia",
+    languageIdDesc: "Tampilan antarmuka dalam Bahasa Indonesia.",
+    languageSystem: "Ikuti Sistem",
+    languageSystemDesc: "Secara otomatis mengikuti bahasa browser atau sistem operasi Anda.",
   },
 
   // ── Pengaturan Akun ─────────────────────────────────────────────────────

@@ -17,24 +17,33 @@ const queryClient = new QueryClient({
 /** Sync the <html lang> attribute with the current locale. */
 function LanguageSync() {
   const locale = useI18nStore((s) => s.locale);
-  const setLocale = useI18nStore((s) => s.setLocale);
+  const preference = useI18nStore((s) => s.preference);
+  const setPreference = useI18nStore((s) => s.setPreference);
 
-  // Hydrate: after first client paint, read the persisted locale from
-  // localStorage to restore the user's preference.  The store always
-  // starts as "en" during SSR to avoid hydration mismatches.
+  // Hydrate: after first client paint, read preference from localStorage.
+  // Defaults to "system" (detect from browser/OS).
   useEffect(() => {
-    const stored = localStorage.getItem("telebo_locale");
-    if (stored === "en" || stored === "id") {
-      if (stored !== locale) setLocale(stored);
-    } else {
-      // Fall back to browser language
-      const browserLang = navigator.language?.slice(0, 2);
-      const detected = browserLang === "id" ? "id" : "en";
-      if (detected !== locale) setLocale(detected);
+    try {
+      const stored = localStorage.getItem("telebo_locale");
+      if (stored === "en" || stored === "id" || stored === "system") {
+        setPreference(stored);
+      } else {
+        setPreference("system");
+      }
+    } catch {
+      setPreference("system");
     }
-    // Intentionally runs only once, on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setPreference]);
+
+  // Listen to OS / browser language changes when preference is "system"
+  useEffect(() => {
+    if (preference !== "system") return;
+    const handleLangChange = () => {
+      setPreference("system");
+    };
+    window.addEventListener("languagechange", handleLangChange);
+    return () => window.removeEventListener("languagechange", handleLangChange);
+  }, [preference, setPreference]);
 
   useEffect(() => {
     document.documentElement.lang = locale;

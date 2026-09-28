@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { MenuIcon, X } from "lucide-react";
 
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { publicButtonClass } from "@/components/public/public-ui";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,6 @@ export const Navbar5 = () => {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <LanguageSwitcher variant="public" />
           <Link href="/login" className="public-focus rounded-[6px] px-2 py-2 text-sm text-[#f0f0f0] hover:text-white">
             {_("landing.signIn")}
           </Link>
@@ -106,7 +104,6 @@ export const Navbar5 = () => {
               ))}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
-              <LanguageSwitcher variant="public" />
               <Link href="/login" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full")}>
                 {_("landing.signIn")}
               </Link>

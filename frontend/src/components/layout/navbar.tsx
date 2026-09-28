@@ -7,8 +7,6 @@ import { Menu, LogOut, ChevronDown, Settings, Wallet, Crown, Shield, Star, User 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -99,8 +97,6 @@ export function Navbar() {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <NotificationCenter />
-          <ThemeToggle />
-          <LanguageSwitcher />
         </div>
 
         {/* Profile section */}

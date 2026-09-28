@@ -752,6 +752,14 @@ const en: Dict = {
     themeDarkDesc: "Deep slate palette designed for sustained, low-glare work.",
     themeSystem: "System",
     themeSystemDesc: "Automatically synchronize with your operating system settings.",
+    languageSection: "Language",
+    languageSectionDesc: "Choose your preferred display language or match your system settings.",
+    languageEn: "English",
+    languageEnDesc: "Standard English interface.",
+    languageId: "Bahasa Indonesia",
+    languageIdDesc: "Antarmuka dalam Bahasa Indonesia.",
+    languageSystem: "System Default",
+    languageSystemDesc: "Automatically match your browser or operating system language.",
   },
 
   // ── Account Settings (per-account) ──────────────────────────────────────

@@ -38,8 +38,8 @@ function applyThemeToDocument(resolved: ResolvedTheme) {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  // Default to "dark" for SSR to align with TeleBos dark-first design
-  theme: "dark",
+  // Default to "system" to automatically detect from OS/device
+  theme: "system",
   resolvedTheme: "dark",
   isHydrated: false,
 
@@ -64,7 +64,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   hydrate: () => {
     if (typeof window === "undefined") return;
-    let savedTheme: Theme = "dark";
+    let savedTheme: Theme = "system";
     try {
       const stored = localStorage.getItem(THEME_STORAGE_KEY);
       if (stored === "light" || stored === "dark" || stored === "system") {
