@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-28
+- **[1bc4fed3](https://github.com/nealmtroy/TeleBos/commit/1bc4fed3)**: fix(chat-service): resolve basic groups and bots to the correct peer type
 - **[1e66b0cf](https://github.com/nealmtroy/TeleBos/commit/1e66b0cf)**: fix(event-relay): guard getattr on nullable Telethon media fields
 - **[d5bdbd75](https://github.com/nealmtroy/TeleBos/commit/d5bdbd75)**: fix(autoreply): allow concurrent broadcast and auto-reply without session collisions
 - **[b38077ce](https://github.com/nealmtroy/TeleBos/commit/b38077ce)**: feat(i18n,theme): auto-detect theme and language by system, relocate language to settings

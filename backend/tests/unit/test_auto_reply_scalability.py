@@ -154,9 +154,20 @@ async def test_spambot_sender_filtering():
 
 @pytest.mark.asyncio
 async def test_database_connection_pool_settings():
-    """Verify that PostgreSQL engine pool size and max overflow are scaled to 50."""
-    assert engine.pool.size() == 50
-    assert engine.pool._max_overflow == 50
+    """Verify the pool stays within the Postgres max_connections budget.
+
+    Three processes import the engine (backend, async worker, telegram bot), so
+    total demand is 3 x (size + overflow). The old 50/50 setting meant up to 300
+    connections against a stock Postgres, which surfaced as "sorry, too many
+    clients already" (PYTHON-FASTAPI-4). docker-compose.yml now sets
+    max_connections=300; this asserts the app side fits inside that.
+    """
+    assert engine.pool.size() == 20
+    assert engine.pool._max_overflow == 20
+
+    # 3 processes x (size + overflow) must fit inside the configured ceiling.
+    postgres_max_connections = 300
+    assert 3 * (engine.pool.size() + engine.pool._max_overflow) <= postgres_max_connections
 
 
 @pytest.mark.asyncio

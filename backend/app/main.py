@@ -303,13 +303,39 @@ async def lifespan(app: FastAPI):
 
     os.makedirs(os.path.join(os.path.dirname(__file__), "uploads", "profile_photos"), exist_ok=True)
 
-    # Create tables (in production use Alembic)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    import asyncio
 
-    # Run pending schema migrations (idempotent)
-    async with engine.begin() as conn:
-        await conn.run_sync(run_migrations)
+    # Create tables (in production use Alembic).
+    # Retry briefly: at startup the async worker may still hold the connection
+    # pool, and a transient refusal here would otherwise kill the process
+    # (PYTHON-FASTAPI-3) rather than wait for the pool to free up.
+    async def _init_db() -> None:
+        for attempt in range(1, 6):
+            try:
+                async with engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+                # Run pending schema migrations (idempotent)
+                async with engine.begin() as conn:
+                    await conn.run_sync(run_migrations)
+                return
+            except Exception as db_exc:
+                if attempt == 5:
+                    logger.critical(
+                        "Database initialization failed after %d attempts: %s",
+                        attempt,
+                        db_exc,
+                    )
+                    raise
+                wait = 2 * attempt
+                logger.warning(
+                    "Database not ready (attempt %d/5): %s. Retrying in %ds...",
+                    attempt,
+                    db_exc,
+                    wait,
+                )
+                await asyncio.sleep(wait)
+
+    await _init_db()
 
     await session_manager.start()
 
