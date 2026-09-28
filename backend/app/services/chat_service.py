@@ -672,16 +672,50 @@ async def resolve_chat_entity(client, account_id, chat_id: int):
         except Exception as db_err:
             logger.debug("Failed to query access_hash from DB for entity resolution: %s", db_err)
 
+        if chat_type == "group":
+            # Basic groups are Telethon `Chat` entities, which carry no
+            # access_hash at all, so this must be decided by type alone.
+            return types.InputPeerChat(chat_id=chat_id)
+
         if access_hash is not None:
-            if chat_type == "user":
+            # "bot" chats are `User` entities and resolve like any other user.
+            if chat_type in ("user", "bot"):
                 return types.InputPeerUser(user_id=chat_id, access_hash=access_hash)
             elif chat_type in ("channel", "supergroup"):
                 return types.InputPeerChannel(channel_id=chat_id, access_hash=access_hash)
-            else:
-                return types.InputPeerChat(chat_id=chat_id)
 
-        # 3. Fallback to slow network query
-        return await client.get_entity(chat_id)
+        # 3. Fallback to slow network query. Wrap the raw id in an explicit
+        # Peer: a bare int makes Telethon guess between user/chat/channel,
+        # which mis-resolves for chats whose id is not user-shaped.
+        from telethon.tl.types import PeerChannel, PeerUser
+
+        if chat_type in ("user", "bot"):
+            peer = PeerUser(user_id=chat_id)
+        elif chat_type in ("channel", "supergroup"):
+            peer = PeerChannel(channel_id=chat_id)
+        else:
+            peer = None
+
+        if peer is not None:
+            try:
+                return await client.get_input_entity(peer)
+            except Exception:
+                pass
+
+        try:
+            return await client.get_entity(chat_id)
+        except Exception as exc:
+            # The chat is not reachable from this account (deleted, never
+            # shared with it, or access revoked). Surface it as a user-facing
+            # error so the API answers 400 instead of an opaque 500.
+            logger.info(
+                "Could not resolve entity for chat %s (type=%s): %s",
+                chat_id, chat_type, exc,
+            )
+            raise RuntimeError(
+                "This chat is no longer accessible. It may have been deleted, "
+                "or the account may no longer be a member."
+            ) from exc
 
 
 
