@@ -35,10 +35,3 @@ async def system_status():
         "fetched_at": status.fetched_at,
     }
 
-
-@router.get("/sentry-debug")
-async def trigger_sentry_error():
-    """Trigger a test exception for Sentry backend verification."""
-    # Deliberate ZeroDivisionError to verify Sentry exception capture
-    division_by_zero = 1 / 0
-    return {"message": "unreachable", "result": division_by_zero}

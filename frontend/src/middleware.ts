@@ -16,8 +16,6 @@ const PUBLIC_PATHS = [
   "/favicon.ico",
   "/og-image.png",
   "/monitoring",
-  "/sentry-example-page",
-  "/api/sentry-example-api",
 ];
 
 // ── Middleware ──────────────────────────────────────────────────────────────
