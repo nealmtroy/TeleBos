@@ -293,4 +293,40 @@ async def test_check_connections_does_not_reconnect_worker_job_accounts():
     client_pool._clients.pop(acc_job, None)
 
 
+@pytest.mark.asyncio
+async def test_worker_client_pool_protects_busy_and_autoreply_accounts():
+    """Verify that in worker mode, clients in active jobs or with auto-reply are NOT evicted when idle."""
+    import uuid
+    from app.services.telegram_client import TelegramClientPool
 
+    pool = TelegramClientPool(receive_updates=False, is_worker=True)
+    acc_id = str(uuid.uuid4())
+    mock_client = MagicMock()
+    mock_client.is_connected.return_value = True
+
+    # Artificially set last_accessed way in the past (> 900 seconds ago)
+    pool._clients[acc_id] = {"client": mock_client, "last_accessed": 100.0}
+
+    with patch("app.database.async_session_factory") as mock_db_factory:
+        mock_db = AsyncMock()
+        mock_db_factory.return_value.__aenter__.return_value = mock_db
+
+        # Mock broadcast job query returning acc_id in active job
+        mock_res_bj = MagicMock()
+        mock_res_bj.scalars.return_value = [[acc_id]]
+
+        # Mock invite job query returning empty
+        mock_res_ij = MagicMock()
+        mock_res_ij.scalars.return_value = []
+
+        # Mock auto_reply query returning acc_id
+        mock_res_ar = MagicMock()
+        mock_res_ar.scalars.return_value = [uuid.UUID(acc_id)]
+
+        mock_db.execute.side_effect = [mock_res_bj, mock_res_ij, mock_res_ar]
+
+        await pool._cleanup_stale_clients()
+
+    # The client MUST still be in pool and NOT disconnected
+    assert acc_id in pool._clients
+    mock_client.disconnect.assert_not_called()

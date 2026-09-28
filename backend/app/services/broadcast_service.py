@@ -813,6 +813,7 @@ async def execute_broadcast(job_id: str):
                         "account_id": acc_id_str,
                         "account_name": f"{account.first_name or ''} ({account.phone or ''})",
                         "session_string": account.session_string,
+                        "auto_reply_enabled": bool(account.auto_reply_enabled),
                     }
                 )
 
@@ -838,7 +839,7 @@ async def execute_broadcast(job_id: str):
         for snapshot in account_snapshots:
             acc_id_str = snapshot["account_id"]
             try:
-                client = await get_active_client(snapshot)
+                client = await get_active_client(snapshot, receive_updates=True)
                 client_pool.touch_client(acc_id_str)
                 # Attach event_relay so auto-reply continues functioning during broadcast
                 try:

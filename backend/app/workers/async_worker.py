@@ -168,10 +168,11 @@ async def main() -> None:
         logger.critical("Encryption key verification failed: %s", exc)
         sys.exit(1)
 
-    # 2. Configure Telegram client pool for outbound-only operations (no update streams)
+    # 2. Configure Telegram client pool for worker daemon
     from app.services.telegram_client import client_pool
+    client_pool.is_worker = True
     client_pool.receive_updates = False
-    logger.info("Worker client pool configured in outbound-only mode (receive_updates=False)")
+    logger.info("Worker client pool configured (is_worker=True, default receive_updates=False)")
 
     # 3. Gracefully auto-resume all active running jobs on worker startup
     async with async_session_factory() as db:

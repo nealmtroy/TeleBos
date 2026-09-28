@@ -31,9 +31,10 @@ class TelegramClientPool:
     disconnected and removed to prevent memory leaks.
     """
 
-    def __init__(self, receive_updates: bool = True) -> None:
+    def __init__(self, receive_updates: bool = True, is_worker: bool = False) -> None:
         import asyncio
         self.receive_updates = receive_updates
+        self.is_worker = is_worker
         self._locks: dict[str, asyncio.Lock] = {}
         # dict[account_id, {"client": TelegramClient, "last_accessed": float}]
         self._clients: dict[str, dict[str, Any]] = {}
@@ -105,7 +106,7 @@ class TelegramClientPool:
                         busy_ids: set[uuid.UUID] = set()
                         bj_query = await db.execute(
                             select(BroadcastJob.account_ids).where(
-                                BroadcastJob.status.in_(["pending", "running"])
+                                BroadcastJob.status.in_(["pending", "running", "paused"])
                             )
                         )
                         for acc_list in bj_query.scalars():
@@ -118,7 +119,7 @@ class TelegramClientPool:
 
                         ij_query = await db.execute(
                             select(InviteJob.account_ids).where(
-                                InviteJob.status.in_(["pending", "running"])
+                                InviteJob.status.in_(["pending", "running", "paused"])
                             )
                         )
                         for acc_list in ij_query.scalars():
@@ -129,7 +130,7 @@ class TelegramClientPool:
                                     except (ValueError, TypeError):
                                         pass
 
-                        # Protect active accounts with auto-reply enabled (unless claimed by worker jobs)
+                        # Protect active accounts with auto-reply enabled
                         auto_reply_query = await db.execute(
                             select(TelegramAccount.id).where(
                                 TelegramAccount.id.in_(stale_uuids),
@@ -137,9 +138,18 @@ class TelegramClientPool:
                                 TelegramAccount.auto_reply_enabled.is_(True)
                             )
                         )
-                        for row in auto_reply_query.scalars():
-                            if row not in busy_ids:
+                        if self.is_worker:
+                            # In worker daemon: accounts in active broadcast/invite jobs must NEVER be
+                            # disconnected as idle, and accounts with auto-reply enabled must stay alive.
+                            for b_id in busy_ids:
+                                protected_keys.add(str(b_id))
+                            for row in auto_reply_query.scalars():
                                 protected_keys.add(str(row))
+                        else:
+                            # In backend webserver: protect auto-reply accounts UNLESS claimed by worker jobs
+                            for row in auto_reply_query.scalars():
+                                if row not in busy_ids:
+                                    protected_keys.add(str(row))
             except Exception as exc:
                 logger.error("Error checking protected clients in DB: %s", exc)
                 # Play safe on DB error, protect everyone
@@ -278,6 +288,14 @@ class TelegramClientPool:
             if existing is not None:
                 if existing["client"].is_connected():
                     existing["last_accessed"] = time.time()
+                    if receive_updates and getattr(existing["client"], "_no_updates", False):
+                        existing["client"]._no_updates = False
+                        try:
+                            from telethon import functions
+                            await existing["client"](functions.updates.GetStateRequest())
+                            logger.info("Activated live update reception on existing client for account %s", account_id)
+                        except Exception as update_exc:
+                            logger.debug("Failed to activate updates on existing client for %s: %s", account_id, update_exc)
                     return existing["client"]
                 else:
                     logger.info("Evicting disconnected cached client for account %s", account_id)

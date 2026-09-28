@@ -303,11 +303,11 @@ class SessionManager:
         except ValueError:
             return False
 
-        # 1. Check active BroadcastJobs (only pending or running jobs actively use the account)
+        # 1. Check active BroadcastJobs (pending, running, paused jobs hold the session in worker)
         try:
             broadcast_query = await db.execute(
                 select(BroadcastJob.account_ids).where(
-                    BroadcastJob.status.in_(["pending", "running"])
+                    BroadcastJob.status.in_(["pending", "running", "paused"])
                 )
             )
             for job_accs in broadcast_query.scalars():
@@ -316,11 +316,11 @@ class SessionManager:
         except Exception as e:
             logger.debug("Failed to check BroadcastJob for account %s: %s", account_id, e)
 
-        # 2. Check active InviteJobs (only pending or running jobs actively use the account)
+        # 2. Check active InviteJobs (pending, running, paused jobs hold the session in worker)
         try:
             invite_query = await db.execute(
                 select(InviteJob.account_ids).where(
-                    InviteJob.status.in_(["pending", "running"])
+                    InviteJob.status.in_(["pending", "running", "paused"])
                 )
             )
             for job_accs in invite_query.scalars():

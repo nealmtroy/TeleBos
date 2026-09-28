@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-28
+- **[b38077ce](https://github.com/nealmtroy/TeleBos/commit/b38077ce)**: feat(i18n,theme): auto-detect theme and language by system, relocate language to settings
 - **[d5a74f47](https://github.com/nealmtroy/TeleBos/commit/d5a74f47)**: refactor(monitoring): remove public dummy test routes for clean production Sentry monitoring
 - **[e000ad38](https://github.com/nealmtroy/TeleBos/commit/e000ad38)**: build(docker): pass NEXT_PUBLIC_SENTRY_DSN to frontend builder and runtime
 - **[c0fb1379](https://github.com/nealmtroy/TeleBos/commit/c0fb1379)**: feat(monitoring): integrate Sentry SDK for Next.js frontend, FastAPI backend, and async worker

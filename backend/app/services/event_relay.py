@@ -85,7 +85,7 @@ class TelegramEventRelay:
         if account_id in self._handlers:
             return True  # already attached
 
-        client = await client_pool.get(account_id, session_string)
+        client = await client_pool.get(account_id, session_string, receive_updates=True)
         if client is None:
             return False
 
@@ -282,26 +282,29 @@ class TelegramEventRelay:
                     file_size = getattr(largest, "size", None)
                 mime_type = "image/jpeg"
 
-        await manager.broadcast(
-            channel,
-            {
-                "type": "new_message",
-                "chat_id": chat.id if chat else None,
-                "chat_title": getattr(chat, "title", None) or getattr(chat, "first_name", None),
-                "message_id": msg.id,
-                "text": msg.text or "",
-                "sender_name": getattr(sender, "first_name", None) or "Unknown",
-                "sender_id": getattr(sender, "id", None),
-                "date": msg.date.isoformat() if msg.date else None,
-                "is_outgoing": msg.out,
-                "media_type": media_type,
-                "media_filename": media_filename,
-                "stripped_thumb": stripped_thumb_base64,
-                "waveform_levels": waveform_levels,
-                "file_size": file_size,
-                "mime_type": mime_type,
-            },
-        )
+        new_msg_payload = {
+            "type": "new_message",
+            "chat_id": chat.id if chat else None,
+            "chat_title": getattr(chat, "title", None) or getattr(chat, "first_name", None),
+            "message_id": msg.id,
+            "text": msg.text or "",
+            "sender_name": getattr(sender, "first_name", None) or "Unknown",
+            "sender_id": getattr(sender, "id", None),
+            "date": msg.date.isoformat() if msg.date else None,
+            "is_outgoing": msg.out,
+            "media_type": media_type,
+            "media_filename": media_filename,
+            "stripped_thumb": stripped_thumb_base64,
+            "waveform_levels": waveform_levels,
+            "file_size": file_size,
+            "mime_type": mime_type,
+        }
+        await manager.broadcast(channel, new_msg_payload)
+        try:
+            from app.utils.redis_dispatcher import publish_ws_event
+            await publish_ws_event(channel, new_msg_payload)
+        except Exception:
+            pass
 
         # Update DB in the background
         if chat:
@@ -516,22 +519,25 @@ class TelegramEventRelay:
                     file_size = getattr(largest, "size", None)
                 mime_type = "image/jpeg"
 
-        await manager.broadcast(
-            channel,
-            {
-                "type": "outgoing_message",
-                "chat_id": chat.id if chat else None,
-                "message_id": msg.id,
-                "text": msg.text or "",
-                "date": msg.date.isoformat() if msg.date else None,
-                "media_type": media_type,
-                "media_filename": media_filename,
-                "stripped_thumb": stripped_thumb_base64,
-                "waveform_levels": waveform_levels,
-                "file_size": file_size,
-                "mime_type": mime_type,
-            },
-        )
+        outgoing_payload = {
+            "type": "outgoing_message",
+            "chat_id": chat.id if chat else None,
+            "message_id": msg.id,
+            "text": msg.text or "",
+            "date": msg.date.isoformat() if msg.date else None,
+            "media_type": media_type,
+            "media_filename": media_filename,
+            "stripped_thumb": stripped_thumb_base64,
+            "waveform_levels": waveform_levels,
+            "file_size": file_size,
+            "mime_type": mime_type,
+        }
+        await manager.broadcast(channel, outgoing_payload)
+        try:
+            from app.utils.redis_dispatcher import publish_ws_event
+            await publish_ws_event(channel, outgoing_payload)
+        except Exception:
+            pass
 
         # Update DB in the background
         if chat:
