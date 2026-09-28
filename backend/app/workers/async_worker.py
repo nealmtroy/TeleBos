@@ -89,7 +89,9 @@ async def queue_consumer_loop() -> None:
             break
         except Exception as exc:
             if not shutdown_event.is_set():
-                logger.error("Error in queue consumer loop: %s. Retrying in 2s...", exc)
+                # This loop self-heals: it sleeps and retries. A transient Redis
+                # stall is not an error worth alerting on, so log at warning.
+                logger.warning("Error in queue consumer loop: %s. Retrying in 2s...", exc)
                 await asyncio.sleep(2.0)
 
 

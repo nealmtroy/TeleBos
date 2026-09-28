@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-28
+- **[62550e8f](https://github.com/nealmtroy/TeleBos/commit/62550e8f)**: fix(db): right-size connection pool and retry startup init
 - **[1bc4fed3](https://github.com/nealmtroy/TeleBos/commit/1bc4fed3)**: fix(chat-service): resolve basic groups and bots to the correct peer type
 - **[1e66b0cf](https://github.com/nealmtroy/TeleBos/commit/1e66b0cf)**: fix(event-relay): guard getattr on nullable Telethon media fields
 - **[d5bdbd75](https://github.com/nealmtroy/TeleBos/commit/d5bdbd75)**: fix(autoreply): allow concurrent broadcast and auto-reply without session collisions

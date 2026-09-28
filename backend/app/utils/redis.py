@@ -8,8 +8,20 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Initialize the async redis client
-redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+# Initialize the async redis client.
+# socket_timeout must be set explicitly: without it a stalled read surfaces as
+# redis-py's "Timeout reading from redis:6379" (PYTHON-FASTAPI-5), which the
+# worker then logged at error level every ~30s even though it recovered on its
+# own. An explicit timeout keeps the failure typed and bounded, and
+# health_check_interval re-validates connections that went stale while idle.
+redis_client = aioredis.from_url(
+    settings.REDIS_URL,
+    decode_responses=True,
+    socket_timeout=5.0,
+    socket_connect_timeout=5.0,
+    retry_on_timeout=True,
+    health_check_interval=30,
+)
 
 
 # Auto-reply Rate Limiter & Cooldown Defaults
