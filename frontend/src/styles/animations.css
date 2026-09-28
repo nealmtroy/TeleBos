@@ -75,7 +75,9 @@
 }
 
 /* Prevent layout-property animation (height reflow) on toasts */
+[data-sonner-toaster],
 [data-sonner-toaster] [data-sonner-toast],
+[data-sonner-toast],
 [data-slot="toast"] {
   transition-property: transform, opacity, box-shadow !important;
 }

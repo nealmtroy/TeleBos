@@ -445,7 +445,7 @@ export default function InvitePage() {
                 />
                 <span className="text-xs text-gray-400 whitespace-nowrap">detik</span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">{_("invite.delayPerInviteSuffix")}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.delayPerInviteSuffix")}</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -459,7 +459,7 @@ export default function InvitePage() {
                 onChange={(e) => setBatchSize(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
-              <p className="text-[10px] text-gray-400 mt-1">{_("invite.batchSizeSuffix")}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.batchSizeSuffix")}</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -476,7 +476,7 @@ export default function InvitePage() {
                 />
                 <span className="text-xs text-gray-400 whitespace-nowrap">detik</span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">{_("invite.delayPerBatchSuffix")}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.delayPerBatchSuffix")}</p>
             </div>
           </div>
         </div>
@@ -665,14 +665,14 @@ export default function InvitePage() {
                       <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
                         {log.account_name && (
                           <span
-                            className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded truncate max-w-24 text-[10px]"
+                            className="bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-1.5 py-0.5 rounded truncate max-w-24 text-xs"
                             title={`Account: ${log.account_name}`}
                           >
                             {log.account_name.split(" ")[0]}
                           </span>
                         )}
                         {log.error_type && (
-                          <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px]">
+                          <span className="bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded text-xs font-medium">
                             {log.error_type}
                           </span>
                         )}

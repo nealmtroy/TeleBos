@@ -67,14 +67,74 @@ function ThemeSync() {
   return null;
 }
 
+/**
+ * Strip layout-property transitions (e.g. transition: height injected by third-party packages)
+ * to eliminate layout thrashing warnings and enforce GPU-accelerated motion (transform/opacity).
+ */
+function LayoutAnimationSanitizer() {
+  useEffect(() => {
+    const sanitize = () => {
+      // 1. Sanitize text in inline <style> elements (e.g. Sonner __insertCSS)
+      document.querySelectorAll("style").forEach((styleEl) => {
+        if (styleEl.textContent && styleEl.textContent.includes("height")) {
+          styleEl.textContent = styleEl.textContent
+            .replace(/height\s+[\d.]+s,?\s*/g, "")
+            .replace(/,\s*height\s+[\d.]+s/g, "");
+        }
+      });
+
+      // 2. Sanitize active CSSStyleRules across accessible stylesheets
+      try {
+        for (const sheet of Array.from(document.styleSheets)) {
+          try {
+            for (let i = 0; i < sheet.cssRules.length; i++) {
+              const rule = sheet.cssRules[i];
+              if (rule instanceof CSSStyleRule) {
+                if (rule.style.transition && rule.style.transition.includes("height")) {
+                  rule.style.transition = rule.style.transition
+                    .replace(/height\s+[\d.]+s,?\s*/g, "")
+                    .replace(/,\s*height\s+[\d.]+s/g, "");
+                }
+              }
+            }
+          } catch {
+            // Skip cross-origin sheets if restricted
+          }
+        }
+      } catch {}
+    };
+
+    sanitize();
+
+    const observer = new MutationObserver((mutations) => {
+      let shouldSanitize = false;
+      for (const mutation of mutations) {
+        for (const node of Array.from(mutation.addedNodes)) {
+          if (node.nodeName === "STYLE") {
+            shouldSanitize = true;
+            break;
+          }
+        }
+        if (shouldSanitize) break;
+      }
+      if (shouldSanitize) {
+        sanitize();
+      }
+    });
+
+    observer.observe(document.head, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     fetchMe();
-    setMounted(true);
   }, [fetchMe]);
 
   return (
@@ -82,9 +142,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ToastProvider>
         <LanguageSync />
         <ThemeSync />
+        <LayoutAnimationSanitizer />
         {children}
         <Toaster richColors position="top-right" theme={resolvedTheme} />
       </ToastProvider>
     </QueryClientProvider>
   );
 }
+
