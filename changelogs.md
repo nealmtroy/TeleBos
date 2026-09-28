@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-28
+- **[d5bdbd75](https://github.com/nealmtroy/TeleBos/commit/d5bdbd75)**: fix(autoreply): allow concurrent broadcast and auto-reply without session collisions
 - **[b38077ce](https://github.com/nealmtroy/TeleBos/commit/b38077ce)**: feat(i18n,theme): auto-detect theme and language by system, relocate language to settings
 - **[d5a74f47](https://github.com/nealmtroy/TeleBos/commit/d5a74f47)**: refactor(monitoring): remove public dummy test routes for clean production Sentry monitoring
 - **[e000ad38](https://github.com/nealmtroy/TeleBos/commit/e000ad38)**: build(docker): pass NEXT_PUBLIC_SENTRY_DSN to frontend builder and runtime

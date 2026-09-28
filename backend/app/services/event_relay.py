@@ -230,7 +230,7 @@ class TelegramEventRelay:
 
             media_type = _classify_media(msg.media)
             if hasattr(msg.media, "document") and msg.media.document:
-                for attr in getattr(msg.media.document, "attributes", []):
+                for attr in getattr(msg.media.document, "attributes", []) or []:
                     if hasattr(attr, "file_name"):
                         media_filename = attr.file_name
                         break
@@ -238,12 +238,12 @@ class TelegramEventRelay:
             # Stripped thumb
             stripped_bytes = None
             if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
-                for size in getattr(msg.media.photo, "sizes", []):
+                for size in getattr(msg.media.photo, "sizes", []) or []:
                     if type(size).__name__ == "PhotoStrippedSize":
                         stripped_bytes = size.bytes
                         break
             elif isinstance(msg.media, MessageMediaDocument) and msg.media.document:
-                for size in getattr(msg.media.document, "thumbs", []):
+                for size in getattr(msg.media.document, "thumbs", []) or []:
                     if type(size).__name__ == "PhotoStrippedSize":
                         stripped_bytes = size.bytes
                         break
@@ -259,7 +259,7 @@ class TelegramEventRelay:
 
             # Waveform
             if media_type == "voice" and hasattr(msg.media, "document") and msg.media.document:
-                for attr in getattr(msg.media.document, "attributes", []):
+                for attr in getattr(msg.media.document, "attributes", []) or []:
                     if type(attr).__name__ == "DocumentAttributeAudio" and getattr(
                         attr, "voice", False
                     ):
@@ -276,7 +276,7 @@ class TelegramEventRelay:
                 file_size = msg.media.document.size
                 mime_type = msg.media.document.mime_type
             elif hasattr(msg.media, "photo") and msg.media.photo:
-                sizes = getattr(msg.media.photo, "sizes", [])
+                sizes = getattr(msg.media.photo, "sizes", []) or []
                 if sizes:
                     largest = sizes[-1]
                     file_size = getattr(largest, "size", None)
@@ -467,7 +467,7 @@ class TelegramEventRelay:
 
             media_type = _classify_media(msg.media)
             if hasattr(msg.media, "document") and msg.media.document:
-                for attr in getattr(msg.media.document, "attributes", []):
+                for attr in getattr(msg.media.document, "attributes", []) or []:
                     if hasattr(attr, "file_name"):
                         media_filename = attr.file_name
                         break
@@ -475,12 +475,12 @@ class TelegramEventRelay:
             # Stripped thumb
             stripped_bytes = None
             if isinstance(msg.media, MessageMediaPhoto) and msg.media.photo:
-                for size in getattr(msg.media.photo, "sizes", []):
+                for size in getattr(msg.media.photo, "sizes", []) or []:
                     if type(size).__name__ == "PhotoStrippedSize":
                         stripped_bytes = size.bytes
                         break
             elif isinstance(msg.media, MessageMediaDocument) and msg.media.document:
-                for size in getattr(msg.media.document, "thumbs", []):
+                for size in getattr(msg.media.document, "thumbs", []) or []:
                     if type(size).__name__ == "PhotoStrippedSize":
                         stripped_bytes = size.bytes
                         break
@@ -496,7 +496,7 @@ class TelegramEventRelay:
 
             # Waveform
             if media_type == "voice" and hasattr(msg.media, "document") and msg.media.document:
-                for attr in getattr(msg.media.document, "attributes", []):
+                for attr in getattr(msg.media.document, "attributes", []) or []:
                     if type(attr).__name__ == "DocumentAttributeAudio" and getattr(
                         attr, "voice", False
                     ):
@@ -513,7 +513,7 @@ class TelegramEventRelay:
                 file_size = msg.media.document.size
                 mime_type = msg.media.document.mime_type
             elif hasattr(msg.media, "photo") and msg.media.photo:
-                sizes = getattr(msg.media.photo, "sizes", [])
+                sizes = getattr(msg.media.photo, "sizes", []) or []
                 if sizes:
                     largest = sizes[-1]
                     file_size = getattr(largest, "size", None)

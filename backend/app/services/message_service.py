@@ -229,7 +229,7 @@ def _classify_media(media: Any) -> str:
         doc = media.document
         if doc:
             mime = getattr(doc, "mime_type", "") or ""
-            for attr in getattr(doc, "attributes", []):
+            for attr in getattr(doc, "attributes", []) or []:
                 cls_name = type(attr).__name__
                 if "Sticker" in cls_name:
                     return "sticker"
