@@ -282,6 +282,15 @@ logging.getLogger("telethon").setLevel(logging.WARNING)
 logging.getLogger("telethon.client.users").setLevel(logging.ERROR)
 logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
 
+# Telethon logs its own transport-teardown races at exception level even though
+# it handles them (it disconnects the client itself). Demote those to warning
+# so ordinary disconnects do not surface as application errors.
+from app.utils.log_filters import TelethonTransportNoiseFilter
+
+logging.getLogger("telethon.network.connection.connection").addFilter(
+    TelethonTransportNoiseFilter()
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -433,6 +442,13 @@ async def lifespan(app: FastAPI):
 
     # 5. Stop Telegram clients while Redis and DB connections are still active
     await session_manager.stop()
+
+    # session_manager.stop() only detaches event handlers; it does not disconnect
+    # the pooled Telethon clients. Without this, each cached client keeps its
+    # send/recv loop tasks alive and asyncio reports "Task was destroyed but it
+    # is pending!" on shutdown (PYTHON-FASTAPI-B/C/D/E).
+    from app.services.telegram_client import client_pool
+    await client_pool.stop()
 
     # 6. Close Redis client connection and dispose database engine
     from app.utils.redis import redis_client

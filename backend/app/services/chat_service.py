@@ -114,7 +114,10 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
     try:
         client = await get_active_client(account)
     except RuntimeError as exc:
-        logger.error("Failed to sync chats for account %s: %s", account.id, exc)
+        # The account's session is not currently connected. This is an expected
+        # transient state the adaptive sync loop retries on its next pass, so it
+        # must not be reported as an error (PYTHON-FASTAPI-A).
+        logger.warning("Skipping chat sync for account %s: %s", account.id, exc)
         return []
 
     logger.info("Starting consolidated chat synchronization for account %s...", account.id)

@@ -151,6 +151,7 @@ async def test_remove_cleans_up_locks():
 def test_telegram_client_pool_is_client_idle():
     """Verify that is_client_idle correctly evaluates idle status based on last_accessed."""
     import time
+
     pool = TelegramClientPool()
     account_id = "idle-acc-1"
 
@@ -175,6 +176,7 @@ def test_telegram_client_pool_is_client_idle():
 async def test_on_demand_dialog_lock_serialization():
     """Verify that _get_account_dialog_lock returns the same lock for identical account IDs."""
     from app.services.chat_service import _get_account_dialog_lock
+
     lock1 = await _get_account_dialog_lock("acc-concurrent-1")
     lock2 = await _get_account_dialog_lock("acc-concurrent-1")
     lock3 = await _get_account_dialog_lock("acc-different-2")
@@ -204,7 +206,11 @@ async def test_check_connections_protects_syncing_and_non_idle_accounts():
     _sync_tasks[acc_syncing] = future
 
     # acc_recent is NOT idle
-    with patch.object(client_pool, "is_client_idle", side_effect=lambda acc, **kw: False if acc == acc_recent else True):
+    with patch.object(
+        client_pool,
+        "is_client_idle",
+        side_effect=lambda acc, **kw: False if acc == acc_recent else True,
+    ):
         with patch.object(client_pool, "remove", new_callable=AsyncMock) as mock_remove:
             with patch("app.database.async_session_factory") as mock_db_factory:
                 # Mock DB query
@@ -272,7 +278,9 @@ async def test_check_connections_does_not_reconnect_worker_job_accounts():
     acc_job = "acc-stale-in-job"
     client_pool._clients[acc_job] = {"client": mock_client, "last_accessed": 100.0}
 
-    with patch.object(session_manager, "ensure_connected_on_demand", new_callable=AsyncMock) as mock_reconnect:
+    with patch.object(
+        session_manager, "ensure_connected_on_demand", new_callable=AsyncMock
+    ) as mock_reconnect:
         with patch("app.database.async_session_factory") as mock_db_factory:
             mock_db = AsyncMock()
             mock_db_factory.return_value.__aenter__.return_value = mock_db
@@ -330,3 +338,66 @@ async def test_worker_client_pool_protects_busy_and_autoreply_accounts():
     # The client MUST still be in pool and NOT disconnected
     assert acc_id in pool._clients
     mock_client.disconnect.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pool_stop_disconnects_every_cached_client():
+    """Shutdown must disconnect pooled clients so Telethon's send/recv loop
+    tasks are not destroyed while pending (PYTHON-FASTAPI-B/C/D/E)."""
+    import uuid
+    from app.services.telegram_client import TelegramClientPool
+
+    pool = TelegramClientPool()
+    acc_a, acc_b = str(uuid.uuid4()), str(uuid.uuid4())
+    client_a, client_b = MagicMock(), MagicMock()
+    client_a.is_connected.return_value = True
+    client_b.is_connected.return_value = True
+    for client in (client_a, client_b):
+        client.disconnect = AsyncMock()
+
+    pool._clients[acc_a] = {"client": client_a, "last_accessed": 100.0}
+    pool._clients[acc_b] = {"client": client_b, "last_accessed": 100.0}
+
+    await pool.stop()
+
+    client_a.disconnect.assert_awaited_once()
+    client_b.disconnect.assert_awaited_once()
+    assert pool._clients == {}
+
+
+@pytest.mark.asyncio
+async def test_connect_timeout_discards_half_open_client():
+    """A client that times out mid-connect is never pooled, so it must be
+    disconnected here or its Telethon loop tasks are stranded."""
+    import uuid
+    from app.services.telegram_client import TelegramClientPool
+
+    pool = TelegramClientPool()
+    acc_id = str(uuid.uuid4())
+
+    with (
+        patch("app.services.telegram_client.TelegramClient") as mock_tc,
+        patch("app.database.async_session_factory") as mock_db_factory,
+        patch("app.services.telegram_client.settings") as mock_settings,
+        patch("app.services.telegram_client.deterministic_ios_device") as mock_device,
+        patch("app.services.telegram_client.StringSession") as mock_session,
+    ):
+        mock_settings.TELEGRAM_API_ID = 12345
+        mock_settings.TELEGRAM_API_HASH = "hash"
+        mock_device.return_value = {
+            "device_model": "iPhone",
+            "app_version": "1.0",
+            "system_version": "1.0",
+            "lang_code": "en",
+            "system_lang_code": "en",
+        }
+        instance = mock_tc.return_value
+        instance.connect = AsyncMock(side_effect=asyncio.TimeoutError())
+        instance.disconnect = AsyncMock()
+        mock_db_factory.return_value.__aenter__.return_value = AsyncMock()
+
+        result = await pool.get(acc_id, "session-string")
+
+    assert result is None
+    instance.disconnect.assert_awaited_once()
+    assert acc_id not in pool._clients

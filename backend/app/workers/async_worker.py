@@ -27,6 +27,15 @@ logging.getLogger("telethon").setLevel(logging.WARNING)
 logging.getLogger("telethon.client.users").setLevel(logging.ERROR)
 logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
 
+# Telethon logs its own transport-teardown races at exception level even though
+# it handles them (it disconnects the client itself). Demote those to warning
+# so ordinary disconnects do not surface as application errors.
+from app.utils.log_filters import TelethonTransportNoiseFilter
+
+logging.getLogger("telethon.network.connection.connection").addFilter(
+    TelethonTransportNoiseFilter()
+)
+
 logger = logging.getLogger("telebos.async_worker")
 
 # Initialize Sentry for background worker
@@ -218,6 +227,16 @@ async def main() -> None:
     cancelled_b = await broadcast_service.cancel_all_broadcast_tasks()
     cancelled_i = await invite_service.cancel_all_invite_tasks()
     logger.info("Gracefully cancelled %d broadcast tasks and %d invite tasks", cancelled_b, cancelled_i)
+
+    # Disconnect pooled Telegram clients while the event loop is still running.
+    # Each connected client owns Telethon-internal send/recv loop tasks; nothing
+    # else releases them. When asyncio.run() closes the loop with those tasks
+    # still pending, the interpreter logs "Task was destroyed but it is
+    # pending!" once per client (PYTHON-FASTAPI-B/C/D/E). Must run before
+    # engine.dispose() so client teardown can still reach the database.
+    from app.services.telegram_client import client_pool
+    await client_pool.stop()
+    logger.info("Disconnected pooled Telegram clients")
 
     await engine.dispose()
     logger.info("Worker shutdown complete.")

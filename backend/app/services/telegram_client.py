@@ -347,7 +347,19 @@ class TelegramClientPool:
                 try:
                     await asyncio.wait_for(client.connect(), timeout=15.0)
                 except asyncio.TimeoutError:
-                    logger.error("Connection timeout for account %s during pool get", account_id)
+                    logger.warning("Connection timeout for account %s during pool get", account_id)
+                    # The half-open client is never returned to the pool, so nothing
+                    # else will disconnect it. Leaving it behind strands Telethon's
+                    # send/recv loop tasks, which asyncio then reports as destroyed
+                    # pending tasks (PYTHON-FASTAPI-B/C/D/E) and leaks sockets.
+                    try:
+                        await asyncio.wait_for(client.disconnect(), timeout=5.0)
+                    except Exception as cleanup_exc:
+                        logger.debug(
+                            "Failed to disconnect client after connect timeout for %s: %s",
+                            account_id,
+                            cleanup_exc,
+                        )
                     return None
                 if not await client.is_user_authorized():
                     logger.warning("Session expired for account %s", account_id)
