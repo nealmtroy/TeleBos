@@ -169,17 +169,23 @@ function DeviceCard({ device, onTerminate, pending }: { device: Device; onTermin
     )}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-          <div className={cn("rounded-lg p-2.5", device.current ? "bg-emerald-100 text-emerald-900" : "bg-gray-100 text-gray-600")}>
+          <div className={cn("rounded-lg p-2.5", device.current ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300")}>
             <Monitor className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900">{device.app_name || _("devices.unknownApp")}</h3>
-              {device.current && <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">{_("devices.thisDevice")}</span>}
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{device.app_name || _("devices.unknownApp")}</h3>
+              {device.current && (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/30">
+                  {_("devices.thisDevice")}
+                </span>
+              )}
             </div>
             <div className="mt-1 space-y-1">
-              <p className="text-xs text-gray-500">{[device.device_model, device.platform, device.system_version].filter(Boolean).join(" · ")}</p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                {[device.device_model, device.platform, device.system_version].filter(Boolean).join(" · ")}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                 {device.ip && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />{device.ip}</span>}
                 {device.country && <span>{device.country}</span>}
                 {device.created && <span>{_("devices.since", { date: formatDate(device.created) })}</span>}

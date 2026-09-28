@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-28
+- **[201865fb](https://github.com/nealmtroy/TeleBos/commit/201865fb)**: refactor(frontend): modularize globals.css into dedicated stylesheets
+
 ## 2026-09-27
 - **[5c77cbfc](https://github.com/nealmtroy/TeleBos/commit/5c77cbfc)**: fix(theme): keep inverted-surface labels dark and align bridge to the slate ramp
 - **[756ad9c4](https://github.com/nealmtroy/TeleBos/commit/756ad9c4)**: fix(theme): close the dark-mode bridge gaps that broke text contrast

@@ -263,9 +263,11 @@
     color: hsl(var(--foreground)) !important;
   }
   html.dark .shadow-lg,
-  html.dark .shadow-md,
+  html.dark .shadow-md {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  }
   html.dark .shadow-sm {
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
+    box-shadow: none !important;
   }
 
   /* Dark mode input & form control defaults */
@@ -283,7 +285,9 @@
 
   /* Dark mode status badges & alert boxes bridge */
   html.dark .bg-emerald-50,
-  html.dark .bg-green-50 {
+  html.dark .bg-emerald-100,
+  html.dark .bg-green-50,
+  html.dark .bg-green-100 {
     background-color: rgb(6 78 59 / 0.35) !important;
     border-color: rgb(6 95 70 / 0.5) !important;
   }

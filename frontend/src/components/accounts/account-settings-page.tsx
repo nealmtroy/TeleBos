@@ -969,7 +969,7 @@ function AutoReplySettings({ accountId, account }: { accountId: string; account:
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.autoReply")}</h2>
-      <p id="auto-reply-description" className="text-sm text-gray-500 mb-4">
+      <p id="auto-reply-description" className="text-sm text-gray-500 mb-4 max-w-xl">
         {_("accountSettings.autoReplyDesc")}
       </p>
       <div className="space-y-4">

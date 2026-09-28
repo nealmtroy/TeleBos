@@ -335,7 +335,7 @@ export default function AccountDetailPage() {
                 <link.icon className="h-5 w-5 text-gray-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-400">{link.label}</h3>
+                <h2 className="font-semibold text-gray-400">{link.label}</h2>
                 <p className="text-sm text-gray-400 mt-0.5">{link.desc}</p>
               </div>
             </div>
@@ -349,7 +349,7 @@ export default function AccountDetailPage() {
                 <link.icon className="h-5 w-5 text-primary-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">{link.label}</h3>
+                <h2 className="font-semibold text-gray-900">{link.label}</h2>
                 <p className="text-sm text-gray-500 mt-0.5">{link.desc}</p>
               </div>
             </Link>
@@ -359,8 +359,8 @@ export default function AccountDetailPage() {
 
       {/* Delete */}
       <div className="bg-white rounded-xl border border-red-200 p-6">
-        <h3 className="font-semibold text-red-600">{_("accountDetail.dangerZone")}</h3>
-        <p className="text-sm text-gray-500 mt-1 mb-4">
+        <h2 className="font-semibold text-red-600">{_("accountDetail.dangerZone")}</h2>
+        <p className="text-sm text-gray-500 mt-1 mb-4 max-w-xl">
           {_("accountDetail.dangerZoneDesc")}
         </p>
         <button

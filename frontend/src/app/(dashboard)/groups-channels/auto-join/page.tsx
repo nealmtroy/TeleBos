@@ -470,14 +470,14 @@ export default function AutoJoinPage() {
               </div>
 
               {/* Source Switcher Tabs */}
-              <div className="flex bg-gray-100 dark:bg-slate-700/80 p-0.5 rounded-lg text-xs font-semibold border border-transparent dark:border-slate-600/50">
+              <div className="flex bg-gray-100 dark:bg-slate-700/80 p-0.5 rounded-lg text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setSourceMode("bulk")}
                   className={cn(
                     "px-3 py-1.5 rounded-md transition-colors",
                     sourceMode === "bulk"
-                      ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-200/50 dark:border-slate-600 shadow-xs"
+                      ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-bold"
                       : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100"
                   )}
                 >
@@ -489,7 +489,7 @@ export default function AutoJoinPage() {
                   className={cn(
                     "px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5",
                     sourceMode === "saved"
-                      ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-200/50 dark:border-slate-600 shadow-xs"
+                      ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 font-bold"
                       : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100"
                   )}
                 >
@@ -518,7 +518,7 @@ export default function AutoJoinPage() {
                   />
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                    <div className="text-gray-500 dark:text-slate-400 text-[11px] leading-relaxed">
+                    <div className="text-gray-500 dark:text-slate-400 text-xs leading-relaxed">
                       Format: <code className="bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-1 py-0.5 rounded font-mono">@user</code>,{" "}
                       <code className="bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-1 py-0.5 rounded font-mono">t.me/name</code>, atau link private{" "}
                       <code className="bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-1 py-0.5 rounded font-mono">t.me/+hash</code>.
@@ -609,7 +609,7 @@ export default function AutoJoinPage() {
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-gray-900">{activeSavedList.name}</span>
-                        <Badge variant="outline" className="bg-white text-[11px] font-mono">
+                        <Badge variant="outline" className="bg-white text-xs font-mono">
                           {activeSavedList.items.length} target
                         </Badge>
                       </div>
@@ -617,7 +617,7 @@ export default function AutoJoinPage() {
                         {activeSavedList.items.map((it, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between text-[11px] font-mono bg-white border border-gray-150 px-2.5 py-1 rounded-md text-gray-700 truncate"
+                            className="flex items-center justify-between text-xs font-mono bg-white border border-gray-150 px-2.5 py-1 rounded-md text-gray-700 truncate"
                           >
                             <span className="truncate">{it.value}</span>
                             <span className="text-[10px] text-gray-400 uppercase font-sans ml-2">{it.type}</span>
@@ -711,7 +711,7 @@ export default function AutoJoinPage() {
                           <p className="font-semibold text-gray-900 dark:text-slate-100 truncate">
                             {acc.first_name || "Tanpa Nama"} {acc.last_name || ""}
                           </p>
-                          <p className="text-[11px] text-gray-500 dark:text-slate-300 font-mono">{acc.phone}</p>
+                          <p className="text-xs text-gray-500 dark:text-slate-300 font-mono">{acc.phone}</p>
                         </div>
                         {acc.spam_status === "limited" ? (
                           <Badge variant="outline" className="text-[11px] font-semibold bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/50 shrink-0">
@@ -760,7 +760,7 @@ export default function AutoJoinPage() {
                   disabled={isRunning}
                   className="w-full accent-primary-600 cursor-pointer"
                 />
-                <div className="flex justify-between text-[11px] text-gray-400 dark:text-slate-300 font-mono mt-0.5">
+                <div className="flex justify-between text-xs text-gray-400 dark:text-slate-300 font-mono mt-0.5">
                   <span>2s (Cepat)</span>
                   <span>5s (Disarankan)</span>
                   <span>30s (Sangat Aman)</span>
@@ -795,8 +795,8 @@ export default function AutoJoinPage() {
                         : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                     )}
                   >
-                    <span className="block text-[11px] font-bold">Semua Akun</span>
-                    <span className="text-[11px] text-gray-500 dark:text-slate-300 font-normal">Tiap akun join ke semua target</span>
+                    <span className="block text-xs font-bold">Semua Akun</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-300 font-normal">Tiap akun join ke semua target</span>
                   </button>
 
                   <button
@@ -810,8 +810,8 @@ export default function AutoJoinPage() {
                         : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
                     )}
                   >
-                    <span className="block text-[11px] font-bold">Bagi Rata (Round-Robin)</span>
-                    <span className="text-[11px] text-gray-500 dark:text-slate-300 font-normal">Bagi target antar akun</span>
+                    <span className="block text-xs font-bold">Bagi Rata (Round-Robin)</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-300 font-normal">Bagi target antar akun</span>
                   </button>
                 </div>
               </div>
@@ -893,22 +893,22 @@ export default function AutoJoinPage() {
             </div>
 
             {/* Metric counters */}
-            <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-              <div className="bg-green-50 dark:bg-emerald-950/40 border border-green-200 dark:border-emerald-800/40 rounded-xl p-2.5">
+            <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-slate-700/70 pt-2 text-center">
+              <div className="px-2">
                 <span className="block text-lg font-bold text-green-700 dark:text-emerald-300">{stats.success}</span>
-                <span className="text-[11px] text-green-600 dark:text-emerald-400 font-semibold">Sukses</span>
+                <span className="text-xs text-green-600 dark:text-emerald-400 font-semibold">Sukses</span>
               </div>
-              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 rounded-xl p-2.5">
+              <div className="px-2">
                 <span className="block text-lg font-bold text-blue-700 dark:text-blue-300">{stats.already}</span>
-                <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">Member</span>
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">Member</span>
               </div>
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 rounded-xl p-2.5">
+              <div className="px-2">
                 <span className="block text-lg font-bold text-amber-700 dark:text-amber-300">{stats.flood}</span>
-                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">FloodWait</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">FloodWait</span>
               </div>
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 rounded-xl p-2.5">
+              <div className="px-2">
                 <span className="block text-lg font-bold text-rose-700 dark:text-rose-300">{stats.failed}</span>
-                <span className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">Gagal</span>
+                <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Gagal</span>
               </div>
             </div>
           </div>

@@ -316,11 +316,11 @@ function ContactsContent() {
 
   return (
     <>
-    <div className="flex h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-sm">
+    <div className="flex h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-900 overflow-hidden border-t border-gray-200 dark:border-slate-800">
       {/* ── Left Panel: Contact List ────────────────────────────────────── */}
       <div
         className={cn(
-          "flex flex-col border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all duration-200",
+          "flex flex-col border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-150",
           selectedContactId ? "hidden md:flex w-[360px] flex-shrink-0" : "flex-1 md:w-[360px] md:flex-shrink-0"
         )}
       >

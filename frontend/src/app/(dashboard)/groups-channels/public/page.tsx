@@ -126,7 +126,7 @@ function PublicGroupsChannelsContent() {
 
   // ── 2. Pro/Premium/Owner Index Finder ─────────────────────────────────────────
   return (
-    <div className="h-[calc(100vh-7rem)] -m-6 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm flex flex-col">
+    <div className="h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-900 overflow-hidden border-t border-gray-200 dark:border-slate-800 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-100 space-y-3">
         <div className="flex items-center justify-between">
@@ -260,7 +260,7 @@ function PublicGroupsChannelsContent() {
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold truncate text-gray-900">{chat.title}</h3>
+                    <h2 className="text-sm font-semibold truncate text-gray-900 dark:text-slate-100">{chat.title}</h2>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {chat.username && <span className="text-xs text-gray-400">@{chat.username}</span>}
                       {chat.username && (chat.member_count !== undefined && chat.member_count !== null || chat.online_count !== undefined && chat.online_count !== null) && <span className="text-gray-300 text-xs">•</span>}
@@ -274,7 +274,7 @@ function PublicGroupsChannelsContent() {
                         <>
                           <span className="text-gray-300 text-xs">•</span>
                           <span className="text-xs text-emerald-600 flex items-center gap-1 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                             {chat.online_count.toLocaleString()} {_("groupsChannels.onlineCount")}
                           </span>
                         </>

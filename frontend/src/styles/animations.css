@@ -73,3 +73,9 @@
   animation-name: slideOutToRight;
   animation-duration: 250ms;
 }
+
+/* Prevent layout-property animation (height reflow) on toasts */
+[data-sonner-toaster] [data-sonner-toast],
+[data-slot="toast"] {
+  transition-property: transform, opacity, box-shadow !important;
+}

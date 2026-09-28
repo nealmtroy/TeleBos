@@ -92,7 +92,7 @@ export default function AgeCheckerPage() {
 
       {/* Estimator Card */}
       <div className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Search className="h-4 w-4 text-primary-500" />
             {_("ageChecker.title")}
@@ -126,7 +126,7 @@ export default function AgeCheckerPage() {
 
         {/* Results card */}
         {result && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm animate-fadeIn">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 animate-fadeIn">
             <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-green-500" />
               {_("ageChecker.resultTitle")}
@@ -160,11 +160,11 @@ export default function AgeCheckerPage() {
       </div>
 
       {/* Explanation Section */}
-      <div className="bg-slate-900 text-slate-300 rounded-xl p-6 border border-slate-800 flex gap-4 shadow-inner">
+      <div className="bg-slate-900 text-slate-300 rounded-xl p-6 border border-slate-800 flex gap-4">
         <Info className="h-6 w-6 text-primary-400 flex-shrink-0 mt-0.5" />
         <div className="space-y-1.5">
-          <h4 className="font-bold text-sm text-white">{_("ageChecker.explanationTitle")}</h4>
-          <p className="text-xs text-slate-400 leading-relaxed font-sans">
+          <h3 className="font-bold text-sm text-white">{_("ageChecker.explanationTitle")}</h3>
+          <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-xl">
             {_("ageChecker.explanationText")}
           </p>
         </div>
