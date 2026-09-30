@@ -12,6 +12,7 @@ from telethon.tl.functions.help import GetCountriesListRequest
 
 from app.config import get_settings
 from app.utils.redis import redis_client
+from app.utils.telethon_cleanup import force_close_telethon_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -86,6 +87,9 @@ async def fetch_countries_from_telegram(lang_code: str = "en") -> list[dict[str,
             await client.disconnect()
         except Exception:
             pass
+        # disconnect() is a no-op for a client that never connected, leaving
+        # its recv/send loop tasks pending (see force_close_telethon_client).
+        force_close_telethon_client(client)
 
 
 async def get_countries(lang_code: str = "en") -> list[dict[str, Any]]:

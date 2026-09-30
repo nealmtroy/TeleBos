@@ -16,6 +16,7 @@ from telethon.errors import (
 
 from app.config import get_settings
 from app.utils.device_spoof import deterministic_ios_device, random_ios_device
+from app.utils.telethon_cleanup import force_close_telethon_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -266,6 +267,9 @@ class TelegramClientPool:
                     await asyncio.wait_for(client.disconnect(), timeout=2.0)
                 except Exception:
                     pass
+                # A client that never connected makes disconnect() a no-op,
+                # stranding its loop tasks (force_close_telethon_client).
+                force_close_telethon_client(client)
 
     async def _get_impl(
         self,
@@ -598,6 +602,9 @@ class TelegramClientPool:
         try:
             await asyncio.wait_for(client.connect(), timeout=15.0)
         except asyncio.TimeoutError:
+            # The client never reached _connected, so disconnect() would no-op
+            # and strand its recv/send loop tasks (force_close_telethon_client).
+            force_close_telethon_client(client)
             raise ValueError("Koneksi ke server Telegram timeout. Silakan periksa jaringan internet server.")
         return client
 
