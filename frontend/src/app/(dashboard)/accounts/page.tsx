@@ -328,10 +328,7 @@ export default function AccountsListPage() {
 
       {/* Pagination Controls */}
       {!isLoading && !error && totalItems > 0 && totalPages > 0 && (
-        <nav
-          aria-label="Account pagination"
-          className="mt-6 flex flex-col gap-3 border-t border-gray-200 dark:border-slate-800 pt-4 sm:flex-row sm:items-center sm:justify-between"
-        >
+        <div className="mt-6 flex flex-col gap-3 border-t border-gray-200 dark:border-slate-800 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-gray-500 dark:text-slate-400">
             {_("accountsList.showingAccounts", {
               start: (page - 1) * PAGE_SIZE + 1,
@@ -346,7 +343,7 @@ export default function AccountsListPage() {
             labels={{ prev: _("accountsList.prev"), next: _("accountsList.next") }}
             className="w-auto mx-0"
           />
-        </nav>
+        </div>
       )}
 
       {/* Folder Manager Dialog */}

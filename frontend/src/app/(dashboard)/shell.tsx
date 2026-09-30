@@ -39,16 +39,16 @@ export default function DashboardShell({
   // Chat page: full immersive mode — no global sidebar/navbar
   if (isChatsPage) {
     return (
-      <div className="h-[100dvh] w-full overflow-hidden">
+      <div className="fixed inset-0 w-full overflow-hidden bg-background text-foreground">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="viewport flex h-[100dvh] overflow-hidden">
+    <div className="fixed inset-0 flex overflow-hidden bg-background text-foreground">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
         <Navbar />
         <AnnouncementBanner />
         <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6 pb-14">
