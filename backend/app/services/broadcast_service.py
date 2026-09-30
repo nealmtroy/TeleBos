@@ -965,6 +965,13 @@ async def execute_broadcast(job_id: str):
             current_cycle = cycle_count + 1
             current_cycle_number = current_cycle
             cycle_start_time = time.time()
+            # Counters for *this* cycle only. The job-level sent_count/fail_count
+            # stay cumulative and are kept separately, so the per-cycle summary
+            # stops repeating the opening cycle's numbers without truncating the
+            # job's running totals.
+            cycle_sent = 0
+            cycle_failed = 0
+            pending_cycle_details = []
 
             # ── Every cycle, retry pending groups first ──
             if pending_pool and is_looping:
@@ -1382,11 +1389,13 @@ async def execute_broadcast(job_id: str):
                         log_err_msg = err_msg
                         log_duration_ms = int((time.time() - start_time) * 1000)
                         sent += 1
+                        cycle_sent += 1
                     else:
                         log_status = "error"
                         log_err_type = err_type
                         log_err_msg = err_msg
                         failed += 1
+                        cycle_failed += 1
                         permanent_failures_pool.add(pkey)
 
                         if err_type == "flood":
@@ -1530,6 +1539,7 @@ async def execute_broadcast(job_id: str):
                         log_err_msg = None
                         log_err_type = None
                         sent += 1
+                        cycle_sent += 1
 
                         fc.record_success(acc_id_str)
 
@@ -1543,6 +1553,7 @@ async def execute_broadcast(job_id: str):
                         log_err_type = err_type
                         log_err_msg = err_msg
                         failed += 1
+                        cycle_failed += 1
 
                         if err_type in (
                             "admin_only",
@@ -1745,8 +1756,8 @@ async def execute_broadcast(job_id: str):
                     "cycle_complete",
                     {
                         "cycle": cycle_count,
-                        "sent": sent,
-                        "failed": failed,
+                        "sent": cycle_sent,
+                        "failed": cycle_failed,
                         "status": "running",
                     },
                 )
