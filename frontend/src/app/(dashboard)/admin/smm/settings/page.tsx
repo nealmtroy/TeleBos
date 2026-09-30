@@ -26,7 +26,7 @@ import {
   Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -184,20 +184,20 @@ export default function SmmSettingsPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Global Profit Margin Card */}
           <Card className="border border-gray-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-5">
+            <div className="p-6 pb-2">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-bold text-gray-900">Global Service Markups</CardTitle>
-                  <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  <h2 className="text-base font-bold text-gray-900">Global Service Markups</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
                     Default percentage profit margin added to SMM panel base service prices
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            </div>
+            <CardContent className="p-6 pt-3 space-y-4">
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                   Global Markup Percentage
@@ -223,7 +223,7 @@ export default function SmmSettingsPage() {
                     Save Markup
                   </Button>
                 </div>
-                <p className="text-[11px] text-gray-400 leading-relaxed">
+                <p className="text-xs text-gray-500 leading-relaxed">
                   Formula: Customer Price = Provider Base Cost × (100 + Markup) / 100
                 </p>
               </div>
@@ -232,20 +232,20 @@ export default function SmmSettingsPage() {
 
           {/* Account Marketplace Pricing Card */}
           <Card className="border border-gray-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-5">
+            <div className="p-6 pb-2">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
                   <Coins className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-bold text-gray-900">Telegram Marketplace Pricing</CardTitle>
-                  <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  <h2 className="text-base font-bold text-gray-900">Telegram Marketplace Pricing</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
                     Platform base rates for purchasing and listing verified Telegram sessions
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-5">
+            </div>
+            <CardContent className="p-6 pt-3 space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -261,7 +261,7 @@ export default function SmmSettingsPage() {
                       className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 font-mono font-semibold"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400">Standard price paid by users to buy a verified account</p>
+                  <p className="text-xs text-gray-500">Standard price paid by users to buy a verified account</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -277,7 +277,7 @@ export default function SmmSettingsPage() {
                       className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 font-mono font-semibold"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400">Balance payout given to users when selling an account</p>
+                  <p className="text-xs text-gray-500">Balance payout given to users when selling an account</p>
                 </div>
               </div>
               <Button
@@ -293,44 +293,44 @@ export default function SmmSettingsPage() {
 
           {/* SMM API Configuration Card */}
           <Card className="border border-gray-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-5">
+            <div className="p-6 pb-2">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+                <div className="p-2 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
                   <KeyRound className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-bold text-gray-900">SMM Provider Credentials</CardTitle>
-                  <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  <h2 className="text-base font-bold text-gray-900">SMM Provider Credentials</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
                     Read-only connection settings injected from backend environment configurations
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            </div>
+            <CardContent className="p-6 pt-3 space-y-4">
               <div className="space-y-4 text-xs">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 py-3 border-b border-gray-100">
-                  <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px] shrink-0">API Endpoint URL</span>
-                  <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 max-w-full overflow-hidden">
-                    <span className="font-mono text-gray-700 break-all text-[11px] truncate select-all">
+                  <span className="text-gray-600 font-semibold uppercase tracking-wider text-xs shrink-0">API Endpoint URL</span>
+                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg max-w-full overflow-hidden">
+                    <span className="font-mono text-gray-700 break-all text-xs truncate select-all">
                       https://buzzerpanel.id/api/json.php
                     </span>
                     <button
                       onClick={handleCopyApiUrl}
-                      className="p-1 hover:bg-gray-200 text-gray-400 hover:text-gray-600 rounded transition shrink-0"
+                      className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded transition shrink-0"
                       title="Copy URL"
                     >
-                      {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2.5 py-3 border-b border-gray-100">
-                  <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px] shrink-0">API Security Key</span>
-                  <span className="font-mono text-gray-400 font-bold select-none bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 tracking-wider">
+                  <span className="text-gray-600 font-semibold uppercase tracking-wider text-xs shrink-0">API Security Key</span>
+                  <span className="font-mono text-slate-500 font-bold select-none bg-slate-50 px-3 py-1.5 rounded-lg tracking-wider text-xs">
                     ••••••••••••••••
                   </span>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400 leading-normal">
+              <p className="text-xs text-gray-500 leading-relaxed max-w-xl">
                 💡 To update connection endpoints or credential tokens, edit the system configuration environment variables (`.env`) and restart the service backend.
               </p>
             </CardContent>
@@ -346,13 +346,13 @@ export default function SmmSettingsPage() {
               <CardContent className="p-6 flex flex-col justify-between h-full min-h-[180px]">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest">SMM Provider Account</p>
-                    <h3 className="text-base font-bold text-white mt-1 break-words line-clamp-1">{profile.name || "BuzzerPanel"}</h3>
+                    <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">SMM Provider Account</p>
+                    <h2 className="text-base font-bold text-white mt-1 break-words line-clamp-1">{profile.name || "BuzzerPanel"}</h2>
                   </div>
                   <Coins className="h-7 w-7 text-blue-500/80 opacity-80" />
                 </div>
                 <div className="mt-8">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Available Balance</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Available Balance</p>
                   <p className="text-2xl font-black text-white tracking-tight mt-0.5 font-mono">
                     {profile.balance || "0"}
                     {profile.currency && <span className="text-xs text-gray-400 font-bold ml-1">{profile.currency}</span>}
@@ -364,40 +364,40 @@ export default function SmmSettingsPage() {
 
           {/* Quick Operations Deck */}
           <Card className="border border-gray-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-              <CardTitle className="text-sm font-bold text-gray-900">Provider Sync Control</CardTitle>
-            </CardHeader>
+            <div className="p-4 pb-2">
+              <h2 className="text-sm font-bold text-gray-900">Provider Sync Control</h2>
+            </div>
             <CardContent className="p-4 space-y-3">
               <Button
                 onClick={handleSync}
                 disabled={syncMutation.isPending}
-                className="w-full justify-start text-left"
+                className="w-full justify-start text-left h-auto py-3 px-3.5 border-slate-200"
                 variant="outline"
               >
                 {syncMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2.5 shrink-0" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-3 shrink-0" />
                 ) : (
-                  <RefreshCw className="h-4 w-4 mr-2.5 shrink-0 text-blue-500" />
+                  <RefreshCw className="h-4 w-4 mr-3 shrink-0 text-slate-500" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-xs text-gray-900">Sync Provider Services</p>
-                  <p className="text-[10px] text-gray-400 font-normal truncate mt-0.5">Reload and update service rates</p>
+                  <p className="text-xs text-gray-500 font-normal truncate mt-0.5">Reload and update service rates</p>
                 </div>
               </Button>
               <Button
                 onClick={handleRefreshAll}
                 disabled={refreshAllMutation.isPending}
-                className="w-full justify-start text-left"
+                className="w-full justify-start text-left h-auto py-3 px-3.5 border-slate-200"
                 variant="outline"
               >
                 {refreshAllMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2.5 shrink-0" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-3 shrink-0" />
                 ) : (
-                  <RefreshCw className="h-4 w-4 mr-2.5 shrink-0 text-emerald-500" />
+                  <RefreshCw className="h-4 w-4 mr-3 shrink-0 text-slate-500" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-xs text-gray-900">Sync Order Statuses</p>
-                  <p className="text-[10px] text-gray-400 font-normal truncate mt-0.5">Poll status updates from SMM panel</p>
+                  <p className="text-xs text-gray-500 font-normal truncate mt-0.5">Poll status updates from SMM panel</p>
                 </div>
               </Button>
             </CardContent>
@@ -405,19 +405,19 @@ export default function SmmSettingsPage() {
 
           {/* Export Center Card */}
           <Card className="border border-gray-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-gray-100 bg-gray-50/50 p-4">
-              <CardTitle className="text-sm font-bold text-gray-900">Export & Auditing</CardTitle>
-            </CardHeader>
+            <div className="p-4 pb-2">
+              <h2 className="text-sm font-bold text-gray-900">Export & Auditing</h2>
+            </div>
             <CardContent className="p-4">
               <Button
                 variant="outline"
                 onClick={() => window.open("/api/v1/admin/smm/orders/export", "_blank")}
-                className="w-full justify-start text-left"
+                className="w-full justify-start text-left h-auto py-3 px-3.5 border-slate-200"
               >
-                <Download className="h-4 w-4 mr-2.5 shrink-0 text-gray-500" />
+                <Download className="h-4 w-4 mr-3 shrink-0 text-slate-500" />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-xs text-gray-900">Export SMM Orders</p>
-                  <p className="text-[10px] text-gray-400 font-normal truncate mt-0.5">Download full orders history as CSV</p>
+                  <p className="text-xs text-gray-500 font-normal truncate mt-0.5">Download full orders history as CSV</p>
                 </div>
               </Button>
             </CardContent>

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[e7c1e909](https://github.com/nealmtroy/TeleBos/commit/e7c1e909)**: fix(accounts): treat an unscanned QR login as expired, not a failure
 - **[c803de1e](https://github.com/nealmtroy/TeleBos/commit/c803de1e)**: fix(worker): wait for the schema before auto-resuming jobs on startup
 - **[f006120d](https://github.com/nealmtroy/TeleBos/commit/f006120d)**: fix(security): allow worker-src 'self' blob: in Content-Security-Policy
 - **[cbfe8047](https://github.com/nealmtroy/TeleBos/commit/cbfe8047)**: feat(backup): add automated database backup script to Cloudflare R2

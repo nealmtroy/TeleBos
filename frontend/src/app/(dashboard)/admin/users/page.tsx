@@ -206,15 +206,18 @@ function UsersContent() {
                 <Smartphone className="h-5 w-5" />
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100 text-[11px]">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100">
-                🟢 {stats?.accounts_active ?? 0} {_("admin.activeAccounts") || "Active"}
+            <div className="flex flex-wrap gap-1.5 pt-2.5 border-t border-gray-100 text-xs">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                {stats?.accounts_active ?? 0} {_("admin.activeAccounts") || "Active"}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold border border-amber-100">
-                🟡 {stats?.accounts_limited ?? 0} {_("admin.limitedAccounts") || "Limited"}
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 font-medium border border-amber-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5" />
+                {stats?.accounts_limited ?? 0} {_("admin.limitedAccounts") || "Limited"}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
-                🔴 {stats?.accounts_expired ?? 0} {_("admin.expiredAccounts") || "Expired"}
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-medium border border-rose-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5" />
+                {stats?.accounts_expired ?? 0} {_("admin.expiredAccounts") || "Expired"}
               </span>
             </div>
           </CardContent>
@@ -232,20 +235,22 @@ function UsersContent() {
                   {(stats?.total_broadcast_jobs ?? 0).toLocaleString()}
                 </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+              <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                 <Radio className="h-5 w-5" />
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100 text-[11px]">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
+            <div className="flex flex-wrap gap-1.5 pt-2.5 border-t border-gray-100 text-xs">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
                 {stats?.broadcast_running ?? 0} {_("admin.broadcastRunning") || "Running"}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-100">
-                🔵 {stats?.broadcast_completed ?? 0} {_("admin.broadcastFinished") || "Finished"}
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-medium border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5" />
+                {stats?.broadcast_completed ?? 0} {_("admin.broadcastFinished") || "Finished"}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
-                🔴 {stats?.broadcast_failed ?? 0} {_("admin.broadcastFailed") || "Failed"}
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-medium border border-rose-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5" />
+                {stats?.broadcast_failed ?? 0} {_("admin.broadcastFailed") || "Failed"}
               </span>
             </div>
           </CardContent>
@@ -263,21 +268,21 @@ function UsersContent() {
                   {(stats?.total_users ?? 0).toLocaleString()}
                 </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+              <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
                 <Users className="h-5 w-5" />
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100 text-[11px]">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-50 text-gray-700 font-medium border border-gray-200">
+            <div className="flex flex-wrap gap-1.5 pt-2.5 border-t border-gray-100 text-xs">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-50 text-gray-700 font-medium border border-gray-200">
                 Basic: {stats?.total_basic_users ?? 0}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-medium border border-blue-100">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-medium border border-blue-200">
                 Pro: {stats?.total_pro_users ?? 0}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-medium border border-amber-100">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 font-medium border border-amber-200">
                 Premium: {stats?.total_premium_users ?? 0}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-medium border border-purple-100">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-medium border border-slate-200">
                 Owner: {stats?.total_owner_users ?? 0}
               </span>
             </div>
@@ -300,8 +305,8 @@ function UsersContent() {
         </div>
       )}
 
-      {/* Main Table Card */}
-      <Card className="border border-gray-200 overflow-hidden shadow-sm">
+      {/* Main Table Container */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
         {/* Search Bar */}
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
@@ -386,7 +391,7 @@ function UsersContent() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 truncate max-w-[200px]">{u.email}</p>
-                            <p className="text-[11px] text-gray-500 truncate max-w-[200px]">
+                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
                               {u.full_name || "—"}
                             </p>
                           </div>
@@ -424,26 +429,26 @@ function UsersContent() {
                           <div className="flex items-center gap-1.5">
                             <Smartphone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span className="font-bold text-gray-900">{connected}</span>
-                            <span className="text-[11px] text-gray-500 font-normal">accounts</span>
+                            <span className="text-xs text-gray-500 font-normal">accounts</span>
                           </div>
                           {connected > 0 ? (
-                            <div className="flex flex-wrap items-center gap-1 text-[10px]">
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100">
+                            <div className="flex flex-wrap items-center gap-1 text-xs">
+                              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
                                 {activeAcc} active
                               </span>
                               {limitedAcc > 0 && (
-                                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-semibold border border-amber-100">
+                                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-medium border border-amber-200">
                                   {limitedAcc} limited
                                 </span>
                               )}
                               {expiredAcc > 0 && (
-                                <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-medium border border-rose-200">
                                   {expiredAcc} expired
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-gray-400 italic">No accounts</span>
+                            <span className="text-xs text-gray-400 italic">No accounts</span>
                           )}
                         </div>
                       </td>
@@ -454,27 +459,27 @@ function UsersContent() {
                           <div className="flex items-center gap-1.5">
                             <Radio className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span className="font-bold text-gray-900">{bcTotal}</span>
-                            <span className="text-[11px] text-gray-500 font-normal">broadcasts</span>
+                            <span className="text-xs text-gray-500 font-normal">broadcasts</span>
                           </div>
                           {bcTotal > 0 ? (
-                            <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                            <div className="flex flex-wrap items-center gap-1 text-xs">
                               {bcRunning > 0 ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
+                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
                                   {bcRunning} running
                                 </span>
                               ) : null}
-                              <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
+                              <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium border border-blue-200">
                                 {bcFinished} finished
                               </span>
                               {bcFailed > 0 && (
-                                <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-medium border border-rose-200">
                                   {bcFailed} failed
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-gray-400 italic">No broadcasts</span>
+                            <span className="text-xs text-gray-400 italic">No broadcasts</span>
                           )}
                         </div>
                       </td>
@@ -578,7 +583,7 @@ function UsersContent() {
             </div>
           </div>
         )}
-      </Card>
+      </div>
 
       {/* User Details Modal */}
       {detailUser && (

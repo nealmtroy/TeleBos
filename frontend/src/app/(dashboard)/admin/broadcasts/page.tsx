@@ -53,12 +53,12 @@ import { cn } from "@/lib/utils";
 const PAGE_SIZE = 15;
 
 const STATUS_BADGES: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  running: { bg: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", text: "Running", dot: "bg-emerald-500 animate-pulse", label: "Running" },
-  paused: { bg: "bg-amber-500/10 text-amber-600 border-amber-500/20", text: "Paused", dot: "bg-amber-500", label: "Paused" },
-  completed: { bg: "bg-blue-500/10 text-blue-600 border-blue-500/20", text: "Completed", dot: "bg-blue-500", label: "Completed" },
-  failed: { bg: "bg-rose-500/10 text-rose-600 border-rose-500/20", text: "Failed", dot: "bg-rose-500", label: "Failed" },
-  cancelled: { bg: "bg-slate-500/10 text-slate-600 border-slate-500/20", text: "Stopped", dot: "bg-slate-400", label: "Stopped" },
-  pending: { bg: "bg-purple-500/10 text-purple-600 border-purple-500/20", text: "Pending", dot: "bg-purple-500", label: "Pending" },
+  running: { bg: "bg-emerald-50 text-emerald-700 border-emerald-200", text: "Running", dot: "bg-emerald-500", label: "Running" },
+  paused: { bg: "bg-amber-50 text-amber-700 border-amber-200", text: "Paused", dot: "bg-amber-500", label: "Paused" },
+  completed: { bg: "bg-blue-50 text-blue-700 border-blue-200", text: "Completed", dot: "bg-blue-500", label: "Completed" },
+  failed: { bg: "bg-rose-50 text-rose-700 border-rose-200", text: "Failed", dot: "bg-rose-500", label: "Failed" },
+  cancelled: { bg: "bg-slate-100 text-slate-700 border-slate-200", text: "Stopped", dot: "bg-slate-400", label: "Stopped" },
+  pending: { bg: "bg-slate-100 text-slate-700 border-slate-200", text: "Pending", dot: "bg-slate-400", label: "Pending" },
 };
 
 export default function AdminBroadcastsPage() {
@@ -419,32 +419,29 @@ function BroadcastManagementContent() {
           <div className="text-xl font-bold text-slate-900">
             {statsLoading ? "—" : (stats?.total_jobs ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">All time created</div>
+          <div className="text-xs text-slate-500 mt-0.5">All time created</div>
         </div>
 
-        <div className="bg-white rounded-xl p-3.5 border border-emerald-200 bg-emerald-500/[0.02] shadow-sm">
-          <div className="flex items-center justify-between text-emerald-700 mb-1">
+        <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider">Running</span>
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
+            <span className="inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </div>
-          <div className="text-xl font-bold text-emerald-700">
+          <div className="text-xl font-bold text-slate-900">
             {statsLoading ? "—" : (stats?.running_jobs ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-emerald-600/80 mt-0.5">Active tasks in RAM</div>
+          <div className="text-xs text-emerald-700 font-medium mt-0.5">Active tasks in RAM</div>
         </div>
 
-        <div className="bg-white rounded-xl p-3.5 border border-amber-200 bg-amber-500/[0.02] shadow-sm">
-          <div className="flex items-center justify-between text-amber-700 mb-1">
+        <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider">Paused</span>
             <Pause className="h-4 w-4 text-amber-500" />
           </div>
-          <div className="text-xl font-bold text-amber-700">
+          <div className="text-xl font-bold text-slate-900">
             {statsLoading ? "—" : (stats?.paused_jobs ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-amber-600/80 mt-0.5">Temporarily stopped</div>
+          <div className="text-xs text-amber-700 font-medium mt-0.5">Temporarily stopped</div>
         </div>
 
         {/* Duplicate Conflict Metric Card */}
@@ -462,60 +459,60 @@ function BroadcastManagementContent() {
               : "bg-white border-slate-200 hover:border-slate-300"
           )}
         >
-          <div className="flex items-center justify-between text-amber-800 mb-1">
+          <div className="flex items-center justify-between text-slate-700 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider">Duplicates</span>
             <AlertTriangle
               className={cn(
                 "h-4 w-4",
-                (stats?.duplicate_conflict_jobs ?? 0) > 0 ? "text-amber-600 animate-pulse" : "text-slate-400"
+                (stats?.duplicate_conflict_jobs ?? 0) > 0 ? "text-amber-600" : "text-slate-400"
               )}
             />
           </div>
           <div
             className={cn(
               "text-xl font-bold",
-              (stats?.duplicate_conflict_jobs ?? 0) > 0 ? "text-rose-600" : "text-slate-700"
+              (stats?.duplicate_conflict_jobs ?? 0) > 0 ? "text-rose-600" : "text-slate-900"
             )}
           >
             {statsLoading ? "—" : (stats?.duplicate_conflict_jobs ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center justify-between">
+          <div className="text-xs text-slate-500 mt-0.5 flex items-center justify-between">
             <span>Shared acct jobs</span>
-            {duplicatesOnly && <span className="text-[10px] font-bold text-rose-600">Active Filter</span>}
+            {duplicatesOnly && <span className="text-xs font-bold text-rose-600">Active Filter</span>}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-3.5 border border-purple-200 bg-purple-500/[0.02] shadow-sm">
-          <div className="flex items-center justify-between text-purple-700 mb-1">
+        <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider">Active Loop</span>
-            <Repeat className="h-4 w-4 text-purple-500" />
+            <Repeat className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-xl font-bold text-purple-700">
+          <div className="text-xl font-bold text-slate-900">
             {statsLoading ? "—" : (stats?.active_looping_jobs ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-purple-600/80 mt-0.5">Running 24/7 loops</div>
+          <div className="text-xs text-slate-500 mt-0.5">Running 24/7 loops</div>
         </div>
 
         <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-emerald-600 mb-1">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Sent</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-xl font-bold text-emerald-700">
+          <div className="text-xl font-bold text-slate-900">
             {statsLoading ? "—" : (stats?.total_sent ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Delivered msgs</div>
+          <div className="text-xs text-slate-500 mt-0.5">Delivered msgs</div>
         </div>
 
         <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-rose-600 mb-1">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Failed</span>
             <XCircle className="h-4 w-4 text-rose-500" />
           </div>
-          <div className="text-xl font-bold text-rose-700">
+          <div className="text-xl font-bold text-slate-900">
             {statsLoading ? "—" : (stats?.total_failed ?? 0).toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Errors & flood waits</div>
+          <div className="text-xs text-slate-500 mt-0.5">Errors & flood waits</div>
         </div>
       </div>
 
@@ -611,8 +608,8 @@ function BroadcastManagementContent() {
             {(stats?.duplicate_conflict_jobs ?? 0) > 0 && (
               <span
                 className={cn(
-                  "px-1.5 py-0.2 rounded-full text-[10px]",
-                  duplicatesOnly ? "bg-white text-rose-600" : "bg-amber-200 text-amber-900 font-bold"
+                  "px-2 py-0.5 rounded-full text-xs font-bold",
+                  duplicatesOnly ? "bg-white text-rose-600" : "bg-amber-200 text-amber-900"
                 )}
               >
                 {stats?.duplicate_conflict_jobs}
@@ -690,7 +687,7 @@ function BroadcastManagementContent() {
                   <div className="flex items-center gap-1.5">
                     <span>Progress / Sent</span>
                     {sortBy === "sent_count" ? (
-                      <span className="inline-flex items-center text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                      <span className="inline-flex items-center text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                         {sortOrder === "desc" ? "▼ Terbanyak" : "▲ Terdikit"}
                       </span>
                     ) : (
@@ -761,10 +758,10 @@ function BroadcastManagementContent() {
                         <div className="font-medium text-slate-800 truncate max-w-[200px]">
                           {job.group_list_name || "Custom Target List"}
                         </div>
-                        <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
                           <span>{job.total_groups} target groups</span>
                           <span>•</span>
-                          <span className="font-mono text-[11px] text-slate-400">
+                          <span className="font-mono text-xs text-slate-400">
                             ID: {job.id.slice(0, 8)}
                           </span>
                         </div>
@@ -775,8 +772,8 @@ function BroadcastManagementContent() {
                         <div className="space-y-1.5 max-w-[220px]">
                           {/* Duplicate Badge */}
                           {job.has_duplicate_accounts && (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-sm animate-pulse">
-                              <AlertTriangle className="h-3 w-3 text-amber-700" />
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-300">
+                              <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
                               <span>DUPLICATE ({job.duplicate_account_count} akun bentrok)</span>
                             </div>
                           )}
@@ -793,7 +790,7 @@ function BroadcastManagementContent() {
                                 >
                                   <div
                                     className={cn(
-                                      "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                                      "h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0",
                                       acc.is_duplicate
                                         ? "bg-amber-500 text-white"
                                         : "bg-blue-50 border border-blue-200 text-blue-700"
@@ -802,28 +799,28 @@ function BroadcastManagementContent() {
                                     {(acc.name || "A")[0].toUpperCase()}
                                   </div>
                                   <div className="min-w-0 truncate">
-                                    <span className="font-semibold text-slate-800 truncate block text-[11px] leading-tight flex items-center gap-1">
+                                    <span className="font-semibold text-slate-800 truncate block text-xs leading-tight flex items-center gap-1">
                                       <span>{acc.name || acc.phone}</span>
                                       {acc.is_duplicate && (
-                                        <span className="text-[9px] font-bold text-amber-700 bg-amber-200 px-1 rounded">
+                                        <span className="text-xs font-bold text-amber-700 bg-amber-200 px-1.5 py-0.5 rounded">
                                           DUPLIKAT
                                         </span>
                                       )}
                                     </span>
-                                    <span className="text-[10px] text-slate-500 font-mono block leading-tight">
+                                    <span className="text-xs text-slate-500 font-mono block leading-tight">
                                       ID: {acc.telegram_id ? acc.telegram_id.toLocaleString() : "-"}
                                     </span>
                                   </div>
                                 </div>
                               ))}
                               {job.accounts.length > 2 && (
-                                <span className="inline-block text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                <span className="inline-block text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                                   +{job.accounts.length - 2} more accounts
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               {job.account_count} {job.account_count === 1 ? "acct" : "accts"}
                             </span>
                           )}
@@ -853,12 +850,12 @@ function BroadcastManagementContent() {
                       {/* Mode & Loop Column */}
                       <td className="py-3.5 px-4 text-center">
                         {job.loop_enabled ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                             <Repeat className="h-3 w-3" />
                             Looping ({job.delay_after_all}s)
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">
                             Single Run
                           </span>
                         )}
@@ -887,7 +884,7 @@ function BroadcastManagementContent() {
                             minute: "2-digit",
                           })}
                         </div>
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-xs text-slate-400">
                           Updated:{" "}
                           {new Date(job.updated_at).toLocaleTimeString(undefined, {
                             hour: "2-digit",
@@ -963,7 +960,7 @@ function BroadcastManagementContent() {
         </div>
 
         {/* ── Pagination Footer ──────────────────────────────────────────────── */}
-        <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <div className="px-4 py-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <div>
             Showing{" "}
             <span className="font-semibold text-slate-700">
@@ -1051,7 +1048,7 @@ function BroadcastManagementContent() {
                     {selectedJob.duplicate_job_ids.map((jid) => (
                       <span
                         key={jid}
-                        className="font-mono text-[10px] bg-white text-amber-800 px-2 py-0.5 rounded border border-amber-200"
+                        className="font-mono text-xs bg-white text-amber-800 px-2 py-0.5 rounded border border-amber-200"
                       >
                         #{jid.slice(0, 8)}
                       </span>
@@ -1067,7 +1064,7 @@ function BroadcastManagementContent() {
                 <span className="font-semibold text-slate-800 block truncate">
                   {selectedJob.user_email || "Unknown"}
                 </span>
-                <span className="text-slate-500 text-[11px]">{selectedJob.user_full_name || ""}</span>
+                <span className="text-slate-500 text-xs">{selectedJob.user_full_name || ""}</span>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -1075,7 +1072,7 @@ function BroadcastManagementContent() {
                 <span className="font-semibold text-slate-800 block truncate">
                   {selectedJob.group_list_name || "Custom Target List"}
                 </span>
-                <span className="text-slate-500 text-[11px]">
+                <span className="text-slate-500 text-xs">
                   {selectedJob.total_groups} target groups
                 </span>
               </div>
@@ -1092,7 +1089,7 @@ function BroadcastManagementContent() {
                 <span className="font-semibold text-slate-800 block">
                   {selectedJob.delay_per_group}s delay / group
                 </span>
-                <span className="text-slate-500 text-[11px]">
+                <span className="text-slate-500 text-xs">
                   {selectedJob.loop_enabled
                     ? `Looping enabled (${selectedJob.delay_after_all}s cycle delay)`
                     : "Single execution"}
@@ -1132,18 +1129,18 @@ function BroadcastManagementContent() {
                           <div className="font-semibold text-slate-800 truncate flex items-center gap-1.5">
                             <span>{acc.name || acc.phone}</span>
                             {acc.is_duplicate && (
-                              <span className="text-[9px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full border border-amber-300">
+                              <span className="text-xs font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full border border-amber-300">
                                 ⚠️ DUPLIKAT DI JOB LAIN
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono">
+                          <div className="text-xs text-slate-500 font-mono">
                             {acc.phone} {acc.username ? `(@${acc.username})` : ""}
                           </div>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="font-mono text-[11px] text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        <span className="font-mono text-xs text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                           User ID: {acc.telegram_id ? acc.telegram_id.toLocaleString() : "N/A"}
                         </span>
                       </div>

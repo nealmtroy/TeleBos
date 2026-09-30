@@ -91,8 +91,8 @@ function OverviewContent() {
   return (
     <div className="space-y-8">
       {/* Platform Stats Grid */}
-      <div className="space-y-3.5">
-        <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">Platform Overview</h3>
+      <div className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-900 tracking-tight">Platform Overview</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <StatCard
             icon={Users}
@@ -100,10 +100,10 @@ function OverviewContent() {
             value={stats?.total_users ?? 0}
             color="blue"
             breakdown={[
-              { label: "Basic", value: stats?.total_basic_users ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
-              { label: "Pro", value: stats?.total_pro_users ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
-              { label: "Premium", value: stats?.total_premium_users ?? 0, color: "bg-amber-50 text-amber-700 border-amber-100" },
-              { label: "Owner", value: stats?.total_owner_users ?? 0, color: "bg-purple-50 text-purple-700 border-purple-100" },
+              { label: "Basic", value: stats?.total_basic_users ?? 0, color: "bg-gray-100 text-gray-700 border-gray-200" },
+              { label: "Pro", value: stats?.total_pro_users ?? 0, color: "bg-blue-50 text-blue-700 border-blue-200" },
+              { label: "Premium", value: stats?.total_premium_users ?? 0, color: "bg-amber-50 text-amber-700 border-amber-200" },
+              { label: "Owner", value: stats?.total_owner_users ?? 0, color: "bg-slate-100 text-slate-800 border-slate-200" },
             ]}
           />
           <StatCard
@@ -131,7 +131,7 @@ function OverviewContent() {
             icon={UserPlus}
             label={_("admin.totalInviteJobs")}
             value={stats?.total_invite_jobs ?? 0}
-            color="purple"
+            color="blue"
             breakdown={[
               { label: "Running", value: stats?.invite_running ?? 0, color: "bg-blue-50 text-blue-700 border-blue-100" },
               { label: "Stopped", value: stats?.invite_stopped ?? 0, color: "bg-gray-50 text-gray-700 border-gray-100" },
@@ -141,7 +141,7 @@ function OverviewContent() {
             icon={MessageCircleReply}
             label={_("admin.totalAutoReplyJobs") || "Auto-Reply Jobs"}
             value={stats?.total_auto_reply_jobs ?? 0}
-            color="teal"
+            color="blue"
             breakdown={[
               { label: "Running", value: stats?.auto_reply_running ?? 0, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
               { label: "Stopped", value: stats?.auto_reply_stopped ?? 0, color: "bg-amber-50 text-amber-700 border-amber-100" },
@@ -152,8 +152,8 @@ function OverviewContent() {
       </div>
 
       {/* SMM Provider Status Grid */}
-      <div className="space-y-3.5">
-        <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">SMM Provider Status</h3>
+      <div className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-900 tracking-tight">SMM Provider Status</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <StatCard
             icon={Package}
@@ -168,9 +168,9 @@ function OverviewContent() {
             icon={ShoppingCart}
             label="SMM Orders"
             value={smmStats?.total_orders ?? 0}
-            color="indigo"
+            color="blue"
             breakdown={[
-              { label: "Pending", value: smmStats?.pending_orders ?? 0, color: "bg-yellow-50 text-yellow-700 border-yellow-100 animate-pulse" },
+              { label: "Pending", value: smmStats?.pending_orders ?? 0, color: "bg-amber-50 text-amber-800 border-amber-200" },
             ]}
           />
           <StatCard
@@ -192,8 +192,8 @@ function OverviewContent() {
       </div>
 
       {/* Admin Quick Action Panel */}
-      <div className="space-y-3.5">
-        <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">Owner Action Control Deck</h3>
+      <div className="space-y-4">
+        <h2 className="text-base font-semibold text-gray-900 tracking-tight">Owner Action Control Deck</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <QuickLinkCard
             title="User Management"
@@ -207,21 +207,21 @@ function OverviewContent() {
             desc="Monitor and control auto-reply bot responders across accounts."
             href="/admin/auto-replies"
             icon={Bot}
-            color="teal"
+            color="blue"
           />
           <QuickLinkCard
             title="Broadcast Management"
             desc="Monitor broadcast jobs, looping engines, duplicate accounts, and logs."
             href="/admin/broadcasts"
             icon={Radio}
-            color="indigo"
+            color="blue"
           />
           <QuickLinkCard
             title="SMM settings"
             desc="Configure pricing markup, default pricing, and marketplace settings."
             href="/admin/smm/settings"
             icon={Settings}
-            color="purple"
+            color="blue"
           />
           <QuickLinkCard
             title="SMM Services"
@@ -276,11 +276,11 @@ function StatCard({
 }) {
   const colorMap: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600",
-    indigo: "bg-indigo-50 text-indigo-600",
-    purple: "bg-purple-50 text-purple-600",
+    indigo: "bg-slate-100 text-slate-700",
+    purple: "bg-slate-100 text-slate-700",
     emerald: "bg-emerald-50 text-emerald-600",
-    teal: "bg-teal-50 text-teal-600",
-    amber: "bg-amber-50 text-amber-600",
+    teal: "bg-blue-50 text-blue-600",
+    amber: "bg-amber-50 text-amber-700",
   };
 
   return (
@@ -306,12 +306,12 @@ function StatCard({
                 <div
                   key={i}
                   className={cn(
-                    "flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold border transition",
-                    item.color || "bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-50"
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition",
+                    item.color || "bg-gray-50 text-gray-700 border-gray-200"
                   )}
                 >
                   <span className="opacity-80 font-normal">{item.label}:</span>
-                  <span>
+                  <span className="font-semibold">
                     {typeof item.value === "number" ? item.value.toLocaleString() : item.value}
                   </span>
                 </div>
@@ -341,11 +341,11 @@ function QuickLinkCard({
 }) {
   const router = useRouter();
   const colorMap: Record<string, string> = {
-    blue: "hover:border-blue-400 hover:bg-blue-50/5 text-blue-600",
-    indigo: "hover:border-indigo-400 hover:bg-indigo-50/5 text-indigo-600",
-    purple: "hover:border-purple-400 hover:bg-purple-50/5 text-purple-600",
-    amber: "hover:border-amber-400 hover:bg-amber-50/5 text-amber-600",
-    teal: "hover:border-teal-400 hover:bg-teal-50/5 text-teal-600",
+    blue: "hover:border-blue-400 hover:bg-blue-50/10 text-blue-600",
+    indigo: "hover:border-blue-400 hover:bg-blue-50/10 text-blue-600",
+    purple: "hover:border-blue-400 hover:bg-blue-50/10 text-blue-600",
+    amber: "hover:border-amber-400 hover:bg-amber-50/10 text-amber-700",
+    teal: "hover:border-blue-400 hover:bg-blue-50/10 text-blue-600",
   };
 
   return (
@@ -357,12 +357,12 @@ function QuickLinkCard({
       )}
     >
       <CardContent className="p-5 flex items-start gap-4">
-        <div className="p-3 rounded-xl bg-gray-50 text-current shrink-0 border border-gray-100">
+        <div className="p-3 rounded-xl bg-gray-50 text-gray-700 shrink-0 border border-gray-100">
           <Icon className="h-5 w-5" />
         </div>
         <div className="space-y-1 text-left min-w-0 flex-1">
           <h4 className="font-bold text-gray-900 text-sm truncate">{title}</h4>
-          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed font-normal">{desc}</p>
+          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed font-normal">{desc}</p>
         </div>
       </CardContent>
     </Card>

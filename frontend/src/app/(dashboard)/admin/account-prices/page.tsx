@@ -140,9 +140,9 @@ function AccountPricesContent() {
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Telegram ID Prefix Pricing</h1>
-        <p className="text-gray-500 mt-0.5 text-sm">
+        <p className="text-gray-500 mt-1 text-sm max-w-2xl leading-relaxed">
           Set sell prices based on the first digit(s) of the Telegram user ID.
-          Example: prefix "7" = all IDs starting with 7 (7780645374, 7780645371, etc.)
+          Example: prefix &quot;7&quot; = all IDs starting with 7 (7780645374, 7780645371, etc.).
           The <strong>longest matching prefix</strong> wins.
         </p>
       </div>
@@ -157,10 +157,10 @@ function AccountPricesContent() {
 
       {/* Add new rule */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-        <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+        <h2 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
           <Plus className="h-4 w-4 text-primary-600" />
           Add Price Rule
-        </h3>
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">ID Prefix</label>
@@ -211,6 +211,9 @@ function AccountPricesContent() {
       {/* Rules table */}
       {rules && rules.length > 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="font-semibold text-sm text-gray-900">Configured Rules ({rules.length})</h2>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

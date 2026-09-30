@@ -29,7 +29,6 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn, formatRelative } from "@/lib/utils";
@@ -92,7 +91,7 @@ function AutoReplyManagementContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
               <Bot className="h-6 w-6" />
             </div>
             <div>
@@ -114,16 +113,16 @@ function AutoReplyManagementContent() {
             disabled={isFetching}
             className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1.5"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin text-teal-600")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin text-slate-500")} />
             <span>Refresh</span>
           </Button>
           <Link href="/auto-reply">
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-3 text-xs text-teal-700 border-teal-200 bg-teal-50/50 hover:bg-teal-100 flex items-center gap-1.5"
+              className="h-9 px-3 text-xs text-slate-700 border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1.5"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
               <span>User Auto-Reply</span>
             </Button>
           </Link>
@@ -133,74 +132,66 @@ function AutoReplyManagementContent() {
       {/* KPI Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Responders */}
-        <Card className="border border-gray-200 shadow-sm">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Responders</p>
-              <p className="text-3xl font-extrabold text-gray-900 mt-1">{data?.total ?? 0}</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Configured bot accounts</p>
-            </div>
-            <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Bot className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Responders</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{data?.total ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Configured bot accounts</p>
+          </div>
+          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+            <Bot className="h-5 w-5" />
+          </div>
+        </div>
 
         {/* Running Now */}
-        <Card className="border border-gray-200 shadow-sm">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Active Responders</p>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl font-extrabold text-emerald-600">{data?.running_count ?? 0}</span>
-                {(data?.running_count ?? 0) > 0 && (
-                  <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1 animate-pulse" />
-                    Listening
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-gray-500 mt-0.5">Auto-responding to incoming chats</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Responders</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-3xl font-extrabold text-gray-900">{data?.running_count ?? 0}</span>
+              {(data?.running_count ?? 0) > 0 && (
+                <span className="inline-flex items-center text-xs font-semibold text-emerald-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1" />
+                  Listening
+                </span>
+              )}
             </div>
-            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Radio className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+            <p className="text-xs text-gray-500 mt-0.5">Auto-responding to incoming chats</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-slate-700 border border-slate-200">
+            <Radio className="h-5 w-5" />
+          </div>
+        </div>
 
         {/* Stopped */}
-        <Card className="border border-gray-200 shadow-sm">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Stopped / Inactive</p>
-              <p className="text-3xl font-extrabold text-amber-600 mt-1">{data?.stopped_count ?? 0}</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Disabled or paused accounts</p>
-            </div>
-            <div className="p-3 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <XCircle className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stopped / Inactive</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">{data?.stopped_count ?? 0}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Disabled or paused accounts</p>
+          </div>
+          <div className="p-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+            <XCircle className="h-5 w-5" />
+          </div>
+        </div>
 
         {/* Total Sent */}
-        <Card className="border border-gray-200 shadow-sm">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Replied</p>
-              <p className="text-3xl font-extrabold text-indigo-600 mt-1">
-                {(data?.total_sent ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Automatic welcome replies sent</p>
-            </div>
-            <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
-              <MessageCircleReply className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Replied</p>
+            <p className="text-3xl font-extrabold text-gray-900 mt-1">
+              {(data?.total_sent ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">Automatic welcome replies sent</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+            <MessageCircleReply className="h-5 w-5" />
+          </div>
+        </div>
       </div>
 
-      {/* Main Table Card */}
-      <Card className="border border-gray-200 overflow-hidden shadow-sm">
+      {/* Main Table Container */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         {/* Filters */}
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Status Tabs */}
@@ -294,7 +285,7 @@ function AutoReplyManagementContent() {
                             <p className="font-semibold text-gray-900 truncate">
                               {item.first_name ? `${item.first_name} ${item.last_name || ""}` : item.phone}
                             </p>
-                            <p className="text-[11px] text-gray-400 font-mono">
+                            <p className="text-xs text-gray-400 font-mono">
                               {item.phone}
                               {item.username && ` • @${item.username}`}
                             </p>
@@ -309,7 +300,7 @@ function AutoReplyManagementContent() {
                           <div className="min-w-0">
                             <p className="font-medium text-gray-800 truncate">{item.user_email}</p>
                             {item.user_full_name && (
-                              <p className="text-[10px] text-gray-400 truncate">{item.user_full_name}</p>
+                              <p className="text-xs text-gray-400 truncate">{item.user_full_name}</p>
                             )}
                           </div>
                         </div>
@@ -321,7 +312,7 @@ function AutoReplyManagementContent() {
                           <div className="flex items-center gap-2 group max-w-sm">
                             <span
                               onClick={() => setPreviewItem(item)}
-                              className="text-gray-700 bg-gray-50 border border-gray-200/80 px-2 py-1 rounded-lg text-[11px] truncate max-w-[280px] cursor-pointer hover:border-teal-300 hover:bg-teal-50/30 transition block"
+                              className="text-gray-700 bg-gray-50 border border-gray-200/80 px-2.5 py-1 rounded-lg text-xs truncate max-w-[280px] cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition block"
                               title="Click to view full message"
                             >
                               &quot;{item.auto_reply_text}&quot;
@@ -339,7 +330,7 @@ function AutoReplyManagementContent() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-gray-400 italic text-[11px]">None configured</span>
+                          <span className="text-gray-400 italic text-xs">None configured</span>
                         )}
                       </td>
 
@@ -347,7 +338,7 @@ function AutoReplyManagementContent() {
                       <td className="py-3.5 px-4 text-center">
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
                             isRunning
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : item.auto_reply_enabled
@@ -359,7 +350,7 @@ function AutoReplyManagementContent() {
                             className={cn(
                               "w-1.5 h-1.5 rounded-full",
                               isRunning
-                                ? "bg-emerald-500 animate-pulse"
+                                ? "bg-emerald-500"
                                 : item.auto_reply_enabled
                                 ? "bg-amber-500"
                                 : "bg-gray-400"
@@ -379,12 +370,12 @@ function AutoReplyManagementContent() {
                       {/* Last Sent */}
                       <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
                         {item.last_replied_at ? (
-                          <div className="flex items-center gap-1 text-[11px]">
+                          <div className="flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3 text-gray-400" />
                             <span>{formatRelative(item.last_replied_at)}</span>
                           </div>
                         ) : (
-                          <span className="text-gray-300 text-[11px]">—</span>
+                          <span className="text-gray-300 text-xs">—</span>
                         )}
                       </td>
 
@@ -396,7 +387,7 @@ function AutoReplyManagementContent() {
                           disabled={toggleMutation.isPending}
                           onClick={() => toggleMutation.mutate(item.id)}
                           className={cn(
-                            "h-7 px-2.5 text-[11px] font-medium transition rounded-lg",
+                            "h-8 px-2.5 text-xs font-medium transition rounded-lg",
                             item.auto_reply_enabled
                               ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                               : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
@@ -448,7 +439,7 @@ function AutoReplyManagementContent() {
             </div>
           </div>
         )}
-      </Card>
+      </div>
 
       {/* Message Preview Modal */}
       {previewItem && (
@@ -456,7 +447,7 @@ function AutoReplyManagementContent() {
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-teal-50 text-teal-600">
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
@@ -477,7 +468,7 @@ function AutoReplyManagementContent() {
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-[11px] text-gray-400">
+              <span className="text-xs text-gray-400">
                 Replied: {previewItem.total_replied.toLocaleString()} times
               </span>
               <Button
