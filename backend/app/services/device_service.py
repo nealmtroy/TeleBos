@@ -68,5 +68,15 @@ async def terminate_all_other_sessions(account: TelegramAccount) -> None:
         from telethon.tl.functions.auth import ResetAuthorizationsRequest
         await client(ResetAuthorizationsRequest())
     except Exception as exc:
+        # Telegram refuses this for the first hours/days of a session's life.
+        # That is an expected, temporary condition the user can act on, not a
+        # fault, so it must not be reported at error level
+        # (PYTHON-FASTAPI-15).
+        from app.utils.telegram_errors import classify_telegram_error
+
+        err_type, err_msg = classify_telegram_error(exc)
+        if err_type == "fresh_reset_forbidden":
+            logger.info("Session termination deferred by Telegram: %s", err_msg)
+            raise RuntimeError(err_msg) from exc
         logger.error("Failed to terminate all sessions: %s", exc)
         raise

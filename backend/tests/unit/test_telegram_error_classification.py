@@ -54,3 +54,20 @@ def test_frozen_error_not_misclassified_before_the_flood_branch():
 )
 def test_frozen_variants(message: str):
     assert classify_telegram_error(Exception(message))[0] == "account_frozen"
+
+
+def test_fresh_reset_forbidden_recognised_from_message_text():
+    """Telegram sends the message text, not the RPC code, when wrapped.
+
+    The message uses the British "authorisations" spelling, so matching only
+    the error constant missed it entirely (PYTHON-FASTAPI-15).
+    """
+    err_type, msg = classify_telegram_error(
+        Exception(
+            "The current session is too new and cannot be used to reset other "
+            "authorisations yet (caused by ResetAuthorizationsRequest)"
+        )
+    )
+
+    assert err_type == "fresh_reset_forbidden"
+    assert "wait" in msg.lower()

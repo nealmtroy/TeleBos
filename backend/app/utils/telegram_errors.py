@@ -370,7 +370,15 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "JOIN_GROUP" in msg or "join the discussion" in msg.lower() or "before commenting" in msg.lower():
         return ("must_join_discussion", "You must join the discussion group before commenting")
 
-    if "FRESH_RESET_AUTHORISATION_FORBIDDEN" in msg or "fresh reset" in msg.lower():
+    if (
+        "FRESH_RESET_AUTHORISATION_FORBIDDEN" in msg
+        or "FRESH_RESET_AUTHORIZATION_FORBIDDEN" in msg
+        or "fresh reset" in msg.lower()
+        # Telegram sends the message text, not the RPC error code, when this
+        # arrives via a wrapped exception (PYTHON-FASTAPI-15). Note the
+        # British "authorisations" spelling used in the message text.
+        or "too new and cannot be used to reset" in msg.lower()
+    ):
         return ("fresh_reset_forbidden", "The current session is too new and cannot be used to reset other authorizations yet. Please wait a few hours or days before trying again.")
 
     if "muted" in msg.lower() or "you are muted" in msg.lower():
