@@ -352,17 +352,38 @@ async def stream_message_video_endpoint(
                 "Content-Length": str(end - start + 1),
             }
 
+            # Telegram's GetFileRequest rejects an offset that is not a multiple
+            # of the request size ("An invalid limit was provided"), and Telethon's
+            # _DirectDownloadIter forwards the offset verbatim without correcting
+            # it. Browsers routinely send unaligned Range headers (e.g. resuming at
+            # an arbitrary byte), so align down to a request_size boundary, stream
+            # from there, and discard the leading bytes
+            # (PYTHON-FASTAPI-13/14).
+            REQUEST_SIZE = 128 * 1024
+            aligned_start = (start // REQUEST_SIZE) * REQUEST_SIZE
+            skip = start - aligned_start
+
             async def telethon_stream_generator():
                 try:
                     bytes_to_read = end - start + 1
-                    async for chunk in client.iter_download(msg.media, offset=start, request_size=128 * 1024):
+                    skip_remaining = skip
+                    async for chunk in client.iter_download(
+                        msg.media, offset=aligned_start, request_size=REQUEST_SIZE
+                    ):
                         if not chunk:
                             break
-                        
+
                         if isinstance(chunk, memoryview):
                             chunk = chunk.tobytes()
                         elif not isinstance(chunk, bytes):
                             chunk = bytes(chunk)
+
+                        if skip_remaining:
+                            drop = min(skip_remaining, len(chunk))
+                            chunk = chunk[drop:]
+                            skip_remaining -= drop
+                            if not chunk:
+                                continue
 
                         if len(chunk) > bytes_to_read:
                             yield chunk[:bytes_to_read]

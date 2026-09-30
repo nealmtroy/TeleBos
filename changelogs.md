@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[b8b31c8e](https://github.com/nealmtroy/TeleBos/commit/b8b31c8e)**: perf(accounts): make the per-account stats query opt-in
 - **[316eda71](https://github.com/nealmtroy/TeleBos/commit/316eda71)**: fix(errors): classify frozen Telegram accounts and surface flood waits
 - **[3889b84c](https://github.com/nealmtroy/TeleBos/commit/3889b84c)**: fix(telethon): cancel loop tasks on clients that never connected
 - **[3963f56a](https://github.com/nealmtroy/TeleBos/commit/3963f56a)**: fix(shutdown): make lifespan teardown best-effort per step
