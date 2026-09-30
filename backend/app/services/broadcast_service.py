@@ -1089,7 +1089,14 @@ async def execute_broadcast(job_id: str):
                             for offset in range(len(active_accounts)):
                                 i_idx = (current_acc_idx + offset) % len(active_accounts)
                                 candidate = active_accounts[i_idx]
-                                if now_ts >= candidate["cooldown_until"]:
+                                # Honour join cooldown here too. Skipping it made
+                                # this fallback pick a throttled account anyway,
+                                # and every remaining target was then marked
+                                # join_cooldown in a few seconds instead of the
+                                # loop waiting for the cooldown to expire.
+                                if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get(
+                                    "join_cooldown_until", 0.0
+                                ):
                                     selected_acc = candidate
                                     current_acc_idx = (i_idx + 1) % len(active_accounts)
                                     break
@@ -1097,7 +1104,10 @@ async def execute_broadcast(job_id: str):
                         if selected_acc:
                             break
 
-                    earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
+                    earliest_ready_time = min(
+                        max(a["cooldown_until"], a.get("join_cooldown_until", 0.0))
+                        for a in active_accounts
+                    )
                     wait_sec = max(1.0, earliest_ready_time - now_ts)
 
                     await _push_broadcast(
@@ -1147,6 +1157,13 @@ async def execute_broadcast(job_id: str):
                     )
                     break
 
+                if selected_acc is None:
+                    # Every account is on join cooldown and the wait above has
+                    # already elapsed without one becoming ready (e.g. the
+                    # cooldown was extended while sleeping). Leave this target
+                    # for the next cycle rather than dereferencing None.
+                    continue
+
                 client = selected_acc["client"]
                 acc_id_str = selected_acc["account_id"]
                 acc_name = selected_acc["account_name"]
@@ -1189,15 +1206,18 @@ async def execute_broadcast(job_id: str):
                 if cached_entity is None and time.time() < selected_acc.get(
                     "join_cooldown_until", 0.0
                 ):
-                    log_status = "error"
+                    log_status = "skipped"
                     log_err_type = "join_cooldown"
-                    log_err_msg = "Skipped join: account is on join limit/cooldown"
+                    log_err_msg = "Waiting for join cooldown to expire; retrying next cycle"
 
                     pending_pool[pkey] = {
                         "group_identifier": group_identifier,
                         "item_type": item_type,
                     }
-                    failed += 1
+                    # Not a failure: the target is queued in pending_pool and
+                    # retried at the start of the next cycle. Counting it as
+                    # failed made a single join flood report the whole cycle as
+                    # 148 failures while the groups were merely waiting.
 
                     # Buffer log in-memory (committed at cycle end or graceful exit)
                     current_progress = (

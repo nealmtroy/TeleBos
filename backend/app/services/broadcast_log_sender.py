@@ -54,6 +54,10 @@ def _format_cycle_summary(
 
     success_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "success")
     error_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "error")
+    # Targets queued for the next cycle because an account was on join
+    # cooldown. These are neither delivered nor failed, so they are counted and
+    # listed separately instead of being reported as failures.
+    skipped_count = sum(1 for log in cycle_logs if _get_val(log, "status") == "skipped")
 
     lines = [
         f"<b>Broadcast Cycle #{cycle_number} 🚀</b>",
@@ -69,12 +73,16 @@ def _format_cycle_summary(
         lines.append(f"<b>Group List</b>: {html.escape(group_list_name)}")
 
     lines.append(f"<b>Groups Total</b>: {total_groups} | <b>Active</b>: {active_this_round}")
-    lines.append(f"<b>Sent</b>: ✅ {success_count}  |  <b>Failed</b>: ❌ {error_count}")
+    sent_failed = f"<b>Sent</b>: ✅ {success_count}  |  <b>Failed</b>: ❌ {error_count}"
+    if skipped_count:
+        sent_failed += f"  |  <b>Waiting</b>: ⏳ {skipped_count}"
+    lines.append(sent_failed)
     lines.append("</blockquote>")
 
     # Separate success and failed
     success_logs = [log for log in cycle_logs if _get_val(log, "status") == "success"]
     error_logs = [log for log in cycle_logs if _get_val(log, "status") == "error"]
+    skipped_logs = [log for log in cycle_logs if _get_val(log, "status") == "skipped"]
 
     MAX_LIST_DISPLAY = 25
     if success_logs:
