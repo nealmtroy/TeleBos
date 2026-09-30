@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-29
+- **[eb45e574](https://github.com/nealmtroy/TeleBos/commit/eb45e574)**: fix(telemetry): cover Telethon's receive loop in the transport noise filter
+
 ## 2026-09-28
 - **[c961d882](https://github.com/nealmtroy/TeleBos/commit/c961d882)**: fix(telemetry): disconnect pooled Telegram clients on shutdown and demote benign log noise
 - **[e8afabdb](https://github.com/nealmtroy/TeleBos/commit/e8afabdb)**: fix(worker): configure Redis socket timeouts and soften retry log level
