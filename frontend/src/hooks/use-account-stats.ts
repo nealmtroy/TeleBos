@@ -12,14 +12,20 @@ export interface AccountStats {
   stats_updated_at: string | null;
 }
 
-export function useAccountStats(accountId: string) {
+export function useAccountStats(
+  accountId: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery<AccountStats>({
     queryKey: ["accounts", accountId, "stats"],
     queryFn: async () => {
       const { data } = await api.get(`/accounts/${accountId}/stats`);
       return data;
     },
-    enabled: !!accountId,
+    // Disabled by default: the accounts list already carries these stats, and
+    // fetching per card was the N+1 in PYTHON-FASTAPI-10. Callers enable this
+    // only for the manual refresh action.
+    enabled: !!accountId && (options?.enabled ?? false),
     staleTime: 5 * 60 * 1000, // 5 minutes without re-fetch
   });
 }
