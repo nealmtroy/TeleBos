@@ -1,22 +1,23 @@
 """Account management business logic — login, logout, profile."""
 
 import asyncio
+from datetime import datetime, timezone
 import logging
 import os
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
-from sqlalchemy import func
 
 from app.models.telegram_account import TelegramAccount
 from app.models.user import User
 from app.services.telegram_client import client_pool
 from app.utils.encryption import encrypt, decrypt
 from app.utils.session_converter import convert_to_telethon
+from app.utils.telethon_cleanup import force_close_telethon_client
 from app.services.twofa_service import get_live_2fa_status
 
 class DuplicateAccountError(Exception):
@@ -421,6 +422,7 @@ async def finalize_authenticated_login(
                 existing_acc.first_name = me.first_name
                 existing_acc.last_name = me.last_name
                 existing_acc.username = me.username
+                existing_acc.is_premium = bool(getattr(me, "premium", False))
                 existing_acc.phone_verified = True
                 if live_twofa_status is not None:
                     existing_acc.twofa_enabled = live_twofa_status["enabled"]
@@ -443,6 +445,7 @@ async def finalize_authenticated_login(
         last_name=me.last_name,
         username=me.username,
         telegram_id=me.id,
+        is_premium=bool(getattr(me, "premium", False)),
         twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
     )
     if twofa_password:
@@ -485,20 +488,36 @@ async def login_with_session(
         system_lang_code=ios_params["system_lang_code"],
     )
     import asyncio
+    from telethon.errors import AuthKeyNotFound, SecurityError
+
     try:
-        await asyncio.wait_for(test_client.connect(), timeout=15.0)
-    except asyncio.TimeoutError:
-        raise ValueError("Koneksi ke server Telegram timeout. Silakan periksa jaringan internet server atau IP proxy.")
-    try:
-        if not await test_client.is_user_authorized():
-            raise ValueError("Session string is invalid or expired")
-        me = await test_client.get_me()
-        live_twofa_status = await get_live_2fa_status(test_client)
-    finally:
         try:
-            await test_client.disconnect()
+            await asyncio.wait_for(test_client.connect(), timeout=15.0)
+        except asyncio.TimeoutError:
+            raise ValueError("Koneksi ke server Telegram timeout. Silakan periksa jaringan internet server atau IP proxy.")
+        except (AuthKeyNotFound, SecurityError):
+            raise ValueError("Telegram session has been revoked or expired")
+        except Exception as conn_exc:
+            raise ValueError(f"Gagal menghubungkan ke Telegram: {conn_exc}")
+
+        try:
+            if not await test_client.is_user_authorized():
+                raise ValueError("Session string is invalid or expired")
+            me = await test_client.get_me()
+            live_twofa_status = await get_live_2fa_status(test_client)
+        except (AuthKeyNotFound, SecurityError):
+            raise ValueError("Telegram session has been revoked or expired")
+    finally:
+        # Telethon's Connection.disconnect() returns immediately when the
+        # client never reached _connected, so a client abandoned by a connect
+        # timeout keeps its _recv_loop/_send_loop tasks alive. asyncio then
+        # reports "Task was destroyed but it is pending!" and the socket leaks
+        # (PYTHON-FASTAPI-B/C/D/E/W/X/Y). Force the loop tasks down here.
+        try:
+            await asyncio.wait_for(test_client.disconnect(), timeout=3.0)
         except Exception:
             pass
+        force_close_telethon_client(test_client)
 
     # Use phone from Telegram if available, fallback to placeholder
     phone = me.phone or ""
@@ -528,6 +547,7 @@ async def login_with_session(
                 existing_acc.first_name = me.first_name
                 existing_acc.last_name = me.last_name
                 existing_acc.username = me.username
+                existing_acc.is_premium = bool(getattr(me, "premium", False))
                 existing_acc.phone_verified = True
                 if live_twofa_status is not None:
                     existing_acc.twofa_enabled = live_twofa_status["enabled"]
@@ -560,6 +580,7 @@ async def login_with_session(
         last_name=me.last_name,
         username=me.username,
         telegram_id=me.id,
+        is_premium=bool(getattr(me, "premium", False)),
         twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
     )
     db.add(account)
@@ -668,6 +689,12 @@ async def get_accounts_paginated(
                 TelegramAccount.is_active == True,
                 TelegramAccount.for_sale == False,
                 TelegramAccount.spam_status == "limited"
+            )
+        elif status == "premium":
+            query = query.where(
+                TelegramAccount.is_active == True,
+                TelegramAccount.for_sale == False,
+                TelegramAccount.is_premium == True
             )
         elif status == "inactive":
             query = query.where(TelegramAccount.for_sale == True)
@@ -1172,3 +1199,94 @@ async def update_profile_color(
             background_emoji_id=background_emoji_id
         )
     ))
+
+
+async def transfer_accounts(
+    db: AsyncSession,
+    owner_user: User,
+    account_ids: list[UUID],
+    target_email: str,
+    override_limit: bool = False,
+) -> tuple[int, User, list[TelegramAccount]]:
+    """Transfer ownership of Telegram accounts to another user by email. Owner only."""
+    if owner_user.role != "owner":
+        raise ValueError("Hanya role owner yang memiliki izin untuk memindahkan akun.")
+
+    clean_email = target_email.strip().lower()
+    res = await db.execute(select(User).where(func.lower(User.email) == clean_email))
+    target_user = res.scalar_one_or_none()
+    if not target_user:
+        raise ValueError(f"User dengan email '{target_email}' tidak ditemukan.")
+    if not target_user.is_active:
+        raise ValueError(f"User tujuan '{target_email}' sedang tidak aktif.")
+
+    # Fetch target accounts
+    acc_res = await db.execute(
+        select(TelegramAccount).where(TelegramAccount.id.in_(account_ids))
+    )
+    accounts = list(acc_res.scalars().all())
+    if not accounts:
+        raise ValueError("Tidak ada akun valid yang ditemukan untuk ditransfer.")
+
+    # Check if accounts already belong to target_user
+    to_transfer = [acc for acc in accounts if acc.user_id != target_user.id]
+    if not to_transfer:
+        raise ValueError(f"Semua akun yang dipilih ({len(accounts)}) sudah dimiliki oleh {target_user.email}.")
+
+    # Validate each account is transferable
+    from app.services.session_manager import session_manager
+    for acc in to_transfer:
+        if acc.for_sale:
+            raise ValueError(
+                f"Akun {acc.phone} sedang didaftarkan jual di marketplace. "
+                "Batalkan penjualan terlebih dahulu sebelum mentransfer."
+            )
+        if await session_manager.is_account_in_active_job(db, str(acc.id)):
+            raise ValueError(
+                f"Akun {acc.phone} sedang aktif dalam tugas broadcast atau invite. "
+                "Tunggu hingga tugas selesai atau batalkan tugas sebelum mentransfer."
+            )
+
+    # Check target user quota unless overridden
+    if not override_limit:
+        limit = ROLE_ACCOUNT_LIMITS.get(target_user.role, 1)
+        cur_count = await db.scalar(
+            select(func.count()).select_from(TelegramAccount).where(TelegramAccount.user_id == target_user.id)
+        ) or 0
+        if cur_count + len(to_transfer) > limit:
+            raise ValueError(
+                f"Batas kuota akun user tujuan terlampaui (Role: {target_user.role}, Maksimal: {limit}, Saat ini: {cur_count}, Ditransfer: {len(to_transfer)}). "
+                "Aktifkan opsi 'Abaikan batasan kuota' untuk melanjutkan transfer."
+            )
+
+    from app.models.account_folder_member import AccountFolderMember
+    from app.services.event_relay import event_relay
+
+    now = datetime.now(timezone.utc)
+    for acc in to_transfer:
+        # Remove from previous user's folder memberships
+        await db.execute(
+            delete(AccountFolderMember).where(AccountFolderMember.account_id == acc.id)
+        )
+        acc.user_id = target_user.id
+        acc.updated_at = now
+
+        # Detach WebSocket relay and clear cached client from pool so new owner reconnects fresh
+        try:
+            await event_relay.detach(str(acc.id))
+            await client_pool.remove(str(acc.id), save_state=True)
+        except Exception as exc:
+            logger.debug("Client pool cleanup during transfer of %s: %s", acc.id, exc)
+
+    await db.commit()
+    for acc in to_transfer:
+        await db.refresh(acc)
+
+    logger.info(
+        "Transferred %d Telegram account(s) to %s (ID: %s) by owner %s",
+        len(to_transfer),
+        target_user.email,
+        target_user.id,
+        owner_user.email,
+    )
+    return len(to_transfer), target_user, to_transfer

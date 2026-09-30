@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n";
 import { Menu, LogOut, ChevronDown, Settings, Wallet, Crown, Shield, Star, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -85,7 +86,7 @@ export function Navbar() {
 
   return (
     <>
-      <header className="h-16 bg-white dark:bg-slate-900/90 dark:backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 relative z-30 transition-colors">
+      <header className="h-16 bg-white dark:bg-slate-900/90 dark:backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-3 sm:px-4 lg:px-6 relative z-30 transition-colors">
         <button
           onClick={toggleSidebar}
           className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200 active:scale-95"
@@ -95,23 +96,42 @@ export function Navbar() {
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Balance Card Widget */}
+          <Link
+            href="/orders"
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-emerald-50/90 to-teal-50/70 dark:from-emerald-950/40 dark:to-teal-950/30 hover:from-emerald-100/90 dark:hover:from-emerald-900/50 border border-emerald-200/90 dark:border-emerald-800/60 rounded-xl transition-all duration-200 group active:scale-95 shadow-xs"
+            title="Saldo Akun — Klik untuk kelola pesanan & saldo"
+          >
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-400/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
+              <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] uppercase font-bold text-emerald-600/90 dark:text-emerald-400/90 leading-none hidden sm:block tracking-wider">
+                Saldo
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono tracking-tight leading-tight">
+                Rp {(user?.balance || 0).toLocaleString("id-ID")}
+              </span>
+            </div>
+          </Link>
+
           <NotificationCenter />
         </div>
 
-        {/* Profile section */}
-        <div className="relative lg:hidden" ref={dropdownRef}>
+        {/* Profile section (Mobile) */}
+        <div className="relative lg:hidden ml-1" ref={dropdownRef}>
           <button
             onClick={handleProfileToggle}
-            className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-1.5 transition-all duration-200 active:scale-95"
+            className="flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg px-2 sm:px-3 py-1.5 transition-all duration-200 active:scale-95"
           >
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
                 {user?.full_name || _("navbar.user")}
               </p>
-              <p className="text-xs text-gray-500">{user?.email}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{user?.email}</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-medium shadow-sm transition-transform duration-200 group-hover:scale-105">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-medium shadow-sm transition-transform duration-200 group-hover:scale-105">
               {initials}
             </div>
             <ChevronDown

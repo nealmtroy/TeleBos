@@ -208,7 +208,7 @@ async def public_upload_session(
     user: User = Depends(get_api_principal),
 ):
     ip = request.client.host if request.client else "unknown"
-    if not await rate_limiter.check(f"upload_session:ip:{ip}"):
+    if not await rate_limiter.check(f"upload_session:ip:{ip}", max_requests=300, window_seconds=60):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many session upload attempts. Please try again later.",

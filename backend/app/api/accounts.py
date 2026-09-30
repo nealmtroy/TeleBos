@@ -37,6 +37,8 @@ from app.schemas.account import (
     QRStatusResponse,
     QR2FALoginRequest,
     UpdateProfileColorRequest,
+    TransferAccountRequest,
+    TransferAccountResponse,
 )
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service, country_service
@@ -144,6 +146,7 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             account.last_name = last_name
             account.username = username
             account.telegram_id = me.id
+            account.is_premium = bool(getattr(me, "premium", False))
             account.phone_verified = True
             if live_twofa_status is not None:
                 account.twofa_enabled = live_twofa_status["enabled"]
@@ -309,6 +312,7 @@ async def qr_login_2fa(
         account.last_name = last_name
         account.username = username
         account.telegram_id = me.id
+        account.is_premium = bool(getattr(me, "premium", False))
         account.phone_verified = True
         if live_twofa_status is not None:
             account.twofa_enabled = live_twofa_status["enabled"]
@@ -895,6 +899,21 @@ async def delete_profile_photo(
     return {"message": "Photo deleted"}
 
 
+@router.post("/batch-check-spam")
+async def trigger_batch_spam_check(
+    user: User = Depends(get_current_user),
+):
+    """Trigger background batch spam status check across all accounts."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Hanya owner yang dapat memicu pengecekan spam massal.")
+    from app.services.session_manager import session_manager
+    started = session_manager.trigger_spam_check()
+    return {
+        "status": "started" if started else "already_running",
+        "message": "Pengecekan status spam massal telah dimulai di latar belakang." if started else "Pengecekan status spam massal sedang berjalan."
+    }
+
+
 @router.post("/{account_id}/check-spam", response_model=AccountResponse)
 async def check_spam(
     account_id: str,
@@ -1094,4 +1113,43 @@ async def update_profile_color(
         return account
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+
+
+@router.post(
+    "/transfer",
+    response_model=TransferAccountResponse,
+    summary="Transfer Telegram accounts to another user by email (Owner only)",
+    dependencies=[Depends(require_role("owner"))],
+)
+async def transfer_accounts(
+    payload: TransferAccountRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Transfer ownership of one or more Telegram accounts to another user by email. Owner only."""
+    try:
+        count, target_user, accounts = await account_service.transfer_accounts(
+            db,
+            owner_user=current_user,
+            account_ids=payload.account_ids,
+            target_email=payload.target_email,
+            override_limit=payload.override_limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=sanitize_exception(exc))
+    except Exception as exc:
+        logger.exception("Transfer accounts failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Terjadi kesalahan saat memproses transfer akun.",
+        )
+
+    return TransferAccountResponse(
+        transferred_count=count,
+        target_user_id=target_user.id,
+        target_user_email=target_user.email,
+        message=f"Berhasil memindahkan {count} akun ke {target_user.email}.",
+        account_ids=[acc.id for acc in accounts],
+    )
+
 

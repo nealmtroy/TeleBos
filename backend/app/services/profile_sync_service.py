@@ -88,6 +88,12 @@ async def sync_account_profile(
         changes["color_id"] = {"old": account.color_id, "new": tg_color_id}
         account.color_id = tg_color_id
 
+    # ── Compare telegram premium status ──────────────────────────────────
+    tg_is_premium = bool(getattr(me, "premium", False))
+    if tg_is_premium != (account.is_premium or False):
+        changes["is_premium"] = {"old": account.is_premium, "new": tg_is_premium}
+        account.is_premium = tg_is_premium
+
     # ── Compare profile photo ────────────────────────────────────────────
     tg_photo_id: int | None = None
     if me.photo and hasattr(me.photo, "photo_id"):

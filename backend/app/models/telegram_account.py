@@ -49,6 +49,7 @@ class TelegramAccount(Base):
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     twofa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_premium: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
 
     # Marketplace fields
     for_sale: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)

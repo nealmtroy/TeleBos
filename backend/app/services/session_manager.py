@@ -141,9 +141,23 @@ class SessionManager:
         self._running = False
         self._task: asyncio.Task | None = None
         self._last_spam_check = 0.0
+        self._spam_check_task: asyncio.Task[None] | None = None
         self._last_profile_sync = 0.0
         self._last_marketplace_session_check = 0.0
         self._marketplace_session_check_task: asyncio.Task[None] | None = None
+
+    def trigger_spam_check(self) -> bool:
+        """Trigger an immediate background spam check batch if not currently running."""
+        if not self._running:
+            return False
+        if self._spam_check_task and not self._spam_check_task.done():
+            return False
+        import time
+        self._last_spam_check = time.time()
+        task = asyncio.create_task(self._check_all_accounts_spam())
+        self._spam_check_task = task
+        _track_task(task)
+        return True
 
     async def start(self, enable_spam_checks: bool = False) -> None:
         """Start the periodic health check loop."""
@@ -178,7 +192,9 @@ class SessionManager:
 
     async def _health_loop(self) -> None:
         """Periodically check all connected clients and re-attach event handlers if needed."""
+        import time
         while self._running:
+            current_time = time.time()
             try:
                 await self._check_connections()
             except Exception as exc:
@@ -187,29 +203,36 @@ class SessionManager:
             # Periodic spam status check (only if explicitly enabled)
             if getattr(self, "_enable_spam_checks", False):
                 try:
-                    import time
-                    current_time = time.time()
-                    if self._last_spam_check == 0.0:
-                        # Initialize last spam check to avoid heavy queries on immediate startup, run it after 60s
-                        self._last_spam_check = current_time - 3540  # will trigger in 60s
-                    elif current_time - self._last_spam_check > 3600:
-                        self._last_spam_check = current_time
-                        asyncio.create_task(self._check_all_accounts_spam())
+                    should_run_spam = (
+                        self._spam_check_task is None or self._spam_check_task.done()
+                    )
+                    if should_run_spam:
+                        if self._last_spam_check == 0.0:
+                            # Initialize last spam check to avoid heavy queries on immediate startup, run it after 30s
+                            self._last_spam_check = current_time - 3570
+                        elif current_time - self._last_spam_check > 3600:
+                            self._last_spam_check = current_time
+                            task = asyncio.create_task(self._check_all_accounts_spam())
+                            self._spam_check_task = task
+                            _track_task(task)
                 except Exception as exc:
                     logger.warning("Periodic spam check trigger error: %s", exc)
 
-            should_check_marketplace_sessions = (
-                self._marketplace_session_check_task is None
-                or self._marketplace_session_check_task.done()
-            ) and (
-                current_time - self._last_marketplace_session_check
-                >= MARKETPLACE_SESSION_CHECK_INTERVAL_SECONDS
-            )
-            if should_check_marketplace_sessions:
-                self._last_marketplace_session_check = current_time
-                task = asyncio.create_task(self._check_marketplace_listing_sessions())
-                self._marketplace_session_check_task = task
-                _track_task(task)
+            try:
+                should_check_marketplace_sessions = (
+                    self._marketplace_session_check_task is None
+                    or self._marketplace_session_check_task.done()
+                ) and (
+                    current_time - self._last_marketplace_session_check
+                    >= MARKETPLACE_SESSION_CHECK_INTERVAL_SECONDS
+                )
+                if should_check_marketplace_sessions:
+                    self._last_marketplace_session_check = current_time
+                    task = asyncio.create_task(self._check_marketplace_listing_sessions())
+                    self._marketplace_session_check_task = task
+                    _track_task(task)
+            except Exception as exc:
+                logger.warning("Marketplace session check trigger error: %s", exc)
 
             await asyncio.sleep(30)  # Check every 30s
 
@@ -244,6 +267,7 @@ class SessionManager:
         from app.database import async_session_factory
         from datetime import datetime, timedelta, timezone
         from app.services.account_service import check_spam_status
+        import uuid
 
         logger.info("Starting periodic spam status checks for active accounts...")
 
@@ -256,7 +280,10 @@ class SessionManager:
                         TelegramAccount.id,
                         TelegramAccount.phone,
                         TelegramAccount.spam_last_checked_at,
-                    ).where(TelegramAccount.is_active.is_(True))
+                    ).where(
+                        TelegramAccount.is_active.is_(True),
+                        TelegramAccount.for_sale.is_(False),
+                    )
                 )
                 rows = result.all()
 
@@ -271,27 +298,55 @@ class SessionManager:
             logger.error("Error fetching accounts for spam check: %s", exc)
             return
 
+        logger.info("Periodic spam check: found %d accounts needing check", len(accounts_to_check))
+
         # Phase 2: Check each account with its own short-lived DB session
         for account_id, phone in accounts_to_check:
             if not self._running:
                 break
             try:
+                acc_uuid = uuid.UUID(account_id)
                 async with async_session_factory() as db:
                     if await self.is_account_in_active_job(db, account_id):
                         logger.info("Auto checking spam: skipping account %s (claimed by active worker job)", phone)
                         continue
                     result = await db.execute(
-                        select(TelegramAccount).where(TelegramAccount.id == account_id)
+                        select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
                     )
                     account = result.scalar_one_or_none()
-                    if account:
+                    if account and account.is_active and not account.for_sale:
                         logger.info("Auto checking spam status for account: %s", phone)
                         await check_spam_status(db, account)
                         await db.commit()
+
+                        # Broadcast WebSocket event so dashboard / accounts page updates in real-time
+                        from app.utils.redis_dispatcher import publish_ws_event
+                        from app.api.ws import manager as ws_manager
+                        try:
+                            channel = f"chats:{account_id}"
+                            event_payload = {
+                                "type": "spam_status_updated",
+                                "account_id": account_id,
+                                "spam_status": account.spam_status,
+                            }
+                            await publish_ws_event(channel, event_payload)
+                            if ws_manager.has_channel(channel):
+                                await ws_manager.broadcast(channel, event_payload)
+                        except Exception:
+                            pass
             except Exception as e:
                 logger.error("Failed to auto-check spam status for %s: %s", phone, e)
+            finally:
+                # Release the client immediately after checking to prevent idle socket accumulation
+                try:
+                    await client_pool.remove(account_id, save_state=True)
+                except Exception:
+                    pass
+
             # Wait between accounts to avoid rate limits (no DB session held)
             await asyncio.sleep(5.0)
+
+        logger.info("Periodic spam status check completed for batch.")
 
     async def is_account_in_active_job(self, db: AsyncSession, account_id: str) -> bool:
         """Check if an account is currently assigned to an active broadcast or invite job."""

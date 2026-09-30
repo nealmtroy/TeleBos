@@ -128,7 +128,13 @@ class ReconnectingWebSocket {
       this.pingTimer = null;
     }
     if (this.ws) {
-      this.ws.close();
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
+      this.ws.onclose = null;
+      try {
+        this.ws.close();
+      } catch {}
       this.ws = null;
     }
     this._connected = false;

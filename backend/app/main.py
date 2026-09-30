@@ -421,7 +421,7 @@ async def lifespan(app: FastAPI):
 
     await _init_db()
 
-    await session_manager.start()
+    await session_manager.start(enable_spam_checks=app_settings.ENABLE_SPAM_CHECKS)
 
     # Seed: ensure nealmtroy@gmail.com is owner
     async with async_session_factory() as db:

@@ -34,8 +34,16 @@ export interface Account {
   est_reg_date_age?: string | null;
   est_reg_date_status?: string | null;
   contacts_count?: number;
+  // Aggregate stats come with the list response, so account cards do not each
+  // fetch /accounts/{id}/stats (PYTHON-FASTAPI-10).
+  total_groups?: number;
+  owned_groups?: number;
+  total_channels?: number;
+  owned_channels?: number;
+  stats_updated_at?: string | null;
   sold_at?: string | null;
   is_resale?: boolean;
+  is_premium?: boolean;
 }
 
 export interface ApiError {
@@ -360,3 +368,34 @@ export function useBulkUpdateAutoReply() {
     },
   });
 }
+
+export interface TransferAccountsPayload {
+  account_ids: string[];
+  target_email: string;
+  override_limit?: boolean;
+}
+
+export interface TransferAccountsResponse {
+  transferred_count: number;
+  target_user_id: string;
+  target_email: string;
+  target_name: string;
+  account_ids: string[];
+}
+
+export function useTransferAccounts() {
+  const queryClient = useQueryClient();
+  return useMutation<TransferAccountsResponse, any, TransferAccountsPayload>({
+    mutationFn: async (payload) => {
+      const { data } = await api.post("/accounts/transfer", payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts-paginated"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["account-folders"] });
+    },
+  });
+}
+

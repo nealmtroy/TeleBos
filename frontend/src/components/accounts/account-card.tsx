@@ -1,7 +1,7 @@
-import { useProfileSync, type Account } from "@/hooks/use-accounts";
-import { useAccountStats } from "@/hooks/use-account-stats";
+import { type Account } from "@/hooks/use-accounts";
+import { useAccountStats, type AccountStats } from "@/hooks/use-account-stats";
 import { cn } from "@/lib/utils";
-import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign, X } from "lucide-react";
+import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign, X, ArrowRightLeft, Star } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useState, useCallback } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,6 +23,7 @@ interface AccountCardProps {
   account: Account;
   onDelete: (id: string) => void;
   onView: (id: string) => void;
+  onTransfer?: (account: Account) => void;
 }
 
 function CopyableId({ id }: { id: number | null }) {
@@ -56,14 +57,23 @@ function CopyableId({ id }: { id: number | null }) {
   );
 }
 
-export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
+export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCardProps) {
   const _ = useT();
   const { toast } = useToast();
-  useProfileSync(account.id);
-  const { data: stats, isLoading: statsLoading, refetch } = useAccountStats(account.id);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Stats now arrive with the list response. Keep the per-account query only
+  // as the refresh path, and only enable it while a manual refresh is running,
+  // so the accounts list no longer fires one request per card
+  // (PYTHON-FASTAPI-10).
+  const { data: refreshedStats, refetch: refetchStats } = useAccountStats(account.id, {
+    enabled: refreshing,
+  });
+  // Normalise: the list response marks stats optional, the refresh response
+  // does not. Keep the render block below working on plain numbers.
+  const stats = (refreshedStats ?? account) as AccountStats;
 
   const [sellOpen, setSellOpen] = useState(false);
   const sellAccountsMutation = useSellAccounts();
@@ -138,7 +148,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
     setRefreshing(true);
     try {
       await api.post(`/accounts/${account.id}/stats/refresh`);
-      await refetch();
+      await refetchStats();
     } catch {
       // Silently fail — stats will update on next background run
     } finally {
@@ -150,7 +160,22 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
   const isExpired = !account.is_active && !account.for_sale;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 transition-colors h-full flex flex-col justify-between">
+    <div
+      className={cn(
+        "rounded-xl transition-all h-full flex flex-col justify-between relative overflow-hidden",
+        account.is_premium
+          ? "bg-gradient-to-b from-purple-50/70 via-white to-indigo-50/20 dark:from-purple-950/25 dark:via-slate-800 dark:to-indigo-950/20 border-2 border-purple-400/80 dark:border-purple-500/70 shadow-sm shadow-purple-500/10 hover:shadow-purple-500/20"
+          : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+      )}
+    >
+      {/* Telegram Premium Top-Right Badge */}
+      {account.is_premium && (
+        <div className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white shadow-xs shadow-purple-500/30">
+          <Star className="h-3 w-3 fill-amber-300 text-amber-300 animate-pulse" />
+          <span>Premium</span>
+        </div>
+      )}
+
       {/* Profile section */}
       <div className="p-5 pb-3">
         <div className="flex items-start gap-3">
@@ -165,11 +190,19 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             isActive={account.is_active}
             profilePhotoPath={account.profile_photo_path}
             size="xl"
+            className={account.is_premium ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-800" : undefined}
           />
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold text-sm text-gray-900 dark:text-slate-100 truncate">
-              {account.first_name || _("accountCard.unnamed")} {account.last_name || ""}
-            </h2>
+            <div className={cn("flex items-center gap-1.5 min-w-0", account.is_premium && "pr-20")}>
+              <h2 className="font-semibold text-sm text-gray-900 dark:text-slate-100 truncate">
+                {account.first_name || _("accountCard.unnamed")} {account.last_name || ""}
+              </h2>
+              {account.is_premium && (
+                <span title="Telegram Premium" className="inline-flex items-center shrink-0 text-purple-600 dark:text-purple-400">
+                  <Star className="h-3.5 w-3.5 fill-purple-600 dark:fill-purple-400" />
+                </span>
+              )}
+            </div>
             {account.username && (
               <p className="text-xs text-gray-500 dark:text-slate-300 truncate">@{account.username}</p>
             )}
@@ -192,7 +225,7 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
 
       {/* Stats row - flat divider without nested card background */}
       <div className="px-5 py-2.5 border-y border-gray-100 dark:border-slate-700/80">
-        {statsLoading ? (
+        {refreshing && !refreshedStats ? (
           <div className="flex gap-3">
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-4 w-20" />
@@ -255,6 +288,12 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
         {account.spam_status === "limited" && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50 animate-pulse">
             Limited
+          </span>
+        )}
+        {account.is_premium && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border border-purple-300/80 dark:border-purple-700/80">
+            <Star className="h-2.5 w-2.5 fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" />
+            TG Premium
           </span>
         )}
         {account.is_resale && (
@@ -340,6 +379,20 @@ export function AccountCard({ account, onDelete, onView }: AccountCardProps) {
             >
               <DollarSign className="h-3.5 w-3.5" />
               {_("orders.sellAccount")}
+            </button>
+          )}
+          {onTransfer && (
+            <button
+              onClick={() => onTransfer(account)}
+              disabled={account.for_sale}
+              className={cn(
+                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 dark:text-sky-300 bg-blue-50 dark:bg-sky-950/30 hover:bg-blue-100 dark:hover:bg-sky-900/40 rounded-lg transition-colors",
+                account.for_sale && "opacity-50 cursor-not-allowed hover:bg-blue-50 dark:hover:bg-sky-950/30"
+              )}
+              title={account.for_sale ? "Akun sedang dijual di marketplace" : "Transfer akun ke pengguna lain"}
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              {_("accountCard.transfer")}
             </button>
           )}
         </div>

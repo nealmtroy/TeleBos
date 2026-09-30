@@ -226,7 +226,9 @@ const en: Dict = {
     statusLimited: "Limited",
     statusInactive: "Inactive",
     statusExpired: "Expired",
+    statusPremium: "Premium",
     statusAll: "All",
+    transferAccounts: "Transfer Accounts",
   },
 
   // ── Account Card ────────────────────────────────────────────────────────
@@ -234,10 +236,12 @@ const en: Dict = {
     unnamed: "Unnamed",
     viewDetails: "View Details",
     delete: "Delete",
+    transfer: "Transfer",
     active: "Active",
     inactive: "Inactive",
     expired: "Expired",
     verified: "Verified",
+    premium: "Premium",
     deleteConfirm: "Delete this account?",
   },
 

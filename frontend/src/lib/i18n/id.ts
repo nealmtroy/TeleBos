@@ -226,7 +226,9 @@ const id: Dict = {
     statusLimited: "Dibatasi",
     statusInactive: "Nonaktif",
     statusExpired: "Kedaluwarsa",
+    statusPremium: "Premium",
     statusAll: "Semua",
+    transferAccounts: "Transfer Akun",
   },
 
   // ── Kartu Akun ──────────────────────────────────────────────────────────
@@ -234,10 +236,12 @@ const id: Dict = {
     unnamed: "Tanpa Nama",
     viewDetails: "Lihat Detail",
     delete: "Hapus",
+    transfer: "Transfer",
     active: "Aktif",
     inactive: "Nonaktif",
     expired: "Kedaluwarsa",
     verified: "Terverifikasi",
+    premium: "Premium",
     deleteConfirm: "Hapus akun ini?",
   },
 

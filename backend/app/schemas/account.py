@@ -95,6 +95,7 @@ class AccountResponse(BaseModel):
     phone_verified: bool
     twofa_enabled: bool
     is_active: bool
+    is_premium: bool = False
     auto_reply_enabled: bool = False
     auto_reply_text: str | None = None
     last_sync_at: datetime | None
@@ -112,6 +113,15 @@ class AccountResponse(BaseModel):
     est_reg_date_status: str | None = None
 
     contacts_count: int = 0
+
+    # Aggregate stats already live on the row, so returning them here removes
+    # the per-card /accounts/{id}/stats request the accounts list used to fire
+    # (PYTHON-FASTAPI-10). Plain columns, no extra query.
+    total_groups: int = 0
+    owned_groups: int = 0
+    total_channels: int = 0
+    owned_channels: int = 0
+    stats_updated_at: datetime | None = None
 
     folder_ids: list[UUID] = []
     sold_at: datetime | None = None
@@ -272,3 +282,17 @@ class QR2FALoginRequest(BaseModel):
 class UpdateProfileColorRequest(BaseModel):
     color_id: int
     background_emoji_id: int | None = None
+
+
+class TransferAccountRequest(BaseModel):
+    account_ids: list[UUID] = Field(min_length=1, description="List of account IDs to transfer")
+    target_email: EmailStr = Field(description="Email address of the target user to receive the accounts")
+    override_limit: bool = Field(default=False, description="Whether to bypass role account limits for target user")
+
+
+class TransferAccountResponse(BaseModel):
+    transferred_count: int
+    target_user_id: UUID
+    target_user_email: str
+    message: str
+    account_ids: list[UUID]

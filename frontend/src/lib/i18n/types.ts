@@ -226,7 +226,9 @@ export interface Dict {
     statusLimited: string;
     statusInactive: string;
     statusExpired: string;
+    statusPremium: string;
     statusAll: string;
+    transferAccounts: string;
   };
 
   // Account Card
@@ -234,10 +236,12 @@ export interface Dict {
     unnamed: string;
     viewDetails: string;
     delete: string;
+    transfer: string;
     active: string;
     inactive: string;
     expired: string;
     verified: string;
+    premium: string;
     deleteConfirm: string;
   };
 

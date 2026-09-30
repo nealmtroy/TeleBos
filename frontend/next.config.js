@@ -15,6 +15,10 @@ const nextConfig = {
         source: "/api/v1/:path*",
         destination: `${apiTarget}/api/v1/:path*`,
       },
+      {
+        source: "/api/public/v1/:path*",
+        destination: `${apiTarget}/api/public/v1/:path*`,
+      },
       // Better Auth API ditangani oleh Next.js langsung (tidak di-proxy ke FastAPI)
       // Route /api/auth/* tidak boleh di-proxy karena Better Auth ada di Next.js
       {
