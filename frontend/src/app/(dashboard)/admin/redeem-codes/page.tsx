@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
 
 export default function AdminRedeemCodesPage() {
@@ -44,13 +45,13 @@ function RedeemCodesContent() {
 
   const [showForm, setShowForm] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [expiresDate, setExpiresDate] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState({
     code_type: "subscription",
     plan: "pro",
     amount: "",
     max_uses: "1",
     duration_days: "30",
-    expires_at: "",
     code_prefix: "",
     custom_code: "",
   });
@@ -84,13 +85,14 @@ function RedeemCodesContent() {
         amount: formData.code_type === "balance" ? parseInt(formData.amount) : undefined,
         max_uses: parseInt(formData.max_uses) || 1,
         duration_days: formData.code_type === "subscription" ? parseInt(formData.duration_days) || 30 : undefined,
-        expires_at: formData.expires_at || undefined,
+        expires_at: expiresDate ? expiresDate.toISOString() : undefined,
         code_prefix: formData.code_prefix || undefined,
         custom_code: formData.custom_code || undefined,
       });
       toast.success(_("adminRedeem.codeCreated"));
       setShowForm(false);
-      setFormData({ code_type: "subscription", plan: "pro", amount: "", max_uses: "1", duration_days: "30", expires_at: "", code_prefix: "", custom_code: "" });
+      setFormData({ code_type: "subscription", plan: "pro", amount: "", max_uses: "1", duration_days: "30", code_prefix: "", custom_code: "" });
+      setExpiresDate(undefined);
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || "Failed to create redeem code");
     }
@@ -222,11 +224,13 @@ function RedeemCodesContent() {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.expiresAt")}</label>
-                  <input
-                    type="datetime-local"
-                    value={formData.expires_at}
-                    onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition text-gray-500"
+                  <DateTimePicker
+                    date={expiresDate}
+                    setDate={setExpiresDate}
+                    minDate={new Date()}
+                    placeholder="Pilih batas kedaluwarsa (opsional)"
+                    className="w-full"
+                    triggerClassName="w-full border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 text-gray-700 dark:text-slate-200"
                   />
                 </div>
 

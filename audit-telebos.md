@@ -454,9 +454,9 @@ Berikut audit mendalam pada seluruh halaman dan komponen yang merender avatar/fo
 
 ## 🎨 5. Audit Shadcn UI & Analisis Komponen Desain Sistem
 
-Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/components/ui/` (24 file), mendeteksi pemanfaatan komponen, dead code, komponen yang underused, serta area di mana kode ad-hoc/mentah mem-bypass standar UI library.
+Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/components/ui/` (26 file), mendeteksi pemanfaatan komponen, dead code, komponen yang underused, serta area di mana kode ad-hoc/mentah mem-bypass standar UI library.
 
-### 5.1 Matriks Inventaris Komponen Shadcn UI (24 File)
+### 5.1 Matriks Inventaris Komponen Shadcn UI (26 File)
 
 | Nama Komponen | Status Penggunaan | Jumlah File Pengguna | Catatan Penggunaan & Keterangan |
 | :--- | :---: | :---: | :--- |
@@ -465,9 +465,11 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 | **`demo.tsx`** | ❌ **Dead Code (0%)** | 0 file | File boilerplate demo `Banner` & `Navbar5`. Tidak pernah dipakai di production. |
 | **`navigation-menu.tsx`** | ❌ **Dead Code (0%)** | 0 file | Komponen Radix Navigation Menu menganggur 100%. |
 | **`table.tsx`** | ⚠️ **Severely Underused** | 1 file | **Hanya digunakan di** [admin/smm/orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/smm/orders/page.tsx). 16 halaman tabel lainnya memakai tag HTML `<table>` mentah! |
-| **`date-picker-range.tsx`** | ⚠️ **Single-use** | 1 file | **Hanya digunakan di** [orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx). Komponen pencarian chat dan filter lain memakai `<input type="date">` mentah. |
-| **`calendar.tsx`** | ⚠️ **Internal Only** | 1 file | Hanya diimpor oleh `date-picker-range.tsx`. |
-| **`popover.tsx`** | ⚠️ **Internal Only** | 1 file | Hanya diimpor oleh `date-picker-range.tsx`. |
+| **`date-picker-range.tsx`** | ✅ **Aktif** | 2 file | Digunakan di [orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx) dan [ChatSearchBar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatSearchBar.tsx). Dilengkapi tombol Reset/Clear, Preset cepat (Hari Ini, 7 Hari, 30 Hari, Bulan Ini), dan konfigurasi responsif. |
+| **`date-picker.tsx`** | ✅ **Tersedia (Baru)** | - | Komponen Single Date Picker terpusat berbasis Base UI Popover + DayPicker Calendar dengan tombol Clear, minDate, dan maxDate. |
+| **`date-time-picker.tsx`** | ✅ **Aktif (Baru)** | 2 file | Digunakan di [ScheduleModal.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduleModal.tsx) dan [admin/redeem-codes/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-codes/page.tsx). Mendukung kalender, kontrol jam:menit, tombol pintas "Sekarang", dan z-index adaptif modal. |
+| **`calendar.tsx`** | ✅ **Aktif** | 3 file | Diimpor oleh `date-picker-range.tsx`, `date-picker.tsx`, dan `date-time-picker.tsx`. |
+| **`popover.tsx`** | ✅ **Aktif** | 3 file | Diimpor oleh ketiga date-picker. Dilengkapi prop `positionerClassName` (`z-[110]`) agar selalu berada di atas modal/dialog. |
 | **`sheet.tsx`** | ⚠️ **Internal Only** | 1 file | Hanya dipakai di dalam [navbar-5.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/navbar-5.tsx) untuk drawer navigasi mobile landing page. |
 | **`dialog.tsx`** | ⚠️ **Severely Underused** | 2 file | Hanya dipakai di `broadcast/group-lists/page.tsx` dan `subscriptions/page.tsx`. Ada 29 modal lain yang memakai `div fixed inset-0` manual! |
 | **`avatar.tsx`** | ⚠️ **Underused** | 1 file | Hanya dipakai di `AccountAvatar.tsx`. Modul chat membuat komponen avatar terpisah (`ChatAvatar.tsx`). |
@@ -509,12 +511,18 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
     11. [admin/redeem-logs/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-logs/page.tsx)
     12. [cycle-accordion.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/broadcast/cycle-accordion.tsx)
 
-#### 2. Masalah Date Picker: Terisolasi di `/orders` Saja
-* **Status:** Komponen [date-picker-range.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-picker-range.tsx) (beserta `calendar.tsx` & `popover.tsx`) sudah rapi dan siap pakai, namun **hanya terpasang di 1 halaman** ([orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx)).
-* **Temuan Terkait:**
-  - [ChatSearchBar.tsx (baris 90 & 97)](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatSearchBar.tsx#L90): Fitur pencarian pesan Telegram berdasarkan rentang tanggal menggunakan tag HTML mentah `<input type="date" className="px-2 py-1 border border-slate-200 ...">` yang tampilan kalendernya bergantung pada UI browser bawaan OS.
-  - [ScheduleModal.tsx (baris 67)](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduleModal.tsx#L67): Fitur jadwal kirim pesan chat menggunakan `<input type="datetime-local">` mentah.
-  - Halaman riwayat tugas (Broadcast History, Broadcast Logs, Invite History, Invite Logs, Admin Broadcasts) sama sekali belum dilengkapi filter rentang tanggal.
+#### 2. Standarisasi Date Picker: Migrasi Penuh ke Shadcn & Base UI
+* **Status:** ✅ **SUDAH DIPERBAIKI (RESOLVED)**
+* **Solusi & Implementasi:**
+  - Ditingkatkannya komponen [date-picker-range.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-picker-range.tsx) dengan tombol Clear/Reset, Preset rentang waktu cepat ("Hari Ini", "7 Hari", "30 Hari", "Bulan Ini"), trigger responsif, serta parameter `numberOfMonths` (fleksibel untuk modal/drawer sempit).
+  - Dibuatkannya komponen [date-picker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-picker.tsx) untuk pemilihan tanggal tunggal (*single date picker*) berbasis `@base-ui/react/popover` dan `Calendar`.
+  - Dibuatkannya komponen [date-time-picker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-time-picker.tsx) untuk pemilihan tanggal beserta jam dan menit, dilengkapi tombol pintas "Sekarang" (*Now*), tombol "Selesai", dan penyesuaian z-index otomatis (`positionerClassName="z-[110]"`) agar tidak tenggelam di balik backdrop modal/dialog.
+  - Komponen popover [popover.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/popover.tsx) telah diperkaya dengan prop `positionerClassName` untuk fleksibilitas level stacking context pada modal portal.
+  - Seluruh tag HTML native `<input type="date">` dan `<input type="datetime-local">` mentah telah **100% dimigrasikan**:
+    1. [ChatSearchBar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatSearchBar.tsx): Filter rentang tanggal pencarian pesan Telegram kini menggunakan `DatePickerWithRange` terintegrasi.
+    2. [ScheduleModal.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduleModal.tsx): Jadwal kirim pesan otomatis kini menggunakan `DateTimePicker` dengan batas validasi waktu masa depan.
+    3. [admin/redeem-codes/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-codes/page.tsx): Batas kedaluwarsa kupon redeem admin kini menggunakan `DateTimePicker`.
+  - **Hasil:** 0 input tanggal mentah tersisa di seluruh frontend. Seluruh tampilan kalender dan jam kini modern, konsisten, dan mendukung dark/light mode secara sempurna.
 
 #### 3. Bypassing Modal / Dialog (29 Tempat Menggunakan Overlay Manual)
 * **Status:** Alih-alih memanfaatkan shadcn `<Dialog>` (yang berbasis `@base-ui/react/dialog` dengan penanganan fokus, accessibility, dan animasi backdrop otomatis), terdapat **29 tempat** yang membuat modal manual:
@@ -552,6 +560,7 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 | **P0 (Tinggi)** | [dashboard/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/dashboard/page.tsx) | Ubah `useAccounts()` menjadi `useAccountsPaginated({ page: 1, limit: 5 })`. | Dashboard memuat lebih instan, backend hanya menarik 5 record dari DB alih-alih 1.000 record. |
 | **P1 (Selesai)** | [pagination.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/pagination.tsx) | ✅ **Selesai:** Komponen unified `Pagination` / `DataPagination` berbasis Base UI dibuat dan diintegrasikan ke 12 halaman/komponen. | Seluruh pagination kini seragam, mendukung penuh dark-mode, dan menghilangkan 12 duplikasi kode ad-hoc. |
 | **P1 (Selesai)** | [shell.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/shell.tsx) | ✅ **Selesai:** Konversi DashboardShell ke `fixed inset-0 flex overflow-hidden` dan `min-h-0`. | Mengeliminasi bug double viewport scrollbar pada browser window. |
+| **P1 (Selesai)** | [date-picker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-picker.tsx) & [date-time-picker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-time-picker.tsx) | ✅ **Selesai:** Standardisasi DatePicker dan DateTimePicker berbasis Base UI, migrasikan seluruh native date input di ChatSearchBar, ScheduleModal, dan Admin Redeem Codes. | 100% migrasi input tanggal, UI kalender & waktu konsisten, mendukung dark-mode dan bebas glitch di atas modal. |
 | **P1 (Sedang)** | `frontend/src/components/ui/` | Hapus dead-code `accordion.tsx`, `demo.tsx`, dan `navigation-menu.tsx`. | Mengurangi ukuran bundle dan membersihkan dead code yang membingungkan developer. |
 | **P1 (Sedang)** | [MessagePane.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/MessagePane.tsx) | Ubah queryKey autocomplete member menjadi `["chat-members-suggest", accountId, chatId]`. | Menghilangkan konflik cache key dan mencegah bug daftar member grup kosong di drawer kanan. |
 | **P1 (Sedang)** | [use-marketplace.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/hooks/use-marketplace.ts) | Tambahkan `staleTime: 5 * 60 * 1000` pada `useMarketplacePricing`. | Mengeliminasi re-fetch harga bursa berulang saat window focus pada 12 kartu akun. |
@@ -560,7 +569,6 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 | **P1 (Sedang)** | [ChatAvatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatAvatar.tsx) & [avatar.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/lib/avatar.ts) | Seragamkan palet warna fallback ke **solid flat** mengikuti `AccountAvatar.tsx`. | Menghilangkan inkonsistensi visual avatar antar halaman. |
 | **P1 (Sedang)** | [invite/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/invite/page.tsx) | Teruskan props lengkap (`telegramId`, `hasProfilePhoto`, `isActive`, `profilePhotoPath`) ke `<AccountAvatar>`. | Menghilangkan error console 404 pada akun expired di halaman invite. |
 | **P1 (Sedang)** | [AccountSwitcher.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/AccountSwitcher.tsx) | Ganti `colorId={activeAccounts.indexOf(acc)}` menjadi `colorId={acc.color_id}`. | Menjaga konsistensi warna avatar akun agar tidak berubah-ubah saat posisi array bergeser. |
-| **P2 (Rendah)** | [ChatSearchBar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatSearchBar.tsx) | Ganti native `<input type="date">` dengan `DatePickerWithRange` / `Calendar`. | Desain kalender konsisten dan modern mengikuti tema aplikasi (dark/light). |
 | **P2 (Rendah)** | [ChatRightColumn.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatRightColumn.tsx) | Ganti hardcoded URL string cover photo menjadi `getChatPhotoUrl()`. | Konsistensi pemanggilan URL foto. |
 | **P2 (Rendah)** | Halaman-halaman tabel (16 file) | Bertahap migrasikan tag `<table>` mentah ke komponen `<Table>` shadcn. | Konsistensi padding, border, hover state, dan scroll container tabel. |
 

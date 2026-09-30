@@ -1,6 +1,9 @@
 import React from "react";
-import { Search, X, Calendar } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { DatePickerWithRange } from "@/components/ui/date-picker-range";
 
 import { MessageItem } from "./types";
 
@@ -41,6 +44,25 @@ export function ChatSearchBar({
   searchResultsData,
   scrollToMessage,
 }: ChatSearchBarProps) {
+  const dateRange: DateRange | undefined = React.useMemo(() => {
+    if (!searchDateFrom && !searchDateTo) return undefined;
+    const fromDate = searchDateFrom ? new Date(searchDateFrom) : undefined;
+    const toDate = searchDateTo ? new Date(searchDateTo) : undefined;
+    return {
+      from: fromDate && !isNaN(fromDate.getTime()) ? fromDate : undefined,
+      to: toDate && !isNaN(toDate.getTime()) ? toDate : undefined,
+    };
+  }, [searchDateFrom, searchDateTo]);
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (!range) {
+      setSearchDateFrom("");
+      setSearchDateTo("");
+      return;
+    }
+    setSearchDateFrom(range.from ? format(range.from, "yyyy-MM-dd") : "");
+    setSearchDateTo(range.to ? format(range.to, "yyyy-MM-dd") : "");
+  };
   return (
     <div className="bg-slate-50 dark:bg-[#1a242f] border-b border-slate-200/60 dark:border-slate-800/80 px-4 py-3 flex flex-col gap-3 z-10 select-none animate-in slide-in-from-top-2 duration-200 flex-shrink-0 text-left">
       <div className="flex items-center gap-2">
@@ -81,23 +103,13 @@ export function ChatSearchBar({
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            From:
-          </span>
-          <input
-            type="date"
-            value={searchDateFrom}
-            onChange={(e) => setSearchDateFrom(e.target.value)}
-            className="px-2 py-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#202b36] rounded-lg text-slate-700 dark:text-slate-350 focus:outline-none"
-          />
-          <span className="flex items-center gap-1 ml-2">To:</span>
-          <input
-            type="date"
-            value={searchDateTo}
-            onChange={(e) => setSearchDateTo(e.target.value)}
-            className="px-2 py-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#202b36] rounded-lg text-slate-700 dark:text-slate-350 focus:outline-none"
+        <div className="flex items-center gap-2">
+          <DatePickerWithRange
+            date={dateRange}
+            setDate={handleDateRangeChange}
+            numberOfMonths={1}
+            placeholder="Filter rentang tanggal pesan..."
+            triggerClassName="w-auto h-7 px-2.5 text-xs rounded-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-[#202b36] text-slate-700 dark:text-slate-300"
           />
         </div>
       </div>

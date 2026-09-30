@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[03affc7f](https://github.com/nealmtroy/TeleBos/commit/03affc7f)**: docs(audit): update audit-telebos.md with completed pagination and shell layout fixes
 - **[42edcd12](https://github.com/nealmtroy/TeleBos/commit/42edcd12)**: fix(ui): eliminate double viewport scrollbar by constraining dashboard shell to fixed inset-0
 - **[4d9dffae](https://github.com/nealmtroy/TeleBos/commit/4d9dffae)**: refactor(ui): unify pagination using shadcn base-ui across 12 pages
 - **[a244df3e](https://github.com/nealmtroy/TeleBos/commit/a244df3e)**: feat(accounts): support premium account distinction, profile sync, and account transfer

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Clock, X, Loader2 } from "lucide-react";
 import api from "@/lib/api";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface ScheduleModalProps {
   accountId: string;
@@ -20,14 +21,14 @@ export function ScheduleModal({
   messageText,
   onSuccess,
 }: ScheduleModalProps) {
-  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
 
   const sendScheduledMutation = useMutation({
     mutationFn: async (payload: { text: string; schedule_date: number }) => {
       await api.post(`/accounts/${accountId}/chats/${chatId}/messages/scheduled`, payload);
     },
     onSuccess: () => {
-      setScheduleTime("");
+      setScheduleDate(undefined);
       onSuccess();
     },
     onError: (err: any) => {
@@ -43,7 +44,7 @@ export function ScheduleModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm bg-white dark:bg-[#17212b] rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col p-4 text-left"
+        className="w-full max-w-sm bg-white dark:bg-[#17212b] rounded-2xl shadow-xl animate-in zoom-in-95 duration-200 flex flex-col p-4 text-left"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-slate-150 dark:border-slate-800">
@@ -63,12 +64,13 @@ export function ScheduleModal({
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Choose date and time to send this message:
           </p>
-          <input
-            type="datetime-local"
-            value={scheduleTime}
-            onChange={(e) => setScheduleTime(e.target.value)}
-            min={new Date().toISOString().slice(0, 16)}
-            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#202b36] rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-xs font-semibold text-slate-800 dark:text-white"
+          <DateTimePicker
+            date={scheduleDate}
+            setDate={setScheduleDate}
+            minDate={new Date()}
+            placeholder="Pilih tanggal & jam"
+            className="w-full"
+            triggerClassName="text-xs font-semibold py-2 px-3 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#202b36] text-slate-800 dark:text-white"
           />
         </div>
 
@@ -81,11 +83,11 @@ export function ScheduleModal({
           </button>
           <button
             onClick={() => {
-              if (!scheduleTime) {
+              if (!scheduleDate) {
                 alert("Please select a date and time.");
                 return;
               }
-              const timestamp = Math.floor(new Date(scheduleTime).getTime() / 1000);
+              const timestamp = Math.floor(scheduleDate.getTime() / 1000);
               if (timestamp <= Math.floor(Date.now() / 1000)) {
                 alert("Scheduled time must be in the future.");
                 return;
