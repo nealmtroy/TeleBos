@@ -954,6 +954,11 @@ async def execute_broadcast(job_id: str):
         joined_pool: dict = {}
         pending_pool: dict = {}
         permanent_failures_pool: set = set()
+        # Slowmode is a per-group limit, not an account limit: it only stops
+        # posting to that one chat until its interval elapses. Tracking it on
+        # the account (as flood/peer_flood are) lets a single slow group pause
+        # the whole broadcast for every other group.
+        slowmode_pool: dict = {}
 
         while True:
             is_looping = loop_enabled
@@ -1021,7 +1026,19 @@ async def execute_broadcast(job_id: str):
                     except Exception as resolve_exc:
                         resolve_err = classify_telegram_error(resolve_exc)
                         err_type, _ = resolve_err
-                        if err_type in ("flood", "peer_flood", "slowmode"):
+                        if err_type == "slowmode":
+                            # Group-local limit: keep the item pending and let
+                            # this account serve other groups meanwhile.
+                            still_pending[pkey] = pitem
+                            wait = 30
+                            if hasattr(resolve_exc, "seconds"):
+                                wait = resolve_exc.seconds
+                            slowmode_pool[pkey] = {
+                                "until": time.time() + wait,
+                                "seconds": wait,
+                            }
+                            continue
+                        if err_type in ("flood", "peer_flood"):
                             still_pending[pkey] = pitem
                             wait = 30
                             if hasattr(resolve_exc, "seconds"):
@@ -1211,6 +1228,17 @@ async def execute_broadcast(job_id: str):
                 if pkey in permanent_failures_pool:
                     continue
 
+                # This group is still in its own slowmode window. Skip just this
+                # target and carry on with the rest of the list — the account is
+                # fine, the group is what is rate-limiting us.
+                slow_entry = slowmode_pool.get(pkey)
+                if slow_entry and time.time() < slow_entry["until"]:
+                    pending_pool[pkey] = {
+                        "group_identifier": group_identifier,
+                        "item_type": item_type,
+                    }
+                    continue
+
                 if len(group_identifier) > 2000:
                     group_identifier = group_identifier[:2000] + "…"
 
@@ -1352,7 +1380,11 @@ async def execute_broadcast(job_id: str):
                             wait = 30
                             if hasattr(resolve_exc, "seconds"):
                                 wait = resolve_exc.seconds
-                            selected_acc["join_cooldown_until"] = time.time() + wait
+                            # Per-group, not per-account — see slowmode_pool.
+                            slowmode_pool[pkey] = {
+                                "until": time.time() + wait,
+                                "seconds": wait,
+                            }
                 else:
                     try:
                         if chosen_text:
@@ -1515,7 +1547,12 @@ async def execute_broadcast(job_id: str):
                             wait = 30
                             if hasattr(exc, "seconds"):
                                 wait = exc.seconds
-                            selected_acc["cooldown_until"] = time.time() + wait
+                            # Per-group: this account stays usable for every
+                            # other target in the cycle.
+                            slowmode_pool[pkey] = {
+                                "until": time.time() + wait,
+                                "seconds": wait,
+                            }
 
                         if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
                             await _push_broadcast(
