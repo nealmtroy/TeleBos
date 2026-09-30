@@ -239,6 +239,13 @@ def run_migrations(connection):
                 "ALTER TABLE telegram_accounts ADD COLUMN recovery_email VARCHAR(255) DEFAULT NULL"
             )
         )
+    # Buy price is frozen onto a listing at sell time so an admin price change
+    # cannot reprice an account that is already on the market. Legacy listings
+    # leave it NULL, which buy_account treats as "charge the sell price".
+    if "buy_price" not in acct_cols:
+        connection.execute(
+            text("ALTER TABLE telegram_accounts ADD COLUMN buy_price BIGINT DEFAULT NULL")
+        )
 
     # ── Reset legacy is_sold flags so purchased/resale accounts can be sold again ──
     try:
