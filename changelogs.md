@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[549819bc](https://github.com/nealmtroy/TeleBos/commit/549819bc)**: fix(devices): report Telegram's fresh-session reset limit as a temporary state
 - **[6d43701e](https://github.com/nealmtroy/TeleBos/commit/6d43701e)**: fix(media): align Telegram download offsets to the request size
 - **[b8b31c8e](https://github.com/nealmtroy/TeleBos/commit/b8b31c8e)**: perf(accounts): make the per-account stats query opt-in
 - **[316eda71](https://github.com/nealmtroy/TeleBos/commit/316eda71)**: fix(errors): classify frozen Telegram accounts and surface flood waits

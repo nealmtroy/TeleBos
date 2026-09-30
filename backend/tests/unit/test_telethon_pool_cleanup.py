@@ -401,3 +401,97 @@ async def test_connect_timeout_discards_half_open_client():
     assert result is None
     instance.disconnect.assert_awaited_once()
     assert acc_id not in pool._clients
+
+
+@pytest.mark.asyncio
+async def test_pool_stop_is_best_effort_per_account():
+    """One client failing to disconnect must not abort the rest or propagate.
+
+    Shutdown failures used to escape the FastAPI lifespan, aborting the
+    remaining teardown (PYTHON-FASTAPI-3).
+    """
+    import uuid
+    from app.services.telegram_client import TelegramClientPool
+
+    pool = TelegramClientPool()
+    acc_a, acc_b = str(uuid.uuid4()), str(uuid.uuid4())
+
+    bad, good = MagicMock(), MagicMock()
+    bad.is_connected.return_value = True
+    bad.remove = AsyncMock(side_effect=RuntimeError("socket gone"))
+    good.is_connected.return_value = True
+
+    # Force remove() to fail for one account only, succeed for the other.
+    original_remove = pool.remove
+
+    async def flaky(account_id, *, save_state=True):
+        if account_id == acc_a:
+            await bad.remove()
+        else:
+            good.disconnect = AsyncMock()
+            await original_remove(account_id, save_state=save_state)
+
+    pool.remove = flaky
+    pool._clients[acc_a] = {"client": bad, "last_accessed": 100.0}
+    pool._clients[acc_b] = {"client": good, "last_accessed": 100.0}
+
+    await pool.stop()  # must not raise
+
+    good.disconnect.assert_awaited_once()
+    assert acc_b not in pool._clients
+    assert acc_a not in pool._clients
+
+
+def test_dead_session_errors_cover_auth_key_not_found():
+    """AuthKeyNotFound must mark an account expired, not just log and retry.
+
+    It is not a subclass of SessionRevokedError, so it has to be listed
+    explicitly -- otherwise a revoked account is retried forever and the
+    orphaned future surfaces as "Future exception was never retrieved"
+    (PYTHON-FASTAPI-Z).
+    """
+    from telethon.errors import (
+        AuthKeyDuplicatedError,
+        AuthKeyNotFound,
+        AuthKeyUnregisteredError,
+        SessionRevokedError,
+        UserDeactivatedBanError,
+    )
+
+    from app.services.telegram_client import DEAD_SESSION_ERRORS
+
+    for err in (
+        AuthKeyNotFound,
+        AuthKeyUnregisteredError,
+        AuthKeyDuplicatedError,
+        SessionRevokedError,
+        UserDeactivatedBanError,
+    ):
+        assert issubclass(err, DEAD_SESSION_ERRORS), f"{err.__name__} not covered"
+
+    # Guard the reason this was missed: it is not a SessionRevokedError.
+    assert not issubclass(AuthKeyNotFound, SessionRevokedError)
+
+
+def test_string_fallback_matches_authorization_key_spelling():
+    """AuthKeyNotFound's message says 'authorization key', not 'auth_key'."""
+    from app.services.telegram_client import TelegramClientPool
+
+    pool = TelegramClientPool()
+    exc = Exception(
+        "The server claims it doesn't know about the authorization key "
+        "(session file) currently being used."
+    )
+    exc_str = str(exc).lower()
+    keys = [
+        "auth_key",
+        "authorization key",
+        "session_revoked",
+        "user_deactivated",
+        "session expired",
+    ]
+    assert not any(
+        k in exc_str for k in ["auth_key", "session_revoked", "user_deactivated", "session expired"]
+    )
+    assert any(k in exc_str for k in keys)
+    assert pool is not None

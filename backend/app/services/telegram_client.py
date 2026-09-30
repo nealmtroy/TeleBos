@@ -8,6 +8,19 @@ from typing import Any, Literal
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import (
+    AuthKeyNotFound,
+    AuthKeyUnregisteredError,
+    AuthKeyDuplicatedError,
+    SessionRevokedError,
+    UserDeactivatedBanError,
+)
+
+# Every Telethon error meaning "this session is dead and cannot be revived".
+# AuthKeyNotFound is not a subclass of SessionRevokedError, so it must be
+# listed explicitly or a revoked account never gets marked expired and keeps
+# being retried (PYTHON-FASTAPI-Z).
+DEAD_SESSION_ERRORS = (
+    AuthKeyNotFound,
     AuthKeyUnregisteredError,
     AuthKeyDuplicatedError,
     SessionRevokedError,
@@ -221,10 +234,7 @@ class TelegramClientPool:
                     is_auth = await existing_client.is_user_authorized()
                     return "valid" if is_auth else "invalid"
                 except (
-                    AuthKeyUnregisteredError,
-                    AuthKeyDuplicatedError,
-                    SessionRevokedError,
-                    UserDeactivatedBanError,
+                    DEAD_SESSION_ERRORS,
                 ) as exc:
                     logger.info("Marketplace session validation marked %s invalid (cached): %s", account_id, exc)
                     return "invalid"
@@ -250,12 +260,7 @@ class TelegramClientPool:
                 )
                 await asyncio.wait_for(client.connect(), timeout=15.0)
                 return "valid" if await client.is_user_authorized() else "invalid"
-        except (
-            AuthKeyUnregisteredError,
-            AuthKeyDuplicatedError,
-            SessionRevokedError,
-            UserDeactivatedBanError,
-        ) as exc:
+        except DEAD_SESSION_ERRORS as exc:
             logger.info("Marketplace session validation marked %s invalid: %s", account_id, exc)
             return "invalid"
         except Exception as exc:
@@ -452,7 +457,7 @@ class TelegramClientPool:
 
                 self._clients[account_id] = {"client": client, "last_accessed": time.time()}
                 return client
-            except (AuthKeyUnregisteredError, AuthKeyDuplicatedError, SessionRevokedError, UserDeactivatedBanError) as exc:
+            except DEAD_SESSION_ERRORS as exc:
                 logger.warning("Session expired for account %s: %s", account_id, exc)
                 self._clients.pop(account_id, None)
                 await self._handle_expired_session(account_id)
@@ -460,7 +465,19 @@ class TelegramClientPool:
             except Exception as exc:
                 logger.error("Failed to connect account %s: %s", account_id, exc)
                 exc_str = str(exc).lower()
-                if any(k in exc_str for k in ["auth_key", "session_revoked", "user_deactivated", "session expired"]):
+                # "authorization key" is how AuthKeyNotFound spells itself in its
+                # message text; matching only "auth_key" missed it, so a revoked
+                # account was never marked expired (PYTHON-FASTAPI-Z).
+                if any(
+                    k in exc_str
+                    for k in [
+                        "auth_key",
+                        "authorization key",
+                        "session_revoked",
+                        "user_deactivated",
+                        "session expired",
+                    ]
+                ):
                     self._clients.pop(account_id, None)
                     await self._handle_expired_session(account_id)
                 return None
