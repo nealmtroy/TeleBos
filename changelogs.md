@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-09-30
+- **[efc1498c](https://github.com/nealmtroy/TeleBos/commit/efc1498c)**: chore(scripts): add simulate_autoreply_monte_carlo test script
+
 ## 2026-09-29
 - **[eb45e574](https://github.com/nealmtroy/TeleBos/commit/eb45e574)**: fix(telemetry): cover Telethon's receive loop in the transport noise filter
 
