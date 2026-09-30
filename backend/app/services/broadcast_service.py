@@ -25,6 +25,7 @@ from app.models.telegram_account import TelegramAccount
 from app.models.user import User
 from app.services.telegram_client import client_pool
 from app.services.event_relay import event_relay
+from app.utils.account_ownership import OWNER_WORKER, acquire_lease, release_lease
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 fc = flood_controller
@@ -900,6 +901,16 @@ async def execute_broadcast(job_id: str):
         for snapshot in account_snapshots:
             acc_id_str = snapshot["account_id"]
             try:
+                # Take exclusive ownership before connecting. A live job is the
+                # authoritative claim, so the worker takes the account even if
+                # the backend still holds a lease; the backend's health loop
+                # stands down on the next pass. Without this, both processes
+                # hold a socket for one auth key and Telegram answers the stale
+                # one ("Server replied with a wrong session ID").
+                if not await acquire_lease(acc_id_str, OWNER_WORKER, force=True):
+                    logger.warning(
+                        "Could not claim ownership of account %s for broadcast", acc_id_str
+                    )
                 client = await get_active_client(snapshot, receive_updates=True)
                 client_pool.touch_client(acc_id_str)
                 # Attach event_relay so auto-reply continues functioning during broadcast
@@ -1805,6 +1816,12 @@ async def execute_broadcast(job_id: str):
                     try:
                         await event_relay.detach(acc_id_str)
                         await client_pool.remove(acc_id_str)
+                    except Exception:
+                        pass
+                    # Hand the account back so the backend can resume auto-reply
+                    # and WebSocket chat without waiting out the lease TTL.
+                    try:
+                        await release_lease(acc_id_str, OWNER_WORKER)
                     except Exception:
                         pass
             if account_ids:

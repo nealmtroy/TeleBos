@@ -10,6 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.telegram_client import client_pool
 from app.services.event_relay import event_relay
 from app.models.telegram_account import TelegramAccount
+from app.utils.account_ownership import (
+    OWNER_BACKEND,
+    acquire_lease,
+    release_lease,
+    renew_lease,
+)
 from app.utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
@@ -470,6 +476,18 @@ class SessionManager:
 
         if not account_snapshot["is_active"] or not account_snapshot["session_string"]:
             return False
+
+        # Exclusive ownership. The job check above is a read, so a job created
+        # in the window between it and this connect would leave both processes
+        # holding a socket for the same auth key. The lease closes that gap.
+        # The backend stands down whenever it does not win.
+        if not await acquire_lease(account_id_value, OWNER_BACKEND):
+            logger.info(
+                "Lazy Connection: account %s is owned by the worker; backend standing down",
+                account_id_value,
+            )
+            return False
+
         try:
             async with _connect_semaphore:
                 session_str = decrypt(account_snapshot["session_string"])
@@ -551,7 +569,25 @@ class SessionManager:
                                 if has_active_job:
                                     logger.info("Lazy Connection: disconnecting client %s (claimed by worker job)", account_id)
                                     lazy_disconnect_ids.append(account_id)
-                                elif not (has_auto_reply or has_active_ws or is_syncing) and is_idle:
+                                    continue
+
+                                # Renew before deciding. This must run for every
+                                # client we keep, so it cannot sit inside the
+                                # elif chain below, where an earlier match would
+                                # skip it and silently drop the lease.
+                                still_ours = await renew_lease(account_id, OWNER_BACKEND)
+                                if not still_ours:
+                                    # Another process took the claim while this
+                                    # client was connected. Stand down so Telegram
+                                    # is not answering a stale socket.
+                                    logger.info(
+                                        "Lazy Connection: releasing account %s, ownership moved to another process",
+                                        account_id,
+                                    )
+                                    lazy_disconnect_ids.append(account_id)
+                                    continue
+
+                                if not (has_auto_reply or has_active_ws or is_syncing) and is_idle:
                                     logger.info("Lazy Connection: disconnecting idle unneeded client for account %s", account_id)
                                     lazy_disconnect_ids.append(account_id)
                                 elif is_syncing:
@@ -563,15 +599,19 @@ class SessionManager:
             except Exception as exc:
                 logger.warning("DB session error during lazy disconnect check: %s", exc)
 
-        # Clean up stale clients
+        # Clean up stale clients. The ownership lease is released alongside each
+        # disconnect so the other process can take the account immediately
+        # rather than waiting out the lease TTL.
         for account_id in stale_ids:
             await event_relay.detach(account_id)
             await client_pool.remove(account_id)
+            await release_lease(account_id, OWNER_BACKEND)
 
         # Disconnect unneeded clients
         for account_id in lazy_disconnect_ids:
             await event_relay.detach(account_id)
             await client_pool.remove(account_id)
+            await release_lease(account_id, OWNER_BACKEND)
 
         # Phase 3: Reconnect stale accounts. The account check is short-lived;
         # Telegram connection and handler attachment happen after it closes.

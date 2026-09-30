@@ -16,6 +16,15 @@ _BENIGN_LOOP_MESSAGES = (
     "Unexpected exception in the send loop",
     "Unexpected exception in the receive loop",
 )
+
+# Telegram answers a stale socket with "wrong session ID" when two connections
+# briefly shared one auth key. Account ownership (app.utils.account_ownership)
+# now prevents that, but a client evicted mid-flight can still trip it, and
+# Telethon recovers by reconnecting. It stays at WARNING so a spike remains
+# visible; it must not page as an application error.
+_SESSION_ID_MESSAGES = (
+    "Server replied with a wrong session ID",
+)
 _BENIGN_TRANSPORT_ERRORS = (
     # uvloop UVHandle._ensure_alive, when the handler closed under a write.
     "the handler is closed",
@@ -38,7 +47,14 @@ class TelethonTransportNoiseFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         if record.levelno < logging.ERROR:
             return True
-        if not any(msg in record.getMessage() for msg in _BENIGN_LOOP_MESSAGES):
+
+        message = record.getMessage()
+        if any(msg in message for msg in _SESSION_ID_MESSAGES):
+            record.levelno = logging.WARNING
+            record.levelname = "WARNING"
+            return True
+
+        if not any(msg in message for msg in _BENIGN_LOOP_MESSAGES):
             return True
 
         # Only demote when the underlying error is a known teardown race; a

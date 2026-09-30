@@ -17,6 +17,7 @@ from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 from app.utils.telegram_errors import classify_telegram_error
 from app.utils.telethon_helpers import get_active_client, join_and_resolve_chat
+from app.utils.account_ownership import OWNER_WORKER, acquire_lease, release_lease
 from app.utils.async_helpers import interruptible_sleep, wake_job, clear_job_event
 
 logger = logging.getLogger(__name__)
@@ -439,6 +440,9 @@ async def execute_invite(job_id: str):
         for account in account_records:
             acc_id_str = str(account.id)
             try:
+                # Take exclusive ownership before connecting; see the matching
+                # note in broadcast_service. A live invite job is authoritative.
+                await acquire_lease(acc_id_str, OWNER_WORKER, force=True)
                 client = await get_active_client(account)
                 me = await client.get_me()
                 my_id = me.id if me else None
@@ -1219,10 +1223,27 @@ async def execute_invite(job_id: str):
             pass
     finally:
         for acc in active_accounts:
+            acc_id_str = acc.get("account_id")
             try:
-                await acc["client"].disconnect()
+                # Evict through the pool rather than disconnecting the client
+                # directly. A bare disconnect leaves the pool holding a dead
+                # client, so the next get() would hand back a dead socket
+                # instead of reconnecting.
+                if acc_id_str:
+                    from app.services.telegram_client import client_pool
+
+                    await client_pool.remove(acc_id_str, save_state=False)
+                else:
+                    await acc["client"].disconnect()
             except Exception:
                 pass
+            # Release ownership so the backend can resume auto-reply and chat
+            # immediately rather than waiting out the lease TTL.
+            if acc_id_str:
+                try:
+                    await release_lease(acc_id_str, OWNER_WORKER)
+                except Exception:
+                    pass
         try:
             if accounts_data:
                 from app.utils.redis_dispatcher import publish_job_completed

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[0a38d9a4](https://github.com/nealmtroy/TeleBos/commit/0a38d9a4)**: fix(db): add missing telegram_accounts.buy_price migration
 - **[ed2f3ba8](https://github.com/nealmtroy/TeleBos/commit/ed2f3ba8)**: feat(marketplace): dual pricing, session purge, broadcast gating, and wallet UI
 - **[1afffa81](https://github.com/nealmtroy/TeleBos/commit/1afffa81)**: fix(ui): resolve calendar squish in tailwind v3 and form accessibility in admin redeem codes
 - **[98e34821](https://github.com/nealmtroy/TeleBos/commit/98e34821)**: fix(telethon): release clients stranded on the pool's failure paths
