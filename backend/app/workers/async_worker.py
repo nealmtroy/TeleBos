@@ -52,7 +52,9 @@ if worker_settings.SENTRY_DSN:
             if worker_settings.SENTRY_ENVIRONMENT
             else ("production" if worker_settings.PRODUCTION else "development"),
             release=worker_settings.SENTRY_RELEASE,
-            traces_sample_rate=1.0 if worker_settings.DEBUG else worker_settings.SENTRY_TRACES_SAMPLE_RATE,
+            traces_sample_rate=1.0
+            if worker_settings.DEBUG
+            else worker_settings.SENTRY_TRACES_SAMPLE_RATE,
         )
         logger.info("Sentry monitoring initialized for TeleBos Async Worker")
     except ImportError:
@@ -129,7 +131,9 @@ async def control_subscriber_loop() -> None:
                     job_type = payload.get("job_type")
                     job_id = str(payload.get("job_id"))
 
-                    logger.info("Worker received control signal: %s for %s job %s", action, job_type, job_id)
+                    logger.info(
+                        "Worker received control signal: %s for %s job %s", action, job_type, job_id
+                    )
 
                     if action == "pause":
                         # Wakes up sleeping loop so it detects 'paused' status immediately
@@ -218,6 +222,7 @@ async def main() -> None:
 
     # 1. Verify encryption key
     from app.utils.encryption import _get_cipher
+
     try:
         _get_cipher()
     except Exception as exc:
@@ -226,6 +231,7 @@ async def main() -> None:
 
     # 2. Configure Telegram client pool for worker daemon
     from app.services.telegram_client import client_pool
+
     client_pool.is_worker = True
     client_pool.receive_updates = False
     logger.info("Worker client pool configured (is_worker=True, default receive_updates=False)")
@@ -268,7 +274,9 @@ async def main() -> None:
 
     cancelled_b = await broadcast_service.cancel_all_broadcast_tasks()
     cancelled_i = await invite_service.cancel_all_invite_tasks()
-    logger.info("Gracefully cancelled %d broadcast tasks and %d invite tasks", cancelled_b, cancelled_i)
+    logger.info(
+        "Gracefully cancelled %d broadcast tasks and %d invite tasks", cancelled_b, cancelled_i
+    )
 
     # Disconnect pooled Telegram clients while the event loop is still running.
     # Each connected client owns Telethon-internal send/recv loop tasks; nothing
@@ -277,6 +285,7 @@ async def main() -> None:
     # pending!" once per client (PYTHON-FASTAPI-B/C/D/E). Must run before
     # engine.dispose() so client teardown can still reach the database.
     from app.services.telegram_client import client_pool
+
     await client_pool.stop()
     logger.info("Disconnected pooled Telegram clients")
 
