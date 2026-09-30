@@ -31,6 +31,14 @@ import {
   Layers,
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useState, useCallback } from "react";
 import { useAccounts } from "@/hooks/use-accounts";
@@ -221,25 +229,25 @@ export default function BroadcastHistoryPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-xs">
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.date")}</th>
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.setup")}</th>
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.accounts")}</th>
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.status")}</th>
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.progress")}</th>
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.sentFailed")}</th>
-                  <th className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.actions")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50 text-xs">
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.date")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.setup")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.accounts")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.status")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.progress")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.sentFailed")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100">
                 {jobs.map((job: BroadcastJob) => (
-                  <tr key={job.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
+                  <TableRow key={job.id} className="hover:bg-gray-50/50 transition">
+                    <TableCell className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
                       {formatDate(job.created_at)}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="space-y-1.5 text-xs max-w-[250px]">
                         <div className="flex items-center gap-1.5 text-gray-700 font-medium">
                           <Folder className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -262,8 +270,8 @@ export default function BroadcastHistoryPage() {
                           </span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {job.account_ids.map((accId) => {
                           const acc = accounts?.find((a) => a.id === accId);
@@ -284,8 +292,8 @@ export default function BroadcastHistoryPage() {
                           <span className="text-xs text-gray-400 italic">—</span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-normal">
                       <span
                         className={cn(
                           "px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
@@ -294,8 +302,8 @@ export default function BroadcastHistoryPage() {
                       >
                         {job.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex items-center gap-2">
                         <div className="w-24 bg-gray-200 rounded-full h-2">
                           <div
@@ -314,8 +322,8 @@ export default function BroadcastHistoryPage() {
                           {job.progress}%
                         </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-green-700 font-medium">
                           {job.sent_count}
@@ -328,8 +336,8 @@ export default function BroadcastHistoryPage() {
                           ({_("broadcastHistory.of")} {job.total_groups})
                         </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex items-center gap-1.5">
                         {/* Running controls */}
                         {job.status === "running" && (
@@ -469,11 +477,11 @@ export default function BroadcastHistoryPage() {
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}

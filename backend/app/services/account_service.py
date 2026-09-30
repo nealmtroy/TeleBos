@@ -16,6 +16,11 @@ from app.models.telegram_account import TelegramAccount
 from app.models.user import User
 from app.services.telegram_client import client_pool
 from app.utils.encryption import encrypt, decrypt
+from app.utils.photo_helper import (
+    ensure_photo_dir as _ensure_photo_dir,
+    get_photo_filename as _photo_filename,
+    get_photo_path as _photo_path,
+)
 from app.utils.session_converter import convert_to_telethon
 from app.utils.telethon_cleanup import force_close_telethon_client
 from app.services.twofa_service import get_live_2fa_status
@@ -874,7 +879,12 @@ def resize_to_avatar(image_bytes: bytes, size: tuple[int, int] = (320, 320)) -> 
 
 
 async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: bytes) -> None:
-    """Upload profile photo to Telegram and cache locally."""
+    """Upload profile photo to Telegram and cache the local bytes we already have.
+
+    The uploaded bytes are the same ones Telegram now stores, so the local
+    cache is written from ``photo_bytes`` instead of re-downloading the photo
+    over MTProto — that download cost 2-4s and a round trip per upload.
+    """
     from telethon.tl.functions.photos import UploadProfilePhotoRequest
 
     session_str = decrypt(account.session_string)
@@ -891,35 +901,36 @@ async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: 
         # Telethon — upload file first, then set as profile photo
         file = await client.upload_file(tmp_path)
         await client(UploadProfilePhotoRequest(file=file))
-        # After uploading to Telegram, download and cache locally
-        _ensure_photo_dir()
-        photo_path = _photo_path(str(account.id))
+
+        # Cache the bytes we were handed, normalized exactly like every other
+        # write path (profile sync, on-demand download).
+        await store_cached_photo(account, photo_bytes)
+
         me = await client.get_me()
+        photo = getattr(me, "photo", None) if me else None
         if me:
-            import io
-            buf = io.BytesIO()
-            downloaded = await client.download_profile_photo(me, file=buf)
-            if downloaded:
-                buf.seek(0)
-                data = buf.read()
-                try:
-                    data = await asyncio.to_thread(resize_to_avatar, data)
-                except Exception as e:
-                    logger.warning("Failed to resize uploaded profile photo for %s: %s", account.id, e)
-                await asyncio.to_thread(_sync_write_bytes, photo_path, data)
-                account.profile_photo_path = photo_path
-                photo = getattr(me, "photo", None)
-                account.profile_photo_id = getattr(photo, "photo_id", None) if photo else None
-            else:
-                account.profile_photo_path = None
-                account.profile_photo_id = None
-        else:
-            account.profile_photo_path = None
-            account.profile_photo_id = None
+            account.profile_photo_id = getattr(photo, "photo_id", None) if photo else None
         account.photo_version += 1
         await db.flush()
     finally:
         os.unlink(tmp_path)
+
+
+async def store_cached_photo(account: TelegramAccount, data: bytes) -> None:
+    """Normalize, write, and record the cached photo for ``account``.
+
+    The single write path for every producer (upload, periodic profile sync,
+    on-demand download) so all of them store identically-resized bytes and the
+    same relative filename in ``profile_photo_path``.
+    """
+    _ensure_photo_dir()
+    photo_path = _photo_path(str(account.id))
+    try:
+        data = await asyncio.to_thread(resize_to_avatar, data)
+    except Exception as exc:
+        logger.warning("Failed to resize profile photo for %s: %s", account.id, exc)
+    await asyncio.to_thread(_sync_write_bytes, photo_path, data)
+    account.profile_photo_path = _photo_filename(str(account.id))
 
 
 async def delete_photo(db: AsyncSession, account: TelegramAccount) -> None:
@@ -975,25 +986,11 @@ async def download_and_cache_photo(account: TelegramAccount) -> bytes | None:
 
     buf.seek(0)
     data = buf.read()
-    try:
-        data = await asyncio.to_thread(resize_to_avatar, data)
-    except Exception as e:
-        logger.warning("Failed to resize profile photo for %s: %s", account.id, e)
+    # Cache locally via the shared write path (BLK-02)
+    await store_cached_photo(account, data)
 
-    # Cache locally via threadpool (BLK-02)
-    _ensure_photo_dir()
-    photo_path = _photo_path(str(account.id))
-    await asyncio.to_thread(_sync_write_bytes, photo_path, data)
-
-    account.profile_photo_path = photo_path
     account.photo_version += 1
     return data
-
-
-from app.utils.photo_helper import (
-    ensure_photo_dir as _ensure_photo_dir,
-    get_photo_path as _photo_path,
-)
 
 
 async def remove_account(db: AsyncSession, account: TelegramAccount, logout_session: bool = True) -> None:

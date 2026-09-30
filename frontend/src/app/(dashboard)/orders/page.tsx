@@ -28,6 +28,14 @@ import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "@/components/ui/date-picker-range";
 import { DateRange } from "react-day-picker";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 type HistoryTab = "all" | "accounts" | "smm";
 
@@ -477,36 +485,36 @@ export default function OrderHistoryPage() {
         <div className="space-y-4">
           {/* Desktop View Table */}
           <div className="hidden lg:block overflow-hidden bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-slate-700 bg-gray-50/75 dark:bg-slate-900/60 text-gray-500 dark:text-slate-300 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Order</th>
-                  <th className="py-3.5 px-4 text-center">Tipe Order</th>
-                  <th className="py-3.5 px-4">Layanan</th>
-                  <th className="py-3.5 px-4">Detail</th>
-                  <th className="py-3.5 px-4 text-right">Jumlah</th>
-                  <th className="py-3.5 px-4 text-right">Harga</th>
-                  <th className="py-3.5 px-4 text-center cursor-pointer select-none hover:bg-gray-100 transition-colors" onClick={() => toggleSort("status")}>
+            <Table className="text-xs">
+              <TableHeader>
+                <TableRow className="border-b border-gray-200 dark:border-slate-700 bg-gray-50/75 dark:bg-slate-900/60 hover:bg-gray-50/75 dark:hover:bg-slate-900/60 text-gray-500 dark:text-slate-300">
+                  <TableHead className="py-3.5 px-4 font-bold uppercase tracking-wider">Order</TableHead>
+                  <TableHead className="py-3.5 px-4 text-center font-bold uppercase tracking-wider">Tipe Order</TableHead>
+                  <TableHead className="py-3.5 px-4 font-bold uppercase tracking-wider">Layanan</TableHead>
+                  <TableHead className="py-3.5 px-4 font-bold uppercase tracking-wider">Detail</TableHead>
+                  <TableHead className="py-3.5 px-4 text-right font-bold uppercase tracking-wider">Jumlah</TableHead>
+                  <TableHead className="py-3.5 px-4 text-right font-bold uppercase tracking-wider">Harga</TableHead>
+                  <TableHead className="py-3.5 px-4 text-center cursor-pointer select-none hover:bg-gray-100 transition-colors font-bold uppercase tracking-wider" onClick={() => toggleSort("status")}>
                     <div className="flex items-center justify-center gap-1">
                       Status
                       <ArrowUpDown className="h-3 w-3 text-gray-400" />
                     </div>
-                  </th>
-                  <th className="py-3.5 px-4 text-center">Progress</th>
-                  <th className="py-3.5 px-4 cursor-pointer select-none hover:bg-gray-100 transition-colors" onClick={() => toggleSort("date")}>
+                  </TableHead>
+                  <TableHead className="py-3.5 px-4 text-center font-bold uppercase tracking-wider">Progress</TableHead>
+                  <TableHead className="py-3.5 px-4 cursor-pointer select-none hover:bg-gray-100 transition-colors font-bold uppercase tracking-wider" onClick={() => toggleSort("date")}>
                     <div className="flex items-center gap-1">
                       Tanggal
                       <ArrowUpDown className="h-3 w-3 text-gray-400" />
                     </div>
-                  </th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-150 dark:divide-slate-700/60">
+                  </TableHead>
+                  <TableHead className="py-3.5 px-4 text-center font-bold uppercase tracking-wider">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-150 dark:divide-slate-700/60">
                 {paginatedItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/40 transition-colors bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200">
+                  <TableRow key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/40 transition-colors bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200">
                     {/* Order ID */}
-                    <td className="py-4 px-4 whitespace-nowrap font-mono text-gray-900 dark:text-slate-100">
+                    <TableCell className="py-4 px-4 whitespace-nowrap font-mono text-gray-900 dark:text-slate-100">
                       <div className="flex flex-col items-start gap-1">
                         <span className="font-bold">{item.orderIdDisplay}</span>
                         <button
@@ -517,10 +525,10 @@ export default function OrderHistoryPage() {
                           <Copy className="h-3 w-3" />
                         </button>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Tipe Order */}
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <TableCell className="py-4 px-4 text-center whitespace-nowrap">
                       {item.type === "telegram_account" ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-150 rounded-xl">
                           <User className="h-3 w-3" />
@@ -532,10 +540,10 @@ export default function OrderHistoryPage() {
                           SMM Order
                         </span>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Layanan */}
-                    <td className="py-4 px-4 max-w-[200px]">
+                    <TableCell className="py-4 px-4 max-w-[200px]">
                       <div className="flex flex-col gap-0.5">
                         <span className="truncate font-bold text-gray-900 dark:text-slate-100" title={item.serviceName}>
                           {item.serviceName}
@@ -544,27 +552,27 @@ export default function OrderHistoryPage() {
                           {item.serviceSublabel}
                         </span>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Detail */}
-                    <td className="py-4 px-4 max-w-[180px]">
+                    <TableCell className="py-4 px-4 max-w-[180px]">
                       <p className="text-[11px] text-gray-600 dark:text-slate-300 leading-relaxed font-mono whitespace-pre-line truncate" title={item.detail}>
                         {item.detail}
                       </p>
-                    </td>
+                    </TableCell>
 
                     {/* Jumlah */}
-                    <td className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-slate-100 whitespace-nowrap">
+                    <TableCell className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-slate-100 whitespace-nowrap">
                       {item.quantityDisplay}
-                    </td>
+                    </TableCell>
 
                     {/* Harga */}
-                    <td className="py-4 px-4 text-right font-extrabold text-gray-900 dark:text-slate-100 whitespace-nowrap">
+                    <TableCell className="py-4 px-4 text-right font-extrabold text-gray-900 dark:text-slate-100 whitespace-nowrap">
                       {item.priceDisplay}
-                    </td>
+                    </TableCell>
 
                     {/* Status */}
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <TableCell className="py-4 px-4 text-center whitespace-nowrap">
                       {item.status === "Selesai" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -589,10 +597,10 @@ export default function OrderHistoryPage() {
                           Dibatalkan
                         </span>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Progress */}
-                    <td className="py-4 px-4">
+                    <TableCell className="py-4 px-4">
                       <div className="flex flex-col items-center justify-center min-w-[70px]">
                         <span className="font-bold text-[10px] text-gray-800 dark:text-slate-200 mb-1">{item.progressPercent}%</span>
                         <div className="w-full bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full h-1.5 overflow-hidden">
@@ -607,18 +615,18 @@ export default function OrderHistoryPage() {
                           />
                         </div>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Date Time */}
-                    <td className="py-4 px-4 whitespace-nowrap text-gray-650 dark:text-slate-300 font-medium">
+                    <TableCell className="py-4 px-4 whitespace-nowrap text-gray-650 dark:text-slate-300 font-medium">
                       <div className="flex flex-col">
                         <span>{item.dateStr}</span>
                         <span className="text-[10px] text-gray-400 dark:text-slate-400 mt-0.5">{item.timeStr}</span>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Action */}
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    <TableCell className="py-4 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
                         <Button
                           variant="outline"
@@ -639,11 +647,11 @@ export default function OrderHistoryPage() {
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* Mobile View Card List */}

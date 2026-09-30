@@ -860,27 +860,6 @@ async def get_profile_photo(
     raise HTTPException(status_code=404, detail="No profile photo")
 
 
-@router.get("/{account_id}/photo-token")
-async def get_profile_photo_token(
-    account_id: str,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """Get a short-lived signed token for accessing a profile photo.
-
-    Use the returned ``st`` value as the ``?st=`` query parameter on the
-    ``GET /{account_id}/photo`` endpoint.  The token expires after 5 minutes
-    and avoids placing the full JWT in the URL.
-    """
-    account = await account_service.get_account(db, account_id, str(user.id))
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
-
-    from app.utils.signed_url import generate_photo_token
-    st = generate_photo_token(account_id, str(user.id))
-    return {"st": st, "expires_in": 300}
-
-
 @router.delete("/{account_id}/photo")
 async def delete_profile_photo(
     account_id: str,

@@ -26,6 +26,14 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -263,35 +271,35 @@ export default function SmmServicesPage() {
 
                 {isExpanded && (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left border-t border-gray-100 min-w-[600px]">
-                      <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-100 text-gray-500 text-xs">
-                          <th className="py-2.5 px-4 font-medium">ID</th>
-                          <th className="py-2.5 px-4 font-medium">Service Name</th>
-                          <th className="py-2.5 px-4 font-medium text-right">Orig. Price ($)</th>
-                          <th className="py-2.5 px-4 font-medium text-right">Effective ($)</th>
-                          <th className="py-2.5 px-4 font-medium text-right">Markup</th>
-                          <th className="py-2.5 px-4 font-medium text-center">Min / Max</th>
-                          <th className="py-2.5 px-4 font-medium text-center">Active</th>
-                          <th className="py-2.5 px-4 font-medium text-center">Visible</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table className="text-sm text-left border-t border-gray-100 min-w-[600px]">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50/50 border-b border-gray-100 hover:bg-gray-50/50 text-gray-500 text-xs">
+                          <TableHead className="py-2.5 px-4 font-medium">ID</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium">Service Name</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium text-right">Orig. Price ($)</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium text-right">Effective ($)</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium text-right">Markup</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium text-center">Min / Max</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium text-center">Active</TableHead>
+                          <TableHead className="py-2.5 px-4 font-medium text-center">Visible</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {services.map((svc) => (
-                          <tr key={svc.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                            <td className="py-2 px-4 text-gray-400 font-mono text-xs whitespace-nowrap">{svc.service_id}</td>
-                            <td className="py-2 px-4 min-w-[120px]">
+                          <TableRow key={svc.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
+                            <TableCell className="py-2 px-4 text-gray-400 font-mono text-xs whitespace-nowrap">{svc.service_id}</TableCell>
+                            <TableCell className="py-2 px-4 min-w-[120px] whitespace-normal">
                               <p className="font-medium text-gray-900">{svc.service_name}</p>
-                            </td>
-                            <td className="py-2 px-4 text-right font-mono text-gray-600 whitespace-nowrap">
+                            </TableCell>
+                            <TableCell className="py-2 px-4 text-right font-mono text-gray-600 whitespace-nowrap">
                               {svc.original_price}
-                            </td>
-                            <td className="py-2 px-4 text-right whitespace-nowrap">
+                            </TableCell>
+                            <TableCell className="py-2 px-4 text-right whitespace-nowrap">
                               <span className={cn("font-mono", svc.effective_price !== svc.original_price ? "text-emerald-600 font-semibold" : "text-gray-600")}>
                                 {svc.effective_price}
                               </span>
-                            </td>
-                            <td className="py-2 px-4 text-right whitespace-nowrap">
+                            </TableCell>
+                            <TableCell className="py-2 px-4 text-right whitespace-nowrap">
                               <select
                                 value={svc.markup_percent}
                                 onChange={(e) => handleSetMarkup(svc, parseInt(e.target.value))}
@@ -302,11 +310,11 @@ export default function SmmServicesPage() {
                                   <option key={pct} value={pct}>{pct}%</option>
                                 ))}
                               </select>
-                            </td>
-                            <td className="py-2 px-4 text-center text-xs text-gray-500 whitespace-nowrap">
+                            </TableCell>
+                            <TableCell className="py-2 px-4 text-center text-xs text-gray-500 whitespace-nowrap">
                               {svc.min_qty.toLocaleString()} / {svc.max_qty.toLocaleString()}
-                            </td>
-                            <td className="py-2 px-4 text-center">
+                            </TableCell>
+                            <TableCell className="py-2 px-4 text-center">
                               <button
                                 onClick={() => handleToggleActive(svc)}
                                 disabled={updateService.isPending}
@@ -319,8 +327,8 @@ export default function SmmServicesPage() {
                               >
                                 {svc.is_active ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                               </button>
-                            </td>
-                            <td className="py-2 px-4 text-center">
+                            </TableCell>
+                            <TableCell className="py-2 px-4 text-center">
                               <button
                                 onClick={() => handleToggleVisible(svc)}
                                 disabled={updateService.isPending}
@@ -333,11 +341,11 @@ export default function SmmServicesPage() {
                               >
                                 {svc.is_visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                               </button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>

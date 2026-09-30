@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
   Users,
@@ -944,17 +945,17 @@ export default function AutoJoinPage() {
             </div>
           ) : (
             <div className="overflow-x-auto max-h-80 overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-slate-700/70 text-gray-500 dark:text-slate-200 font-semibold sticky top-0 border-b border-gray-100 dark:border-slate-700">
-                  <tr>
-                    <th className="py-2.5 px-4 w-24">Waktu</th>
-                    <th className="py-2.5 px-4 w-36">Akun</th>
-                    <th className="py-2.5 px-4">Target</th>
-                    <th className="py-2.5 px-4 w-32">Status</th>
-                    <th className="py-2.5 px-4">Detail</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-700 font-mono text-[11px]">
+              <Table className="w-full text-left text-xs">
+                <TableHeader className="bg-gray-50 dark:bg-slate-700/70 text-gray-500 dark:text-slate-200 font-semibold sticky top-0 border-b border-gray-100 dark:border-slate-700 [&_tr]:border-b-0">
+                  <TableRow className="hover:bg-gray-50 dark:hover:bg-slate-700/70 border-b-0">
+                    <TableHead className="py-2.5 px-4 w-24">Waktu</TableHead>
+                    <TableHead className="py-2.5 px-4 w-36">Akun</TableHead>
+                    <TableHead className="py-2.5 px-4">Target</TableHead>
+                    <TableHead className="py-2.5 px-4 w-32">Status</TableHead>
+                    <TableHead className="py-2.5 px-4">Detail</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 dark:divide-slate-700 font-mono text-[11px]">
                   {logs.map((log) => {
                     const statusConfig = {
                       success: { text: "Sukses", badge: "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
@@ -964,28 +965,28 @@ export default function AutoJoinPage() {
                     }[log.status];
 
                     return (
-                      <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="py-2.5 px-4 text-gray-400 dark:text-slate-300 whitespace-nowrap">{log.time}</td>
-                        <td className="py-2.5 px-4 whitespace-nowrap">
+                      <TableRow key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                        <TableCell className="py-2.5 px-4 text-gray-400 dark:text-slate-300 whitespace-nowrap">{log.time}</TableCell>
+                        <TableCell className="py-2.5 px-4 whitespace-nowrap">
                           <span className="font-semibold text-gray-900 dark:text-slate-100 block font-sans">{log.accountName}</span>
                           <span className="text-gray-400 dark:text-slate-300 text-[11px]">{log.accountPhone}</span>
-                        </td>
-                        <td className="py-2.5 px-4 text-gray-800 dark:text-slate-200 font-bold max-w-xs truncate" title={log.target}>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap py-2.5 px-4 text-gray-800 dark:text-slate-200 font-bold max-w-xs truncate" title={log.target}>
                           {log.target}
-                        </td>
-                        <td className="py-2.5 px-4 whitespace-nowrap">
+                        </TableCell>
+                        <TableCell className="py-2.5 px-4 whitespace-nowrap">
                           <Badge variant="outline" className={cn("text-[11px] uppercase font-sans font-bold", statusConfig.badge)}>
                             {statusConfig.text}
                           </Badge>
-                        </td>
-                        <td className="py-2.5 px-4 text-gray-600 dark:text-slate-300 font-sans max-w-md truncate" title={log.message}>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap py-2.5 px-4 text-gray-600 dark:text-slate-300 font-sans max-w-md truncate" title={log.message}>
                           {log.message}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>

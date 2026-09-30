@@ -283,10 +283,14 @@ export default function InvitePage() {
                       />
                       <AccountAvatar
                         accountId={acc.id}
+                        telegramId={acc.telegram_id}
                         firstName={acc.first_name}
                         phone={acc.phone}
                         photoVersion={acc.photo_version}
                         colorId={acc.color_id}
+                        hasProfilePhoto={acc.has_profile_photo}
+                        isActive={acc.is_active}
+                        profilePhotoPath={acc.profile_photo_path}
                         size="sm"
                       />
                       <div className="min-w-0 flex-1">

@@ -26,7 +26,9 @@ export function useChats(
   accountId: string,
   page: number = 1,
   pageSize: number = 50,
-  chatType?: string
+  chatType?: string,
+  /** Extra gate beyond having an account — e.g. skip while a first sync runs. */
+  enabled: boolean = true
 ) {
   return useQuery<{ chats: ChatItem[]; total: number }>({
     queryKey: ["chats", accountId, page, pageSize, chatType || "all"],
@@ -36,7 +38,7 @@ export function useChats(
       const { data } = await api.get(url);
       return data;
     },
-    enabled: !!accountId,
+    enabled: !!accountId && enabled,
   });
 }
 

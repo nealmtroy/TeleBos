@@ -52,6 +52,9 @@ export function useMarketplacePricing() {
       const { data } = await api.get("/marketplace/pricing");
       return data;
     },
+    // Every account card renders this. Without a staleTime the whole grid
+    // re-validates on each window focus; pricing moves rarely.
+    staleTime: 5 * 60 * 1000,
   });
 }
 

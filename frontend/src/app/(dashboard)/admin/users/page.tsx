@@ -41,6 +41,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn, formatDate } from "@/lib/utils";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -330,46 +338,46 @@ function UsersContent() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
-                <th className="py-3.5 px-4 min-w-[200px]">{_("admin.email")}</th>
-                <th className="py-3.5 px-4 text-center">{_("admin.role")}</th>
-                <th className="py-3.5 px-4 text-right">{_("admin.balance")}</th>
-                <th className="py-3.5 px-4 min-w-[180px]">{_("admin.connectedAccounts") || "Accounts"}</th>
-                <th className="py-3.5 px-4 min-w-[180px]">{_("admin.broadcastStats") || "Broadcasts"}</th>
-                <th className="py-3.5 px-4 text-center">{_("admin.orders")}</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+          <Table className="w-full text-left text-xs border-collapse">
+            <TableHeader>
+              <TableRow className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold hover:bg-gray-50/80">
+                <TableHead className="py-3.5 px-4 min-w-[200px] text-gray-500">{_("admin.email")}</TableHead>
+                <TableHead className="py-3.5 px-4 text-center text-gray-500">{_("admin.role")}</TableHead>
+                <TableHead className="py-3.5 px-4 text-right text-gray-500">{_("admin.balance")}</TableHead>
+                <TableHead className="py-3.5 px-4 min-w-[180px] text-gray-500">{_("admin.connectedAccounts") || "Accounts"}</TableHead>
+                <TableHead className="py-3.5 px-4 min-w-[180px] text-gray-500">{_("admin.broadcastStats") || "Broadcasts"}</TableHead>
+                <TableHead className="py-3.5 px-4 text-center text-gray-500">{_("admin.orders")}</TableHead>
+                <TableHead className="py-3.5 px-4 text-right text-gray-500">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-gray-100 bg-white">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-100 rounded w-36" /></td>
-                    <td className="py-4 px-4"><div className="h-5 bg-gray-100 rounded w-16 mx-auto" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-100 rounded w-20 ml-auto" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-100 rounded w-32" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-100 rounded w-32" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-100 rounded w-8 mx-auto" /></td>
-                    <td className="py-4 px-4"><div className="h-6 bg-gray-100 rounded w-20 ml-auto" /></td>
-                  </tr>
+                  <TableRow key={i} className="animate-pulse">
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-100 rounded w-36" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-5 bg-gray-100 rounded w-16 mx-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-100 rounded w-20 ml-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-100 rounded w-32" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-100 rounded w-32" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-100 rounded w-8 mx-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-6 bg-gray-100 rounded w-20 ml-auto" /></TableCell>
+                  </TableRow>
                 ))
               ) : error ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-red-500">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-12 text-center text-red-500 whitespace-normal">
                     <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-400" />
                     <p className="font-semibold text-sm">Failed to load users</p>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : !data || data.users.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center text-gray-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-16 text-center text-gray-400 whitespace-normal">
                     <UserCog className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                     <p className="font-medium text-gray-600 text-sm">No users found</p>
                     <p className="text-xs text-gray-400 mt-0.5">Try adjusting your search criteria</p>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 data.users.map((u: AdminUser) => {
                   const connected = u.connected_accounts ?? 0;
@@ -383,9 +391,9 @@ function UsersContent() {
                   const bcTotal = u.broadcast_total ?? 0;
 
                   return (
-                    <tr key={u.id} className="hover:bg-gray-50/70 transition-colors">
+                    <TableRow key={u.id} className="hover:bg-gray-50/70 transition-colors">
                       {/* User & Email */}
-                      <td className="py-3 px-4">
+                      <TableCell className="py-3 px-4 whitespace-normal">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-xs shrink-0 border border-gray-200">
                             {u.email ? u.email[0].toUpperCase() : "U"}
@@ -397,10 +405,10 @@ function UsersContent() {
                             </p>
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Role */}
-                      <td className="py-3 px-4 text-center">
+                      <TableCell className="py-3 px-4 text-center whitespace-normal">
                         <select
                           value={u.role}
                           onChange={(e) => handleRoleChange(u.id, e.target.value)}
@@ -415,17 +423,17 @@ function UsersContent() {
                           <option value="premium">Premium</option>
                           <option value="owner">Owner</option>
                         </select>
-                      </td>
+                      </TableCell>
 
                       {/* Balance */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <TableCell className="py-3 px-4 text-right whitespace-nowrap">
                         <span className="font-bold text-gray-900 font-mono text-xs">
                           {u.balance.toLocaleString()}
                         </span>
-                      </td>
+                      </TableCell>
 
                       {/* Connected Accounts Telemetry */}
-                      <td className="py-3 px-4">
+                      <TableCell className="py-3 px-4 whitespace-normal">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
                             <Smartphone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -452,10 +460,10 @@ function UsersContent() {
                             <span className="text-xs text-gray-400 italic">No accounts</span>
                           )}
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Broadcast Jobs Telemetry */}
-                      <td className="py-3 px-4">
+                      <TableCell className="py-3 px-4 whitespace-normal">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
                             <Radio className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -483,15 +491,15 @@ function UsersContent() {
                             <span className="text-xs text-gray-400 italic">No broadcasts</span>
                           )}
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Orders */}
-                      <td className="py-3 px-4 text-center text-gray-600 font-medium">
+                      <TableCell className="py-3 px-4 text-center text-gray-600 font-medium whitespace-normal">
                         {u.order_count}
-                      </td>
+                      </TableCell>
 
                       {/* Actions */}
-                      <td className="py-3 px-4 text-right">
+                      <TableCell className="py-3 px-4 text-right whitespace-normal">
                         <div className="flex items-center justify-end gap-1">
                           {/* View Detail Modal */}
                           <button
@@ -531,13 +539,13 @@ function UsersContent() {
                             </button>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Pagination Bar */}

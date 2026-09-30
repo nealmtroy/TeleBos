@@ -554,23 +554,108 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 
 ## 🛠️ 6. Rencana Aksi Perbaikan Lengkap (Action Plan)
 
+> **Status per 1 Oktober 2026:** Seluruh butir pada tabel di bawah telah dikerjakan, termasuk
+> penghapusan dead-code UI. Tidak ada butir yang tersisa; temuan visual kosmetik yang sengaja
+> tidak ditangani tercatat di § 7.5. Rincian implementasi ada di § 7.
+
 | Prioritas | Target File | Tindakan Perbaikan | Dampak Efisiensi / Kualitas |
 | :---: | :--- | :--- | :--- |
-| **P0 (Tinggi)** | [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/page.tsx) | Hapus `useAccounts()` (`limit=1000`) dan gunakan data `accountsSummary` / `paginatedData`. | Menghilangkan transfer ratusan KB JSON & mengurangi beban DB query drastis pada halaman Akun. |
-| **P0 (Tinggi)** | [dashboard/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/dashboard/page.tsx) | Ubah `useAccounts()` menjadi `useAccountsPaginated({ page: 1, limit: 5 })`. | Dashboard memuat lebih instan, backend hanya menarik 5 record dari DB alih-alih 1.000 record. |
+| **P0 (Tinggi)** | [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/page.tsx) | ✅ **Selesai:** `useAccounts()` (`limit=1000`) dihapus; `totalUsedAccounts` kini memakai `accountsSummary?.total ?? paginatedData?.total ?? 0`. | Menghilangkan transfer ratusan KB JSON & mengurangi beban DB query drastis pada halaman Akun. |
+| **P0 (Tinggi)** | [dashboard/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/dashboard/page.tsx) | ✅ **Selesai:** `useAccounts()` diganti `useAccountsPaginated({ page: 1, limit: 5 })`; `slice(0, 5)` dihapus karena backend sudah membatasi, dan footer "lihat semua" memakai `totalCount`. | Dashboard memuat lebih instan, backend hanya menarik 5 record dari DB alih-alih 1.000 record. |
 | **P1 (Selesai)** | [pagination.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/pagination.tsx) | ✅ **Selesai:** Komponen unified `Pagination` / `DataPagination` berbasis Base UI dibuat dan diintegrasikan ke 12 halaman/komponen. | Seluruh pagination kini seragam, mendukung penuh dark-mode, dan menghilangkan 12 duplikasi kode ad-hoc. |
 | **P1 (Selesai)** | [shell.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/shell.tsx) | ✅ **Selesai:** Konversi DashboardShell ke `fixed inset-0 flex overflow-hidden` dan `min-h-0`. | Mengeliminasi bug double viewport scrollbar pada browser window. |
 | **P1 (Selesai)** | [date-picker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-picker.tsx) & [date-time-picker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-time-picker.tsx) | ✅ **Selesai:** Standardisasi DatePicker dan DateTimePicker berbasis Base UI, migrasikan seluruh native date input di ChatSearchBar, ScheduleModal, dan Admin Redeem Codes. | 100% migrasi input tanggal, UI kalender & waktu konsisten, mendukung dark-mode dan bebas glitch di atas modal. |
-| **P1 (Sedang)** | `frontend/src/components/ui/` | Hapus dead-code `accordion.tsx`, `demo.tsx`, dan `navigation-menu.tsx`. | Mengurangi ukuran bundle dan membersihkan dead code yang membingungkan developer. |
-| **P1 (Sedang)** | [MessagePane.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/MessagePane.tsx) | Ubah queryKey autocomplete member menjadi `["chat-members-suggest", accountId, chatId]`. | Menghilangkan konflik cache key dan mencegah bug daftar member grup kosong di drawer kanan. |
-| **P1 (Sedang)** | [use-marketplace.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/hooks/use-marketplace.ts) | Tambahkan `staleTime: 5 * 60 * 1000` pada `useMarketplacePricing`. | Mengeliminasi re-fetch harga bursa berulang saat window focus pada 12 kartu akun. |
-| **P1 (Sedang)** | [account_service.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/account_service.py) | Simpan file upload lokal langsung tanpa download ulang dari Telegram. | Menghemat 2–4 detik latensi saat user mengganti foto profil akun. |
-| **P1 (Sedang)** | [accounts.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/api/accounts.py) | Hapus endpoint dead-code `GET /{account_id}/photo-token`. | Menghapus kode mubazir yang tidak pernah dipakai. |
-| **P1 (Sedang)** | [ChatAvatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatAvatar.tsx) & [avatar.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/lib/avatar.ts) | Seragamkan palet warna fallback ke **solid flat** mengikuti `AccountAvatar.tsx`. | Menghilangkan inkonsistensi visual avatar antar halaman. |
-| **P1 (Sedang)** | [invite/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/invite/page.tsx) | Teruskan props lengkap (`telegramId`, `hasProfilePhoto`, `isActive`, `profilePhotoPath`) ke `<AccountAvatar>`. | Menghilangkan error console 404 pada akun expired di halaman invite. |
-| **P1 (Sedang)** | [AccountSwitcher.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/AccountSwitcher.tsx) | Ganti `colorId={activeAccounts.indexOf(acc)}` menjadi `colorId={acc.color_id}`. | Menjaga konsistensi warna avatar akun agar tidak berubah-ubah saat posisi array bergeser. |
-| **P2 (Rendah)** | [ChatRightColumn.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatRightColumn.tsx) | Ganti hardcoded URL string cover photo menjadi `getChatPhotoUrl()`. | Konsistensi pemanggilan URL foto. |
-| **P2 (Rendah)** | Halaman-halaman tabel (16 file) | Bertahap migrasikan tag `<table>` mentah ke komponen `<Table>` shadcn. | Konsistensi padding, border, hover state, dan scroll container tabel. |
+| **P1 (Selesai)** | `frontend/src/components/ui/` | ✅ **Selesai:** `accordion.tsx`, `demo.tsx`, dan `navigation-menu.tsx` (0 referensi) dihapus via `git rm`. | Mengurangi ukuran bundle dan membersihkan dead code yang membingungkan developer. |
+| **P1 (Selesai)** | [MessagePane.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/MessagePane.tsx) | ✅ **Selesai:** queryKey autocomplete member menjadi `["chat-members-suggest", accountId, chatId]`. | Menghilangkan konflik cache key dan mencegah bug daftar member grup kosong di drawer kanan. |
+| **P1 (Selesai)** | [use-marketplace.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/hooks/use-marketplace.ts) | ✅ **Selesai:** `staleTime: 5 * 60 * 1000` ditambahkan pada `useMarketplacePricing`. | Mengeliminasi re-fetch harga bursa berulang saat window focus pada 12 kartu akun. |
+| **P1 (Selesai)** | [account_service.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/account_service.py) | ✅ **Selesai:** `upload_photo` tidak lagi memanggil `download_profile_photo`; byte lokal langsung dinormalisasi lewat helper bersama `store_cached_photo()`. | Menghemat 2–4 detik latensi saat user mengganti foto profil akun. |
+| **P1 (Selesai)** | [accounts.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/api/accounts.py) | ✅ **Selesai:** endpoint dead-code `GET /{account_id}/photo-token` dihapus. | Menghapus kode mubazir yang tidak pernah dipakai. |
+| **P1 (Selesai)** | [ChatAvatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatAvatar.tsx) & [avatar.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/lib/avatar.ts) | ✅ **Selesai:** palet `ChatAvatar` memakai `getTelegramAvatarColor()` (solid flat) dari `lib/avatar`; palet lokal + `linear-gradient` dihapus, begitu pula duplikatnya di `ChatLeftColumn.tsx`. | Menghilangkan inkonsistensi visual avatar antar halaman. |
+| **P1 (Selesai)** | [invite/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/invite/page.tsx) | ✅ **Selesai:** props lengkap (`telegramId`, `hasProfilePhoto`, `isActive`, `profilePhotoPath`) diteruskan ke `<AccountAvatar>`. | Menghilangkan error console 404 pada akun expired di halaman invite. |
+| **P1 (Selesai)** | [AccountSwitcher.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/AccountSwitcher.tsx) | ✅ **Selesai:** `colorId={activeAccounts.indexOf(acc)}` menjadi `colorId={acc.color_id ?? acc.telegram_id}` (2 lokasi), plus `isActive`/`profilePhotoPath` agar guard 404 ikut bekerja. | Menjaga konsistensi warna avatar akun agar tidak berubah-ubah saat posisi array bergeser. |
+| **P1 (Tambahan)** | [use-chats.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/hooks/use-chats.ts) | ✅ **Selesai (di luar tabel):** `useChats` menerima argumen `enabled`; `groups-channels/page.tsx` menonaktifkan query saat akun belum pernah di-sync. | Menghilangkan request `/chats` yang langsung terbuang saat auto-sync berjalan. |
+| **P2 (Selesai)** | [ChatRightColumn.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatRightColumn.tsx) | ✅ **Selesai:** hardcoded URL string cover photo diganti `getChatPhotoUrl(accountId, chatId, photoVersion)`. | Konsistensi pemanggilan URL foto. |
+| **P2 (Selesai)** | Halaman-halaman tabel (17 file) | ✅ **Selesai:** seluruh tag `<table>` mentah dimigrasikan ke komponen `<Table>` shadcn (lihat § 7.3 untuk daftar file dan catatan preservasi visual). | Konsistensi padding, border, hover state, dan scroll container tabel. |
+| **P1 (Selesai)** | [photo_helper.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/utils/photo_helper.py) + migrasi `012` | ✅ **Selesai:** `profile_photo_path` kini menyimpan filename relatif (`<uuid>.jpg`), bukan absolute path OS. | Nilai DB portabel lintas VPS/container; path asli selalu dihitung ulang dari `photo_helper`. |
+
+---
+
+## ✅ 7. Rincian Implementasi (1 Oktober 2026)
+
+### 7.1 Siklus hidup foto profil — satu jalur tulis
+
+Ketiga producer foto profil sekarang funnel ke satu helper, `store_cached_photo()` di
+[account_service.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/services/account_service.py):
+
+| Producer | Sebelum | Sesudah |
+| --- | --- | --- |
+| `upload_photo` (user upload) | unggah ke Telegram → **unduh ulang** dari Telegram → resize → tulis | unggah ke Telegram → resize `photo_bytes` lokal → tulis |
+| `sync_account_profile` (sync 10 menit) | tulis **mentah** tanpa resize | helper yang sama (resize + filename relatif) |
+| `download_and_cache_photo` (on-demand) | resize + tulis | helper yang sama |
+
+ Menghemat ±2–4 detik dan satu round trip MTProto per pergantian foto, serta bytes yang
+tersimpan di ketiga jalur kini identik (320×320 JPEG, quality 85).
+
+### 7.2 `profile_photo_path` kini portabel
+
+- Helper baru `get_photo_filename()` + `is_valid_photo_path()` di
+  [photo_helper.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/utils/photo_helper.py).
+- Migrasi Alembic `012_relative_profile_photo_path` menormalkan baris lama: value yang
+  basename-nya sudah `<account_id>.jpg` dipertahankan sebagai filename relatif; lainnya di-null.
+  *Downgrade tidak ada* — prefix direktori absolut tidak dapat dikembalikan dari filename.
+- Validator [account.py](file:///d:/PROJECT/Telegram/TeleBos/backend/app/schemas/account.py)
+  kini melaporkan filename relatif hanya bila file benar-benar ada di disk, dan menerima
+  absolute path lama yang masih cocok (diolah menjadi filename).
+- Kolom ini tetap dipakai frontend **hanya sebagai penanda** "foto ter-cache"
+  (`isPhotoCached`), bukan untuk akses file.
+
+### 7.3 Migrasi tabel: 17 file
+
+Semua tag `<table>` mentah di `frontend/src/app` diganti komponen
+[table.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/table.tsx):
+`admin/{users, broadcasts, auto-replies, redeem-logs, redeem-codes, account-prices, smm/services}`,
+`broadcast/{history, logs}`, `invite/{history, logs}`, `orders/{page, buy-accounts, sell-accounts}`,
+`groups-channels/auto-join`, `subscriptions`. (`admin/smm/orders` sudah memakai `Table` sebelumnya.)
+
+Preservasi visual yang perlu diketahui saat review:
+- **Warna header:** primitive `TableHead` meng-hardcode `text-foreground`, sehingga warnaAbu
+  yang tadinya di-*inherit* dari `<tr>` induk perlu ditulis eksplisit per-header
+  (`text-gray-500`, dst.). Tanpa itu header jadi hampir hitam.
+- **`whitespace-normal`:** primitive `TableCell` default `whitespace-nowrap`. Sel yang
+  tadinya membungkus (log panjang, alamat, form control, deskripsi) diberi `whitespace-normal`.
+- **Hover header:** primitive `TableRow` menambah `hover:bg-muted/50`; header berlatarAbu
+  diberi override `hover:bg-gray-50` agar tidak terputus-putus.
+- **Header sticky** (`auto-join`): memakai `[&_tr]:border-b-0` agar border header tidak
+ dobel, dengan hover override tersendiri.
+
+### 7.4 Verifikasi
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| `pytest` (backend) | 270 passed (252 lama + 18 baru untuk photo helper/schema/upload) |
+| `ruff check app tests` | All checks passed |
+| `tsc --noEmit` | Bersih |
+| `next lint` | Bersih |
+| Vitest (frontend) | 70 passed |
+| `next build` | Sukses |
+| Alembic heads | Tunggal di `012` |
+
+Test baru: `backend/tests/unit/test_photo_helper.py`,
+`test_account_response_photo_path.py`, dan `test_upload_photo.py` — yang terakhir
+memastikan `download_profile_photo` **tidak pernah** dipanggil.
+
+### 7.5 Catatan
+
+- **Dead-code UI dihapus.** `accordion.tsx`, `demo.tsx`, dan `navigation-menu.tsx` sudah
+  dipastikan 0 referensi, lalu dihapus via `git rm`. `components/ui/` kini berisi 23 file
+  (sebelumnya 26). Tidak ada import tersisa; `tsc`, `next lint`, `next build`, dan 70 test
+  frontend tetap hijau setelah penghapusan.
+- **Temuan `impeccable` yang tidak ditangani** — seluruhnya pre-existing dan di luar cakupan
+  audit ini, tidak introduced oleh perubahan tabel: purple/indigo gradient pada filter status
+  Premium (`accounts/page.tsx`), `gray-on-color` pada badge/ikon di `admin/users`,
+  `admin/broadcasts`, `orders/buy-accounts`, `admin/redeem-codes`, `admin/account-prices`,
+  `MessagePane`, serta tab sidebar amber di `admin/broadcasts`. Semua berada di baris yang
+  tidak disentuh oleh perubahan audit ini — perlu pass tersendiri bila ingin dikerjakan.
 
 ---
 

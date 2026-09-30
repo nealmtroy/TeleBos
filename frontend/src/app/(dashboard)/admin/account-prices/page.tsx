@@ -7,6 +7,14 @@ import {
   Tag, AlertCircle, Shield, Plus, Trash2, Save, Hash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -322,48 +330,48 @@ function AccountPricesContent() {
           </div>
           {/* On mobile each rule renders as a stacked card rather than a table row. */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/50 text-gray-500 font-medium">
-                  <th className="py-3 px-4 text-left">ID Prefix</th>
-                  <th className="py-3 px-4 text-left">Note</th>
-                  <th className="py-3 px-4 text-center">Sell Price</th>
-                  <th className="py-3 px-4 text-center">Buy Price</th>
-                  <th className="py-3 px-4 text-center">Margin</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow className="border-b border-gray-200 bg-gray-50/50 hover:bg-gray-50/50 text-gray-500 font-medium">
+                  <TableHead className="py-3 px-4 text-left">ID Prefix</TableHead>
+                  <TableHead className="py-3 px-4 text-left">Note</TableHead>
+                  <TableHead className="py-3 px-4 text-center">Sell Price</TableHead>
+                  <TableHead className="py-3 px-4 text-center">Buy Price</TableHead>
+                  <TableHead className="py-3 px-4 text-center">Margin</TableHead>
+                  <TableHead className="py-3 px-4 text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {[...rules]
                   .sort((a, b) => b.id_prefix.length - a.id_prefix.length)
                   .map((rule) => {
                     const dirty = isDraftDirty(rule);
                     const draft = drafts[rule.id_prefix] ?? EMPTY_DRAFT;
                     return (
-                      <tr
+                      <TableRow
                         key={rule.id}
                         className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors last:border-b-0"
                       >
-                        <td className="py-3 px-4">
+                        <TableCell className="py-3 px-4 whitespace-normal">
                           <div className="flex items-center gap-2">
                             <Hash className="h-4 w-4 text-primary-500" />
                             <span className="font-bold text-lg text-gray-900 font-mono">
                               {rule.id_prefix}
                             </span>
                           </div>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-gray-500">{rule.note || "—"}</td>
-                        <td className="py-3 px-4 text-center">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-xs text-gray-500 whitespace-normal">{rule.note || "—"}</TableCell>
+                        <TableCell className="py-3 px-4 text-center">
                           <span className="font-mono font-semibold text-gray-800 bg-gray-100 px-2 py-1 rounded-lg">
                             {formatIDR(rule.sell_price)}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
                           <span className="font-mono font-semibold text-primary-700 bg-primary-50 px-2 py-1 rounded-lg">
                             {rule.buy_price !== null ? formatIDR(rule.buy_price) : "Global"}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
                           <span
                             className={cn(
                               "font-mono text-xs font-semibold px-2 py-1 rounded-lg",
@@ -374,8 +382,8 @@ function AccountPricesContent() {
                           >
                             {formatIDR(rule.margin)}
                           </span>
-                        </td>
-                        <td className="py-3 px-4">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 whitespace-normal">
                           <div className="flex items-center justify-center gap-1.5">
                             <input
                               type="text"
@@ -426,12 +434,12 @@ function AccountPricesContent() {
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* Mobile card layout */}

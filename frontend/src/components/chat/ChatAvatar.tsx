@@ -2,19 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getAccountPhotoUrl, getChatPhotoUrl, getAvatarInitial } from "@/lib/avatar";
+import {
+  getAccountPhotoUrl,
+  getChatPhotoUrl,
+  getAvatarInitial,
+  getTelegramAvatarColor,
+} from "@/lib/avatar";
 import { Bookmark, ShieldCheck, Bot } from "lucide-react";
-
-// Telegram-style avatar color palette (matching tweb)
-const AVATAR_COLORS = [
-  { top: "#FF845E", bottom: "#D45246" }, // red
-  { top: "#FEBB5B", bottom: "#F68136" }, // orange
-  { top: "#B694F9", bottom: "#6C61DF" }, // violet
-  { top: "#9AD164", bottom: "#46BA43" }, // green
-  { top: "#53EDD6", bottom: "#28C9B7" }, // cyan
-  { top: "#5CAFFA", bottom: "#408ACF" }, // blue
-  { top: "#FF8AAC", bottom: "#D95574" }, // pink
-];
 
 interface ChatAvatarProps {
   accountId: string;
@@ -28,6 +22,9 @@ interface ChatAvatarProps {
   className?: string;
   isSavedMessages?: boolean;
   isTelegram?: boolean;
+  /** Own-account avatars: mirrors AccountAvatar's expired-account 404 guard. */
+  isActive?: boolean;
+  profilePhotoPath?: string | null;
   fallbackTextClassName?: string;
   children?: React.ReactNode;
 }
@@ -44,6 +41,8 @@ export function ChatAvatar({
   className,
   isSavedMessages,
   isTelegram,
+  isActive,
+  profilePhotoPath,
   fallbackTextClassName,
   children,
 }: ChatAvatarProps) {
@@ -56,10 +55,14 @@ export function ChatAvatar({
 
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  // Check if image should be loaded
-  const shouldRenderImage = isAccount
-    ? (hasProfilePhoto ?? (photoVersion ?? 0) > 0)
-    : (photoVersion != null);
+  // An inactive/expired account with no cached photo can't be fetched
+  // on demand, so skip the request rather than take a 404 in the console.
+  const isPhotoCached = !!profilePhotoPath;
+  const isImageLoadable = !isAccount || isActive !== false || isPhotoCached;
+
+  const shouldRenderImage =
+    (isAccount ? (hasProfilePhoto ?? (photoVersion ?? 0) > 0) : photoVersion != null) &&
+    isImageLoadable;
 
   const showFallback = !shouldRenderImage || failedUrl === photoUrl;
 
@@ -70,20 +73,20 @@ export function ChatAvatar({
   // Determine fallback initials
   const initial = getAvatarInitial(chatTitle, "?");
 
-  // Determine gradient color based on chatId or colorId
   const isBot = chatType === "bot" || (chatTitle?.toLowerCase().endsWith("bot") ?? false);
   const isGroup = chatType === "group" || chatType === "supergroup";
   const isChannel = chatType === "channel";
 
-  let gradient = AVATAR_COLORS[Math.abs(colorId ?? (chatId ?? 0)) % AVATAR_COLORS.length];
+  // Shared flat palette from lib/avatar — the same colors AccountAvatar uses.
+  let backgroundColor = getTelegramAvatarColor(chatId ?? accountId, colorId);
   if (isSavedMessages || isTelegram) {
-    gradient = AVATAR_COLORS[5]; // Blue
+    backgroundColor = "#408ACF"; // Blue
   } else if (isBot) {
-    gradient = AVATAR_COLORS[1]; // Orange
+    backgroundColor = "#F68136"; // Orange
   } else if (isGroup) {
-    gradient = AVATAR_COLORS[3]; // Green
+    backgroundColor = "#46BA43"; // Green
   } else if (isChannel) {
-    gradient = AVATAR_COLORS[2]; // Violet
+    backgroundColor = "#6C61DF"; // Violet
   }
 
   return (
@@ -93,9 +96,7 @@ export function ChatAvatar({
         sizeClassName,
         className
       )}
-      style={{
-        background: `linear-gradient(135deg, ${gradient.top}, ${gradient.bottom})`,
-      }}
+      style={{ backgroundColor }}
     >
       {!showFallback && (
         <img

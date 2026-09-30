@@ -17,6 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export default function AdminRedeemCodesPage() {
@@ -340,25 +348,25 @@ function RedeemCodesContent() {
         </div>
       ) : (
         <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.code")}</th>
-                <th className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.type")}</th>
-                <th className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.used")}</th>
-                <th className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.status")}</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.createdBy")}</th>
-                <th className="text-center py-3 px-4 font-medium text-gray-500">{_("admin.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="text-sm">
+            <TableHeader>
+              <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
+                <TableHead className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.code")}</TableHead>
+                <TableHead className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.type")}</TableHead>
+                <TableHead className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.used")}</TableHead>
+                <TableHead className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.status")}</TableHead>
+                <TableHead className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.createdBy")}</TableHead>
+                <TableHead className="text-center py-3 px-4 font-medium text-gray-500">{_("admin.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.codes.map((c) => {
                 const isExpired = c.expires_at && new Date(c.expires_at) < new Date();
                 const isMaxed = c.used_count >= c.max_uses;
                 const effectiveStatus = c.is_active && !isExpired && !isMaxed;
                 return (
-                  <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">
+                  <TableRow key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <TableCell className="py-3 px-4 whitespace-normal">
                       <code className="font-mono text-xs bg-gray-100 px-2 py-1 rounded font-semibold text-gray-900">{c.code}</code>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {c.code_type === "subscription" ? (
@@ -367,29 +375,29 @@ function RedeemCodesContent() {
                           <>{c.amount?.toLocaleString()} credits</>
                         )}
                       </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-center">
                       <span className={cn(
                         "text-xs font-medium px-2 py-1 rounded-lg",
                         c.code_type === "subscription" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
                       )}>
                         {c.code_type === "subscription" ? _("adminRedeem.typeSubscription") : _("adminRedeem.typeBalance")}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-center text-gray-600">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-center text-gray-600">
                       {c.used_count}/{c.max_uses}
-                    </td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-center">
                       {effectiveStatus ? (
                         <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded-lg">{_("adminRedeem.active")}</span>
                       ) : (
                         <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded-lg">{_("adminRedeem.inactive")}</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 whitespace-normal">
                       <span className="text-gray-600 text-xs">{c.created_by_email}</span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-center">
                       <button
                         onClick={() => setDeleteConfirm(c)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -397,12 +405,12 @@ function RedeemCodesContent() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           {data.total > data.codes.length && (
             <div className="p-3 text-center text-xs text-gray-400">
               Showing {data.codes.length} of {data.total} codes

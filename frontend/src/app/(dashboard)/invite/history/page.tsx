@@ -15,6 +15,14 @@ import { useAuthStore } from "@/store/auth-store";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
   UserPlus,
   Play,
   Pause,
@@ -142,29 +150,29 @@ export default function InviteHistoryPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <tr>
-                  <th className="text-left px-4 py-3">{_("invite.date")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.destination")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.status")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.progress")}</th>
-                  <th className="text-left px-4 py-3">
+            <Table>
+              <TableHeader className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <TableRow className="hover:bg-gray-50/75">
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.date")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.destination")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.status")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.progress")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">
                     {_("invite.invited")} / {_("invite.failed")}
-                  </th>
-                  <th className="text-right px-4 py-3">{_("invite.actions")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+                  </TableHead>
+                  <TableHead className="text-right px-4 py-3 font-semibold text-gray-500">{_("invite.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100">
                 {jobs.map((job: InviteJob) => (
-                  <tr key={job.id} className="hover:bg-gray-50/75 transition-colors">
-                    <td className="px-4 py-3.5 text-xs text-gray-700 whitespace-nowrap">
+                  <TableRow key={job.id} className="hover:bg-gray-50/75 transition-colors">
+                    <TableCell className="px-4 py-3.5 text-xs text-gray-700 whitespace-nowrap">
                       {new Date(job.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs font-semibold text-gray-900 truncate max-w-48">
+                    </TableCell>
+                    <TableCell className="px-4 py-3.5 text-xs font-semibold text-gray-900 truncate max-w-48">
                       {job.destination_group}
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="px-4 py-3.5 whitespace-normal">
                       <span
                         className={cn(
                           "px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border",
@@ -178,8 +186,8 @@ export default function InviteHistoryPage() {
                       >
                         {job.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="px-4 py-3.5 whitespace-normal">
                       <div className="flex items-center gap-2">
                         <div className="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                           <div
@@ -192,8 +200,8 @@ export default function InviteHistoryPage() {
                         </div>
                         <span className="text-xs font-mono text-gray-500">{job.progress}%</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs font-mono">
+                    </TableCell>
+                    <TableCell className="px-4 py-3.5 text-xs font-mono whitespace-normal">
                       <span className="text-green-700 dark:text-green-400 font-bold">{job.invited_count}</span>
                       <span className="text-gray-400"> / </span>
                       <span className="text-rose-700 dark:text-rose-400 font-bold">{job.fail_count}</span>
@@ -202,8 +210,8 @@ export default function InviteHistoryPage() {
                           (+{job.skip_count} skip)
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
+                    </TableCell>
+                    <TableCell className="px-4 py-3.5 text-right whitespace-normal">
                       <div className="flex items-center gap-1 justify-end">
                         <Link
                           href={`/invite/logs?job_id=${job.id}`}
@@ -258,11 +266,11 @@ export default function InviteHistoryPage() {
                           </>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}

@@ -40,31 +40,6 @@ import { TgIcon } from "./helpers";
 import { AccountSwitcher } from "./AccountSwitcher";
 import { ChatAvatar } from "./ChatAvatar";
 
-// Telegram-style avatar colors (matching tweb)
-const AVATAR_COLORS = [
-  { top: "#D45246", bottom: "#D45246" },
-  { top: "#F68136", bottom: "#F68136" },
-  { top: "#6C61DF", bottom: "#6C61DF" },
-  { top: "#46BA43", bottom: "#46BA43" },
-  { top: "#28C9B7", bottom: "#28C9B7" },
-  { top: "#408ACF", bottom: "#408ACF" },
-  { top: "#D95574", bottom: "#D95574" },
-];
-
-function getChatAvatarColor(chatId: number, colorId?: number | null) {
-  if (colorId !== undefined && colorId !== null) {
-    return AVATAR_COLORS[Math.abs(colorId) % AVATAR_COLORS.length];
-  }
-  return AVATAR_COLORS[Math.abs(chatId) % AVATAR_COLORS.length];
-}
-
-const CHAT_TYPE_COLORS: Record<string, { top: string; bottom: string }> = {
-  group: { top: "#9AD164", bottom: "#46BA43" },
-  supergroup: { top: "#9AD164", bottom: "#46BA43" },
-  channel: { top: "#B694F9", bottom: "#6C61DF" },
-  bot: { top: "#FEBB5B", bottom: "#F68136" },
-};
-
 interface ChatLeftColumnProps {
   selectedAccount: string;
   setSelectedAccount: (id: string) => void;
@@ -303,6 +278,8 @@ export function ChatLeftColumn({
                           colorId={currentAccount.color_id}
                           hasProfilePhoto={currentAccount.has_profile_photo}
                           photoVersion={currentAccount.photo_version}
+                          isActive={currentAccount.is_active}
+                          profilePhotoPath={currentAccount.profile_photo_path}
                           sizeClassName="w-11 h-11 text-base font-bold"
                         />
                       <div className="min-w-0 text-left">
@@ -700,18 +677,6 @@ export function ChatLeftColumn({
                   const isSavedMessages = chat.chat_type === "saved" || chat.title === "Saved Messages" || chat.chat_type === "self";
                   const isTelegram = chat.chat_id === 777000 || chat.username?.toLowerCase() === "telegram" || chat.title === "Telegram";
                   const isBot = chat.chat_type === "bot" || (!!chat.username && chat.username.toLowerCase().endsWith("bot"));
-                  const isGroup = chat.chat_type === "group" || chat.chat_type === "supergroup";
-                  const isChannel = chat.chat_type === "channel";
-
-                  const avatarColor = isSavedMessages || isTelegram
-                    ? { top: "#408ACF", bottom: "#408ACF" }
-                    : isBot
-                    ? { top: "#F68136", bottom: "#F68136" }
-                    : isGroup
-                    ? { top: "#46BA43", bottom: "#46BA43" }
-                    : isChannel
-                    ? { top: "#6C61DF", bottom: "#6C61DF" }
-                    : getChatAvatarColor(chat.chat_id, chat.color_id);
 
                   return (
                     <div

@@ -10,6 +10,14 @@ import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
   ClipboardList,
   Search,
   Plus,
@@ -181,19 +189,19 @@ function InviteLogsContent() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <tr>
-                  <th className="text-left px-4 py-3">{_("invite.colUser")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colUsername")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colSource")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colAccount")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colStatus")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colErrorType")}</th>
-                  <th className="text-left px-4 py-3">{_("invite.colTime")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+            <Table>
+              <TableHeader className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <TableRow className="hover:bg-gray-50/75">
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colUser")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colUsername")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colSource")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colAccount")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colStatus")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colErrorType")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.colTime")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100">
                 {logs.map((log) => {
                   const accUsed = accounts?.find((a) => a.id === log.account_id_used);
                   const accName = accUsed
@@ -203,20 +211,20 @@ function InviteLogsContent() {
                     : "—";
 
                   return (
-                    <tr key={log.id} className="hover:bg-gray-50/75 transition-colors">
-                      <td className="px-4 py-3 text-xs font-semibold text-gray-900">
+                    <TableRow key={log.id} className="hover:bg-gray-50/75 transition-colors">
+                      <TableCell className="px-4 py-3 text-xs font-semibold text-gray-900 whitespace-normal">
                         {log.first_name || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs font-mono text-gray-600">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs font-mono text-gray-600 whitespace-normal">
                         {log.username ? `@${log.username}` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 font-mono truncate max-w-36">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-500 font-mono truncate max-w-36">
                         {log.source_group || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-700">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-700 whitespace-normal">
                         {accName}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 whitespace-normal">
                         <span
                           className={cn(
                             "px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border inline-flex items-center gap-1",
@@ -232,18 +240,18 @@ function InviteLogsContent() {
                           {log.status === "already_member" && <HelpCircle className="h-3 w-3" />}
                           {log.status}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-rose-600 font-mono">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-rose-600 font-mono whitespace-normal">
                         {log.error_type || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                         {new Date(log.invited_at).toLocaleTimeString()}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}

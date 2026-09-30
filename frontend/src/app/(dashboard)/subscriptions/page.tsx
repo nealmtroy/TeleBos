@@ -46,6 +46,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 const PLAN_KEYS = ["basic", "pro", "premium"] as const;
 type PlanKey = (typeof PLAN_KEYS)[number];
@@ -522,16 +530,16 @@ export default function SubscriptionPage() {
 
           {showMatrix && (
             <div className="border-t border-slate-200 dark:border-slate-800 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
-                    <th className="text-left py-3.5 px-6 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-950/60">
+                    <TableHead className="py-3.5 px-6 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {_("subscription.feature")}
-                    </th>
+                    </TableHead>
                     {PLAN_KEYS.map((pk) => {
                       const pm = PLAN_META[pk];
                       return (
-                        <th
+                        <TableHead
                           key={pk}
                           className="text-center py-3.5 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 capitalize whitespace-nowrap"
                         >
@@ -539,39 +547,39 @@ export default function SubscriptionPage() {
                             <pm.icon className={cn("h-3.5 w-3.5", pm.iconColor)} />
                             <span>{pk}</span>
                           </div>
-                        </th>
+                        </TableHead>
                       );
                     })}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {FEATURE_MATRIX.map((row, i) => (
-                    <tr
+                    <TableRow
                       key={row.key}
                       className={cn(
                         "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors",
                         i % 2 === 0 ? "bg-white dark:bg-slate-900/30" : "bg-slate-50/25 dark:bg-slate-950/30"
                       )}
                     >
-                      <td className="py-3 px-6 text-xs font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                      <TableCell className="py-3 px-6 text-xs font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         {_(`subscription.${row.key}` as any)}
-                      </td>
+                      </TableCell>
                       {PLAN_KEYS.map((pk) => {
                         const included = row[pk];
                         return (
-                          <td key={pk} className="text-center py-3 px-4">
+                          <TableCell key={pk} className="text-center py-3 px-4">
                             {included ? (
                               <Check className="h-4 w-4 text-primary-600 dark:text-primary-400 mx-auto" />
                             ) : (
                               <Minus className="h-4 w-4 text-slate-300 dark:text-slate-600 mx-auto" />
                             )}
-                          </td>
+                          </TableCell>
                         );
                       })}
-                    </tr>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>

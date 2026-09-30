@@ -193,7 +193,10 @@ export function MessagePane({
   });
 
   const { data: autocompleteMembersData } = useQuery({
-    queryKey: ["chat-members", accountId, chatId],
+    // Distinct key from ChatRightColumn's ["chat-members", …]: this stores a
+    // bare array, the drawer right column stores { members, total }. Sharing
+    // the key made the drawer read undefined.members and render an empty list.
+    queryKey: ["chat-members-suggest", accountId, chatId],
     queryFn: async () => {
       const { data } = await api.get(`/accounts/${accountId}/chats/${chatId}/members?limit=100`);
       return data?.members || [];

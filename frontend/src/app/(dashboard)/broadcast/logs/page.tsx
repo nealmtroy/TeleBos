@@ -9,6 +9,14 @@ import { type BroadcastJob, type BroadcastLog, type BroadcastCycleDetail } from 
 import { cn, formatDate } from "@/lib/utils";
 import { TableSkeleton } from "@/components/ui/skeleton-cards";
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
   CheckCircle,
   XCircle,
   FileDown,
@@ -303,39 +311,39 @@ export default function BroadcastLogsPage() {
 
                 return (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colCycle")}</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colGroup")}</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">Account</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colStatus")}</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colErrorType")}</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colMessage")}</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colSentText")}</th>
-                          <th className="text-left px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colTime")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colCycle")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colGroup")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">Account</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colStatus")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colErrorType")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colMessage")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colSentText")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colTime")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-gray-100">
                         {logs.map((log, idx) => {
                           const accountName = log.account_name || (log.account_id_used
                             ? accountMap.get(log.account_id_used) || "Deleted Account"
                             : "—");
                           return (
-                            <tr key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-gray-50 transition">
-                              <td className="px-4 py-3">
+                            <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-gray-50 transition">
+                              <TableCell className="px-4 py-3 whitespace-normal">
                                 <span className="inline-flex items-center gap-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
                                   <Layers className="h-3 w-3" />
                                   C{expandedCycle}
                                 </span>
-                              </td>
-                              <td className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">
                                 {log.group_identifier}
-                              </td>
-                              <td className="px-4 py-3 text-gray-700 max-w-[150px] truncate" title={accountName}>
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-700 max-w-[150px] truncate" title={accountName}>
                                 {accountName}
-                              </td>
-                              <td className="px-4 py-3">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 whitespace-normal">
                                 {log.status === "success" ? (
                                   <span className="inline-flex items-center gap-1 text-green-700">
                                     <CheckCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.success")}
@@ -345,8 +353,8 @@ export default function BroadcastLogsPage() {
                                     <XCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.error")}
                                   </span>
                                 )}
-                              </td>
-                              <td className="px-4 py-3">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 whitespace-normal">
                                 {log.error_type ? (
                                   <span
                                     className={cn(
@@ -365,21 +373,21 @@ export default function BroadcastLogsPage() {
                                 ) : (
                                   <span className="text-gray-300">—</span>
                                 )}
-                              </td>
-                              <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
                                 {log.error_message || "—"}
-                              </td>
-                              <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
                                 {log.sent_text || "—"}
-                              </td>
-                              <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                                 {formatDate(log.sent_at)}
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           );
                         })}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 );
               }}

@@ -24,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { MessageItem } from "./types";
 import { getAvatarGradient } from "./helpers";
+import { getChatPhotoUrl } from "@/lib/avatar";
 
 interface ChatRightColumnProps {
   showRightDrawer: boolean;
@@ -203,7 +204,7 @@ export function ChatRightColumn({
           {/* Full Cover Image Background */}
           {isAuthenticated && accountId && photoVersion != null ? (
             <img
-              src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/photo?v=${photoVersion}`}
+              src={getChatPhotoUrl(accountId, chatId, photoVersion)}
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}

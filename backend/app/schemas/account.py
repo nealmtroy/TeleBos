@@ -181,25 +181,31 @@ class AccountResponse(BaseModel):
                     except Exception:
                         pass
 
-        # Check if profile photo actually exists on disk
-        import os
-        from app.utils.photo_helper import get_photo_path
+        # Report the portable filename only when the bytes are really on disk.
+        # A legacy absolute path that still matches is reported as its filename.
+        from app.utils.photo_helper import get_photo_filename, is_valid_photo_path
 
         if isinstance(data, dict):
             account_id = data.get("id")
-            if account_id and data.get("profile_photo_path"):
-                expected_path = get_photo_path(str(account_id))
-                if not os.path.exists(expected_path):
-                    data["profile_photo_path"] = None
+            if account_id is not None:
+                stored = data.get("profile_photo_path")
+                data["profile_photo_path"] = (
+                    get_photo_filename(str(account_id))
+                    if is_valid_photo_path(str(account_id), stored)
+                    else None
+                )
         else:
             account_id = getattr(data, "id", None)
-            if account_id and getattr(data, "profile_photo_path", None):
-                expected_path = get_photo_path(str(account_id))
-                if not os.path.exists(expected_path):
-                    try:
-                        data.profile_photo_path = None
-                    except Exception:
-                        pass
+            if account_id is not None:
+                stored = getattr(data, "profile_photo_path", None)
+                try:
+                    data.profile_photo_path = (
+                        get_photo_filename(str(account_id))
+                        if is_valid_photo_path(str(account_id), stored)
+                        else None
+                    )
+                except Exception:
+                    pass
 
         return data
 

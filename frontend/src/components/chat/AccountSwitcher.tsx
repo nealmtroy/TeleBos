@@ -10,21 +10,6 @@ interface AccountSwitcherProps {
   connected: boolean;
 }
 
-// Telegram-style avatar color palette (matching tweb)
-const AVATAR_COLORS = [
-  { top: "#FF845E", bottom: "#D45246" }, // red
-  { top: "#FEBB5B", bottom: "#F68136" }, // orange
-  { top: "#B694F9", bottom: "#6C61DF" }, // violet
-  { top: "#9AD164", bottom: "#46BA43" }, // green
-  { top: "#53EDD6", bottom: "#28C9B7" }, // cyan
-  { top: "#5CAFFA", bottom: "#408ACF" }, // blue
-  { top: "#FF8AAC", bottom: "#D95574" }, // pink
-];
-
-function getAccountColor(index: number) {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length];
-}
-
 /**
  * Scalable Account Switcher — replaces native <select> dropdown.
  * Shows compact avatar in header; click opens full account panel.
@@ -121,9 +106,11 @@ export function AccountSwitcher({
           <ChatAvatar
             accountId={selectedAcc.id}
             chatTitle={displayName}
-            colorId={activeAccounts.indexOf(selectedAcc)}
+            colorId={selectedAcc.color_id ?? selectedAcc.telegram_id}
             hasProfilePhoto={selectedAcc.has_profile_photo}
             photoVersion={selectedAcc.photo_version}
+            isActive={selectedAcc.is_active}
+            profilePhotoPath={selectedAcc.profile_photo_path}
             sizeClassName="w-[36px] h-[36px] text-sm"
           />
         )}
@@ -259,9 +246,8 @@ export function AccountSwitcher({
                 {search ? "No accounts found" : "No active accounts"}
               </div>
             ) : (
-              filteredAccounts.map((acc, idx) => {
+              filteredAccounts.map((acc) => {
                 const isActive = acc.id === selectedAccount;
-                const color = getAccountColor(idx);
                 const name =
                   [acc.first_name, acc.last_name].filter(Boolean).join(" ") || acc.phone || "Unknown";
 
@@ -280,9 +266,11 @@ export function AccountSwitcher({
                     <ChatAvatar
                       accountId={acc.id}
                       chatTitle={name}
-                      colorId={activeAccounts.indexOf(acc)}
+                      colorId={acc.color_id ?? acc.telegram_id}
                       hasProfilePhoto={acc.has_profile_photo}
                       photoVersion={acc.photo_version}
+                      isActive={acc.is_active}
+                      profilePhotoPath={acc.profile_photo_path}
                       sizeClassName="w-12 h-12 text-lg font-medium"
                     />
 

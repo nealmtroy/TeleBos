@@ -32,6 +32,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn, formatRelative } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
@@ -236,48 +244,48 @@ function AutoReplyManagementContent() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
-                <th className="py-3 px-4">Account</th>
-                <th className="py-3 px-4">Owner / User</th>
-                <th className="py-3 px-4 min-w-[220px]">Auto-Reply Text</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Total Replied</th>
-                <th className="py-3 px-4">Last Sent</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+          <Table className="w-full text-left border-collapse text-xs">
+            <TableHeader>
+              <TableRow className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold hover:bg-gray-50">
+                <TableHead className="py-3 px-4 text-gray-500">Account</TableHead>
+                <TableHead className="py-3 px-4 text-gray-500">Owner / User</TableHead>
+                <TableHead className="py-3 px-4 min-w-[220px] text-gray-500">Auto-Reply Text</TableHead>
+                <TableHead className="py-3 px-4 text-center text-gray-500">Status</TableHead>
+                <TableHead className="py-3 px-4 text-center text-gray-500">Total Replied</TableHead>
+                <TableHead className="py-3 px-4 text-gray-500">Last Sent</TableHead>
+                <TableHead className="py-3 px-4 text-right text-gray-500">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-gray-100">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded w-28" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded w-36" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded w-48" /></td>
-                    <td className="py-4 px-4"><div className="h-5 bg-gray-200 rounded w-16 mx-auto" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded w-12 mx-auto" /></td>
-                    <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded w-20" /></td>
-                    <td className="py-4 px-4"><div className="h-6 bg-gray-200 rounded w-16 ml-auto" /></td>
-                  </tr>
+                  <TableRow key={i} className="animate-pulse">
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-28" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-36" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-48" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-5 bg-gray-200 rounded w-16 mx-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-12 mx-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-20" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-6 bg-gray-200 rounded w-16 ml-auto" /></TableCell>
+                  </TableRow>
                 ))
               ) : !data || data.items.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center text-gray-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-16 text-center text-gray-400 whitespace-normal">
                     <Bot className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                     <p className="font-medium text-gray-600 text-sm">No auto-reply jobs found</p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {search ? "Try adjusting your search query" : "No accounts have auto-reply configured yet"}
                     </p>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 data.items.map((item: AdminAutoReplyItem) => {
                   const isRunning = item.status === "running";
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50/60 transition-colors">
+                    <TableRow key={item.id} className="hover:bg-gray-50/60 transition-colors">
                       {/* Account info */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-gray-100 text-gray-600 shrink-0">
                             <Smartphone className="h-3.5 w-3.5" />
@@ -292,10 +300,10 @@ function AutoReplyManagementContent() {
                             </p>
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Owner / User */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="flex items-center gap-1.5">
                           <UserIcon className="h-3 w-3 text-gray-400 shrink-0" />
                           <div className="min-w-0">
@@ -305,10 +313,10 @@ function AutoReplyManagementContent() {
                             )}
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Auto-Reply Text */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         {item.auto_reply_text ? (
                           <div className="flex items-center gap-2 group max-w-sm">
                             <span
@@ -333,10 +341,10 @@ function AutoReplyManagementContent() {
                         ) : (
                           <span className="text-gray-400 italic text-xs">None configured</span>
                         )}
-                      </td>
+                      </TableCell>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4 text-center">
+                      <TableCell className="py-3.5 px-4 text-center whitespace-normal">
                         <span
                           className={cn(
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
@@ -359,17 +367,17 @@ function AutoReplyManagementContent() {
                           />
                           {isRunning ? "Running" : item.auto_reply_enabled ? "Stopped" : "Disabled"}
                         </span>
-                      </td>
+                      </TableCell>
 
                       {/* Total Replied */}
-                      <td className="py-3.5 px-4 text-center">
+                      <TableCell className="py-3.5 px-4 text-center whitespace-normal">
                         <span className="font-bold text-gray-900">
                           {item.total_replied.toLocaleString()}
                         </span>
-                      </td>
+                      </TableCell>
 
                       {/* Last Sent */}
-                      <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
                         {item.last_replied_at ? (
                           <div className="flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3 text-gray-400" />
@@ -378,10 +386,10 @@ function AutoReplyManagementContent() {
                         ) : (
                           <span className="text-gray-300 text-xs">—</span>
                         )}
-                      </td>
+                      </TableCell>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
+                      <TableCell className="py-3.5 px-4 text-right whitespace-normal">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -398,13 +406,13 @@ function AutoReplyManagementContent() {
                           <Power className="h-3 w-3 mr-1" />
                           {item.auto_reply_enabled ? "Disable" : "Enable"}
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Pagination Bar */}

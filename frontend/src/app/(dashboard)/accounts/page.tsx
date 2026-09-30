@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { useAccounts, useAccountsPaginated, useAccountsSummary, type Account } from "@/hooks/use-accounts";
+import { useAccountsPaginated, useAccountsSummary, type Account } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountCard } from "@/components/accounts/account-card";
 import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
@@ -63,7 +63,6 @@ export default function AccountsListPage() {
   };
 
   const { data: accountsSummary } = useAccountsSummary();
-  const { data: accountsData } = useAccounts(); // For limit checks and offline calculations
   const { data: paginatedData, isLoading, error } = useAccountsPaginated({
     page,
     limit: PAGE_SIZE,
@@ -82,7 +81,6 @@ export default function AccountsListPage() {
     },
   });
 
-  const allAccounts = Array.isArray(accountsData) ? accountsData : [];
   const folders = Array.isArray(foldersData) ? foldersData : [];
 
   // Paginated accounts loaded from backend
@@ -96,7 +94,7 @@ export default function AccountsListPage() {
     }
   }, [page, totalPages]);
 
-  const totalUsedAccounts = accountsSummary?.total ?? allAccounts.length;
+  const totalUsedAccounts = accountsSummary?.total ?? paginatedData?.total ?? 0;
   const accountLimit = ROLE_LIMITS[user?.role || "basic"] ?? 1;
   const atLimit = totalUsedAccounts >= accountLimit;
 

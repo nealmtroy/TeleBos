@@ -49,6 +49,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 15;
@@ -673,15 +681,15 @@ function BroadcastManagementContent() {
       {/* ── Broadcast Jobs Data Table ───────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
-                <th className="py-3.5 px-4">User</th>
-                <th className="py-3.5 px-4">Job Info / Target</th>
-                <th className="py-3.5 px-4">Accounts</th>
+          <Table className="w-full text-left border-collapse text-sm">
+            <TableHeader>
+              <TableRow className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider hover:bg-slate-50/80">
+                <TableHead className="py-3.5 px-4 text-slate-600">User</TableHead>
+                <TableHead className="py-3.5 px-4 text-slate-600">Job Info / Target</TableHead>
+                <TableHead className="py-3.5 px-4 text-slate-600">Accounts</TableHead>
                 {/* Clickable Progress/Sent sort header */}
-                <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group"
+                <TableHead
+                  className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/80 transition-colors select-none group text-slate-600"
                   onClick={handleToggleSentSort}
                   title="Click to sort by sent count"
                 >
@@ -695,31 +703,31 @@ function BroadcastManagementContent() {
                       <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600" />
                     )}
                   </div>
-                </th>
-                <th className="py-3.5 px-4 text-center">Mode & Loop</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Timestamps</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
+                </TableHead>
+                <TableHead className="py-3.5 px-4 text-center text-slate-600">Mode & Loop</TableHead>
+                <TableHead className="py-3.5 px-4 text-slate-600">Status</TableHead>
+                <TableHead className="py-3.5 px-4 text-slate-600">Timestamps</TableHead>
+                <TableHead className="py-3.5 px-4 text-right text-slate-600">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100">
               {listLoading ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                <TableRow>
+                  <TableCell colSpan={8} className="py-16 text-center text-slate-400 whitespace-normal">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-500" />
                     <p className="text-sm">Loading broadcast jobs...</p>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : !listData?.jobs || listData.jobs.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                <TableRow>
+                  <TableCell colSpan={8} className="py-16 text-center text-slate-400 whitespace-normal">
                     <Radio className="h-10 w-10 mx-auto mb-2 text-slate-300" />
                     <p className="font-medium text-slate-600">No broadcast jobs found</p>
                     <p className="text-xs text-slate-400 mt-1">
                       Try changing your search keywords or status filters.
                     </p>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 listData.jobs.map((job) => {
                   const statusInfo = STATUS_BADGES[job.status] || STATUS_BADGES.cancelled;
@@ -727,7 +735,7 @@ function BroadcastManagementContent() {
                   const progressPct = Math.min(100, Math.max(0, job.progress || 0));
 
                   return (
-                    <tr
+                    <TableRow
                       key={job.id}
                       className={cn(
                         "hover:bg-slate-50/60 transition-colors cursor-pointer group",
@@ -736,7 +744,7 @@ function BroadcastManagementContent() {
                       onClick={() => setSelectedJob(job)}
                     >
                       {/* User Column */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-semibold text-xs shrink-0">
                             {(job.user_email || "U")[0].toUpperCase()}
@@ -752,10 +760,10 @@ function BroadcastManagementContent() {
                             )}
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Job Info / Target */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="font-medium text-slate-800 truncate max-w-[200px]">
                           {job.group_list_name || "Custom Target List"}
                         </div>
@@ -766,10 +774,10 @@ function BroadcastManagementContent() {
                             ID: {job.id.slice(0, 8)}
                           </span>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Accounts Column: Display User ID, Account Name, and Duplicate Badge */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="space-y-1.5 max-w-[220px]">
                           {/* Duplicate Badge */}
                           {job.has_duplicate_accounts && (
@@ -826,10 +834,10 @@ function BroadcastManagementContent() {
                             </span>
                           )}
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Progress / Sent Column */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="w-36 space-y-1">
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-semibold text-emerald-600">
@@ -846,10 +854,10 @@ function BroadcastManagementContent() {
                             />
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Mode & Loop Column */}
-                      <td className="py-3.5 px-4 text-center">
+                      <TableCell className="py-3.5 px-4 text-center whitespace-normal">
                         {job.loop_enabled ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                             <Repeat className="h-3 w-3" />
@@ -860,10 +868,10 @@ function BroadcastManagementContent() {
                             Single Run
                           </span>
                         )}
-                      </td>
+                      </TableCell>
 
                       {/* Status Column */}
-                      <td className="py-3.5 px-4">
+                      <TableCell className="py-3.5 px-4 whitespace-normal">
                         <span
                           className={cn(
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
@@ -873,10 +881,10 @@ function BroadcastManagementContent() {
                           <span className={cn("h-1.5 w-1.5 rounded-full", statusInfo.dot)} />
                           {statusInfo.label}
                         </span>
-                      </td>
+                      </TableCell>
 
                       {/* Timestamps Column */}
-                      <td className="py-3.5 px-4 text-xs text-slate-500">
+                      <TableCell className="py-3.5 px-4 text-xs text-slate-500 whitespace-normal">
                         <div>
                           {new Date(job.created_at).toLocaleDateString(undefined, {
                             month: "short",
@@ -893,11 +901,11 @@ function BroadcastManagementContent() {
                             second: "2-digit",
                           })}
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Actions Column */}
-                      <td
-                        className="py-3.5 px-4 text-right"
+                      <TableCell
+                        className="py-3.5 px-4 text-right whitespace-normal"
                         onClick={(e) => e.stopPropagation()} // Prevent opening details drawer on action click
                       >
                         <div className="flex items-center justify-end gap-1.5">
@@ -951,13 +959,13 @@ function BroadcastManagementContent() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* ── Pagination Footer ──────────────────────────────────────────────── */}

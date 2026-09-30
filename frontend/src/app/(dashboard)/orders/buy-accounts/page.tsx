@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
   useMarketplaceStock,
@@ -350,25 +351,25 @@ function CountryAccountsList({
       </CardHeader>
       <CardContent className="p-0 divide-y divide-gray-150">
         <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-gray-50 text-gray-500 font-medium">
-                <th className="text-left py-2.5 px-4">Telegram User ID</th>
-                <th className="text-center py-2.5 px-3">Umur Akun</th>
-                <th className="text-center py-2.5 px-3">Spam Bot</th>
-                <th className="text-center py-2.5 px-3">Kontak</th>
-                <th className="text-center py-2.5 px-3">2FA Password</th>
-                <th className="text-center py-2.5 px-3">Recovery Email</th>
-                <th className="text-center py-2.5 px-4">Price</th>
-                <th className="text-right py-2.5 px-4">Action</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="w-full text-xs">
+            <TableHeader>
+              <TableRow className="bg-gray-50 hover:bg-gray-50 text-gray-500 font-medium">
+                <TableHead className="text-left py-2.5 px-4">Telegram User ID</TableHead>
+                <TableHead className="text-center py-2.5 px-3">Umur Akun</TableHead>
+                <TableHead className="text-center py-2.5 px-3">Spam Bot</TableHead>
+                <TableHead className="text-center py-2.5 px-3">Kontak</TableHead>
+                <TableHead className="text-center py-2.5 px-3">2FA Password</TableHead>
+                <TableHead className="text-center py-2.5 px-3">Recovery Email</TableHead>
+                <TableHead className="text-center py-2.5 px-4">Price</TableHead>
+                <TableHead className="text-right py-2.5 px-4">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {accounts.map((acc) => {
                 const price = acc.buy_price ?? acc.sell_price ?? 7000;
                 return (
-                  <tr key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
-                    <td className="py-3 px-4 font-mono text-gray-900 font-semibold">
+                  <TableRow key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
+                    <TableCell className="whitespace-nowrap py-3 px-4 font-mono text-gray-900 font-semibold">
                       <div className="flex items-center gap-1.5">
                         <span>{acc.telegram_id || "—"}</span>
                         {acc.is_resale && (
@@ -377,14 +378,14 @@ function CountryAccountsList({
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-3 text-center">
                       <span className="inline-flex items-center gap-1 text-gray-700 font-medium">
                         <Clock className="h-3 w-3 text-gray-400" />
                         {acc.est_reg_date_age || "—"}
                       </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-3 text-center">
                       {acc.spam_status === "normal" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle2 className="h-3 w-3" /> Bersih
@@ -398,14 +399,14 @@ function CountryAccountsList({
                           Belum Dicek
                         </span>
                       )}
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-3 text-center">
                       <span className="inline-flex items-center gap-1 font-mono text-gray-700 font-medium">
                         <Users className="h-3 w-3 text-gray-400" />
                         {acc.contacts_count || 0}
                       </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-3 text-center">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
                         acc.twofa_enabled
@@ -415,8 +416,8 @@ function CountryAccountsList({
                         <Shield className="h-3 w-3" />
                         {acc.twofa_enabled ? "Required" : "Not Required"}
                       </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-3 text-center">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
                         acc.recovery_email_available
@@ -426,14 +427,14 @@ function CountryAccountsList({
                         <Mail className="h-3 w-3" />
                         {acc.recovery_email_available ? "Available" : "Not Available"}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-4 text-center">
                       <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
                         <Tag className="h-3 w-3 text-primary-500" />
                         Rp {price.toLocaleString()}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-4 text-right">
                       <Button
                         size="sm"
                         onClick={() => onBuyClick(acc)}
@@ -443,12 +444,12 @@ function CountryAccountsList({
                         <ShoppingCart className="h-3.5 w-3.5 mr-1" />
                         Buy Now
                       </Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         <div className="sm:hidden divide-y divide-gray-100">

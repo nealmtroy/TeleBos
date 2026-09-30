@@ -8,6 +8,14 @@ import {
   Shield, AlertCircle, ClipboardList,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
@@ -61,23 +69,23 @@ function RedeemLogsContent() {
       ) : (
         <>
           <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.code")}</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.user")}</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.detail")}</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500">{_("adminRedeem.redeemedAt")}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table className="w-full text-sm">
+              <TableHeader>
+                <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
+                  <TableHead className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.code")}</TableHead>
+                  <TableHead className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.user")}</TableHead>
+                  <TableHead className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.detail")}</TableHead>
+                  <TableHead className="text-right py-3 px-4 font-medium text-gray-500">{_("adminRedeem.redeemedAt")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.logs.map((log) => (
-                  <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">
+                  <TableRow key={log.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <TableCell className="py-3 px-4 whitespace-normal">
                       <code className="font-mono text-xs bg-gray-100 px-2 py-1 rounded font-semibold">{log.code}</code>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{log.user_email}</td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-gray-600 whitespace-normal">{log.user_email}</TableCell>
+                    <TableCell className="py-3 px-4 text-center whitespace-normal">
                       {log.detail ? (
                         (() => {
                           try {
@@ -90,14 +98,14 @@ function RedeemLogsContent() {
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-right text-xs text-gray-500">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-right text-xs text-gray-500 whitespace-normal">
                       {log.redeemed_at ? new Date(log.redeemed_at).toLocaleString() : "—"}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* Pagination */}

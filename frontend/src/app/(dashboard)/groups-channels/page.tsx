@@ -176,7 +176,15 @@ function GroupsChannelsContent() {
     isLoading,
     error,
     refetch,
-  } = useChats(selectedAccount, page, 50, chatType);
+  } = useChats(
+    selectedAccount,
+    page,
+    50,
+    chatType,
+    // A never-synced account has no chats yet; skip the doomed first request
+    // and let the auto-sync below populate the list instead.
+    !selectedAccount || !!syncedAt || !isSyncing,
+  );
 
   const chats = chatsData?.chats ?? [];
   const total = chatsData?.total ?? 0;

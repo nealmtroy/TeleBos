@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccounts, useAccountsSummary } from "@/hooks/use-accounts";
+import { useAccountsPaginated, useAccountsSummary, type Account } from "@/hooks/use-accounts";
 import { useT } from "@/lib/i18n";
 import {
   Smartphone,
@@ -19,28 +19,21 @@ import { Badge } from "@/components/ui/badge";
 import { StatsCardSkeleton, AccountRowSkeleton } from "@/components/ui/skeleton-cards";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
 
-interface Account {
-  id: string;
-  phone: string;
-  first_name: string | null;
-  last_name: string | null;
-  username: string | null;
-  telegram_id: number | null;
-  is_active: boolean;
-  photo_version: number;
-  has_profile_photo?: boolean;
-  color_id: number | null;
-  profile_photo_path: string | null;
-}
+const RECENT_ACCOUNTS_LIMIT = 5;
 
 export default function DashboardPage() {
   const _ = useT();
   const { data: accountsSummary } = useAccountsSummary();
-  const { data: accountsData, isLoading } = useAccounts();
-  const accounts = Array.isArray(accountsData) ? (accountsData as unknown as Account[]) : [];
+  // Only the top 5 accounts are rendered below, so fetch 5 rather than the
+  // full unpaginated list the widget used to request.
+  const { data: recentAccountsData, isLoading } = useAccountsPaginated({
+    page: 1,
+    limit: RECENT_ACCOUNTS_LIMIT,
+  });
+  const accounts = (recentAccountsData?.accounts ?? []) as Account[];
 
-  const activeCount = accountsSummary ? accountsSummary.active : (accounts?.filter((a) => a.is_active).length || 0);
-  const totalCount = accountsSummary ? accountsSummary.total : (accounts?.length || 0);
+  const activeCount = accountsSummary?.active ?? 0;
+  const totalCount = accountsSummary?.total ?? recentAccountsData?.total ?? 0;
 
   const stats = [
     {
@@ -209,7 +202,7 @@ export default function DashboardPage() {
           ) : accounts && accounts.length > 0 ? (
             <>
               <div className="divide-y divide-foreground/10">
-                {accounts.slice(0, 5).map((acc) => (
+                {accounts.map((acc) => (
                   <Link
                     key={acc.id}
                     href={`/accounts/${acc.id}`}
@@ -256,13 +249,13 @@ export default function DashboardPage() {
                   </Link>
                 ))}
               </div>
-              {accounts.length > 5 && (
+              {totalCount > accounts.length && (
                 <div className="border-t border-foreground/10 px-4 sm:px-6 py-3.5 bg-slate-50/50 text-center">
                   <Link
                     href="/accounts"
                     className="text-xs font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-1"
                   >
-                    {_("dashboard.viewAllAccounts")} ({accounts.length})
+                    {_("dashboard.viewAllAccounts")} ({totalCount})
                   </Link>
                 </div>
               )}

@@ -31,6 +31,7 @@ from app.utils.photo_helper import (
     ensure_photo_dir as _ensure_photo_dir,
     get_photo_path as _photo_path,
 )
+from app.services.account_service import store_cached_photo
 
 
 async def sync_account_profile(
@@ -113,15 +114,13 @@ async def sync_account_profile(
         if tg_photo_id is not None:
             # Photo was added or changed — download & cache
             try:
-                _ensure_photo_dir()
                 buf = io.BytesIO()
                 downloaded = await client.download_profile_photo(me, file=buf)
                 if downloaded:
                     buf.seek(0)
-                    photo_path = _photo_path(account_id)
-                    with open(photo_path, "wb") as f:
-                        f.write(buf.read())
-                    account.profile_photo_path = photo_path
+                    # Same normalize/resize/relative-filename write path as
+                    # upload and on-demand download.
+                    await store_cached_photo(account, buf.read())
                     account.photo_version += 1
             except Exception as exc:
                 logger.warning(

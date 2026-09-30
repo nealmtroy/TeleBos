@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
   isMarketplaceSellUnknownOutcome,
@@ -157,32 +158,32 @@ export default function SellAccountsPage() {
       {/* Eligible Accounts Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/50 text-gray-500 font-medium">
-                <th className="py-3 px-4 text-left w-10">
+          <Table className="w-full text-sm">
+            <TableHeader>
+              <TableRow className="border-b border-gray-200 hover:bg-gray-50/50 bg-gray-50/50 text-gray-500 font-medium">
+                <TableHead className="py-3 px-4 text-left w-10">
                   <input
                     type="checkbox"
                     checked={selectedIds.length === eligible.length}
                     onChange={handleSelectAll}
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
                   />
-                </th>
-                <th className="py-3 px-4 text-left">Telegram Account</th>
-                <th className="py-3 px-3 text-center">Umur Akun</th>
-                <th className="py-3 px-3 text-center">Spam Bot</th>
-                <th className="py-3 px-3 text-center">Kontak</th>
-                <th className="py-3 px-4 text-left">Username</th>
-                <th className="py-3 px-4 text-left">Telegram ID</th>
-                <th className="py-3 px-4 text-center">Price (Rp)</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="py-3 px-4 text-left">Telegram Account</TableHead>
+                <TableHead className="py-3 px-3 text-center">Umur Akun</TableHead>
+                <TableHead className="py-3 px-3 text-center">Spam Bot</TableHead>
+                <TableHead className="py-3 px-3 text-center">Kontak</TableHead>
+                <TableHead className="py-3 px-4 text-left">Username</TableHead>
+                <TableHead className="py-3 px-4 text-left">Telegram ID</TableHead>
+                <TableHead className="py-3 px-4 text-center">Price (Rp)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {eligible.map((acc) => {
                 const isSelected = selectedIds.includes(acc.id);
                 const price = acc.sell_price || 0;
                 return (
-                  <tr
+                  <TableRow
                     key={acc.id}
                     className={cn(
                       "border-b border-gray-100 hover:bg-gray-50/50 transition-colors last:border-b-0 cursor-pointer",
@@ -190,15 +191,15 @@ export default function SellAccountsPage() {
                     )}
                     onClick={() => handleToggleSelect(acc.id)}
                   >
-                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleSelect(acc.id)}
                         className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
                       />
-                    </td>
-                    <td className="py-3 px-4">
+                    </TableCell>
+                    <TableCell className="whitespace-normal py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center font-bold text-primary-700 text-xs shrink-0">
                           {acc.first_name ? acc.first_name[0].toUpperCase() : "U"}
@@ -217,14 +218,14 @@ export default function SellAccountsPage() {
                           <p className="text-xs font-mono text-gray-500">{acc.phone}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-3 text-center">
                       <span className="inline-flex items-center gap-1 text-xs text-gray-700 font-medium">
                         <Clock className="h-3 w-3 text-gray-400" />
                         {acc.est_reg_date_age || "—"}
                       </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-3 text-center">
                       {acc.spam_status === "normal" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle2 className="h-3 w-3" /> Bersih
@@ -238,23 +239,23 @@ export default function SellAccountsPage() {
                           Belum Dicek
                         </span>
                       )}
-                    </td>
-                    <td className="py-3 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-3 text-center">
                       <span className="inline-flex items-center gap-1 text-xs font-mono font-medium text-gray-700">
                         <Users className="h-3 w-3 text-gray-400" />
                         {acc.contacts_count || 0}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600 font-mono text-xs">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-4 text-gray-600 font-mono text-xs">
                       {acc.username ? `@${acc.username}` : "—"}
-                    </td>
-                    <td className="py-3 px-4 text-gray-600 font-mono text-xs">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-4 text-gray-600 font-mono text-xs">
                       <div className="flex items-center gap-1">
                         <Hash className="h-3 w-3 text-gray-400" />
                         {acc.telegram_id || "—"}
                       </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-3 px-4 text-center">
                       {price > 0 ? (
                         <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold px-2.5 py-1">
                           Rp {price.toLocaleString()}
@@ -262,12 +263,12 @@ export default function SellAccountsPage() {
                       ) : (
                         <span className="text-xs text-gray-400 italic">No price set</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
