@@ -102,6 +102,7 @@ class AccountResponse(BaseModel):
     groups_channels_synced_at: datetime | None = None
     created_at: datetime
     sell_price: int | None = None
+    buy_price: int | None = None
     for_sale: bool = False
 
     spam_status: str | None = "unknown"

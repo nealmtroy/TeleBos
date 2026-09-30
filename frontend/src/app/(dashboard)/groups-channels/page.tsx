@@ -193,7 +193,7 @@ function GroupsChannelsContent() {
     : chats;
 
   return (
-    <div className="h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 flex flex-col">
+    <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-7rem)] -m-4 md:-m-6 bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 flex flex-col">
       {/* Header with account selector */}
       <div className="p-4 border-b border-gray-100 dark:border-slate-700 space-y-3">
         <div className="flex items-center justify-between">
@@ -402,7 +402,7 @@ function GroupsChannelsContent() {
                     {linkToCopy && (
                       <button
                         onClick={(e) => handleCopyLink(e, chat)}
-                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-primary-600 transition flex-shrink-0 relative group"
+                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-primary-600 transition shrink-0 relative group"
                         title={_("groupsChannels.copyLink")}
                       >
                         {copiedChatId === chat.chat_id ? (

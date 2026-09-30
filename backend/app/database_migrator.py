@@ -608,6 +608,34 @@ def run_migrations(connection):
         )
     )
 
+    # ── Prefix pricing: per-prefix buy price alongside the sell price ──
+    if "telegram_id_prefix_prices" in tables:
+        price_cols = [c["name"] for c in inspector.get_columns("telegram_id_prefix_prices")]
+        if "buy_price" not in price_cols:
+            connection.execute(
+                text(
+                    "ALTER TABLE telegram_id_prefix_prices "
+                    "ADD COLUMN buy_price BIGINT DEFAULT NULL"
+                )
+            )
+            # Backfill so existing prefixes keep a sane margin instead of
+            # falling back to the global buy price only at read time.
+            connection.execute(
+                text(
+                    """
+                    UPDATE telegram_id_prefix_prices p
+                    SET buy_price = COALESCE(
+                        (
+                            SELECT s.value::bigint FROM smm_settings s
+                            WHERE s.key = 'account_buy_price'
+                        ),
+                        7000
+                    )
+                    WHERE p.buy_price IS NULL
+                    """
+                )
+            )
+
     # ── User balance & role migrations ────────────────────────────────
     user_cols = [c["name"] for c in inspector.get_columns("users")]
     if "balance" not in user_cols:

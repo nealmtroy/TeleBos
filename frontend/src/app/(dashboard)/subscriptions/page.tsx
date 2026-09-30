@@ -130,6 +130,11 @@ export default function SubscriptionPage() {
   const expiresAt = subscription?.expires_at ?? null;
   const daysRemaining = subscription?.days_remaining ?? null;
 
+  // Premium and Owner are at or above the top sellable tier, so the page stops
+  // being a sales surface for them: it shows only their current status and
+  // expiry. Everything below this flag is an upsell.
+  const showUpsell = currentPlan !== "premium" && currentPlan !== "owner";
+
   const meta = PLAN_META[currentPlan] || PLAN_META.basic;
   const StatusIcon = meta.icon;
 
@@ -243,10 +248,12 @@ export default function SubscriptionPage() {
       {/* ── TOP HEADER SECTION (ChatGPT Style) ── */}
       <div className="text-center space-y-2 max-w-xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
-          {_("subscription.upgradeYourPlan")}
+          {showUpsell ? _("subscription.upgradeYourPlan") : _("subscription.mySubscription")}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-[65ch] mx-auto">
-          Pilih paket automasi Telegram terbaik untuk mengoptimalkan operasional dan skala akun Anda.
+          {showUpsell
+            ? "Pilih paket automasi Telegram terbaik untuk mengoptimalkan operasional dan skala akun Anda."
+            : "Status langganan dan masa aktif paket Anda."}
         </p>
       </div>
 
@@ -347,221 +354,229 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {/* ── 3 CHATGPT-STYLE PLAN CARDS ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-        {tierCards.map((card) => {
-          return (
-            <div
-              key={card.id}
-              className={cn(
-                "rounded-2xl transition-colors duration-150 flex flex-col justify-between p-6 sm:p-7 relative",
-                card.isPopular
-                  ? "bg-white dark:bg-slate-800 border-2 border-primary-500 dark:border-primary-500 shadow-md"
-                  : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
-                card.isCurrent && !card.isPopular && "border-emerald-500/60 dark:border-emerald-500/60"
-              )}
-            >
-              {/* RECOMMENDED BADGE */}
-              {card.isPopular && (
-                <span className="absolute -top-3 right-6 bg-primary-600 text-white text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-                  {_("subscription.recommended")}
-                </span>
-              )}
-
-              {/* CARD TOP HALF */}
-              <div>
-                {/* Plan Name */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "text-xs font-bold uppercase tracking-wider",
-                      card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-500 dark:text-slate-300"
-                    )}
-                  >
-                    {card.title}
+      {showUpsell && (
+        <>
+        {/* ── 3 CHATGPT-STYLE PLAN CARDS ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          {tierCards.map((card) => {
+            return (
+              <div
+                key={card.id}
+                className={cn(
+                  "rounded-2xl transition-colors duration-150 flex flex-col justify-between p-6 sm:p-7 relative",
+                  card.isPopular
+                    ? "bg-white dark:bg-slate-800 border-2 border-primary-500 dark:border-primary-500 shadow-md"
+                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
+                  card.isCurrent && !card.isPopular && "border-emerald-500/60 dark:border-emerald-500/60"
+                )}
+              >
+                {/* RECOMMENDED BADGE */}
+                {card.isPopular && (
+                  <span className="absolute -top-3 right-6 bg-primary-600 text-white text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
+                    {_("subscription.recommended")}
                   </span>
-                </div>
+                )}
 
-                {/* Big Punchy Tagline */}
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 mt-1.5 tracking-tight">
-                  {card.tagline}
-                </h2>
-
-                {/* Description */}
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 min-h-[38px] leading-relaxed">
-                  {card.desc}
-                </p>
-
-                {/* Price Display */}
-                <div className="mt-5 flex items-baseline">
-                  <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
-                    {card.price}
-                  </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-300 font-medium ml-1.5">
-                    {card.period}
-                  </span>
-                </div>
-
-                {/* Action CTA Button */}
-                <div className="mt-5">
-                  {card.isCurrent ? (
-                    <button
-                      type="button"
-                      disabled
+                {/* CARD TOP HALF */}
+                <div>
+                  {/* Plan Name */}
+                  <div className="flex items-center justify-between">
+                    <span
                       className={cn(
-                        "w-full py-2.5 rounded-xl text-xs font-semibold cursor-default text-center transition flex items-center justify-center gap-1.5",
-                        card.isPopular
-                          ? "bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800"
-                          : card.id === "pro"
-                          ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-200 border border-slate-200 dark:border-slate-600"
+                        "text-xs font-bold uppercase tracking-wider",
+                        card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-500 dark:text-slate-300"
                       )}
                     >
-                      <Check className="h-3.5 w-3.5 shrink-0" />
-                      {_("subscription.yourCurrentPlan")}
-                    </button>
-                  ) : card.id === "basic" ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-600 cursor-default"
-                    >
-                      {_("subscription.yourCurrentPlan")}
-                    </button>
-                  ) : card.isPopular ? (
-                    <button
-                      type="button"
-                      onClick={() => setRedeemOpen(true)}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
-                    >
-                      <span>+</span>
-                      <span>{_("subscription.upgradeToPremium")}</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setRedeemOpen(true)}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
-                    >
-                      {_("subscription.upgradeToPro")}
-                    </button>
-                  )}
-                </div>
+                      {card.title}
+                    </span>
+                  </div>
 
-                {/* Feature Header */}
-                <div className="mt-7 mb-3.5">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                    {card.headerFeature}
+                  {/* Big Punchy Tagline */}
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 mt-1.5 tracking-tight">
+                    {card.tagline}
+                  </h2>
+
+                  {/* Description */}
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 min-h-[38px] leading-relaxed">
+                    {card.desc}
                   </p>
+
+                  {/* Price Display */}
+                  <div className="mt-5 flex items-baseline">
+                    <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
+                      {card.price}
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-300 font-medium ml-1.5">
+                      {card.period}
+                    </span>
+                  </div>
+
+                  {/* Action CTA Button */}
+                  <div className="mt-5">
+                    {card.isCurrent ? (
+                      <button
+                        type="button"
+                        disabled
+                        className={cn(
+                          "w-full py-2.5 rounded-xl text-xs font-semibold cursor-default text-center transition flex items-center justify-center gap-1.5",
+                          card.isPopular
+                            ? "bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800"
+                            : card.id === "pro"
+                            ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-200 border border-slate-200 dark:border-slate-600"
+                        )}
+                      >
+                        <Check className="h-3.5 w-3.5 shrink-0" />
+                        {_("subscription.yourCurrentPlan")}
+                      </button>
+                    ) : card.id === "basic" ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-600 cursor-default"
+                      >
+                        {_("subscription.yourCurrentPlan")}
+                      </button>
+                    ) : card.isPopular ? (
+                      <button
+                        type="button"
+                        onClick={() => setRedeemOpen(true)}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                      >
+                        <span>+</span>
+                        <span>{_("subscription.upgradeToPremium")}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRedeemOpen(true)}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                      >
+                        {_("subscription.upgradeToPro")}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Feature Header */}
+                  <div className="mt-7 mb-3.5">
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                      {card.headerFeature}
+                    </p>
+                  </div>
+
+                  {/* Features List with Clean Icons */}
+                  <ul className="space-y-3">
+                    {card.features.map((f, idx) => {
+                      const IconComponent = f.icon;
+                      return (
+                        <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-snug">
+                          <IconComponent
+                            className={cn(
+                              "h-4 w-4 shrink-0 mt-0.5",
+                              card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-400 dark:text-slate-500"
+                            )}
+                          />
+                          <span>{f.text}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
 
-                {/* Features List with Clean Icons */}
-                <ul className="space-y-3">
-                  {card.features.map((f, idx) => {
-                    const IconComponent = f.icon;
-                    return (
-                      <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-snug">
-                        <IconComponent
-                          className={cn(
-                            "h-4 w-4 shrink-0 mt-0.5",
-                            card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-400 dark:text-slate-500"
-                          )}
-                        />
-                        <span>{f.text}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {/* CARD BOTTOM FOOTNOTE */}
+                <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {card.footnote}
+                </div>
               </div>
+            );
+          })}
+        </div>
+        </>
+        )}
 
-              {/* CARD BOTTOM FOOTNOTE */}
-              <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                {card.footnote}
-              </div>
+      {showUpsell && (
+        <>
+        {/* ── EXPANDABLE FEATURE COMPARISON TABLE ── */}
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowMatrix((prev) => !prev)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50/75 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <TableIcon className="h-4 w-4 text-primary-600 dark:text-primary-400" />
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {_("subscription.compareFeatures")}
+              </span>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span>{showMatrix ? "Sembunyikan" : "Tampilkan Rincian"}</span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-slate-400 dark:text-slate-500 transition-transform duration-200",
+                  showMatrix && "rotate-180"
+                )}
+              />
+            </div>
+          </button>
 
-      {/* ── EXPANDABLE FEATURE COMPARISON TABLE ── */}
-      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowMatrix((prev) => !prev)}
-          className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50/75 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-2.5">
-            <TableIcon className="h-4 w-4 text-primary-600 dark:text-primary-400" />
-            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              {_("subscription.compareFeatures")}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <span>{showMatrix ? "Sembunyikan" : "Tampilkan Rincian"}</span>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-slate-400 dark:text-slate-500 transition-transform duration-200",
-                showMatrix && "rotate-180"
-              )}
-            />
-          </div>
-        </button>
-
-        {showMatrix && (
-          <div className="border-t border-slate-200 dark:border-slate-800 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
-                  <th className="text-left py-3.5 px-6 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {_("subscription.feature")}
-                  </th>
-                  {PLAN_KEYS.map((pk) => {
-                    const pm = PLAN_META[pk];
-                    return (
-                      <th
-                        key={pk}
-                        className="text-center py-3.5 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 capitalize whitespace-nowrap"
-                      >
-                        <div className="flex items-center justify-center gap-1.5">
-                          <pm.icon className={cn("h-3.5 w-3.5", pm.iconColor)} />
-                          <span>{pk}</span>
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {FEATURE_MATRIX.map((row, i) => (
-                  <tr
-                    key={row.key}
-                    className={cn(
-                      "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors",
-                      i % 2 === 0 ? "bg-white dark:bg-slate-900/30" : "bg-slate-50/25 dark:bg-slate-950/30"
-                    )}
-                  >
-                    <td className="py-3 px-6 text-xs font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                      {_(`subscription.${row.key}` as any)}
-                    </td>
+          {showMatrix && (
+            <div className="border-t border-slate-200 dark:border-slate-800 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                    <th className="text-left py-3.5 px-6 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {_("subscription.feature")}
+                    </th>
                     {PLAN_KEYS.map((pk) => {
-                      const included = row[pk];
+                      const pm = PLAN_META[pk];
                       return (
-                        <td key={pk} className="text-center py-3 px-4">
-                          {included ? (
-                            <Check className="h-4 w-4 text-primary-600 dark:text-primary-400 mx-auto" />
-                          ) : (
-                            <Minus className="h-4 w-4 text-slate-300 dark:text-slate-600 mx-auto" />
-                          )}
-                        </td>
+                        <th
+                          key={pk}
+                          className="text-center py-3.5 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 capitalize whitespace-nowrap"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <pm.icon className={cn("h-3.5 w-3.5", pm.iconColor)} />
+                            <span>{pk}</span>
+                          </div>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {FEATURE_MATRIX.map((row, i) => (
+                    <tr
+                      key={row.key}
+                      className={cn(
+                        "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors",
+                        i % 2 === 0 ? "bg-white dark:bg-slate-900/30" : "bg-slate-50/25 dark:bg-slate-950/30"
+                      )}
+                    >
+                      <td className="py-3 px-6 text-xs font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                        {_(`subscription.${row.key}` as any)}
+                      </td>
+                      {PLAN_KEYS.map((pk) => {
+                        const included = row[pk];
+                        return (
+                          <td key={pk} className="text-center py-3 px-4">
+                            {included ? (
+                              <Check className="h-4 w-4 text-primary-600 dark:text-primary-400 mx-auto" />
+                            ) : (
+                              <Minus className="h-4 w-4 text-slate-300 dark:text-slate-600 mx-auto" />
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </>
         )}
-      </div>
 
       {/* ── MODAL DIALOG: QUICK VOUCHER REDEEM ── */}
       <Dialog open={redeemOpen} onOpenChange={setRedeemOpen}>

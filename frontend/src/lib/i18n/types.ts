@@ -1504,6 +1504,46 @@ export interface Dict {
   };
 
   // Subscription
+  wallet: {
+    title: string;
+    desc: string;
+    currentBalance: string;
+    balanceHint: string;
+    topUp: string;
+    withdraw: string;
+    topupInstruction: string;
+    accountName: string;
+    copyAccount: string;
+    placeholderWarning: string;
+    placeholderWarningDesc: string;
+    copied: string;
+    copyFailed: string;
+    amount: string;
+    quickAmount: string;
+    destinationMethod: string;
+    bankTransfer: string;
+    ewallet: string;
+    transferRef: string;
+    accountRef: string;
+    optional: string;
+    insufficient: string;
+    minimum: string;
+    submitTopup: string;
+    submitWithdraw: string;
+    manualNotice: string;
+    history: string;
+    pending: string;
+    noRequests: string;
+    needHelp: string;
+    contactSupport: string;
+    topupSubmitted: string;
+    withdrawSubmitted: string;
+    status: {
+      pending: string;
+      approved: string;
+      rejected: string;
+    };
+  };
   subscription: {
     title: string;
     desc: string;
@@ -1540,6 +1580,7 @@ export interface Dict {
     compareFeatures: string;
     feature: string;
     upgradeYourPlan: string;
+    mySubscription: string;
     personal: string;
     business: string;
     yourCurrentPlan: string;

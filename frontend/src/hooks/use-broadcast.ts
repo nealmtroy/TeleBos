@@ -317,3 +317,29 @@ export function useBroadcastLogs(jobId: string, filters?: Record<string, string>
     enabled: !!jobId,
   });
 }
+
+// ── Free-Tier Entitlement ────────────────────────────────────────────────────
+
+export interface BroadcastEntitlement {
+  role: string;
+  /** Paid roles report true and are never watermarked or capped. */
+  unlimited: boolean;
+  daily_limit_seconds: number;
+  remaining_seconds: number;
+  used_seconds: number;
+  watermark_enabled: boolean;
+  watermark_preview: string | null;
+}
+
+export function useBroadcastEntitlement() {
+  return useQuery<BroadcastEntitlement>({
+    queryKey: ["broadcast", "entitlement"],
+    queryFn: async () => {
+      const { data } = await api.get("/broadcast/entitlement");
+      return data;
+    },
+    // The remaining budget only moves while a broadcast runs, so a one-minute
+    // cache avoids refetching on every render without going meaningfully stale.
+    staleTime: 60_000,
+  });
+}

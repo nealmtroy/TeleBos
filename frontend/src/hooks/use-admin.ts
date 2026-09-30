@@ -135,7 +135,12 @@ export function useDeleteUser() {
 export interface TelegramIdPrefixPrice {
   id: string;
   id_prefix: string;
+  /** Price the seller receives when the account is listed. */
   sell_price: number;
+  /** Price the buyer pays. Null means the global buy price applies. */
+  buy_price: number | null;
+  /** Effective platform margin (buy_price - sell_price) after fallbacks. */
+  margin: number;
   note: string | null;
 }
 
@@ -152,7 +157,12 @@ export function usePrefixPrices() {
 export function useCreatePrefixPrice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { id_prefix: string; sell_price: number; note?: string }) => {
+    mutationFn: async (payload: {
+      id_prefix: string;
+      sell_price: number;
+      buy_price?: number | null;
+      note?: string;
+    }) => {
       const { data } = await api.post("/admin/account-prices", payload);
       return data as TelegramIdPrefixPrice;
     },
@@ -165,8 +175,22 @@ export function useCreatePrefixPrice() {
 export function useUpdatePrefixPrice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id_prefix, sell_price, note }: { id_prefix: string; sell_price: number; note?: string }) => {
-      const { data } = await api.put(`/admin/account-prices/${id_prefix}`, { sell_price, note });
+    mutationFn: async ({
+      id_prefix,
+      sell_price,
+      buy_price,
+      note,
+    }: {
+      id_prefix: string;
+      sell_price: number;
+      buy_price?: number | null;
+      note?: string;
+    }) => {
+      const { data } = await api.put(`/admin/account-prices/${id_prefix}`, {
+        sell_price,
+        buy_price,
+        note,
+      });
       return data as TelegramIdPrefixPrice;
     },
     onSuccess: () => {

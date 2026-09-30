@@ -27,6 +27,7 @@ class MarketplaceAccountSummary(BaseModel):
     twofa_enabled: bool
     recovery_email_available: bool
     sell_price: int | None = None
+    buy_price: int | None = None
     contacts_count: int = 0
     spam_status: str | None = "unknown"
     est_reg_date: str | None = None

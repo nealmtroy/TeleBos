@@ -80,7 +80,12 @@ async def get_sell_eligible_accounts(db: AsyncSession, user: User) -> list[Teleg
 
 
 async def get_marketplace_prices(db: AsyncSession) -> tuple[int, int]:
-    """Retrieve current default buy and sell prices from settings."""
+    """Retrieve current default buy and sell prices from settings.
+
+    These globals are only the fallback for accounts whose telegram_id matches
+    no prefix rule, so this endpoint reports them as defaults rather than as
+    the price any particular listing will use.
+    """
     result = await db.execute(select(SmmSetting))
     rows = result.scalars().all()
     settings = {row.key: row.value for row in rows}
@@ -137,6 +142,7 @@ async def sell_accounts(
 
     reserved_usernames: set[str] = set()
     prices: dict[UUID, int] = {}
+    buy_prices: dict[UUID, int] = {}
     photos_to_delete: list[str] = []
 
     # Batch resolve prices (N1Q-02), falling back to resolve_telegram_id_price if patched/mocked
@@ -152,6 +158,16 @@ async def sell_accounts(
             prices[account.id] = await price_service.resolve_telegram_id_price(db, account)
         else:
             prices[account.id] = account.sell_price
+
+        # Freeze the buyer's price on the listing so a later admin price change
+        # cannot reprice an account that is already on the market. When prices
+        # are mocked (tests), mirror the sell price so both sides stay aligned.
+        if is_mocked:
+            buy_prices[account.id] = prices[account.id]
+        else:
+            buy_prices[account.id] = account.buy_price or await (
+                price_service.resolve_buy_price_for_telegram_id(db, account)
+            )
 
         await prepare_account_for_sale(
             db,
@@ -186,6 +202,7 @@ async def sell_accounts(
         account.for_sale = True
         account.is_sold = False
         account.sell_price = sell_price
+        account.buy_price = buy_prices[account.id]
         account.seller_id = user.id
         account.is_active = False
         account.auto_reply_enabled = False
@@ -297,6 +314,7 @@ async def cancel_invalid_listing(db: AsyncSession, account_id: str) -> bool:
     account.for_sale = False
     account.is_active = False
     account.sell_price = None
+    account.buy_price = None
     account.seller_id = None
     account.sale_listed_at = None
     db.add(
@@ -384,6 +402,7 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
                     "twofa_enabled": acc.twofa_enabled,
                     "recovery_email_available": acc.recovery_email is not None,
                     "sell_price": acc.sell_price,
+                    "buy_price": acc.buy_price or acc.sell_price,
                     "contacts_count": getattr(acc, "contacts_count", 0) or 0,
                     "spam_status": getattr(acc, "spam_status", "unknown") or "unknown",
                     "est_reg_date": est["date"].isoformat() if est and est.get("date") else None,
@@ -445,8 +464,11 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     if buyer_id == seller_id:
         raise ValueError("You cannot purchase your own listed account.")
 
-    # Use the account's own sell_price; fallback to default
-    buy_price = account.sell_price or 7000
+    # The buyer pays the listing's buy_price; the seller receives its sell_price.
+    # The difference is the platform margin. buy_price is floored at sell_price
+    # so a misconfigured rule can never pay the seller more than the buyer owes.
+    sell_price = account.sell_price or 7000
+    buy_price = max(getattr(account, "buy_price", None) or sell_price, sell_price)
 
     # Deterministic lock ordering (sorted UUIDs) to prevent circular deadlock
     first_id, second_id = (buyer_id, seller_id) if buyer_id < seller_id else (seller_id, buyer_id)
@@ -464,12 +486,12 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     if buyer.balance < buy_price:
         raise ValueError("Insufficient balance to buy this account.")
 
-    # 1. Debit buyer's balance
+    # 1. Debit buyer's balance by the full buy_price
     buyer.balance -= buy_price
 
-    # 2. Credit seller's balance
+    # 2. Credit the seller only the sell_price. The difference is platform margin.
     if seller:
-        seller.balance += buy_price
+        seller.balance += sell_price
     else:
         # If seller no longer exists, the platform keeps the balance
         # (e.g. user was deleted). Just skip the credit.
@@ -484,6 +506,8 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     account.for_sale = False
     account.is_sold = False  # Reset for new owner so they can re-sell or manage the account
     account.sold_at = datetime.now(timezone.utc)
+    account.buy_price = None
+    account.sell_price = None
     # Set purchased account to active upon purchase
     account.is_active = True
     account.auto_reply_enabled = False
@@ -497,7 +521,7 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
         user_id=seller_id,
         account_id=account.id,
         action="sell",
-        price=buy_price,
+        price=sell_price,
         phone=account.phone,
         telegram_id=account.telegram_id,
     )
@@ -589,6 +613,7 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
     account.for_sale = False
     account.is_active = True
     account.sell_price = None
+    account.buy_price = None
     account.seller_id = None
 
     # Write audit log

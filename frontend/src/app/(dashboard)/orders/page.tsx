@@ -407,12 +407,12 @@ export default function OrderHistoryPage() {
         </div>
 
         {/* Filters Group */}
-        <div className="flex flex-wrap gap-2.5 items-center">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5 items-center">
           {/* Status Dropdown */}
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full min-w-0 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">{locale === "id" ? "Semua Status" : "All Status"}</option>
             <option value="Selesai">{locale === "id" ? "Selesai" : "Completed"}</option>
@@ -424,6 +424,7 @@ export default function OrderHistoryPage() {
           {/* Date Picker Range */}
           <DatePickerWithRange
             id="orders-date-range"
+            className="col-span-2 sm:col-span-1"
             presets={true}
             date={dateRange}
             setDate={(range) => {
@@ -436,7 +437,7 @@ export default function OrderHistoryPage() {
           <Button
             variant="outline"
             onClick={handleExport}
-            className="rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3.5 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 flex items-center gap-1.5 shadow-sm"
+            className="w-full sm:w-auto rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3.5 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 flex items-center justify-center gap-1.5 shadow-sm"
           >
             <Download className="h-4 w-4" /> Export
           </Button>
@@ -447,7 +448,7 @@ export default function OrderHistoryPage() {
             size="sm"
             onClick={() => refreshAll.mutate()}
             disabled={refreshAll.isPending}
-            className="rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200"
+            className="rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 justify-center"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", refreshAll.isPending && "animate-spin")} />
           </Button>

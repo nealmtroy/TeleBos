@@ -20,6 +20,8 @@ export interface MarketplaceAccountSummary {
   twofa_enabled: boolean;
   recovery_email_available: boolean;
   sell_price: number | null;
+  /** Price a buyer pays. Null means the global buy price applies. */
+  buy_price: number | null;
   contacts_count?: number;
   spam_status?: string | null;
   est_reg_date?: string | null;

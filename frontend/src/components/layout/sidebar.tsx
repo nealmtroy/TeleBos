@@ -41,6 +41,7 @@ import {
   User,
   Eye,
   Sparkles,
+  CalendarClock,
   Check,
   Info,
   Bug,
@@ -306,6 +307,7 @@ export function Sidebar() {
         { href: "/orders/buy-accounts", labelKey: "orders.buyAccounts", icon: ShoppingCart, minRole: 0 },
         { href: "/orders/sell-accounts", labelKey: "orders.sellAccounts", icon: DollarSign, minRole: 0 },
         { href: "/orders", labelKey: "orders.history", icon: ClipboardList, exact: true, minRole: 0 },
+        { href: "/wallet", labelKey: "wallet.title", icon: Wallet, minRole: 0 },
         { href: "/subscriptions", labelKey: "subscription.title", icon: Crown, minRole: 0 },
         { href: "/redeem", labelKey: "redeem.title", icon: Ticket, minRole: 0 },
       ],
@@ -756,7 +758,8 @@ export function Sidebar() {
 
                 <div className="border-t border-neutral-800 my-1" />
 
-                {/* 2. Upgrade plan */}
+                {/* 2. Subscription status — an upsell only while a cheaper tier exists.
+                    Premium and Owner go straight to their status page instead. */}
                 <button
                   type="button"
                   onMouseEnter={() => setActiveSubmenu(null)}
@@ -767,8 +770,20 @@ export function Sidebar() {
                   }}
                   className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
                 >
-                  <Sparkles className="h-4 w-4 text-neutral-300 shrink-0" />
-                  <span>{locale === "id" ? "Tingkatkan paket" : "Upgrade plan"}</span>
+                  {userRole === "premium" || userRole === "owner" ? (
+                    <CalendarClock className="h-4 w-4 text-neutral-300 shrink-0" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 text-neutral-300 shrink-0" />
+                  )}
+                  <span>
+                    {userRole === "premium" || userRole === "owner"
+                      ? locale === "id"
+                        ? "Status langganan"
+                        : "Subscription status"
+                      : locale === "id"
+                      ? "Tingkatkan paket"
+                      : "Upgrade plan"}
+                  </span>
                 </button>
 
                 {/* 3. Personalization */}

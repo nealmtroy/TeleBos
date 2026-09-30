@@ -268,7 +268,8 @@ Penyimpanan sesi Telethon MTProto terenkripsi dan metadata akun Telegram.
 | `spam_last_checked_at`| `TIMESTAMPTZ`| ✔️ | `NULL` | Waktu check status spam terakhir |
 | `for_sale` | `BOOLEAN` | ❌ | `FALSE` | Apakah akun dijual di marketplace |
 | `is_sold` | `BOOLEAN` | ❌ | `FALSE` | Apakah akun sudah laku terjual |
-| `sell_price` | `BIGINT` | ✔️ | `NULL` | Harga jual akun di marketplace |
+| `sell_price` | `BIGINT` | ✔️ | `NULL` | Nominal yang diterima penjual saat akun dilisting |
+| `buy_price` | `BIGINT` | ✔️ | `NULL` | Nominal yang dibayar pembeli; dibekukan saat listing agar perubahan harga tidak mengulang harga akun yang sudah tayang |
 | `seller_id` | `UUID` | ✔️ | `NULL` | FK ke `users.id` penjual (`ON DELETE SET NULL`) |
 | `sold_at` | `TIMESTAMPTZ` | ✔️ | `NULL` | Waktu transaksi pembelian selesai |
 | `sale_listed_at` | `TIMESTAMPTZ` | ✔️ | `NULL` | Waktu akun dimasukkan ke marketplace |
@@ -446,7 +447,7 @@ Sistem voucher topup saldo atau upgrade subscription:
 ---
 
 #### 20. `telegram_id_prefix_prices` & `telegram_registration_datapoints`
-* **`telegram_id_prefix_prices`**: Penyesuaian harga akun otomatis berdasarkan awalan angka ID Telegram (`id`, `id_prefix` UNIQUE, `sell_price`, `note`).
+* **`telegram_id_prefix_prices`**: Penyesuaian harga akun otomatis berdasarkan awalan angka ID Telegram (`id`, `id_prefix` UNIQUE, `sell_price`, `buy_price`, `note`). `sell_price` adalah nominal yang diterima penjual, `buy_price` adalah nominal yang dibayar pembeli, dan selisih keduanya menjadi margin platform. `buy_price` boleh `NULL` untuk memakai harga beli global sebagai fallback, tetapi tidak boleh lebih kecil dari `sell_price`. Prefiks terpanjang yang cocok yang menang.
 * **`telegram_registration_datapoints`**: Titik regresi estimasi umur akun Telegram (`telegram_id` PK, `registered_at`, `source`, `created_at`).
 
 ---

@@ -50,7 +50,7 @@ export function DatePicker({
   };
 
   return (
-    <div className={cn("relative inline-block", className)}>
+    <div className={cn("relative inline-block w-full sm:w-auto", className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           disabled={disabled}
@@ -61,7 +61,7 @@ export function DatePicker({
               data-empty={!date}
               disabled={disabled}
               className={cn(
-                "w-[220px] justify-between text-left font-normal flex items-center gap-2 rounded-xl border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-750",
+                "w-full sm:w-[220px] justify-between text-left font-normal flex items-center gap-2 rounded-xl border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-750",
                 !date && "text-muted-foreground dark:text-slate-400",
                 triggerClassName
               )}
@@ -88,7 +88,7 @@ export function DatePicker({
         </PopoverTrigger>
         <PopoverContent
           positionerClassName={positionerClassName}
-          className="w-auto p-0 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl overflow-hidden"
+          className="w-[min(22rem,calc(100vw-2rem))] p-0 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl overflow-hidden"
           align="start"
         >
           <Calendar

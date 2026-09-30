@@ -359,11 +359,11 @@ export default function InvitePage() {
           </div>
           <p className="text-xs text-gray-500">{_("invite.sourceGroupsDesc")}</p>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <select
               value={newSourceType}
               onChange={(e) => setNewSourceType(e.target.value as any)}
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full sm:w-32 sm:shrink-0 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {destTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -388,13 +388,14 @@ export default function InvitePage() {
                   addSourceGroup();
                 }
               }}
-              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full sm:flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
             <button
               type="button"
               onClick={addSourceGroup}
               disabled={!newSourceValue.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 transition"
+              aria-label="Add source group"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 transition self-end sm:self-auto"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -604,29 +605,29 @@ export default function InvitePage() {
             {/* Counters */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-center">
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xl font-bold text-gray-900">{activeJob.total_members}</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900">{activeJob.total_members}</p>
                 <p className="text-xs text-gray-500">{_("invite.totalMembers")}</p>
               </div>
               <div className="bg-green-50 rounded-lg p-3">
-                <p className="text-xl font-bold text-green-700">
+                <p className="text-lg sm:text-xl font-bold text-green-700">
                   {wsProgress?.invited ?? activeJob.invited_count}
                 </p>
                 <p className="text-xs text-green-600">{_("invite.invited")}</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-xl font-bold text-blue-700">
+                <p className="text-lg sm:text-xl font-bold text-blue-700">
                   {wsProgress?.already_member ?? activeJob.already_member_count}
                 </p>
                 <p className="text-xs text-blue-600">{_("invite.alreadyMember")}</p>
               </div>
               <div className="bg-orange-50 rounded-lg p-3">
-                <p className="text-xl font-bold text-orange-700">
+                <p className="text-lg sm:text-xl font-bold text-orange-700">
                   {wsProgress?.skipped ?? activeJob.skip_count}
                 </p>
                 <p className="text-xs text-orange-600">{_("invite.skipped")}</p>
               </div>
               <div className="bg-red-50 rounded-lg p-3">
-                <p className="text-xl font-bold text-red-700">
+                <p className="text-lg sm:text-xl font-bold text-red-700">
                   {wsProgress?.failed ?? activeJob.fail_count}
                 </p>
                 <p className="text-xs text-red-600">{_("invite.failed")}</p>

@@ -74,6 +74,12 @@ export interface SmmSettings {
   global_markup_percent: number;
   account_buy_price?: number;
   account_sell_price?: number;
+  /** Append the platform watermark to free-tier broadcast messages. */
+  broadcast_watermark_enabled?: boolean;
+  /** Watermark template; `{official}` expands to the official channel. */
+  broadcast_watermark_text?: string;
+  /** Free-tier broadcast send-time budget per day, in seconds. */
+  broadcast_free_daily_seconds?: number;
 }
 
 // ── Profile ───────────────────────────────────────────────────────────────────
@@ -251,6 +257,9 @@ export function useAdminUpdateSmmSettings() {
       global_markup_percent?: number;
       account_buy_price?: number;
       account_sell_price?: number;
+      broadcast_watermark_enabled?: boolean;
+      broadcast_watermark_text?: string;
+      broadcast_free_daily_seconds?: number;
     }) => {
       const { data } = await api.put("/admin/smm/settings", settings);
       return data;

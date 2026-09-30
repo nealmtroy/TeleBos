@@ -30,7 +30,7 @@ class FakeDatabase:
         self.add = MagicMock()
 
 
-def make_account(owner_id, *, for_sale=False, sell_price=None):
+def make_account(owner_id, *, for_sale=False, sell_price=None, buy_price=None):
     return SimpleNamespace(
         id=uuid.uuid4(),
         user_id=owner_id,
@@ -41,6 +41,7 @@ def make_account(owner_id, *, for_sale=False, sell_price=None):
         is_sold=False,
         is_active=True,
         sell_price=sell_price,
+        buy_price=buy_price,
         auto_reply_enabled=True,
     )
 
@@ -158,6 +159,8 @@ async def test_invalid_session_delists_account_without_reactivating_it():
 async def test_purchase_notifies_buyer_and_seller():
     id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])
     buyer_id, seller_id = id1, id2
+    # No buy_price on the listing: buyer pays exactly the sell price, so the
+    # platform takes no margin. This is the legacy-listing compatibility path.
     account = make_account(seller_id, for_sale=True, sell_price=5500)
     buyer = SimpleNamespace(id=buyer_id, balance=10000)
     seller = SimpleNamespace(id=seller_id, balance=0)
@@ -184,6 +187,82 @@ async def test_purchase_notifies_buyer_and_seller():
     assert seller.balance == 5500
     assert account.auto_reply_enabled is False
     assert account.auto_reply_text is None
+
+
+async def test_purchase_charges_buyer_buy_price_and_credits_seller_sell_price():
+    """The buyer pays buy_price; the seller receives sell_price. The gap is margin."""
+    id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])
+    buyer_id, seller_id = id1, id2
+    account = make_account(seller_id, for_sale=True, sell_price=5000, buy_price=7000)
+    buyer = SimpleNamespace(id=buyer_id, balance=10000)
+    seller = SimpleNamespace(id=seller_id, balance=0)
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[FakeResult([account]), FakeResult([buyer]), FakeResult([seller]), FakeResult([])]
+        ),
+        add=MagicMock(),
+        flush=AsyncMock(),
+    )
+
+    await marketplace_service.buy_account(db, SimpleNamespace(id=buyer_id), str(account.id))
+
+    assert buyer.balance == 10000 - 7000
+    assert seller.balance == 5000
+    # Prices are cleared on transfer so the new owner starts from current rules.
+    assert account.buy_price is None
+    assert account.sell_price is None
+
+    audit_prices = {
+        (item.action, item.price)
+        for call in db.add.call_args_list
+        if (item := call.args[0]) and getattr(item, "action", None)
+    }
+    assert ("buy", 7000) in audit_prices
+    assert ("sell", 5000) in audit_prices
+
+
+async def test_purchase_rejects_balance_below_buy_price():
+    """Insufficient balance is judged against buy_price, not sell_price."""
+    id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])
+    buyer_id, seller_id = id1, id2
+    # Buyer can afford the sell price but not the buy price.
+    account = make_account(seller_id, for_sale=True, sell_price=5000, buy_price=7000)
+    buyer = SimpleNamespace(id=buyer_id, balance=6000)
+    seller = SimpleNamespace(id=seller_id, balance=0)
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[FakeResult([account]), FakeResult([buyer]), FakeResult([seller])]
+        ),
+        add=MagicMock(),
+        flush=AsyncMock(),
+    )
+
+    with pytest.raises(ValueError, match="Insufficient balance"):
+        await marketplace_service.buy_account(db, SimpleNamespace(id=buyer_id), str(account.id))
+
+    assert buyer.balance == 6000
+    assert seller.balance == 0
+
+
+async def test_purchase_floors_buy_price_at_sell_price():
+    """A misconfigured listing cannot pay the seller more than the buyer owes."""
+    id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])
+    buyer_id, seller_id = id1, id2
+    account = make_account(seller_id, for_sale=True, sell_price=7000, buy_price=5000)
+    buyer = SimpleNamespace(id=buyer_id, balance=10000)
+    seller = SimpleNamespace(id=seller_id, balance=0)
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[FakeResult([account]), FakeResult([buyer]), FakeResult([seller]), FakeResult([])]
+        ),
+        add=MagicMock(),
+        flush=AsyncMock(),
+    )
+
+    await marketplace_service.buy_account(db, SimpleNamespace(id=buyer_id), str(account.id))
+
+    assert buyer.balance == 3000
+    assert seller.balance == 7000
 
 
 async def test_resell_account_succeeds_for_previously_bought_or_sold_account(monkeypatch):

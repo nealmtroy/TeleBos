@@ -117,9 +117,15 @@ class SmmSettingsResponse(BaseModel):
     global_markup_percent: int = Field(default=0, description="Global markup applied on top of original_price when no per-service selling_price is set")
     account_buy_price: int = Field(default=0, description="Price to buy an account in IDR")
     account_sell_price: int = Field(default=0, description="Price to sell an account in IDR")
+    broadcast_watermark_enabled: bool = Field(default=True, description="Append a watermark to free-tier broadcast messages")
+    broadcast_watermark_text: str = Field(default="Bot by @{official}", description="Watermark template; {official} expands to the official channel")
+    broadcast_free_daily_seconds: int = Field(default=18000, description="Free-tier broadcast send-time budget per day, in seconds")
 
 
 class SmmSettingsUpdate(BaseModel):
     global_markup_percent: int | None = Field(default=None, ge=0, le=1000, description="Global markup percent (0-1000)")
     account_buy_price: int | None = Field(default=None, ge=0, description="Price to buy an account in IDR")
     account_sell_price: int | None = Field(default=None, ge=0, description="Price to sell an account in IDR")
+    broadcast_watermark_enabled: bool | None = Field(default=None, description="Append a watermark to free-tier broadcast messages")
+    broadcast_watermark_text: str | None = Field(default=None, max_length=200, description="Watermark template; {official} expands to the official channel")
+    broadcast_free_daily_seconds: int | None = Field(default=None, ge=0, le=86400, description="Free-tier broadcast send-time budget per day, in seconds")

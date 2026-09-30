@@ -127,7 +127,7 @@ function PublicGroupsChannelsContent() {
 
   // ── 2. Pro/Premium/Owner Index Finder ─────────────────────────────────────────
   return (
-    <div className="h-[calc(100vh-7rem)] -m-6 bg-white dark:bg-slate-900 overflow-hidden border-t border-gray-200 dark:border-slate-800 flex flex-col">
+    <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-7rem)] -m-4 md:-m-6 bg-white dark:bg-slate-900 overflow-hidden border-t border-gray-200 dark:border-slate-800 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-100 space-y-3">
         <div className="flex items-center justify-between">
@@ -286,7 +286,7 @@ function PublicGroupsChannelsContent() {
                     {linkToCopy && (
                       <button
                         onClick={(e) => handleCopyLink(e, chat)}
-                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-primary-600 transition flex-shrink-0 relative group"
+                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-primary-600 transition shrink-0 relative group"
                         title={_("groupsChannels.copyLink")}
                       >
                         {copiedChatId === chat.chat_id ? (

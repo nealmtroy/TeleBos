@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Coins,
   Copy,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +44,11 @@ export default function SmmSettingsPage() {
   const [globalMarkup, setGlobalMarkup] = useState("0");
   const [accountBuyPrice, setAccountBuyPrice] = useState("7000");
   const [accountSellPrice, setAccountSellPrice] = useState("5500");
+  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
+  const [watermarkText, setWatermarkText] = useState("Bot by @{official}");
+  // Stored in hours because that is the unit an owner reasons about; the
+  // API takes seconds.
+  const [freeDailyHours, setFreeDailyHours] = useState("5");
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -54,6 +60,15 @@ export default function SmmSettingsPage() {
       }
       if (settings.account_sell_price !== undefined) {
         setAccountSellPrice(String(settings.account_sell_price));
+      }
+      if (settings.broadcast_watermark_enabled !== undefined) {
+        setWatermarkEnabled(settings.broadcast_watermark_enabled);
+      }
+      if (settings.broadcast_watermark_text !== undefined) {
+        setWatermarkText(settings.broadcast_watermark_text);
+      }
+      if (settings.broadcast_free_daily_seconds !== undefined) {
+        setFreeDailyHours(String(settings.broadcast_free_daily_seconds / 3600));
       }
     }
   }, [settings]);
@@ -110,6 +125,29 @@ export default function SmmSettingsPage() {
         account_sell_price: sell,
       });
       setActionMsg({ type: "success", text: "Marketplace prices saved!" });
+    } catch {
+      setActionMsg({ type: "error", text: "Failed to save settings" });
+    }
+  }
+
+  async function handleSaveBroadcastEntitlement() {
+    const hours = parseFloat(freeDailyHours);
+    if (isNaN(hours) || hours < 0 || hours > 24) {
+      setActionMsg({ type: "error", text: "Free daily hours must be between 0 and 24" });
+      return;
+    }
+    const watermark = watermarkText.trim();
+    if (watermarkEnabled && !watermark) {
+      setActionMsg({ type: "error", text: "Watermark text cannot be empty while enabled" });
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({
+        broadcast_watermark_enabled: watermarkEnabled,
+        broadcast_watermark_text: watermark,
+        broadcast_free_daily_seconds: Math.round(hours * 3600),
+      });
+      setActionMsg({ type: "success", text: "Broadcast settings saved!" });
     } catch {
       setActionMsg({ type: "error", text: "Failed to save settings" });
     }
@@ -287,6 +325,105 @@ export default function SmmSettingsPage() {
               >
                 {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Save Marketplace Prices
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Free-Tier Broadcast Entitlement Card */}
+          <Card className="border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-6 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                  <Send className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Free-Tier Broadcast Rules</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Applies to the Basic plan only. Pro, Premium, and Owner are never watermarked or capped.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <CardContent className="p-6 pt-3 space-y-5">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="wm-enabled"
+                  className="flex items-center gap-3 cursor-pointer select-none"
+                >
+                  <input
+                    id="wm-enabled"
+                    type="checkbox"
+                    checked={watermarkEnabled}
+                    onChange={(e) => setWatermarkEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500/30"
+                  />
+                  <span className="text-sm font-semibold text-gray-800">
+                    Append a watermark to Basic broadcast messages
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 pl-7">
+                  Marks every message a free account sends, so a broadcast is visibly attributable to
+                  TeleBos.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="wm-text"
+                  className="block text-xs font-bold text-gray-700 uppercase tracking-wider"
+                >
+                  Watermark Text
+                </label>
+                <input
+                  id="wm-text"
+                  type="text"
+                  value={watermarkText}
+                  onChange={(e) => setWatermarkText(e.target.value)}
+                  disabled={!watermarkEnabled}
+                  placeholder="Bot by @{official}"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500">
+                  <code className="font-mono text-[11px] bg-gray-100 px-1 py-0.5 rounded">
+                    {"{official}"}
+                  </code>{" "}
+                  expands to the official channel handle.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="wm-hours"
+                  className="block text-xs font-bold text-gray-700 uppercase tracking-wider"
+                >
+                  Free Daily Broadcast Time (hours)
+                </label>
+                <div className="relative flex items-center max-w-xs">
+                  <input
+                    id="wm-hours"
+                    type="number"
+                    min={0}
+                    max={24}
+                    step={0.5}
+                    value={freeDailyHours}
+                    onChange={(e) => setFreeDailyHours(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 font-mono font-semibold"
+                  />
+                  <span className="absolute right-4 text-xs text-gray-500 font-semibold">hours</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Send-time budget per day, reset at 00:00 UTC. Only time actually spent sending is
+                  counted, so configured delays do not consume it.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleSaveBroadcastEntitlement}
+                disabled={updateSettings.isPending}
+                className="w-full sm:w-auto mt-2"
+              >
+                {updateSettings.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Save Broadcast Rules
               </Button>
             </CardContent>
           </Card>

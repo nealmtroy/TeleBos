@@ -43,7 +43,7 @@ export default function BuyAccountsPage() {
   const [pendingBuyAccount, setPendingBuyAccount] = useState<{
     id: string;
     telegram_id: number | null;
-    sell_price: number;
+    buy_price: number;
     country_code: string;
   } | null>(null);
 
@@ -169,7 +169,7 @@ export default function BuyAccountsPage() {
                 setPendingBuyAccount({
                   id: acc.id,
                   telegram_id: acc.telegram_id,
-                  sell_price: acc.sell_price || 7000,
+                  buy_price: acc.buy_price ?? acc.sell_price ?? 7000,
                   country_code: selectedCountry,
                 });
                 setBuyConfirmOpen(true);
@@ -203,13 +203,13 @@ export default function BuyAccountsPage() {
                 <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
                   <span className="text-gray-900">Total Price:</span>
                   <span className="text-primary-600 font-bold">
-                    Rp {pendingBuyAccount.sell_price.toLocaleString()}
+                    Rp {pendingBuyAccount.buy_price.toLocaleString()}
                   </span>
                 </div>
                 {user && (
                   <div className="flex justify-between text-[11px] pt-1">
                     <span>{_("orders.yourBalance")}:</span>
-                    <span className={cn("font-medium", user.balance < pendingBuyAccount.sell_price ? "text-red-600" : "text-green-600")}>
+                    <span className={cn("font-medium", user.balance < pendingBuyAccount.buy_price ? "text-red-600" : "text-green-600")}>
                       Rp {user.balance.toLocaleString()}
                     </span>
                   </div>
@@ -365,7 +365,7 @@ function CountryAccountsList({
             </thead>
             <tbody>
               {accounts.map((acc) => {
-                const price = acc.sell_price || 7000;
+                const price = acc.buy_price ?? acc.sell_price ?? 7000;
                 return (
                   <tr key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
                     <td className="py-3 px-4 font-mono text-gray-900 font-semibold">
@@ -453,7 +453,7 @@ function CountryAccountsList({
 
         <div className="sm:hidden divide-y divide-gray-100">
           {accounts.map((acc) => {
-            const price = acc.sell_price || 7000;
+            const price = acc.buy_price ?? acc.sell_price ?? 7000;
             return (
               <div key={acc.id} className="p-4 space-y-3">
                 <div className="flex justify-between items-start">

@@ -26,6 +26,7 @@ import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle, Wifi, RefreshCw, Info, Search, UserPlus, Plus, List } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { BroadcastEntitlementBanner } from "@/components/broadcast/broadcast-entitlement-banner";
 
 export default function NewBroadcastPage() {
   const _ = useT();
@@ -229,6 +230,9 @@ export default function NewBroadcastPage() {
         <h1 className="text-2xl font-bold text-gray-900">{_( "newBroadcast.title")}</h1>
         <p className="text-gray-500 mt-1">{_("newBroadcast.desc")}</p>
       </div>
+
+      {/* Free-tier allowance and watermark notice. Renders nothing for paid plans. */}
+      <BroadcastEntitlementBanner />
 
       {/* Config form - show skeleton while data loads */}
       {accountsLoading || groupListsLoading || textListsLoading ? (

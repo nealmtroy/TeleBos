@@ -44,12 +44,12 @@ function Calendar({
         ...formatters,
       }}
       classNames={{
-        root: cn("w-fit", defaultClassNames.root),
+        root: cn("w-full min-w-0", defaultClassNames.root),
         months: cn(
-          "relative flex flex-col gap-6 sm:flex-row",
+          "relative flex flex-col gap-6 sm:flex-row sm:justify-center",
           defaultClassNames.months
         ),
-        month: cn("flex w-[252px] flex-col gap-3", defaultClassNames.month),
+        month: cn("flex w-full min-w-0 flex-col gap-3", defaultClassNames.month),
         nav: cn(
           "absolute inset-x-0 top-0 flex w-full items-center justify-between pointer-events-none z-10 px-1",
           defaultClassNames.nav
@@ -90,20 +90,20 @@ function Calendar({
         month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
         weekdays: cn("flex w-full justify-between mb-1.5", defaultClassNames.weekdays),
         weekday: cn(
-          "w-9 h-9 flex items-center justify-center text-[0.8rem] font-medium text-slate-400 dark:text-slate-500 select-none",
+          "h-8 sm:h-9 flex-1 min-w-0 flex items-center justify-center text-[0.8rem] font-medium text-slate-400 dark:text-slate-500 select-none",
           defaultClassNames.weekday
         ),
         week: cn("mt-1 flex w-full justify-between", defaultClassNames.week),
         week_number_header: cn(
-          "w-9 select-none",
+          "w-6 select-none shrink-0",
           defaultClassNames.week_number_header
         ),
         week_number: cn(
-          "w-9 text-[0.8rem] text-muted-foreground select-none",
+          "w-6 text-[0.8rem] text-muted-foreground select-none",
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative h-9 w-9 p-0 text-center select-none flex items-center justify-center",
+          "group/day relative h-8 sm:h-9 w-full min-w-0 p-0 text-center select-none flex items-center justify-center",
           defaultClassNames.day
         ),
         range_start: cn(
@@ -167,7 +167,7 @@ function Calendar({
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
-              <div className="flex h-9 w-9 items-center justify-center text-center text-xs text-muted-foreground">
+              <div className="flex h-8 sm:h-9 w-6 items-center justify-center text-center text-xs text-muted-foreground">
                 {children}
               </div>
             </td>
@@ -210,7 +210,7 @@ function CalendarDayButton({
       data-range-end={isRangeEnd}
       data-range-middle={isRangeMiddle}
       className={cn(
-        "relative isolate z-10 h-9 w-9 p-0 font-medium text-xs transition-colors rounded-lg flex items-center justify-center",
+        "relative isolate z-10 h-8 sm:h-9 w-full min-w-0 p-0 font-medium text-xs transition-colors rounded-lg flex items-center justify-center",
         // Hover state
         "hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white",
         // Single selection

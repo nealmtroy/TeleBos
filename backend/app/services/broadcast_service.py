@@ -240,6 +240,12 @@ async def start_broadcast(
     if mode == "single_text" and not custom_text and not text_list:
         raise ValueError("single_text mode requires custom_text or text_list")
 
+    # Free-tier users have a daily send-time budget. Checking here gives an
+    # immediate, explainable refusal instead of a job that starts and stalls.
+    from app.services.broadcast_entitlement import enforce_broadcast_allowance
+
+    await enforce_broadcast_allowance(db, user)
+
     total_groups = len(group_list.items)
 
     job = BroadcastJob(
@@ -717,6 +723,56 @@ async def _flush_cycle_logs(
         await db.commit()
 
 
+async def _resolve_job_watermark(db, user_id) -> str | None:
+    """Return the watermark template this job's owner must send under, or None.
+
+    Resolved once at job start. An owner who upgrades mid-broadcast keeps the
+    watermark until the next job, which is the safe direction: never watermark
+    a paid message, but always watermark one that started on the free tier.
+    """
+    from app.models.user import User
+    from app.services.broadcast_entitlement import (
+        get_watermark_config,
+        render_watermark,
+        requires_watermark,
+    )
+
+    try:
+        result = await db.execute(select(User.role).where(User.id == user_id))
+        role = result.scalar_one_or_none()
+    except Exception as exc:
+        # Never let an entitlement lookup break a send loop. If the role cannot
+        # be read, fall back to the most restrictive reading.
+        logger.warning("Could not resolve broadcast role for user %s: %s", user_id, exc)
+        role = "basic"
+
+    if not requires_watermark(role or "basic"):
+        return None
+
+    try:
+        enabled, template = await get_watermark_config(db)
+    except Exception as exc:
+        logger.warning("Could not resolve broadcast watermark settings: %s", exc)
+        return None
+
+    if not enabled:
+        return None
+    return render_watermark(template) or None
+
+
+def _watermark_for_job(watermark_template: str | None, text: str) -> str:
+    """Append the resolved watermark to one outgoing message.
+
+    Kept as a pure function so the send loop stays free of I/O and so the
+    behaviour is directly testable.
+    """
+    if not watermark_template or not text:
+        return text
+    if watermark_template in text:
+        return text
+    return f"{text}\n\n{watermark_template}"
+
+
 async def execute_broadcast(job_id: str):
     """Execute a broadcast job. Runs as an asyncio.Task in the FastAPI process."""
     from app.database import async_session_factory
@@ -792,6 +848,11 @@ async def execute_broadcast(job_id: str):
                     texts = list(text_list.texts)
             if mode == "single_text" and custom_text:
                 texts = [custom_text]
+
+            # Resolve the watermark once per job. The owner's role and the
+            # watermark template cannot change mid-run, and the send loop must
+            # not hit the database once per message.
+            watermark_template = await _resolve_job_watermark(db, job_orm.user_id)
 
             account_snapshots = []
             for acc_id_str in account_ids:
@@ -1107,7 +1168,11 @@ async def execute_broadcast(job_id: str):
                 log_err_type = None
                 log_err_msg = None
                 log_duration_ms = None
+                log_send_ms = None
                 log_group_id = None
+                # Accumulated real send time for this item; only the send branch
+                # fills it in, so it stays None for skipped or failed targets.
+                total_send_ms = 0
 
                 # If we need to resolve/join, but the selected account is on join cooldown
                 if cached_entity is None and time.time() < selected_acc.get(
@@ -1230,6 +1295,10 @@ async def execute_broadcast(job_id: str):
                 else:
                     try:
                         if chosen_text:
+                            # Watermark once per message, not once per entity, so a
+                            # chatlist target that resolves to many groups does not
+                            # pay the DB round-trip repeatedly.
+                            send_text = _watermark_for_job(watermark_template, chosen_text)
                             for entity in entities:
                                 # Pre-check send permissions
                                 can_send, reason = await check_send_permission(client, entity)
@@ -1241,7 +1310,9 @@ async def execute_broadcast(job_id: str):
 
                                 for retry_attempt in range(2):
                                     try:
-                                        await asyncio.wait_for(client.send_message(entity, chosen_text), timeout=30.0)
+                                        send_started = time.monotonic()
+                                        await asyncio.wait_for(client.send_message(entity, send_text), timeout=30.0)
+                                        total_send_ms += int((time.monotonic() - send_started) * 1000)
                                         break
                                     except telethon.errors.UserNotParticipantError as unpe:
                                         if retry_attempt == 0:
@@ -1338,6 +1409,10 @@ async def execute_broadcast(job_id: str):
 
                         log_status = "success"
                         log_duration_ms = int((time.time() - start_time) * 1000)
+                        # Actual send time only, excluding the configured delay and
+                        # any flood-wait backoff. This is what the free-tier daily
+                        # budget is charged against.
+                        log_send_ms = total_send_ms or None
                         log_err_msg = None
                         log_err_type = None
                         sent += 1
@@ -1418,6 +1493,7 @@ async def execute_broadcast(job_id: str):
                     "error_message": log_err_msg,
                     "sent_text": chosen_text,
                     "duration_ms": log_duration_ms,
+                    "send_ms": log_send_ms,
                     "sent_at": datetime.now(timezone.utc).isoformat(),
                 })
 

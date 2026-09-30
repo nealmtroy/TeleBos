@@ -1,12 +1,16 @@
-"""TelegramIdPrefixPrice model — owner sets sell price by telegram_id prefix.
+"""TelegramIdPrefixPrice model — owner sets buy/sell price by telegram_id prefix.
 
-Example:
-  prefix "7"  → sell_price = 6000  (matches 7780645374, 7780645372, …)
-  prefix "1"  → sell_price = 5000  (matches 1197078139, …)
-  prefix "5"  → sell_price = 2000  (matches 5720511596, …)
+Each prefix carries two prices so the platform margin is configured per prefix:
 
-Matching rule: the LONGEST matching prefix wins. If none match, the
-global SmmSetting account_sell_price is used as fallback.
+  prefix "7"  → sell_price = 5000, buy_price = 7000
+                 (seller receives 5000, buyer pays 7000, margin 2000)
+  prefix "1"  → sell_price = 4000, buy_price = 5500
+  prefix "5"  → sell_price = 1500, buy_price = 2500
+
+Matching rule: the LONGEST matching prefix wins. If none match, the global
+SmmSetting ``account_sell_price`` / ``account_buy_price`` pair is used as the
+fallback for the sell side; the buy side falls back to the global
+``account_buy_price`` and is never allowed below the resolved sell price.
 """
 
 import uuid
@@ -19,7 +23,7 @@ from app.database import Base
 
 
 class TelegramIdPrefixPrice(Base):
-    """Owner-configured sell price for all accounts whose telegram_id starts with a given prefix."""
+    """Owner-configured buy/sell prices for accounts whose telegram_id starts with a prefix."""
     __tablename__ = "telegram_id_prefix_prices"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -30,6 +34,9 @@ class TelegramIdPrefixPrice(Base):
     )
     sell_price: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=5500,
+    )
+    buy_price: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, default=None,
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 

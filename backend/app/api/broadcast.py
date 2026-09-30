@@ -17,6 +17,7 @@ from app.schemas.broadcast import (
     BroadcastJobResponse,
     BroadcastLogResponse,
     BroadcastUserSummaryResponse,
+    BroadcastEntitlementResponse,
 )
 from app.services import broadcast_service
 from app.utils.rate_limiter import rate_limiter
@@ -183,6 +184,33 @@ async def job_summary(
     """Get aggregate broadcast summary metrics for current user."""
     summary = await broadcast_service.get_broadcast_summary_for_user(db, user.id)
     return summary
+
+
+@router.get("/broadcast/entitlement", response_model=BroadcastEntitlementResponse)
+async def broadcast_entitlement(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get the current user's broadcast allowance and watermark state."""
+    from app.services import broadcast_entitlement as ent
+
+    daily_limit = await ent.get_free_daily_limit(db)
+    remaining = await ent.get_remaining_broadcast_seconds(db, str(user.id))
+    unlimited = not ent.requires_watermark(user.role)
+
+    watermark_enabled, template = await ent.get_watermark_config(db)
+    # Only preview a watermark the user would actually receive.
+    preview = ent.render_watermark(template) if (watermark_enabled and not unlimited) else None
+
+    return BroadcastEntitlementResponse(
+        role=user.role,
+        unlimited=unlimited,
+        daily_limit_seconds=0 if unlimited else daily_limit,
+        remaining_seconds=0 if unlimited else remaining,
+        used_seconds=0 if unlimited else max(0, daily_limit - remaining),
+        watermark_enabled=bool(watermark_enabled and not unlimited),
+        watermark_preview=preview,
+    )
 
 
 @router.get("/broadcast/{job_id}", response_model=BroadcastJobResponse)

@@ -106,7 +106,38 @@ The current product role vocabulary is `basic`, `pro`, `premium`, and `owner`.
 | Broadcast workflows | Limited | Yes | Yes | Yes |
 | Auto-reply and bulk invites | No | Yes | Yes | Yes |
 | Marketplace and SMM ordering | Yes | Yes | Yes | Yes |
+| Top up and withdraw balance | Yes | Yes | Yes | Yes |
 | Voucher, service, price, and user administration | No | No | No | Yes |
+
+### Broadcast free-tier rules
+
+Accounts on the `basic` plan broadcast under two additional constraints, both
+owner-configurable:
+
+- **Watermark.** Every outgoing message is stamped with the configured
+  watermark template. The default resolves `{official}` to the official
+  channel handle. Paid roles are never watermarked.
+- **Daily send-time budget.** The free tier may consume a bounded amount of
+  broadcast send time per UTC day (5 hours by default). Only time actually
+  spent delivering a message is charged, so configured delays and flood-wait
+  backoff do not consume the budget. The budget is refused at job start, with
+  an explanation, rather than failing mid-run.
+
+### Marketplace pricing
+
+Account pricing is configured per `telegram_id` prefix, with both sides of the
+trade set together: `sell_price` (what the seller receives) and `buy_price`
+(what the buyer pays). The difference is the platform margin. The longest
+matching prefix wins, and the global prices act only as fallbacks. A listing
+stores its resolved prices, so an administrative price change never reprices an
+account that is already on the market, and the buy price is never allowed to
+fall below the sell price.
+
+### Account transfer safety
+
+Before an account is listed, every Telegram session other than the one TeleBos
+drives is revoked, so a seller cannot retain access after the sale. If Telegram
+refuses the revocation, the listing is aborted rather than completed.
 
 This table is the product entitlement target. Source-verified authorization controls and any implementation gaps are owned by `SECURITY.md`.
 

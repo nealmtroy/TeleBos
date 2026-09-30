@@ -530,8 +530,8 @@ export default function AutoReplyPage() {
 
                   {/* Expanded editor */}
                   {isExpanded && (
-                    <div className="px-4 py-4 bg-gray-50/80 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150">
-                      <div className="max-w-2xl ml-8 sm:ml-12 space-y-3">
+                    <div className="px-3 sm:px-4 py-4 bg-gray-50/80 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="max-w-2xl space-y-3 sm:ml-12">
                         <div className="flex items-center gap-3 mb-2">
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input

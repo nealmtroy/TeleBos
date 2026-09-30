@@ -27,21 +27,33 @@ class FakeDatabase:
 
 
 class FakeClient:
-    def __init__(self, photo_batches, bio_values=None):
+    def __init__(self, photo_batches, bio_values=None, authorizations=None):
         self.photo_batches = iter(photo_batches)
         self.bio_values = iter(bio_values or [OFFICIAL_MARKETPLACE_BIO] * 3)
+        # Default: one TeleBos session (current) plus one foreign session, so
+        # the purge path is exercised unless a test opts out.
+        self.authorizations = (
+            [SimpleNamespace(current=True), SimpleNamespace(current=False)]
+            if authorizations is None
+            else authorizations
+        )
         self.requests = []
+        self.on_request = None
 
     async def get_me(self):
         return SimpleNamespace(id=42)
 
     async def __call__(self, request):
         self.requests.append(request)
+        if self.on_request is not None:
+            self.on_request(request)
         request_name = type(request).__name__
         if request_name == "GetUserPhotosRequest":
             return SimpleNamespace(photos=next(self.photo_batches))
         if request_name == "GetFullUserRequest":
             return SimpleNamespace(full_user=SimpleNamespace(about=next(self.bio_values)))
+        if request_name == "GetAuthorizationsRequest":
+            return SimpleNamespace(authorizations=self.authorizations)
         return SimpleNamespace()
 
 
@@ -241,4 +253,98 @@ async def test_prepare_account_for_sale_fails_closed_when_profile_update_times_o
 
     assert account.first_name == "Seller"
     assert account.username == "sellername"
+    db.flush.assert_not_awaited()
+
+# ── Session purge: an account may not be listed while other logins survive ──
+
+def _sale_client(monkeypatch, client, tmp_path):
+    monkeypatch.setattr(marketplace_profile_service, "decrypt", lambda _: "session")
+    monkeypatch.setattr(
+        marketplace_profile_service.client_pool, "get", AsyncMock(return_value=client)
+    )
+    monkeypatch.setattr("app.services.account_service._photo_path", lambda _: str(tmp_path / "x.jpg"))
+
+
+async def test_prepare_account_for_sale_terminates_foreign_sessions(monkeypatch, tmp_path):
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient([[]])
+
+    _sale_client(monkeypatch, client, tmp_path)
+
+    await prepare_account_for_sale(db, account, rng=random.Random(5))
+
+    request_names = [type(request).__name__ for request in client.requests]
+    assert "GetAuthorizationsRequest" in request_names
+    assert "ResetAuthorizationsRequest" in request_names
+    # The purge must run before the profile edits, so a refused reset stops
+    # the listing before any Telegram state is changed.
+    assert request_names.index("ResetAuthorizationsRequest") < request_names.index(
+        "UpdateProfileRequest"
+    )
+    db.flush.assert_awaited_once()
+
+
+async def test_prepare_account_for_sale_skips_reset_when_no_foreign_sessions(
+    monkeypatch, tmp_path
+):
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient([[]], authorizations=[SimpleNamespace(current=True)])
+
+    _sale_client(monkeypatch, client, tmp_path)
+
+    await prepare_account_for_sale(db, account, rng=random.Random(5))
+
+    request_names = [type(request).__name__ for request in client.requests]
+    assert "GetAuthorizationsRequest" in request_names
+    assert "ResetAuthorizationsRequest" not in request_names
+    assert "UpdateProfileRequest" in request_names
+
+
+async def test_prepare_account_for_sale_fails_closed_when_reset_is_refused(
+    monkeypatch, tmp_path
+):
+    """Telegram rejecting the reset must abort the listing, not warn and continue."""
+    from telethon.errors import RPCError
+
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient([[]])
+
+    def fail_on_reset(request):
+        if type(request).__name__ == "ResetAuthorizationsRequest":
+            raise RPCError(request=None, message="RESET_AUTHORIZATIONSR_PEER_FRESH")
+
+    client.on_request = fail_on_reset
+    _sale_client(monkeypatch, client, tmp_path)
+
+    with pytest.raises(MarketplaceProfilePreparationError, match="revoke its other sessions"):
+        await prepare_account_for_sale(db, account, rng=random.Random(1))
+
+    # Nothing may be mutated on a refused purge.
+    assert account.first_name == "Seller"
+    assert account.username == "sellername"
+    assert account.bio == "seller bio"
+    db.flush.assert_not_awaited()
+
+
+async def test_prepare_account_for_sale_surfaces_reset_flood_wait(monkeypatch, tmp_path):
+    from telethon.errors import FloodWaitError
+
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient([[]])
+
+    def flood_on_reset(request):
+        if type(request).__name__ == "ResetAuthorizationsRequest":
+            raise FloodWaitError(request=None, capture=0)
+
+    client.on_request = flood_on_reset
+    _sale_client(monkeypatch, client, tmp_path)
+
+    with pytest.raises(MarketplaceProfilePreparationRateLimitError) as excinfo:
+        await prepare_account_for_sale(db, account, rng=random.Random(1))
+
+    assert excinfo.value.seconds >= 0
     db.flush.assert_not_awaited()

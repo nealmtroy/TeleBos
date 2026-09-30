@@ -100,6 +100,73 @@ async def _get_sale_client(account: TelegramAccount, *, deadline: float):
         ) from exc
 
 
+async def _terminate_foreign_sessions(client, account_id: str, *, deadline: float) -> int:
+    """Revoke every Telegram session except the one TeleBos is driving.
+
+    A listed account must reach the buyer with no other way in: any session the
+    seller opened elsewhere (another client, a phone, a web login) would let
+    them keep control after the sale. ``auth.resetAuthorizations`` revokes them
+    all, and the caller's own session survives it by design.
+
+    Returns the number of authorizations revoked.
+    """
+    from telethon.errors import FloodWaitError, RPCError
+    from telethon.tl.functions.account import GetAuthorizationsRequest
+    from telethon.tl.functions.auth import ResetAuthorizationsRequest
+
+    try:
+        auths = await _with_timeout(
+            client(GetAuthorizationsRequest()),
+            operation="read authorizations",
+            account_id=account_id,
+            deadline=deadline,
+        )
+    except FloodWaitError as exc:
+        logger.warning(
+            "Session purge rate limited for account %s; retry after %s seconds",
+            account_id,
+            exc.seconds,
+        )
+        raise MarketplaceProfilePreparationRateLimitError(exc.seconds) from exc
+    except RPCError as exc:
+        raise MarketplaceProfilePreparationError(
+            "Unable to verify the Telegram sessions on this account. Please try again."
+        ) from exc
+
+    # ``current`` marks the session TeleBos is connected through; it is the one
+    # authorization that must survive the reset.
+    foreign_count = sum(1 for auth in getattr(auths, "authorizations", []) if not auth.current)
+    if foreign_count == 0:
+        logger.info("Account %s has no foreign sessions to terminate", account_id)
+        return 0
+
+    try:
+        await _with_timeout(
+            client(ResetAuthorizationsRequest()),
+            operation="terminate foreign sessions",
+            account_id=account_id,
+            deadline=deadline,
+        )
+    except FloodWaitError as exc:
+        logger.warning(
+            "Session termination rate limited for account %s; retry after %s seconds",
+            account_id,
+            exc.seconds,
+        )
+        raise MarketplaceProfilePreparationRateLimitError(exc.seconds) from exc
+    except RPCError as exc:
+        # Telegram refuses this while the account is still inside the freshness
+        # window for a new session, so report it as an application error rather
+        # than leaking the raw RPC detail.
+        raise MarketplaceProfilePreparationError(
+            "Telegram will not let this account revoke its other sessions yet. "
+            "Wait a while after logging in, then try again."
+        ) from exc
+
+    logger.info("Terminated %s foreign session(s) for account %s", foreign_count, account_id)
+    return foreign_count
+
+
 async def _verify_official_bio(client, account_id: str, *, deadline: float) -> bool:
     """Read Telegram's authoritative profile payload and confirm the sale bio."""
     from telethon.errors import FloodWaitError, RPCError
@@ -268,6 +335,11 @@ async def _prepare_account_for_sale_inner(
         raise MarketplaceProfilePreparationError(
             "Telegram account is disconnected. Please re-login."
         )
+
+    # Revoke the seller's other logins first. This is the step that actually
+    # transfers control: everything after it is cosmetic by comparison, and
+    # skipping it would hand the buyer an account the seller can still enter.
+    await _terminate_foreign_sessions(client, account_id, deadline=deadline)
 
     await _apply_official_profile(
         client,

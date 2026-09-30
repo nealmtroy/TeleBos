@@ -138,3 +138,17 @@ class BroadcastUserSummaryResponse(BaseModel):
     total_sent: int = 0
     total_failed: int = 0
 
+
+class BroadcastEntitlementResponse(BaseModel):
+    """Free-tier broadcast allowance and watermark state for the current user.
+
+    Roles above ``basic`` report ``unlimited`` and no watermark, because the
+    allowance does not apply to them.
+    """
+    role: str
+    unlimited: bool
+    daily_limit_seconds: int
+    remaining_seconds: int
+    used_seconds: int
+    watermark_enabled: bool
+    watermark_preview: str | None = None

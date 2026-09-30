@@ -527,25 +527,51 @@ async def get_global_settings(db: AsyncSession) -> dict:
     rows = result.scalars().all()
     settings = {row.key: row.value for row in rows}
 
+    watermark_enabled = str(settings.get("broadcast_watermark_enabled", "true")).strip().lower()
+    try:
+        free_daily = int(float(settings.get("broadcast_free_daily_seconds", "18000")))
+    except (TypeError, ValueError):
+        free_daily = 18000
+
     return {
         "global_markup_percent": int(settings.get(SETTING_GLOBAL_MARKUP, "0")),
         "account_buy_price": int(settings.get("account_buy_price", "0")),
         "account_sell_price": int(settings.get("account_sell_price", "0")),
+        "broadcast_watermark_enabled": watermark_enabled == "true",
+        "broadcast_watermark_text": settings.get("broadcast_watermark_text", "Bot by @{official}"),
+        "broadcast_free_daily_seconds": max(0, free_daily),
     }
 
 
 async def update_global_settings(db: AsyncSession, updates: dict) -> dict:
     """Update SMM global settings."""
-    for key in ["global_markup_percent", "account_buy_price", "account_sell_price"]:
+    price_keys = {"account_buy_price", "account_sell_price"}
+    for key in [
+        "global_markup_percent",
+        "account_buy_price",
+        "account_sell_price",
+        "broadcast_watermark_enabled",
+        "broadcast_watermark_text",
+        "broadcast_free_daily_seconds",
+    ]:
         if key in updates and updates[key] is not None:
             value = str(updates[key])
             # Use SETTING_GLOBAL_MARKUP for key if it matches
             db_key = SETTING_GLOBAL_MARKUP if key == "global_markup_percent" else key
+            if isinstance(updates[key], bool):
+                value = "true" if updates[key] else "false"
             existing = await db.get(SmmSetting, db_key)
             if existing:
                 existing.value = value
             else:
                 db.add(SmmSetting(key=db_key, value=value))
+
+    # The account price service caches the global fallbacks for 5 minutes, so a
+    # change here would otherwise leave listings priced off stale defaults.
+    if price_keys & updates.keys():
+        from app.services.user_account_price_service import invalidate_price_cache
+
+        invalidate_price_cache()
 
     await db.flush()
     return await get_global_settings(db)

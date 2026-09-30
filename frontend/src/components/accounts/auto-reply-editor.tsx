@@ -35,6 +35,7 @@ export function AutoReplyEditor({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState("");
   const [selectedEmojiCategory, setSelectedEmojiCategory] = useState(0);
+  const [linkDraft, setLinkDraft] = useState({ open: false, url: "", text: "" });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Helper to wrap or insert HTML tags at cursor position
@@ -69,17 +70,28 @@ export function AutoReplyEditor({
   }
 
   function handleInsertLink() {
-    const url = window.prompt("Masukkan URL link:", "https://");
+    // A prompt() is unusable on mobile and gives no way to validate the URL, so
+    // the link editor is an inline form anchored under the toolbar instead.
+    setLinkDraft({ open: true, url: "", text: "" });
+  }
+
+  /** Commit the inline link form, wrapping the current selection when present. */
+  function commitLink() {
+    const url = linkDraft.url.trim();
     if (!url) return;
     const el = textareaRef.current;
-    if (!el) return;
+    const start = el ? el.selectionStart : value.length;
+    const end = el ? el.selectionEnd : value.length;
+    const selected = linkDraft.text.trim() || value.substring(start, end) || url;
 
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = value.substring(start, end) || "klik di sini";
-    const replacement = `<a href="${url}">${selected}</a>`;
+    // Escape quotes so a URL containing " cannot break out of the attribute and
+    // inject markup into the preview below.
+    const safeUrl = url.replace(/"/g, "&quot;");
+    const replacement = `<a href="${safeUrl}">${selected}</a>`;
     const newText = value.substring(0, start) + replacement + value.substring(end);
     onChange(newText);
+    setLinkDraft({ open: false, url: "", text: "" });
+    setTimeout(() => el?.focus(), 0);
   }
 
   function handleInsertEmoji(emoji: string) {
@@ -126,6 +138,20 @@ export function AutoReplyEditor({
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+
+    // Only http(s) and Telegram links may become an href. Without this check a
+    // pasted javascript: URL would execute inside the preview, which renders
+    // through dangerouslySetInnerHTML.
+    safe = safe.replace(
+      /&lt;a href=(?:&quot;|")([\s\S]*?)(?:&quot;|")&gt;/gi,
+      (match, url) => {
+        const trimmed = url.trim();
+        // Anything outside these schemes becomes an inert "#" so a pasted
+        // javascript:/data:/vbscript: URL cannot execute in the preview.
+        const safeScheme = /^(https?:|tg:\/\/|mailto:)/i.test(trimmed);
+        return safeScheme ? match : "&lt;a href=&quot;#&quot;&gt;";
+      }
+    );
 
     // Un-escape allowed Telegram HTML tags safely
     safe = safe
@@ -177,7 +203,7 @@ export function AutoReplyEditor({
             title="Monospace (Code) <code>...</code>"
             onClick={() => applyTag("<code>", "</code>", "kode")}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition"
+            className="p-2 sm:p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition"
           >
             <Code className="h-3.5 w-3.5" />
           </button>
@@ -186,7 +212,7 @@ export function AutoReplyEditor({
             title="Kutipan (Quote) <blockquote>...</blockquote>"
             onClick={() => applyTag("<blockquote>", "</blockquote>", "kutipan")}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition"
+            className="p-2 sm:p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition"
           >
             <Quote className="h-3.5 w-3.5" />
           </button>
@@ -195,7 +221,7 @@ export function AutoReplyEditor({
             title="Tautan (Link) <a href='...'>...</a>"
             onClick={handleInsertLink}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition"
+            className="p-2 sm:p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition"
           >
             <LinkIcon className="h-3.5 w-3.5" />
           </button>
@@ -204,7 +230,7 @@ export function AutoReplyEditor({
             title="Spoiler <tg-spoiler>...</tg-spoiler>"
             onClick={() => applyTag("<tg-spoiler>", "</tg-spoiler>", "rahasia")}
             disabled={disabled || activeTab === "preview"}
-            className="px-1.5 py-0.5 text-[11px] rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition font-mono border border-gray-300"
+            className="px-2.5 sm:px-1.5 py-1 sm:py-0.5 text-[11px] rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition font-mono border border-gray-300"
           >
             spoiler
           </button>
@@ -219,7 +245,7 @@ export function AutoReplyEditor({
               onClick={() => setShowEmojiPicker((prev) => !prev)}
               disabled={disabled || activeTab === "preview"}
               className={cn(
-                "p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition flex items-center gap-1",
+                "p-2 sm:p-1.5 rounded hover:bg-gray-200 text-gray-700 disabled:opacity-40 transition flex items-center gap-1",
                 showEmojiPicker && "bg-gray-200 text-primary-600"
               )}
             >
@@ -240,14 +266,16 @@ export function AutoReplyEditor({
                       className="bg-transparent border-none outline-none text-xs w-full"
                     />
                     {emojiSearch && (
-                      <button onClick={() => setEmojiSearch("")}>
+                      <button type="button" onClick={() => setEmojiSearch("")} aria-label="Clear emoji search" className="p-1.5 -m-1">
                         <X className="h-3 w-3 text-gray-400" />
                       </button>
                     )}
                   </div>
                   <button
+                    type="button"
+                    aria-label="Close emoji picker"
                     onClick={() => setShowEmojiPicker(false)}
-                    className="p-1 hover:bg-gray-100 rounded text-gray-400 ml-1"
+                    className="p-2 hover:bg-gray-100 rounded text-gray-400 ml-1"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -337,6 +365,56 @@ export function AutoReplyEditor({
           </span>
         </div>
       </div>
+
+      {/* Inline link editor — a form rather than window.prompt, which mobile
+          browsers handle poorly and cannot validate. */}
+      {linkDraft.open && (
+        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2.5 space-y-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="url"
+              inputMode="url"
+              autoFocus
+              value={linkDraft.url}
+              onChange={(e) => setLinkDraft((d) => ({ ...d, url: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitLink();
+                }
+              }}
+              placeholder="https://t.me/telebos_official"
+              aria-label="Link URL"
+              className="w-full sm:flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+            />
+            <input
+              type="text"
+              value={linkDraft.text}
+              onChange={(e) => setLinkDraft((d) => ({ ...d, text: e.target.value }))}
+              placeholder="Link text (optional)"
+              aria-label="Link text"
+              className="w-full sm:flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setLinkDraft({ open: false, url: "", text: "" })}
+              className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={commitLink}
+              disabled={!linkDraft.url.trim()}
+              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 rounded-lg transition"
+            >
+              Insert Link
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Editor Body */}
       {activeTab === "edit" ? (

@@ -14,6 +14,21 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+/** True below Tailwind's `sm` breakpoint, where two months cannot fit. */
+function useIsNarrowViewport(): boolean {
+  const [isNarrow, setIsNarrow] = React.useState(false);
+
+  React.useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsNarrow(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  return isNarrow;
+}
+
 export interface DatePickerWithRangeProps {
   id?: string;
   className?: string;
@@ -42,6 +57,10 @@ export function DatePickerWithRange({
   disabled = false,
 }: DatePickerWithRangeProps) {
   const [open, setOpen] = React.useState(false);
+  const isNarrow = useIsNarrowViewport();
+  // Two months side by side overflow a phone viewport, so narrow screens get
+  // one month and the caller keeps its own preference.
+  const monthsToShow = isNarrow ? 1 : numberOfMonths;
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,7 +79,7 @@ export function DatePickerWithRange({
   };
 
   return (
-    <div className={cn("relative inline-block", className)}>
+    <div className={cn("relative inline-block w-full sm:w-auto", className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           disabled={disabled}
@@ -71,7 +90,7 @@ export function DatePickerWithRange({
               data-empty={!date?.from}
               disabled={disabled}
               className={cn(
-                "w-[260px] justify-between text-left font-normal flex items-center gap-2 rounded-xl border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-750",
+                "w-full sm:w-[260px] justify-between text-left font-normal flex items-center gap-2 rounded-xl border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-750",
                 !date?.from && "text-muted-foreground dark:text-slate-400",
                 triggerClassName
               )}
@@ -151,7 +170,7 @@ export function DatePickerWithRange({
             defaultMonth={date?.from}
             selected={date}
             onSelect={setDate}
-            numberOfMonths={numberOfMonths}
+            numberOfMonths={monthsToShow}
           />
           {clearable && date?.from && (
             <div className="p-2 border-t border-gray-100 dark:border-slate-800 flex justify-end">
