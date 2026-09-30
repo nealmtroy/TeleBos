@@ -495,3 +495,60 @@ def test_string_fallback_matches_authorization_key_spelling():
     )
     assert any(k in exc_str for k in keys)
     assert pool is not None
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_client_tasks_cancelled_when_disconnect_times_out():
+    """A slow disconnect must not strand the client's loop tasks.
+
+    The unauthorized branch used an unguarded wait_for(disconnect(), 2.0); a
+    timeout escaped to the generic handler, which marked the session expired
+    but left the client connected with pending recv/send loops
+    (PYTHON-FASTAPI-B/C/D/E).
+    """
+    import uuid
+
+    from app.services.telegram_client import TelegramClientPool
+
+    pool = TelegramClientPool()
+    acc_id = str(uuid.uuid4())
+
+    client = AsyncMock()
+    client.connect = AsyncMock()
+    client.is_user_authorized = AsyncMock(return_value=False)
+    client.disconnect = AsyncMock(side_effect=asyncio.TimeoutError())
+    recv_task, send_task = MagicMock(), MagicMock()
+    recv_task.done.return_value = False
+    send_task.done.return_value = False
+    client._recv_task = recv_task
+    client._send_task = send_task
+
+    with (
+        patch("app.services.telegram_client.TelegramClient", return_value=client),
+        patch("app.services.telegram_client.deterministic_ios_device") as mock_device,
+        patch("app.services.telegram_client.StringSession"),
+        patch("app.services.telegram_client.settings") as mock_settings,
+        patch("app.database.async_session_factory") as mock_db_factory,
+    ):
+        mock_settings.TELEGRAM_API_ID = 1
+        mock_settings.TELEGRAM_API_HASH = "h"
+        mock_device.return_value = {
+            "device_model": "iPhone",
+            "app_version": "1",
+            "system_version": "1",
+            "lang_code": "en",
+            "system_lang_code": "en",
+        }
+        mock_db_factory.return_value.__aenter__.return_value = AsyncMock()
+
+        result = await pool.get(acc_id, "session-string")
+
+    assert result is None
+    recv_task.cancel.assert_called_once()
+    send_task.cancel.assert_called_once()
+
+    # The unauthorized branch must do the cleanup itself. The generic handler
+    # also force-closes, so asserting only the cancel would pass even with this
+    # branch unguarded -- assert the branch handled the disconnect in place.
+    assert client.disconnect.await_count == 1
+    pool._clients.pop(acc_id, None)

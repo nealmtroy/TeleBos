@@ -372,7 +372,20 @@ class TelegramClientPool:
                     return None
                 if not await client.is_user_authorized():
                     logger.warning("Session expired for account %s", account_id)
-                    await asyncio.wait_for(client.disconnect(), timeout=2.0)
+                    # Guarded: an unguarded wait_for here lets a slow disconnect
+                    # raise into the generic handler below, which marks the
+                    # session expired but leaves the client connected with its
+                    # loop tasks alive (PYTHON-FASTAPI-B/C/D/E).
+                    try:
+                        await asyncio.wait_for(client.disconnect(), timeout=2.0)
+                    except Exception as disconnect_exc:
+                        logger.debug(
+                            "Failed to disconnect unauthorized client for %s: %s",
+                            account_id,
+                            disconnect_exc,
+                        )
+                    finally:
+                        force_close_telethon_client(client)
                     self._clients.pop(account_id, None)
                     await self._handle_expired_session(account_id)
                     return None
@@ -460,6 +473,18 @@ class TelegramClientPool:
             except DEAD_SESSION_ERRORS as exc:
                 logger.warning("Session expired for account %s: %s", account_id, exc)
                 self._clients.pop(account_id, None)
+                # The client may already be connected by this point; releasing
+                # it here is what keeps a dead session from stranding its loop
+                # tasks (PYTHON-FASTAPI-B/C/D/E).
+                try:
+                    await asyncio.wait_for(client.disconnect(), timeout=3.0)
+                except Exception as disconnect_exc:
+                    logger.debug(
+                        "Failed to disconnect expired client for %s: %s",
+                        account_id,
+                        disconnect_exc,
+                    )
+                force_close_telethon_client(client)
                 await self._handle_expired_session(account_id)
                 return None
             except Exception as exc:
@@ -480,6 +505,11 @@ class TelegramClientPool:
                 ):
                     self._clients.pop(account_id, None)
                     await self._handle_expired_session(account_id)
+                # The failure may have happened after a successful connect, so
+                # the client is still holding its recv/send loop tasks. This
+                # handler is the last chance to release them
+                # (PYTHON-FASTAPI-B/C/D/E).
+                force_close_telethon_client(client)
                 return None
 
     async def _handle_expired_session(self, account_id: str) -> None:
