@@ -661,7 +661,7 @@ function QRLoginForm() {
   const [qrUrl, setQrUrl] = useState("");
   const [expiresAt, setExpiresAt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(300);
-  const [status, setStatus] = useState<"pending" | "success" | "requires_2fa" | "failed">("pending");
+  const [status, setStatus] = useState<"pending" | "success" | "requires_2fa" | "failed" | "expired">("pending");
   const [twofaPassword, setTwofaPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -711,7 +711,7 @@ function QRLoginForm() {
 
   // Status Polling
   useEffect(() => {
-    if (!qrId || status === "success" || status === "failed" || status === "requires_2fa") return;
+    if (!qrId || status === "success" || status === "failed" || status === "requires_2fa" || status === "expired") return;
 
     const pollInterval = setInterval(async () => {
       try {
@@ -722,6 +722,8 @@ function QRLoginForm() {
             router.push(`/accounts/${data.account_id}`);
           } else if (data.status === "failed") {
             setError(data.error || "Login gagal. Silakan coba lagi.");
+          } else if (data.status === "expired") {
+            setError("Kode QR sudah kedaluwarsa. Silakan generate ulang.");
           }
         }
       } catch (err: any) {

@@ -174,11 +174,28 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
         logger.info("QR Login %s requires 2FA password", qr_id)
         if qr_id in _pending_qr_logins:
             _pending_qr_logins[qr_id]["status"] = "requires_2fa"
+    except asyncio.TimeoutError:
+        # The user did not scan the QR before Telegram's login token expired.
+        # This is the ordinary end of an abandoned login, not a fault: Telethon
+        # raises a bare TimeoutError whose str() is "", which used to produce
+        # the contentless "watching failed: " in Sentry (PYTHON-FASTAPI-V).
+        logger.info("QR Login %s expired before being scanned", qr_id)
+        if qr_id in _pending_qr_logins:
+            _pending_qr_logins[qr_id]["status"] = "expired"
+            _pending_qr_logins[qr_id]["error"] = "expired"
     except Exception as exc:
-        logger.error("QR Login %s watching failed: %s", qr_id, exc)
+        # Include the type: some exceptions stringify to an empty string, which
+        # makes the log line useless for diagnosis.
+        logger.error(
+            "QR Login %s watching failed: %s: %s",
+            qr_id,
+            type(exc).__name__,
+            exc,
+            exc_info=True,
+        )
         if qr_id in _pending_qr_logins:
             _pending_qr_logins[qr_id]["status"] = "failed"
-            _pending_qr_logins[qr_id]["error"] = str(exc)
+            _pending_qr_logins[qr_id]["error"] = sanitize_exception(exc)
         try:
             await client.disconnect()
         except Exception:
