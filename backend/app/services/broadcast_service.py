@@ -1060,10 +1060,6 @@ async def execute_broadcast(job_id: str):
 
                 pending_pool = still_pending
 
-            # Reset per cycle: a join flood ends the current cycle early, and
-            # the leftover targets are re-queued at the cycle boundary below.
-            join_blocked = False
-
             for idx, item in enumerate(items):
                 # Find the next ready account
                 selected_acc = None
@@ -1095,71 +1091,29 @@ async def execute_broadcast(job_id: str):
                         break
 
                     now_ts = time.time()
+                    # An account on *join* cooldown is still perfectly able to
+                    # send. Join cooldown only blocks the join step, and the
+                    # per-target guard below already skips targets that need a
+                    # join right now. Filtering it out here instead made a
+                    # single join flood stall the whole cycle for the full wait,
+                    # including groups that had nothing to do with it.
                     ready_accs = [a for a in active_accounts if now_ts >= a["cooldown_until"]]
                     if ready_accs:
-                        target_val = item.get("value", "") or ""
-                        target_type = item.get("type", "username")
-                        target_pkey = f"{target_type}:{target_val}"
-                        is_target_joined = target_pkey in joined_pool
-
-                        if not is_target_joined:
-                            for offset in range(len(active_accounts)):
-                                i_idx = (current_acc_idx + offset) % len(active_accounts)
-                                candidate = active_accounts[i_idx]
-                                if now_ts >= candidate[
-                                    "cooldown_until"
-                                ] and now_ts >= candidate.get("join_cooldown_until", 0.0):
-                                    selected_acc = candidate
-                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                    break
-
-                        if not selected_acc:
-                            for offset in range(len(active_accounts)):
-                                i_idx = (current_acc_idx + offset) % len(active_accounts)
-                                candidate = active_accounts[i_idx]
-                                # Honour join cooldown here too. Skipping it made
-                                # this fallback pick a throttled account anyway,
-                                # and every remaining target was then marked
-                                # join_cooldown in a few seconds instead of the
-                                # loop waiting for the cooldown to expire.
-                                if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get(
-                                    "join_cooldown_until", 0.0
-                                ):
-                                    selected_acc = candidate
-                                    current_acc_idx = (i_idx + 1) % len(active_accounts)
-                                    break
+                        for offset in range(len(active_accounts)):
+                            i_idx = (current_acc_idx + offset) % len(active_accounts)
+                            candidate = active_accounts[i_idx]
+                            if now_ts >= candidate["cooldown_until"]:
+                                selected_acc = candidate
+                                current_acc_idx = (i_idx + 1) % len(active_accounts)
+                                break
 
                         if selected_acc:
                             break
 
-                    # No account is free of the *join* throttle. Joining is a
-                    # one-off prerequisite, not the send itself, so a join flood
-                    # must not park the job for the whole floodwait. End this
-                    # cycle and let the next one retry the pending groups; the
-                    # per-group and after-all delays still apply at the cycle
-                    # boundary below.
-                    join_blocked = bool(active_accounts) and all(
-                        now_ts < a.get("join_cooldown_until", 0.0)
-                        for a in active_accounts
-                    )
-                    if join_blocked:
-                        await _push_broadcast(
-                            job_id_str,
-                            "flood_wait",
-                            {
-                                "wait_seconds": 0,
-                                "message": (
-                                    "All accounts are on join cooldown. Ending this cycle; "
-                                    "pending groups retry on the next one."
-                                ),
-                            },
-                        )
-                        break
-
-                    earliest_ready_time = min(
-                        max(a["cooldown_until"], a.get("join_cooldown_until", 0.0))
-                        for a in active_accounts
-                    )
+                    # No account is free of the send throttle. Unlike a join
+                    # flood, this one genuinely blocks delivery everywhere, so
+                    # the job waits it out before retrying.
+                    earliest_ready_time = min(a["cooldown_until"] for a in active_accounts)
                     wait_sec = max(1.0, earliest_ready_time - now_ts)
 
                     await _push_broadcast(
@@ -1210,13 +1164,10 @@ async def execute_broadcast(job_id: str):
                     break
 
                 if selected_acc is None:
-                    # No account can serve this target (all on join cooldown).
-                    # Stop the cycle here rather than walking the rest of the
-                    # list: the remaining groups are queued in pending_pool and
-                    # picked up at the start of the next cycle. The per-group and
-                    # after-all delays still apply at the cycle boundary.
-                    join_blocked = True
-                    break
+                    # Every account is on send cooldown. The wait above has
+                    # elapsed without one freeing up; leave this target for the
+                    # next cycle rather than dereferencing None.
+                    continue
 
                 client = selected_acc["client"]
                 acc_id_str = selected_acc["account_id"]
@@ -1718,22 +1669,6 @@ async def execute_broadcast(job_id: str):
                     },
                 )
                 break
-
-            # A join flood ends the cycle early. Queue everything that was not reached
-            # so the next cycle retries it, otherwise only the targets that
-            # happened to be visited before the flood would ever be retried.
-            if join_blocked and is_looping:
-                for pitem in items:
-                    pk = f"{pitem.get('type', 'username')}:{pitem.get('value', '') or ''}"
-                    if (
-                        pk not in joined_pool
-                        and pk not in permanent_failures_pool
-                        and pk not in pending_pool
-                    ):
-                        pending_pool[pk] = {
-                            "group_identifier": pitem.get("value", "") or "",
-                            "item_type": pitem.get("type", "username"),
-                        }
 
             # Flush cycle logs to database as 1 cycle row with JSONB details
             cycle_duration_ms = int((time.time() - cycle_start_time) * 1000)
