@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[3889b84c](https://github.com/nealmtroy/TeleBos/commit/3889b84c)**: fix(telethon): cancel loop tasks on clients that never connected
 - **[3963f56a](https://github.com/nealmtroy/TeleBos/commit/3963f56a)**: fix(shutdown): make lifespan teardown best-effort per step
 - **[1aa4030d](https://github.com/nealmtroy/TeleBos/commit/1aa4030d)**: feat(accounts): add Telegram country code dropdown and search to OTP login
 - **[4e5071df](https://github.com/nealmtroy/TeleBos/commit/4e5071df)**: fix(ui): resolve Impeccable design findings across admin pages

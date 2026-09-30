@@ -134,6 +134,11 @@ try:
 except ImportError:
     ChannelsTooMuchError_ = None
 
+try:
+    from telethon.errors import FrozenMethodInvalidError
+except ImportError:
+    FrozenMethodInvalidError = None
+
 
 def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     """
@@ -142,6 +147,17 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     Returns:
         Tuple of (error_type, error_message)
     """
+    # FrozenMethodInvalidError subclasses FloodError, not FloodWaitError, so it
+    # must be checked before the FloodWaitError branch below or it is missed.
+    # It means Telegram froze this account and disabled the specific method
+    # (PYTHON-FASTAPI-12).
+    if FrozenMethodInvalidError and isinstance(exc, FrozenMethodInvalidError):
+        return (
+            "account_frozen",
+            "This Telegram account is frozen by Telegram and this action is "
+            "temporarily unavailable. Wait a few hours and try again.",
+        )
+
     if isinstance(exc, FloodWaitError):
         wait = exc.seconds if hasattr(exc, "seconds") else "unknown"
         return ("flood", f"Flood wait: {wait} seconds")
@@ -274,6 +290,13 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
 
     if "PHONE_NUMBER_FLOOD" in msg:
         return ("phone_flood", "Too many verification requests for this phone number. Please try again later.")
+
+    if "FROZEN_METHOD_INVALID" in msg or "frozen accounts" in msg.lower():
+        return (
+            "account_frozen",
+            "This Telegram account is frozen by Telegram and this action is "
+            "temporarily unavailable. Wait a few hours and try again.",
+        )
 
     if "FLOOD_WAIT" in msg:
         match = re.search(r"FLOOD_WAIT_(\d+)", msg)
