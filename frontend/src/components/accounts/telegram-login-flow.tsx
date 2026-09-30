@@ -5,6 +5,7 @@ import { Eye, EyeOff, Loader2, Lock, RefreshCw, ShieldAlert } from "lucide-react
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { PhoneInputWithCountry } from "@/components/accounts/phone-input-with-country";
 
 type Step = "phone" | "code" | "setupEmail" | "setupEmailCode" | "twofa";
 type SentCode = {
@@ -150,7 +151,17 @@ export function TelegramLoginFlow() {
   return <div className="space-y-5">
     {error && <div className="flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><ShieldAlert className="h-5 w-5 shrink-0" />{error}</div>}
     {step === "phone" && <>
-      <div><label className="mb-1.5 block text-sm font-semibold text-gray-700">{_("addAccount.phoneLabel")}</label><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={_("addAccount.phonePlaceholder")} className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100" /><p className="mt-1.5 text-xs text-gray-400">{_("addAccount.phoneHint")}</p></div>
+      <div>
+        <label className="mb-1.5 block text-sm font-semibold text-gray-700">{_("addAccount.phoneLabel")}</label>
+        <PhoneInputWithCountry
+          value={phone}
+          onChange={setPhone}
+          disabled={loading}
+          autoFocus
+          placeholder={_("addAccount.phonePlaceholder")}
+        />
+        <p className="mt-1.5 text-xs text-gray-400">{_("addAccount.phoneHint")}</p>
+      </div>
       <button onClick={sendCode} disabled={loading || !phone} className="w-full rounded-lg bg-primary-600 py-2.5 font-semibold text-white disabled:bg-gray-200 disabled:text-gray-400">{loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.sendOtp")}</button>
     </>}
     {step === "setupEmail" && <>

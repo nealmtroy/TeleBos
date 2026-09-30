@@ -39,7 +39,7 @@ from app.schemas.account import (
     UpdateProfileColorRequest,
 )
 from app.schemas.account_stats import AccountStatsResponse
-from app.services import account_service
+from app.services import account_service, country_service
 from app.utils.rate_limiter import rate_limiter
 from app.utils.sanitize import sanitize_exception
 
@@ -362,6 +362,12 @@ async def cancel_login(payload: LoginIdRequest, user: User = Depends(get_current
         return {"message": "No pending login found"}
     await pending_login_manager.discard(payload.login_id, expected=entry)
     return {"message": "Login cancelled"}
+
+
+@router.get("/countries", summary="List Telegram supported country calling codes")
+async def get_countries(lang_code: str = Query("en", description="ISO 639-1 language code")):
+    """Get list of countries supported by Telegram with calling codes, flag emojis, and input patterns."""
+    return await country_service.get_countries(lang_code=lang_code)
 
 
 @router.post("/send-code", response_model=SendCodeResponse)

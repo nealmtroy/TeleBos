@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ShieldAlert, Loader2, RefreshCw, Lock, Eye, EyeOff, Smartphone, KeyRound } from "lucide-react";
 import { TelegramLoginFlow } from "@/components/accounts/telegram-login-flow";
+import { PhoneInputWithCountry } from "@/components/accounts/phone-input-with-country";
 import { useT } from "@/lib/i18n";
 
 export default function AddAccountPage() {
@@ -318,12 +319,11 @@ function OTPLoginForm() {
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               {_("addAccount.phoneLabel")}
             </label>
-            <input
-              type="tel"
+            <PhoneInputWithCountry
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={setPhone}
+              disabled={loading}
               placeholder={_("addAccount.phonePlaceholder")}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-100 focus:border-primary-500 outline-none transition"
             />
             <p className="text-xs text-gray-400 mt-1.5">
               {_("addAccount.phoneHint")}

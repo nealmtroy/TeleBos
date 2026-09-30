@@ -1,0 +1,2341 @@
+[
+  {
+    "iso2": "AF",
+    "name": "Afghanistan",
+    "code": "93",
+    "flag": "🇦🇫",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "AL",
+    "name": "Albania",
+    "code": "355",
+    "flag": "🇦🇱",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "DZ",
+    "name": "Algeria",
+    "code": "213",
+    "flag": "🇩🇿",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "AS",
+    "name": "American Samoa",
+    "code": "1684",
+    "flag": "🇦🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "AD",
+    "name": "Andorra",
+    "code": "376",
+    "flag": "🇦🇩",
+    "prefixes": [],
+    "patterns": [
+      "XXXXXX"
+    ]
+  },
+  {
+    "iso2": "AO",
+    "name": "Angola",
+    "code": "244",
+    "flag": "🇦🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "AI",
+    "name": "Anguilla",
+    "code": "1264",
+    "flag": "🇦🇮",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "FT",
+    "name": "Anonymous Numbers",
+    "code": "888",
+    "flag": "🇫🇹",
+    "prefixes": [],
+    "patterns": [
+      "8 XXX",
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "AG",
+    "name": "Antigua & Barbuda",
+    "code": "1268",
+    "flag": "🇦🇬",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "AR",
+    "name": "Argentina",
+    "code": "54",
+    "flag": "🇦🇷",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "AM",
+    "name": "Armenia",
+    "code": "374",
+    "flag": "🇦🇲",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXXXX"
+    ]
+  },
+  {
+    "iso2": "AW",
+    "name": "Aruba",
+    "code": "297",
+    "flag": "🇦🇼",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "AU",
+    "name": "Australia",
+    "code": "61",
+    "flag": "🇦🇺",
+    "prefixes": [],
+    "patterns": [
+      "X XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "AT",
+    "name": "Austria",
+    "code": "43",
+    "flag": "🇦🇹",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "AZ",
+    "name": "Azerbaijan",
+    "code": "994",
+    "flag": "🇦🇿",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BS",
+    "name": "Bahamas",
+    "code": "1242",
+    "flag": "🇧🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BH",
+    "name": "Bahrain",
+    "code": "973",
+    "flag": "🇧🇭",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BD",
+    "name": "Bangladesh",
+    "code": "880",
+    "flag": "🇧🇩",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "BB",
+    "name": "Barbados",
+    "code": "1246",
+    "flag": "🇧🇧",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BY",
+    "name": "Belarus",
+    "code": "375",
+    "flag": "🇧🇾",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BE",
+    "name": "Belgium",
+    "code": "32",
+    "flag": "🇧🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "BZ",
+    "name": "Belize",
+    "code": "501",
+    "flag": "🇧🇿",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "BJ",
+    "name": "Benin",
+    "code": "229",
+    "flag": "🇧🇯",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "BM",
+    "name": "Bermuda",
+    "code": "1441",
+    "flag": "🇧🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BT",
+    "name": "Bhutan",
+    "code": "975",
+    "flag": "🇧🇹",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "BO",
+    "name": "Bolivia",
+    "code": "591",
+    "flag": "🇧🇴",
+    "prefixes": [],
+    "patterns": [
+      "X XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BQ",
+    "name": "Bonaire, Sint Eustatius & Saba",
+    "code": "599",
+    "flag": "🇧🇶",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "BA",
+    "name": "Bosnia & Herzegovina",
+    "code": "387",
+    "flag": "🇧🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "BW",
+    "name": "Botswana",
+    "code": "267",
+    "flag": "🇧🇼",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "BR",
+    "name": "Brazil",
+    "code": "55",
+    "flag": "🇧🇷",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "VG",
+    "name": "British Virgin Islands",
+    "code": "1284",
+    "flag": "🇻🇬",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BN",
+    "name": "Brunei Darussalam",
+    "code": "673",
+    "flag": "🇧🇳",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "BG",
+    "name": "Bulgaria",
+    "code": "359",
+    "flag": "🇧🇬",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "BF",
+    "name": "Burkina Faso",
+    "code": "226",
+    "flag": "🇧🇫",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "BI",
+    "name": "Burundi",
+    "code": "257",
+    "flag": "🇧🇮",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XXXX"
+    ]
+  },
+  {
+    "iso2": "KH",
+    "name": "Cambodia",
+    "code": "855",
+    "flag": "🇰🇭",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CM",
+    "name": "Cameroon",
+    "code": "237",
+    "flag": "🇨🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CA",
+    "name": "Canada",
+    "code": "1",
+    "flag": "🇨🇦",
+    "prefixes": [
+      "403",
+      "587",
+      "780",
+      "825",
+      "236",
+      "250",
+      "604",
+      "672",
+      "778",
+      "204",
+      "431",
+      "506",
+      "709",
+      "902",
+      "782",
+      "226",
+      "249",
+      "289",
+      "343",
+      "365",
+      "416",
+      "437",
+      "519",
+      "548",
+      "613",
+      "647",
+      "705",
+      "807",
+      "905",
+      "418",
+      "438",
+      "450",
+      "514",
+      "579",
+      "581",
+      "819",
+      "873",
+      "306",
+      "639",
+      "867"
+    ],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CV",
+    "name": "Cape Verde",
+    "code": "238",
+    "flag": "🇨🇻",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "KY",
+    "name": "Cayman Islands",
+    "code": "1345",
+    "flag": "🇰🇾",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CF",
+    "name": "Central African Rep.",
+    "code": "236",
+    "flag": "🇨🇫",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "TD",
+    "name": "Chad",
+    "code": "235",
+    "flag": "🇹🇩",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "CL",
+    "name": "Chile",
+    "code": "56",
+    "flag": "🇨🇱",
+    "prefixes": [],
+    "patterns": [
+      "X XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CN",
+    "name": "China",
+    "code": "86",
+    "flag": "🇨🇳",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CO",
+    "name": "Colombia",
+    "code": "57",
+    "flag": "🇨🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "KM",
+    "name": "Comoros",
+    "code": "269",
+    "flag": "🇰🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CD",
+    "name": "Congo (Dem. Rep.)",
+    "code": "243",
+    "flag": "🇨🇩",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CG",
+    "name": "Congo (Rep.)",
+    "code": "242",
+    "flag": "🇨🇬",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CK",
+    "name": "Cook Islands",
+    "code": "682",
+    "flag": "🇨🇰",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "CR",
+    "name": "Costa Rica",
+    "code": "506",
+    "flag": "🇨🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "HR",
+    "name": "Croatia",
+    "code": "385",
+    "flag": "🇭🇷",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "CU",
+    "name": "Cuba",
+    "code": "53",
+    "flag": "🇨🇺",
+    "prefixes": [],
+    "patterns": [
+      "X XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CW",
+    "name": "Curaçao",
+    "code": "599",
+    "flag": "🇨🇼",
+    "prefixes": [
+      "9"
+    ],
+    "patterns": []
+  },
+  {
+    "iso2": "CY",
+    "name": "Cyprus",
+    "code": "357",
+    "flag": "🇨🇾",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CZ",
+    "name": "Czech Republic",
+    "code": "420",
+    "flag": "🇨🇿",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "CI",
+    "name": "Côte d'Ivoire",
+    "code": "225",
+    "flag": "🇨🇮",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XXXX"
+    ]
+  },
+  {
+    "iso2": "DK",
+    "name": "Denmark",
+    "code": "45",
+    "flag": "🇩🇰",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "IO",
+    "name": "Diego Garcia",
+    "code": "246",
+    "flag": "🇮🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "DJ",
+    "name": "Djibouti",
+    "code": "253",
+    "flag": "🇩🇯",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "DM",
+    "name": "Dominica",
+    "code": "1767",
+    "flag": "🇩🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "DO",
+    "name": "Dominican Rep.",
+    "code": "1809",
+    "flag": "🇩🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "DO",
+    "name": "Dominican Rep.",
+    "code": "1829",
+    "flag": "🇩🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "DO",
+    "name": "Dominican Rep.",
+    "code": "1849",
+    "flag": "🇩🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "EC",
+    "name": "Ecuador",
+    "code": "593",
+    "flag": "🇪🇨",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "EG",
+    "name": "Egypt",
+    "code": "20",
+    "flag": "🇪🇬",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SV",
+    "name": "El Salvador",
+    "code": "503",
+    "flag": "🇸🇻",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GQ",
+    "name": "Equatorial Guinea",
+    "code": "240",
+    "flag": "🇬🇶",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "ER",
+    "name": "Eritrea",
+    "code": "291",
+    "flag": "🇪🇷",
+    "prefixes": [],
+    "patterns": [
+      "X XXX XXX"
+    ]
+  },
+  {
+    "iso2": "EE",
+    "name": "Estonia",
+    "code": "372",
+    "flag": "🇪🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXX"
+    ]
+  },
+  {
+    "iso2": "SZ",
+    "name": "Eswatini",
+    "code": "268",
+    "flag": "🇸🇿",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "ET",
+    "name": "Ethiopia",
+    "code": "251",
+    "flag": "🇪🇹",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "FK",
+    "name": "Falkland Islands",
+    "code": "500",
+    "flag": "🇫🇰",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "FO",
+    "name": "Faroe Islands",
+    "code": "298",
+    "flag": "🇫🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX"
+    ]
+  },
+  {
+    "iso2": "FJ",
+    "name": "Fiji",
+    "code": "679",
+    "flag": "🇫🇯",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "FI",
+    "name": "Finland",
+    "code": "358",
+    "flag": "🇫🇮",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "FR",
+    "name": "France",
+    "code": "33",
+    "flag": "🇫🇷",
+    "prefixes": [],
+    "patterns": [
+      "X XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "GF",
+    "name": "French Guiana",
+    "code": "594",
+    "flag": "🇬🇫",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "PF",
+    "name": "French Polynesia",
+    "code": "689",
+    "flag": "🇵🇫",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "GA",
+    "name": "Gabon",
+    "code": "241",
+    "flag": "🇬🇦",
+    "prefixes": [],
+    "patterns": [
+      "X XX XX XX"
+    ]
+  },
+  {
+    "iso2": "GM",
+    "name": "Gambia",
+    "code": "220",
+    "flag": "🇬🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GE",
+    "name": "Georgia",
+    "code": "995",
+    "flag": "🇬🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "DE",
+    "name": "Germany",
+    "code": "49",
+    "flag": "🇩🇪",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "GH",
+    "name": "Ghana",
+    "code": "233",
+    "flag": "🇬🇭",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GI",
+    "name": "Gibraltar",
+    "code": "350",
+    "flag": "🇬🇮",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GR",
+    "name": "Greece",
+    "code": "30",
+    "flag": "🇬🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GL",
+    "name": "Greenland",
+    "code": "299",
+    "flag": "🇬🇱",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX"
+    ]
+  },
+  {
+    "iso2": "GD",
+    "name": "Grenada",
+    "code": "1473",
+    "flag": "🇬🇩",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GP",
+    "name": "Guadeloupe",
+    "code": "590",
+    "flag": "🇬🇵",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "GU",
+    "name": "Guam",
+    "code": "1671",
+    "flag": "🇬🇺",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GT",
+    "name": "Guatemala",
+    "code": "502",
+    "flag": "🇬🇹",
+    "prefixes": [],
+    "patterns": [
+      "X XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GN",
+    "name": "Guinea",
+    "code": "224",
+    "flag": "🇬🇳",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "GW",
+    "name": "Guinea-Bissau",
+    "code": "245",
+    "flag": "🇬🇼",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "GY",
+    "name": "Guyana",
+    "code": "592",
+    "flag": "🇬🇾",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "HT",
+    "name": "Haiti",
+    "code": "509",
+    "flag": "🇭🇹",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "HN",
+    "name": "Honduras",
+    "code": "504",
+    "flag": "🇭🇳",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "HK",
+    "name": "Hong Kong",
+    "code": "852",
+    "flag": "🇭🇰",
+    "prefixes": [],
+    "patterns": [
+      "X XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "HU",
+    "name": "Hungary",
+    "code": "36",
+    "flag": "🇭🇺",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "IS",
+    "name": "Iceland",
+    "code": "354",
+    "flag": "🇮🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "IN",
+    "name": "India",
+    "code": "91",
+    "flag": "🇮🇳",
+    "prefixes": [],
+    "patterns": [
+      "XXXXX XXXXX"
+    ]
+  },
+  {
+    "iso2": "ID",
+    "name": "Indonesia",
+    "code": "62",
+    "flag": "🇮🇩",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXXXX"
+    ]
+  },
+  {
+    "iso2": "IR",
+    "name": "Iran",
+    "code": "98",
+    "flag": "🇮🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "IQ",
+    "name": "Iraq",
+    "code": "964",
+    "flag": "🇮🇶",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "IE",
+    "name": "Ireland",
+    "code": "353",
+    "flag": "🇮🇪",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "IL",
+    "name": "Israel",
+    "code": "972",
+    "flag": "🇮🇱",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "IT",
+    "name": "Italy",
+    "code": "39",
+    "flag": "🇮🇹",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "JM",
+    "name": "Jamaica",
+    "code": "1876",
+    "flag": "🇯🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "JP",
+    "name": "Japan",
+    "code": "81",
+    "flag": "🇯🇵",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "JO",
+    "name": "Jordan",
+    "code": "962",
+    "flag": "🇯🇴",
+    "prefixes": [],
+    "patterns": [
+      "X XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "KZ",
+    "name": "Kazakhstan",
+    "code": "7",
+    "flag": "🇰🇿",
+    "prefixes": [
+      "6",
+      "7"
+    ],
+    "patterns": [
+      "XXX XXX XX XX"
+    ]
+  },
+  {
+    "iso2": "KE",
+    "name": "Kenya",
+    "code": "254",
+    "flag": "🇰🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "KI",
+    "name": "Kiribati",
+    "code": "686",
+    "flag": "🇰🇮",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "XK",
+    "name": "Kosovo",
+    "code": "383",
+    "flag": "🇽🇰",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "KW",
+    "name": "Kuwait",
+    "code": "965",
+    "flag": "🇰🇼",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "KG",
+    "name": "Kyrgyzstan",
+    "code": "996",
+    "flag": "🇰🇬",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXXXX"
+    ]
+  },
+  {
+    "iso2": "LA",
+    "name": "Laos",
+    "code": "856",
+    "flag": "🇱🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "LV",
+    "name": "Latvia",
+    "code": "371",
+    "flag": "🇱🇻",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXXX"
+    ]
+  },
+  {
+    "iso2": "LB",
+    "name": "Lebanon",
+    "code": "961",
+    "flag": "🇱🇧",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "LS",
+    "name": "Lesotho",
+    "code": "266",
+    "flag": "🇱🇸",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "LR",
+    "name": "Liberia",
+    "code": "231",
+    "flag": "🇱🇷",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "LY",
+    "name": "Libya",
+    "code": "218",
+    "flag": "🇱🇾",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "LI",
+    "name": "Liechtenstein",
+    "code": "423",
+    "flag": "🇱🇮",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "LT",
+    "name": "Lithuania",
+    "code": "370",
+    "flag": "🇱🇹",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXXX"
+    ]
+  },
+  {
+    "iso2": "LU",
+    "name": "Luxembourg",
+    "code": "352",
+    "flag": "🇱🇺",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "MO",
+    "name": "Macau",
+    "code": "853",
+    "flag": "🇲🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MG",
+    "name": "Madagascar",
+    "code": "261",
+    "flag": "🇲🇬",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XXX XX"
+    ]
+  },
+  {
+    "iso2": "MW",
+    "name": "Malawi",
+    "code": "265",
+    "flag": "🇲🇼",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MY",
+    "name": "Malaysia",
+    "code": "60",
+    "flag": "🇲🇾",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "MV",
+    "name": "Maldives",
+    "code": "960",
+    "flag": "🇲🇻",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "ML",
+    "name": "Mali",
+    "code": "223",
+    "flag": "🇲🇱",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "MT",
+    "name": "Malta",
+    "code": "356",
+    "flag": "🇲🇹",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "MH",
+    "name": "Marshall Islands",
+    "code": "692",
+    "flag": "🇲🇭",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "MQ",
+    "name": "Martinique",
+    "code": "596",
+    "flag": "🇲🇶",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "MR",
+    "name": "Mauritania",
+    "code": "222",
+    "flag": "🇲🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MU",
+    "name": "Mauritius",
+    "code": "230",
+    "flag": "🇲🇺",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MX",
+    "name": "Mexico",
+    "code": "52",
+    "flag": "🇲🇽",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "FM",
+    "name": "Micronesia",
+    "code": "691",
+    "flag": "🇫🇲",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "MD",
+    "name": "Moldova",
+    "code": "373",
+    "flag": "🇲🇩",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "MC",
+    "name": "Monaco",
+    "code": "377",
+    "flag": "🇲🇨",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MN",
+    "name": "Mongolia",
+    "code": "976",
+    "flag": "🇲🇳",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XXXX"
+    ]
+  },
+  {
+    "iso2": "ME",
+    "name": "Montenegro",
+    "code": "382",
+    "flag": "🇲🇪",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "MS",
+    "name": "Montserrat",
+    "code": "1664",
+    "flag": "🇲🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MA",
+    "name": "Morocco",
+    "code": "212",
+    "flag": "🇲🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MZ",
+    "name": "Mozambique",
+    "code": "258",
+    "flag": "🇲🇿",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "MM",
+    "name": "Myanmar",
+    "code": "95",
+    "flag": "🇲🇲",
+    "prefixes": [],
+    "patterns": [
+      "95 9 XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "NA",
+    "name": "Namibia",
+    "code": "264",
+    "flag": "🇳🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "NR",
+    "name": "Nauru",
+    "code": "674",
+    "flag": "🇳🇷",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "NP",
+    "name": "Nepal",
+    "code": "977",
+    "flag": "🇳🇵",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "NL",
+    "name": "Netherlands",
+    "code": "31",
+    "flag": "🇳🇱",
+    "prefixes": [],
+    "patterns": [
+      "X XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "NC",
+    "name": "New Caledonia",
+    "code": "687",
+    "flag": "🇳🇨",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX"
+    ]
+  },
+  {
+    "iso2": "NZ",
+    "name": "New Zealand",
+    "code": "64",
+    "flag": "🇳🇿",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "NI",
+    "name": "Nicaragua",
+    "code": "505",
+    "flag": "🇳🇮",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "NE",
+    "name": "Niger",
+    "code": "227",
+    "flag": "🇳🇪",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "NG",
+    "name": "Nigeria",
+    "code": "234",
+    "flag": "🇳🇬",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "NU",
+    "name": "Niue",
+    "code": "683",
+    "flag": "🇳🇺",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "NF",
+    "name": "Norfolk Island",
+    "code": "672",
+    "flag": "🇳🇫",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "KP",
+    "name": "North Korea",
+    "code": "850",
+    "flag": "🇰🇵",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "MK",
+    "name": "North Macedonia",
+    "code": "389",
+    "flag": "🇲🇰",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXXXX"
+    ]
+  },
+  {
+    "iso2": "MP",
+    "name": "Northern Mariana Islands",
+    "code": "1670",
+    "flag": "🇲🇵",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "NO",
+    "name": "Norway",
+    "code": "47",
+    "flag": "🇳🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XXX"
+    ]
+  },
+  {
+    "iso2": "OM",
+    "name": "Oman",
+    "code": "968",
+    "flag": "🇴🇲",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PK",
+    "name": "Pakistan",
+    "code": "92",
+    "flag": "🇵🇰",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PW",
+    "name": "Palau",
+    "code": "680",
+    "flag": "🇵🇼",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "PS",
+    "name": "Palestine",
+    "code": "970",
+    "flag": "🇵🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XXXX"
+    ]
+  },
+  {
+    "iso2": "PA",
+    "name": "Panama",
+    "code": "507",
+    "flag": "🇵🇦",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PG",
+    "name": "Papua New Guinea",
+    "code": "675",
+    "flag": "🇵🇬",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PY",
+    "name": "Paraguay",
+    "code": "595",
+    "flag": "🇵🇾",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "PE",
+    "name": "Peru",
+    "code": "51",
+    "flag": "🇵🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "PH",
+    "name": "Philippines",
+    "code": "63",
+    "flag": "🇵🇭",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PL",
+    "name": "Poland",
+    "code": "48",
+    "flag": "🇵🇱",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "PT",
+    "name": "Portugal",
+    "code": "351",
+    "flag": "🇵🇹",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "PR",
+    "name": "Puerto Rico",
+    "code": "1787",
+    "flag": "🇵🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PR",
+    "name": "Puerto Rico",
+    "code": "1939",
+    "flag": "🇵🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "QA",
+    "name": "Qatar",
+    "code": "974",
+    "flag": "🇶🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "RO",
+    "name": "Romania",
+    "code": "40",
+    "flag": "🇷🇴",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "RU",
+    "name": "Russian Federation",
+    "code": "7",
+    "flag": "🇷🇺",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "RW",
+    "name": "Rwanda",
+    "code": "250",
+    "flag": "🇷🇼",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "RE",
+    "name": "Réunion",
+    "code": "262",
+    "flag": "🇷🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XX XX XX"
+    ]
+  },
+  {
+    "iso2": "SH",
+    "name": "Saint Helena",
+    "code": "247",
+    "flag": "🇸🇭",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "SH",
+    "name": "Saint Helena",
+    "code": "290",
+    "flag": "🇸🇭",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX"
+    ]
+  },
+  {
+    "iso2": "KN",
+    "name": "Saint Kitts & Nevis",
+    "code": "1869",
+    "flag": "🇰🇳",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "LC",
+    "name": "Saint Lucia",
+    "code": "1758",
+    "flag": "🇱🇨",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "PM",
+    "name": "Saint Pierre & Miquelon",
+    "code": "508",
+    "flag": "🇵🇲",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "VC",
+    "name": "Saint Vincent & the Grenadines",
+    "code": "1784",
+    "flag": "🇻🇨",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "WS",
+    "name": "Samoa",
+    "code": "685",
+    "flag": "🇼🇸",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "SM",
+    "name": "San Marino",
+    "code": "378",
+    "flag": "🇸🇲",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "SA",
+    "name": "Saudi Arabia",
+    "code": "966",
+    "flag": "🇸🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SN",
+    "name": "Senegal",
+    "code": "221",
+    "flag": "🇸🇳",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "RS",
+    "name": "Serbia",
+    "code": "381",
+    "flag": "🇷🇸",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "SC",
+    "name": "Seychelles",
+    "code": "248",
+    "flag": "🇸🇨",
+    "prefixes": [],
+    "patterns": [
+      "X XX XX XX"
+    ]
+  },
+  {
+    "iso2": "SL",
+    "name": "Sierra Leone",
+    "code": "232",
+    "flag": "🇸🇱",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "SG",
+    "name": "Singapore",
+    "code": "65",
+    "flag": "🇸🇬",
+    "prefixes": [],
+    "patterns": [
+      "XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SX",
+    "name": "Sint Maarten",
+    "code": "1721",
+    "flag": "🇸🇽",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SK",
+    "name": "Slovakia",
+    "code": "421",
+    "flag": "🇸🇰",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "SI",
+    "name": "Slovenia",
+    "code": "386",
+    "flag": "🇸🇮",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "SB",
+    "name": "Solomon Islands",
+    "code": "677",
+    "flag": "🇸🇧",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "SO",
+    "name": "Somalia",
+    "code": "252",
+    "flag": "🇸🇴",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXXXXX"
+    ]
+  },
+  {
+    "iso2": "ZA",
+    "name": "South Africa",
+    "code": "27",
+    "flag": "🇿🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "KR",
+    "name": "South Korea",
+    "code": "82",
+    "flag": "🇰🇷",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXX XXX"
+    ]
+  },
+  {
+    "iso2": "SS",
+    "name": "South Sudan",
+    "code": "211",
+    "flag": "🇸🇸",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "ES",
+    "name": "Spain",
+    "code": "34",
+    "flag": "🇪🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "LK",
+    "name": "Sri Lanka",
+    "code": "94",
+    "flag": "🇱🇰",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SD",
+    "name": "Sudan",
+    "code": "249",
+    "flag": "🇸🇩",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SR",
+    "name": "Suriname",
+    "code": "597",
+    "flag": "🇸🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SE",
+    "name": "Sweden",
+    "code": "46",
+    "flag": "🇸🇪",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "CH",
+    "name": "Switzerland",
+    "code": "41",
+    "flag": "🇨🇭",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "SY",
+    "name": "Syria",
+    "code": "963",
+    "flag": "🇸🇾",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "ST",
+    "name": "São Tomé & Príncipe",
+    "code": "239",
+    "flag": "🇸🇹",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXXX"
+    ]
+  },
+  {
+    "iso2": "TW",
+    "name": "Taiwan",
+    "code": "886",
+    "flag": "🇹🇼",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "TJ",
+    "name": "Tajikistan",
+    "code": "992",
+    "flag": "🇹🇯",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "TZ",
+    "name": "Tanzania",
+    "code": "255",
+    "flag": "🇹🇿",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "TH",
+    "name": "Thailand",
+    "code": "66",
+    "flag": "🇹🇭",
+    "prefixes": [],
+    "patterns": [
+      "X XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "TL",
+    "name": "Timor-Leste",
+    "code": "670",
+    "flag": "🇹🇱",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "TG",
+    "name": "Togo",
+    "code": "228",
+    "flag": "🇹🇬",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "TK",
+    "name": "Tokelau",
+    "code": "690",
+    "flag": "🇹🇰",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "TO",
+    "name": "Tonga",
+    "code": "676",
+    "flag": "🇹🇴",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "TT",
+    "name": "Trinidad & Tobago",
+    "code": "1868",
+    "flag": "🇹🇹",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "TN",
+    "name": "Tunisia",
+    "code": "216",
+    "flag": "🇹🇳",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "TR",
+    "name": "Turkey",
+    "code": "90",
+    "flag": "🇹🇷",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XX XX"
+    ]
+  },
+  {
+    "iso2": "TM",
+    "name": "Turkmenistan",
+    "code": "993",
+    "flag": "🇹🇲",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXXXX"
+    ]
+  },
+  {
+    "iso2": "TC",
+    "name": "Turks & Caicos Islands",
+    "code": "1649",
+    "flag": "🇹🇨",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "TV",
+    "name": "Tuvalu",
+    "code": "688",
+    "flag": "🇹🇻",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "UG",
+    "name": "Uganda",
+    "code": "256",
+    "flag": "🇺🇬",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "UA",
+    "name": "Ukraine",
+    "code": "380",
+    "flag": "🇺🇦",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XX XX"
+    ]
+  },
+  {
+    "iso2": "AE",
+    "name": "United Arab Emirates",
+    "code": "971",
+    "flag": "🇦🇪",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "GB",
+    "name": "United Kingdom",
+    "code": "44",
+    "flag": "🇬🇧",
+    "prefixes": [],
+    "patterns": [
+      "XX XXXX XXXX"
+    ]
+  },
+  {
+    "iso2": "UY",
+    "name": "Uruguay",
+    "code": "598",
+    "flag": "🇺🇾",
+    "prefixes": [],
+    "patterns": [
+      "X XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "VI",
+    "name": "US Virgin Islands",
+    "code": "1340",
+    "flag": "🇻🇮",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "US",
+    "name": "USA",
+    "code": "1",
+    "flag": "🇺🇸",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "UZ",
+    "name": "Uzbekistan",
+    "code": "998",
+    "flag": "🇺🇿",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XX XX"
+    ]
+  },
+  {
+    "iso2": "VU",
+    "name": "Vanuatu",
+    "code": "678",
+    "flag": "🇻🇺",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "VE",
+    "name": "Venezuela",
+    "code": "58",
+    "flag": "🇻🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "VN",
+    "name": "Vietnam",
+    "code": "84",
+    "flag": "🇻🇳",
+    "prefixes": [],
+    "patterns": []
+  },
+  {
+    "iso2": "WF",
+    "name": "Wallis & Futuna",
+    "code": "681",
+    "flag": "🇼🇫",
+    "prefixes": [],
+    "patterns": [
+      "XX XX XX"
+    ]
+  },
+  {
+    "iso2": "YE",
+    "name": "Yemen",
+    "code": "967",
+    "flag": "🇾🇪",
+    "prefixes": [],
+    "patterns": [
+      "XXX XXX XXX"
+    ]
+  },
+  {
+    "iso2": "ZM",
+    "name": "Zambia",
+    "code": "260",
+    "flag": "🇿🇲",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  },
+  {
+    "iso2": "ZW",
+    "name": "Zimbabwe",
+    "code": "263",
+    "flag": "🇿🇼",
+    "prefixes": [],
+    "patterns": [
+      "XX XXX XXXX"
+    ]
+  }
+]
