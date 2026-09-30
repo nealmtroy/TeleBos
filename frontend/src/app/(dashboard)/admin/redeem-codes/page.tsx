@@ -160,8 +160,10 @@ function RedeemCodesContent() {
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.codeType")}</label>
+                  <label htmlFor="create-redeem-code-type" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.codeType")}</label>
                   <select
+                    id="create-redeem-code-type"
+                    name="code_type"
                     value={formData.code_type}
                     onChange={(e) => setFormData({ ...formData, code_type: e.target.value })}
                     className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition font-medium"
@@ -174,8 +176,10 @@ function RedeemCodesContent() {
                 {formData.code_type === "subscription" && (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.plan")}</label>
+                      <label htmlFor="create-redeem-plan" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.plan")}</label>
                       <select
+                        id="create-redeem-plan"
+                        name="plan"
                         value={formData.plan}
                         onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
                         className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
@@ -185,8 +189,10 @@ function RedeemCodesContent() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.durationDays")}</label>
+                      <label htmlFor="create-redeem-duration-days" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.durationDays")}</label>
                       <input
+                        id="create-redeem-duration-days"
+                        name="duration_days"
                         type="number"
                         value={formData.duration_days}
                         onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
@@ -199,8 +205,10 @@ function RedeemCodesContent() {
 
                 {formData.code_type === "balance" && (
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.amount")}</label>
+                    <label htmlFor="create-redeem-amount" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.amount")}</label>
                     <input
+                      id="create-redeem-amount"
+                      name="amount"
                       type="number"
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
@@ -212,8 +220,10 @@ function RedeemCodesContent() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.maxUses")}</label>
+                  <label htmlFor="create-redeem-max-uses" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.maxUses")}</label>
                   <input
+                    id="create-redeem-max-uses"
+                    name="max_uses"
                     type="number"
                     value={formData.max_uses}
                     onChange={(e) => setFormData({ ...formData, max_uses: e.target.value })}
@@ -223,8 +233,9 @@ function RedeemCodesContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.expiresAt")}</label>
+                  <label htmlFor="create-redeem-expires-at" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.expiresAt")}</label>
                   <DateTimePicker
+                    id="create-redeem-expires-at"
                     date={expiresDate}
                     setDate={setExpiresDate}
                     minDate={new Date()}
@@ -235,8 +246,10 @@ function RedeemCodesContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.prefix")}</label>
+                  <label htmlFor="create-redeem-prefix" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.prefix")}</label>
                   <input
+                    id="create-redeem-prefix"
+                    name="code_prefix"
                     type="text"
                     value={formData.code_prefix}
                     onChange={(e) => setFormData({ ...formData, code_prefix: e.target.value })}
@@ -246,8 +259,10 @@ function RedeemCodesContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Custom Code <span className="text-gray-400 font-normal lowercase">(opsional)</span></label>
+                  <label htmlFor="create-redeem-custom-code" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Custom Code <span className="text-gray-400 font-normal lowercase">(opsional)</span></label>
                   <input
+                    id="create-redeem-custom-code"
+                    name="custom_code"
                     type="text"
                     value={formData.custom_code}
                     onChange={(e) => setFormData({ ...formData, custom_code: e.target.value })}
@@ -291,8 +306,13 @@ function RedeemCodesContent() {
 
       {/* Search */}
       <div className="relative max-w-md">
+        <label htmlFor="admin-search-redeem-codes" className="sr-only">
+          {_("admin.searchUsers")}
+        </label>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
+          id="admin-search-redeem-codes"
+          name="search"
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

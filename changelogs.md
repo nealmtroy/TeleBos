@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[98e34821](https://github.com/nealmtroy/TeleBos/commit/98e34821)**: fix(telethon): release clients stranded on the pool's failure paths
 - **[837e0564](https://github.com/nealmtroy/TeleBos/commit/837e0564)**: refactor(ui): standardize date and datetime pickers across app and update audit
 - **[03affc7f](https://github.com/nealmtroy/TeleBos/commit/03affc7f)**: docs(audit): update audit-telebos.md with completed pagination and shell layout fixes
 - **[42edcd12](https://github.com/nealmtroy/TeleBos/commit/42edcd12)**: fix(ui): eliminate double viewport scrollbar by constraining dashboard shell to fixed inset-0

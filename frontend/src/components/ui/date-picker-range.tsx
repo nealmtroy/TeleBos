@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/popover";
 
 export interface DatePickerWithRangeProps {
+  id?: string;
   className?: string;
   triggerClassName?: string;
   positionerClassName?: string;
@@ -28,6 +29,7 @@ export interface DatePickerWithRangeProps {
 }
 
 export function DatePickerWithRange({
+  id,
   className,
   triggerClassName,
   positionerClassName = "z-[110]",
@@ -64,7 +66,7 @@ export function DatePickerWithRange({
           disabled={disabled}
           render={
             <Button
-              id="date-range-picker"
+              id={id || "date-range-picker"}
               variant="outline"
               data-empty={!date?.from}
               disabled={disabled}
@@ -106,7 +108,7 @@ export function DatePickerWithRange({
         </PopoverTrigger>
         <PopoverContent
           positionerClassName={positionerClassName}
-          className="w-auto p-0 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl overflow-hidden"
+          className="w-auto max-w-[95vw] sm:max-w-none p-0 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl overflow-hidden"
           align="start"
         >
           {presets && (

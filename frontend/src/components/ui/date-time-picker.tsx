@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 
 export interface DateTimePickerProps {
+  id?: string;
   className?: string;
   triggerClassName?: string;
   positionerClassName?: string;
@@ -27,6 +28,7 @@ export interface DateTimePickerProps {
 }
 
 export function DateTimePicker({
+  id,
   className,
   triggerClassName,
   positionerClassName = "z-[110]",
@@ -75,6 +77,7 @@ export function DateTimePicker({
           disabled={disabled}
           render={
             <Button
+              id={id}
               variant="outline"
               data-empty={!date}
               disabled={disabled}

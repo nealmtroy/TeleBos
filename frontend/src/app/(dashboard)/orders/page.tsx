@@ -423,6 +423,8 @@ export default function OrderHistoryPage() {
 
           {/* Date Picker Range */}
           <DatePickerWithRange
+            id="orders-date-range"
+            presets={true}
             date={dateRange}
             setDate={(range) => {
               setDateRange(range);
