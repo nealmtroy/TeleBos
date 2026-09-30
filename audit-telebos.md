@@ -454,12 +454,13 @@ Berikut audit mendalam pada seluruh halaman dan komponen yang merender avatar/fo
 
 ## 🎨 5. Audit Shadcn UI & Analisis Komponen Desain Sistem
 
-Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/components/ui/` (23 file), mendeteksi pemanfaatan komponen, dead code, komponen yang underused, serta area di mana kode ad-hoc/mentah mem-bypass standar UI library.
+Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/components/ui/` (24 file), mendeteksi pemanfaatan komponen, dead code, komponen yang underused, serta area di mana kode ad-hoc/mentah mem-bypass standar UI library.
 
-### 5.1 Matriks Inventaris Komponen Shadcn UI (23 File)
+### 5.1 Matriks Inventaris Komponen Shadcn UI (24 File)
 
 | Nama Komponen | Status Penggunaan | Jumlah File Pengguna | Catatan Penggunaan & Keterangan |
 | :--- | :---: | :---: | :--- |
+| **`pagination.tsx`** | ✅ **Sangat Aktif (Baru)** | 12 file | **Komponen unified pagination** (Base UI) yang menyatukan seluruh paginasi di dashboard. Mendukung tema gelap/terang, elipsis otomatis, serta mode standar dan compact. |
 | **`accordion.tsx`** | ❌ **Dead Code (0%)** | 0 file | Sama sekali tidak pernah diimpor. Halaman `/broadcast/logs` malah membuat komponen manual `CycleAccordion`. |
 | **`demo.tsx`** | ❌ **Dead Code (0%)** | 0 file | File boilerplate demo `Banner` & `Navbar5`. Tidak pernah dipakai di production. |
 | **`navigation-menu.tsx`** | ❌ **Dead Code (0%)** | 0 file | Komponen Radix Navigation Menu menganggur 100%. |
@@ -488,20 +489,25 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 
 ### 5.2 Temuan Kritis: Inkonsistensi & Bypassing Komponen UI
 
-#### 1. Masalah Kritis Pagination: Tidak Ada `pagination.tsx` (11+ Implementasi Terfragmentasi)
-* **Status:** Di `frontend/src/components/ui/` **sama sekali belum ada komponen `pagination.tsx`**.
-* **Dampak:** Sebanyak **11 halaman/komponen berbeda** membuat sistem paginasi sendiri-sendiri dari nol dengan logika, markup, dan styling yang tidak seragam:
-  1. [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/page.tsx#L341): Menggunakan tag `<nav>`, tombol manual dengan ukuran `size-9`, dan helper `generatePageNumbers(page, totalPages)`.
-  2. [auto-reply/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/auto-reply/page.tsx#L617): Menggunakan `Array.from({ length: totalPages }).map`, ukuran padding `p-2`, algoritma elipsis buatan sendiri (`Math.abs(pageNum - page) > 2`), dan tombol Prev/Next **kehilangan class dark mode** (`bg-white border-gray-300 text-gray-700`).
-  3. [orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx#L756): Membuat 2 tata letak terpisah (mobile `sm:hidden` & desktop `hidden sm:flex`), mengimpor shadcn `<Button>` tetapi melakukan iterasi halaman dan elipsis `...` secara manual.
-  4. [contacts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/contacts/page.tsx#L466): Pagination sederhana dengan tombol Prev/Next manual.
-  5. [groups-channels/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/page.tsx#L182): Pagination manual tanpa elipsis.
-  6. [public/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/public/page.tsx#L63): Pagination manual.
-  7. [admin/users/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/users/page.tsx#L543): Pagination manual dengan deretan nomor halaman.
-  8. [admin/auto-replies/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/auto-replies/page.tsx#L421): Pagination manual.
-  9. [admin/broadcasts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/broadcasts/page.tsx#L151): Pagination manual.
-  10. [admin/redeem-logs/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-logs/page.tsx#L103): Pagination manual dengan `generatePageNumbers()`.
-  11. [cycle-accordion.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/broadcast/cycle-accordion.tsx#L132): Paginasi mini berupa teks `Page {page} of {totalPages}` dan tombol panah.
+#### 1. Standarisasi Pagination: Implementasi `pagination.tsx` Berbasis Base UI
+* **Status:** ✅ **SUDAH DIPERBAIKI (RESOLVED)**
+* **Solusi & Implementasi:**
+  - Telah dibuat komponen terpusat [pagination.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/pagination.tsx) berbasis `@base-ui/react/button` dengan desain token Shadcn.
+  - Menyediakan dua mode: **Standar Desktop** (tombol Prev/Next dengan label teks dan deretan angka berelipsis otomatis `1 2 3 … 11`) dan **Mode Compact** (tombol panah icon dengan indikator ringkas `Page 1 / 11`).
+  - Mendukung penuh tema gelap/terang tanpa glitch warna (`dark:bg-slate-800`, `dark:border-slate-700`, `dark:text-slate-200`).
+  - Telah dimigrasikan secara menyeluruh menggantikan 12 paginasi manual di:
+    1. [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/page.tsx)
+    2. [auto-reply/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/auto-reply/page.tsx)
+    3. [orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx)
+    4. [contacts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/contacts/page.tsx)
+    5. [groups-channels/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/page.tsx)
+    6. [groups-channels/public/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/public/page.tsx)
+    7. [accounts/[id]/groups-channels/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/%5Bid%5D/groups-channels/page.tsx)
+    8. [admin/users/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/users/page.tsx)
+    9. [admin/auto-replies/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/auto-replies/page.tsx)
+    10. [admin/broadcasts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/broadcasts/page.tsx)
+    11. [admin/redeem-logs/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-logs/page.tsx)
+    12. [cycle-accordion.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/broadcast/cycle-accordion.tsx)
 
 #### 2. Masalah Date Picker: Terisolasi di `/orders` Saja
 * **Status:** Komponen [date-picker-range.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/date-picker-range.tsx) (beserta `calendar.tsx` & `popover.tsx`) sudah rapi dan siap pakai, namun **hanya terpasang di 1 halaman** ([orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx)).
@@ -523,6 +529,19 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 #### 5. Ketiadaan Komponen `Select` (28 Titik Menggunakan `<select>` HTML Mentah)
 * Terdapat 28 tag `<select>` HTML mentah dengan border dan padding yang ditulis secara inline di setiap halaman, sehingga gaya dropdown antar halaman berbeda-beda saat di-hover/focus.
 
+#### 6. Masalah Double Viewport Scrollbar (Root Viewport Overflow)
+* **Status:** ✅ **SUDAH DIPERBAIKI (RESOLVED)**
+* **Masalah:** Pada halaman dashboard `/accounts` (dan halaman lainnya), muncul 2 scrollbar vertikal berdampingan (scrollbar luar pada `<html>`/`<body>` dan scrollbar dalam pada `<main>`).
+* **Penyebab:**
+  1. Kontainer [shell.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/shell.tsx) menggunakan `h-[100dvh]` tanpa pembatas `fixed inset-0`, sehingga subpixel overflow mendesak `body` dan memicu root scrollbar browser.
+  2. Kolom pembungkus (`div.flex-1.flex.flex-col`) tidak memiliki `min-h-0` atau `overflow-hidden`, sehingga saat konten memanjang karena penambahan kontrol/dialog, kolom memuai ke bawah dan meluber keluar layar.
+  3. Adanya struktur *nested `<nav>`* ilegal di [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/accounts/page.tsx) di mana `<DataPagination>` (yang menghasilkan `<nav>`) dibungkus lagi oleh tag `<nav>`.
+* **Solusi & Implementasi:**
+  - Mengubah kontainer dashboard di [shell.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/shell.tsx) menjadi `fixed inset-0 flex overflow-hidden bg-background text-foreground`, mengunci shell persis di batas window browser.
+  - Menambahkan `min-h-0 min-w-0 h-full overflow-hidden` pada kolom flex vertikal agar tinggi kolom dibatasi oleh parent.
+  - Mengubah tag pembungkus pagination di [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/accounts/page.tsx) dari `<nav>` menjadi `<div>`.
+  - Hasil: Scrollbar ganda hilang total, kini hanya tersisa 1 scrollbar internal yang mulus pada area `<main>`.
+
 ---
 
 ## 🛠️ 6. Rencana Aksi Perbaikan Lengkap (Action Plan)
@@ -532,6 +551,7 @@ Pemeriksaan menyeluruh dilakukan terhadap seluruh komponen di `frontend/src/comp
 | **P0 (Tinggi)** | [accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/page.tsx) | Hapus `useAccounts()` (`limit=1000`) dan gunakan data `accountsSummary` / `paginatedData`. | Menghilangkan transfer ratusan KB JSON & mengurangi beban DB query drastis pada halaman Akun. |
 | **P0 (Tinggi)** | [dashboard/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/dashboard/page.tsx) | Ubah `useAccounts()` menjadi `useAccountsPaginated({ page: 1, limit: 5 })`. | Dashboard memuat lebih instan, backend hanya menarik 5 record dari DB alih-alih 1.000 record. |
 | **P1 (Selesai)** | [pagination.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/pagination.tsx) | ✅ **Selesai:** Komponen unified `Pagination` / `DataPagination` berbasis Base UI dibuat dan diintegrasikan ke 12 halaman/komponen. | Seluruh pagination kini seragam, mendukung penuh dark-mode, dan menghilangkan 12 duplikasi kode ad-hoc. |
+| **P1 (Selesai)** | [shell.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/(dashboard)/shell.tsx) | ✅ **Selesai:** Konversi DashboardShell ke `fixed inset-0 flex overflow-hidden` dan `min-h-0`. | Mengeliminasi bug double viewport scrollbar pada browser window. |
 | **P1 (Sedang)** | `frontend/src/components/ui/` | Hapus dead-code `accordion.tsx`, `demo.tsx`, dan `navigation-menu.tsx`. | Mengurangi ukuran bundle dan membersihkan dead code yang membingungkan developer. |
 | **P1 (Sedang)** | [MessagePane.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/MessagePane.tsx) | Ubah queryKey autocomplete member menjadi `["chat-members-suggest", accountId, chatId]`. | Menghilangkan konflik cache key dan mencegah bug daftar member grup kosong di drawer kanan. |
 | **P1 (Sedang)** | [use-marketplace.ts](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/hooks/use-marketplace.ts) | Tambahkan `staleTime: 5 * 60 * 1000` pada `useMarketplacePricing`. | Mengeliminasi re-fetch harga bursa berulang saat window focus pada 12 kartu akun. |
