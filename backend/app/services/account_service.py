@@ -805,6 +805,12 @@ async def update_profile(
         RPCError,
     )
 
+    # An empty string means "clear this field"; None means the caller omitted
+    # it. Telegram requires a first name, so reject an empty one here instead
+    # of letting it surface as an opaque RPC error.
+    if first_name is not None and not first_name.strip():
+        raise RuntimeError("Nama depan tidak boleh kosong.")
+
     tg_first_name = first_name if first_name is not None else (account.first_name or "")
     tg_last_name = last_name if last_name is not None else (account.last_name or "")
     tg_bio = bio if bio is not None else (account.bio or "")
@@ -829,14 +835,16 @@ async def update_profile(
     except RPCError as exc:
         raise RuntimeError(f"Gagal memperbarui profil: {exc.message}")
 
+    # Persist exactly what Telegram accepted, so a cleared field reads back as
+    # cleared instead of snapping to the previous value on the next fetch.
     if first_name is not None:
         account.first_name = first_name
     if last_name is not None:
-        account.last_name = last_name
+        account.last_name = last_name or None
     if username is not None:
-        account.username = username if username != "" else None
+        account.username = username or None
     if bio is not None:
-        account.bio = bio
+        account.bio = bio or None
 
     await db.flush()
     return account

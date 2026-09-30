@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-01
+- **[47108d86](https://github.com/nealmtroy/TeleBos/commit/47108d86)**: perf: eliminate redundant API calls and unify profile photo handling
+
 ## 2026-09-30
 - **[f174bd23](https://github.com/nealmtroy/TeleBos/commit/f174bd23)**: fix(telethon): give each Telegram account a single owning process
 - **[0a38d9a4](https://github.com/nealmtroy/TeleBos/commit/0a38d9a4)**: fix(db): add missing telegram_accounts.buy_price migration

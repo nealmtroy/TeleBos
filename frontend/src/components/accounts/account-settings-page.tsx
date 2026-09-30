@@ -184,11 +184,16 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!firstName.trim()) {
+        throw new Error(_("accountSettings.firstNameRequired"));
+      }
+      // Send "" (not null) for a cleared field: null means "leave unchanged"
+      // to the backend, so an emptied last name would never be saved.
       await api.put(`/accounts/${accountId}/profile`, {
-        first_name: firstName || null,
-        last_name: lastName || null,
-        username: username || null,
-        bio: bio || null,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        username: username.trim(),
+        bio: bio.trim(),
       });
     },
     onSuccess: () => {
@@ -197,7 +202,10 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
       setTimeout(() => setMsg(null), 3000);
     },
     onError: (err: any) => {
-      setMsg({ kind: "error", text: err?.response?.data?.detail || _("accountSettings.updateFailed") });
+      setMsg({
+        kind: "error",
+        text: err?.response?.data?.detail || err?.message || _("accountSettings.updateFailed"),
+      });
     },
   });
 

@@ -779,6 +779,7 @@ const id: Dict = {
     deleteFailed: "Gagal menghapus",
     profile: "Profil",
     firstName: "Nama Depan",
+    firstNameRequired: "Nama depan tidak boleh kosong.",
     lastName: "Nama Belakang",
     username: "Nama Pengguna",
     usernamePlaceholder: "tanpa @",

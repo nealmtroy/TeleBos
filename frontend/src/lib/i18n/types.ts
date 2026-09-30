@@ -728,6 +728,7 @@ export interface Dict {
     deleteFailed: string;
     profile: string;
     firstName: string;
+    firstNameRequired: string;
     lastName: string;
     username: string;
     usernamePlaceholder: string;

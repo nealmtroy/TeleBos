@@ -779,6 +779,7 @@ const en: Dict = {
     deleteFailed: "Delete failed",
     profile: "Profile",
     firstName: "First Name",
+    firstNameRequired: "First name cannot be empty.",
     lastName: "Last Name",
     username: "Username",
     usernamePlaceholder: "without @",
