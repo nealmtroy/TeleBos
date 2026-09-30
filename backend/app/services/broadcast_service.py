@@ -1345,7 +1345,6 @@ async def execute_broadcast(job_id: str):
                     if err_type in (
                         "flood",
                         "peer_flood",
-                        "slowmode",
                         "must_join_discussion",
                         "guest_restricted",
                         "send_restricted",
@@ -1353,6 +1352,28 @@ async def execute_broadcast(job_id: str):
                         pending_pool[pkey] = {
                             "group_identifier": group_identifier,
                             "item_type": item_type,
+                        }
+                        # Account-level throttle: record it so the next cycle
+                        # leaves this target alone until the wait elapses,
+                        # instead of re-attempting the join and resetting the
+                        # cooldown on every pass.
+                        if err_type in ("flood", "peer_flood"):
+                            wait = 30
+                            if hasattr(resolve_exc, "seconds"):
+                                wait = resolve_exc.seconds
+                            selected_acc["join_cooldown_until"] = time.time() + wait
+                    elif err_type == "slowmode":
+                        # Group-local limit — see slowmode_pool.
+                        pending_pool[pkey] = {
+                            "group_identifier": group_identifier,
+                            "item_type": item_type,
+                        }
+                        wait = 30
+                        if hasattr(resolve_exc, "seconds"):
+                            wait = resolve_exc.seconds
+                        slowmode_pool[pkey] = {
+                            "until": time.time() + wait,
+                            "seconds": wait,
                         }
 
                     if err_type in ("invite_request_sent", "already_invited"):

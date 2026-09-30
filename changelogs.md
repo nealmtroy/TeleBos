@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-01
+- **[854daa65](https://github.com/nealmtroy/TeleBos/commit/854daa65)**: fix(broadcast): treat slowmode as a per-group limit, not per-account
 - **[0f25222e](https://github.com/nealmtroy/TeleBos/commit/0f25222e)**: fix(broadcast): end the cycle on a join flood instead of waiting it out
 - **[6c6a38ef](https://github.com/nealmtroy/TeleBos/commit/6c6a38ef)**: fix(broadcast): pause on join flood instead of failing the cycle
 - **[1c38311a](https://github.com/nealmtroy/TeleBos/commit/1c38311a)**: fix(invite): respect flood waits and retry the throttled member
