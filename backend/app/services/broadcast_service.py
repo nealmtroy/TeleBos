@@ -1036,6 +1036,10 @@ async def execute_broadcast(job_id: str):
 
                 pending_pool = still_pending
 
+            # Reset per cycle: a join flood ends the current cycle early, and
+            # the leftover targets are re-queued at the cycle boundary below.
+            join_blocked = False
+
             for idx, item in enumerate(items):
                 # Find the next ready account
                 selected_acc = None
@@ -1104,6 +1108,30 @@ async def execute_broadcast(job_id: str):
                         if selected_acc:
                             break
 
+                    # No account is free of the *join* throttle. Joining is a
+                    # one-off prerequisite, not the send itself, so a join flood
+                    # must not park the job for the whole floodwait. End this
+                    # cycle and let the next one retry the pending groups; the
+                    # per-group and after-all delays still apply at the cycle
+                    # boundary below.
+                    join_blocked = bool(active_accounts) and all(
+                        now_ts < a.get("join_cooldown_until", 0.0)
+                        for a in active_accounts
+                    )
+                    if join_blocked:
+                        await _push_broadcast(
+                            job_id_str,
+                            "flood_wait",
+                            {
+                                "wait_seconds": 0,
+                                "message": (
+                                    "All accounts are on join cooldown. Ending this cycle; "
+                                    "pending groups retry on the next one."
+                                ),
+                            },
+                        )
+                        break
+
                     earliest_ready_time = min(
                         max(a["cooldown_until"], a.get("join_cooldown_until", 0.0))
                         for a in active_accounts
@@ -1158,11 +1186,13 @@ async def execute_broadcast(job_id: str):
                     break
 
                 if selected_acc is None:
-                    # Every account is on join cooldown and the wait above has
-                    # already elapsed without one becoming ready (e.g. the
-                    # cooldown was extended while sleeping). Leave this target
-                    # for the next cycle rather than dereferencing None.
-                    continue
+                    # No account can serve this target (all on join cooldown).
+                    # Stop the cycle here rather than walking the rest of the
+                    # list: the remaining groups are queued in pending_pool and
+                    # picked up at the start of the next cycle. The per-group and
+                    # after-all delays still apply at the cycle boundary.
+                    join_blocked = True
+                    break
 
                 client = selected_acc["client"]
                 acc_id_str = selected_acc["account_id"]
@@ -1619,6 +1649,22 @@ async def execute_broadcast(job_id: str):
                     },
                 )
                 break
+
+            # A join flood ends the cycle early. Queue everything that was not reached
+            # so the next cycle retries it, otherwise only the targets that
+            # happened to be visited before the flood would ever be retried.
+            if join_blocked and is_looping:
+                for pitem in items:
+                    pk = f"{pitem.get('type', 'username')}:{pitem.get('value', '') or ''}"
+                    if (
+                        pk not in joined_pool
+                        and pk not in permanent_failures_pool
+                        and pk not in pending_pool
+                    ):
+                        pending_pool[pk] = {
+                            "group_identifier": pitem.get("value", "") or "",
+                            "item_type": pitem.get("type", "username"),
+                        }
 
             # Flush cycle logs to database as 1 cycle row with JSONB details
             cycle_duration_ms = int((time.time() - cycle_start_time) * 1000)

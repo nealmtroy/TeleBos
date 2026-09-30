@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-01
+- **[6c6a38ef](https://github.com/nealmtroy/TeleBos/commit/6c6a38ef)**: fix(broadcast): pause on join flood instead of failing the cycle
 - **[1c38311a](https://github.com/nealmtroy/TeleBos/commit/1c38311a)**: fix(invite): respect flood waits and retry the throttled member
 - **[2acf375d](https://github.com/nealmtroy/TeleBos/commit/2acf375d)**: fix(profile): let optional profile fields be cleared
 - **[47108d86](https://github.com/nealmtroy/TeleBos/commit/47108d86)**: perf: eliminate redundant API calls and unify profile photo handling

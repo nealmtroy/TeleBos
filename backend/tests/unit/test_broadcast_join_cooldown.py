@@ -83,57 +83,79 @@ class TestJoinCooldownIsNotAFailure:
         assert "Gagal Terkirim" not in summary
 
 
-class TestCooldownWaitMath:
-    """The wait must consider join cooldown, not just send cooldown."""
+class TestJoinFloodEndsCycleInsteadOfParking:
+    """A join flood ends the cycle. It must not park the job for the floodwait.
 
-    def _earliest_ready(self, accounts):
-        """Mirror of the loop's wait computation."""
-        return min(
-            max(a["cooldown_until"], a.get("join_cooldown_until", 0.0))
-            for a in accounts
+    The per-group and after-all delays still apply at the cycle boundary; only
+    the join floodwait is deliberately not respected inline.
+    """
+
+    def _all_join_blocked(self, accounts, now):
+        return bool(accounts) and all(
+            now < a.get("join_cooldown_until", 0.0) for a in accounts
         )
 
-    def test_join_cooldown_alone_produces_a_real_wait(self):
-        """Regression: cooldown_until is 0 here, so ignoring it waited 1s."""
-        accounts = [{"cooldown_until": 0.0, "join_cooldown_until": time.time() + 958}]
+    def test_single_join_throttled_account_ends_cycle(self):
+        accounts = [{"cooldown_until": 0.0, "join_cooldown_until": time.time() + 270}]
+        assert self._all_join_blocked(accounts, time.time()) is True
+
+    def test_any_free_account_means_not_blocked(self):
         now = time.time()
+        accounts = [
+            {"cooldown_until": 0.0, "join_cooldown_until": now + 270},
+            {"cooldown_until": 0.0, "join_cooldown_until": 0.0},
+        ]
+        assert self._all_join_blocked(accounts, now) is False
 
-        wait = max(1.0, self._earliest_ready(accounts) - now)
+    def test_empty_pool_is_not_treated_as_join_blocked(self):
+        # all() over an empty sequence is True, which must not masquerade as a
+        # join flood and silently end every cycle.
+        assert self._all_join_blocked([], time.time()) is False
 
-        assert wait > 900, f"expected ~958s wait, got {wait}"
-
-    def test_send_cooldown_alone_still_waits(self):
-        accounts = [{"cooldown_until": time.time() + 300, "join_cooldown_until": 0.0}]
-        now = time.time()
-
-        wait = max(1.0, self._earliest_ready(accounts) - now)
-
-        assert wait > 250
-
-    def test_expired_cooldowns_give_minimum_wait(self):
-        accounts = [{"cooldown_until": 0.0, "join_cooldown_until": 0.0}]
-
-        wait = max(1.0, self._earliest_ready(accounts) - time.time())
-
-        assert wait == 1.0
-
-    def test_earliest_across_accounts_wins(self):
-        soon = {"cooldown_until": time.time() + 10, "join_cooldown_until": 0.0}
-        later = {"cooldown_until": time.time() + 900, "join_cooldown_until": 0.0}
-
-        assert self._earliest_ready([later, soon]) < time.time() + 20
+    def test_expired_join_cooldown_does_not_block(self):
+        accounts = [{"cooldown_until": 0.0, "join_cooldown_until": time.time() - 1}]
+        assert self._all_join_blocked(accounts, time.time()) is False
 
 
-class TestAccountSelectionHonoursJoinCooldown:
-    def test_fallback_must_not_select_a_throttled_account(self):
-        """The fallback used to pick any account with an expired send cooldown."""
+class TestUnreachedTargetsAreRequeued:
+    """When a cycle ends early, the untouched tail must still be retried."""
 
-        def select(accounts, now):
-            for a in accounts:
-                if now >= a["cooldown_until"] and now >= a.get("join_cooldown_until", 0.0):
-                    return a
-            return None
+    def test_leftover_targets_are_queued_for_next_cycle(self):
+        items = [
+            {"type": "username", "value": "a"},
+            {"type": "username", "value": "b"},
+            {"type": "username", "value": "c"},
+        ]
+        joined_pool = {"username:a"}
+        permanent_failures_pool = {"username:b"}
+        pending_pool = {}
 
-        throttled = [{"cooldown_until": 0.0, "join_cooldown_until": time.time() + 958}]
+        for pitem in items:
+            pk = f"{pitem.get('type', 'username')}:{pitem.get('value', '') or ''}"
+            if (
+                pk not in joined_pool
+                and pk not in permanent_failures_pool
+                and pk not in pending_pool
+            ):
+                pending_pool[pk] = {
+                    "group_identifier": pitem.get("value", "") or "",
+                    "item_type": pitem.get("type", "username"),
+                }
 
-        assert select(throttled, time.time()) is None
+        # 'c' was never reached before the cycle was cut short.
+        assert set(pending_pool) == {"username:c"}
+
+    def test_already_queued_target_is_not_duplicated(self):
+        items = [{"type": "username", "value": "a"}]
+        pending_pool = {"username:a": {"group_identifier": "a", "item_type": "username"}}
+
+        for pitem in items:
+            pk = f"{pitem.get('type', 'username')}:{pitem.get('value', '') or ''}"
+            if (
+                pk not in set()
+                and pk not in set()
+                and pk not in pending_pool
+            ):
+                pending_pool[pk] = {"group_identifier": "a", "item_type": "username"}
+
+        assert len(pending_pool) == 1
