@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataPagination } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 15;
@@ -974,33 +975,13 @@ function BroadcastManagementContent() {
             broadcasts
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || listLoading}
-              className="h-8 px-2.5 border-slate-200"
-            >
-              <ChevronLeft className="h-4 w-4 mr-0.5" />
-              Prev
-            </Button>
-
-            <span className="px-3 py-1 font-semibold text-slate-700 bg-white rounded-md border border-slate-200">
-              {page} / {totalPages}
-            </span>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || listLoading}
-              className="h-8 px-2.5 border-slate-200"
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-0.5" />
-            </Button>
-          </div>
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={listLoading}
+            compact
+          />
         </div>
       </div>
 

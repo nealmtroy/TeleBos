@@ -6,7 +6,7 @@ import { useTwoFAStatusSync } from "@/hooks/use-twofa-status-sync";
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { Smartphone, Shield, Monitor, Settings, ArrowLeft, RefreshCw, AlertTriangle, X, Mail } from "lucide-react";
+import { Smartphone, Shield, Monitor, Settings, ArrowLeft, RefreshCw, AlertTriangle, X, Mail, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -136,9 +136,17 @@ export default function AccountDetailPage() {
           <ArrowLeft className="h-5 w-5 text-gray-500" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {account.first_name || _("accountDetail.unnamed")} {account.last_name || ""}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {account.first_name || _("accountDetail.unnamed")} {account.last_name || ""}
+            </h1>
+            {account.is_premium && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs">
+                <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
+                Premium
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500">
             {account.username ? `@${account.username}` : account.phone}
           </p>
@@ -201,6 +209,19 @@ export default function AccountDetailPage() {
                 ) : (
                   <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                     {_("accountDetail.expired")}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="text-xs text-gray-400 uppercase">Telegram Tier</span>
+                {account.is_premium ? (
+                  <span className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border border-purple-300/80 dark:border-purple-700/80">
+                    <Star className="size-3 fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" />
+                    Premium
+                  </span>
+                ) : (
+                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">
+                    Standard
                   </span>
                 )}
               </div>

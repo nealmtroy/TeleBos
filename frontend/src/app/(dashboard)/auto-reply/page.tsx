@@ -25,11 +25,10 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   Check,
   X,
 } from "lucide-react";
+import { DataPagination } from "@/components/ui/pagination";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -614,63 +613,19 @@ export default function AutoReplyPage() {
 
       {/* Pagination Controls */}
       {filtered.length > ITEMS_PER_PAGE && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-gray-200 dark:border-slate-800">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             Showing {(page - 1) * ITEMS_PER_PAGE + 1}–
             {Math.min(page * ITEMS_PER_PAGE, filtered.length)} of{" "}
             {filtered.length} accounts
             {search ? ` matching "${search}"` : ""}
           </p>
-          <div className="flex items-center gap-1.5 self-center sm:self-auto">
-            <button
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page === 1}
-              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const pageNum = idx + 1;
-              // Show max 5 page buttons around current page
-              if (
-                totalPages > 7 &&
-                pageNum !== 1 &&
-                pageNum !== totalPages &&
-                Math.abs(pageNum - page) > 2
-              ) {
-                // Show ellipsis marker
-                if (pageNum === page - 3 || pageNum === page + 3) {
-                  return (
-                    <span key={pageNum} className="px-1 text-gray-400 text-sm">
-                      …
-                    </span>
-                  );
-                }
-                return null;
-              }
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  className={cn(
-                    "inline-flex items-center justify-center w-9 h-9 rounded-lg border text-sm font-medium transition-colors",
-                    page === pageNum
-                      ? "bg-primary-600 border-primary-600 text-white"
-                      : "bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
-                  )}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page === totalPages}
-              className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            className="w-auto mx-0"
+          />
         </div>
       )}
     </div>

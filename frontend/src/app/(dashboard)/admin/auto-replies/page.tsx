@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DataPagination } from "@/components/ui/pagination";
 import { cn, formatRelative } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
@@ -414,29 +415,13 @@ function AutoReplyManagementContent() {
               <span className="font-semibold text-gray-800">{Math.min(page * PAGE_SIZE, data.total)}</span> of{" "}
               <span className="font-semibold text-gray-800">{data.total}</span> accounts
             </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1 || isFetching}
-                className="h-7 w-7 p-0"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              <span className="px-2 font-medium text-gray-700">
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages || isFetching}
-                className="h-7 w-7 p-0"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <DataPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              disabled={isFetching}
+              compact
+            />
           </div>
         )}
       </div>

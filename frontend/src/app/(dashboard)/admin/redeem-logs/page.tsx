@@ -5,8 +5,9 @@ import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useAdminRedeemLogs } from "@/hooks/use-admin-redeem";
 import {
-  Shield, AlertCircle, ClipboardList, ChevronLeft, ChevronRight,
+  Shield, AlertCircle, ClipboardList,
 } from "lucide-react";
+import { DataPagination } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
@@ -101,65 +102,20 @@ function RedeemLogsContent() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200">
-              <p className="text-xs text-gray-400">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+              <p className="text-xs text-gray-500 dark:text-slate-400">
                 {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, data?.total || 0)} of {data?.total}
               </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                {generatePageNumbers(page, totalPages).map((p, i) =>
-                  p === "…" ? (
-                    <span key={`e-${i}`} className="px-2 py-1 text-xs text-gray-400">…</span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p as number)}
-                      className={cn(
-                        "px-3 py-1 text-xs font-medium rounded-lg transition-colors",
-                        page === p
-                          ? "bg-primary-600 text-white"
-                          : "text-gray-600 hover:bg-gray-100"
-                      )}
-                    >
-                      {p}
-                    </button>
-                  )
-                )}
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+              <DataPagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                className="w-auto mx-0"
+              />
             </div>
           )}
         </>
       )}
     </div>
   );
-}
-
-function generatePageNumbers(current: number, total: number): (number | "…")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-
-  const pages: (number | "…")[] = [1];
-  if (current > 3) pages.push("…");
-
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-
-  for (let i = start; i <= end; i++) pages.push(i);
-
-  if (current < total - 2) pages.push("…");
-  pages.push(total);
-
-  return pages;
 }

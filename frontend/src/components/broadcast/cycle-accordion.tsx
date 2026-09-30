@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { DataPagination } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -130,36 +131,13 @@ export default function CycleAccordion({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
-            className={cn(
-              "px-3 py-1.5 text-sm rounded-lg border transition",
-              page <= 1
-                ? "border-gray-100 text-gray-300 cursor-not-allowed"
-                : "border-gray-300 text-gray-600 hover:bg-gray-50"
-            )}
-          >
-            ← Previous
-          </button>
-          <span className="text-sm text-gray-500">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages}
-            className={cn(
-              "px-3 py-1.5 text-sm rounded-lg border transition",
-              page >= totalPages
-                ? "border-gray-100 text-gray-300 cursor-not-allowed"
-                : "border-gray-300 text-gray-600 hover:bg-gray-50"
-            )}
-          >
-            Next →
-          </button>
+        <div className="pt-2">
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            compact
+          />
         </div>
       )}
     </div>

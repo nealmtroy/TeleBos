@@ -2,14 +2,16 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { useAccounts, useAccountsPaginated, useAccountsSummary } from "@/hooks/use-accounts";
+import { useAccounts, useAccountsPaginated, useAccountsSummary, type Account } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountCard } from "@/components/accounts/account-card";
 import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
 import { FolderManagerDialog } from "@/components/accounts/folder-manager-dialog";
+import { TransferAccountsDialog } from "@/components/accounts/transfer-accounts-dialog";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { useRouter } from "next/navigation";
-import { Plus, FolderOpen, Info, Search, ChevronLeft, ChevronRight, Smartphone } from "lucide-react";
+import { Plus, FolderOpen, Info, Search, Smartphone, ArrowRightLeft, Star } from "lucide-react";
+import { DataPagination } from "@/components/ui/pagination";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
@@ -33,6 +35,8 @@ export default function AccountsListPage() {
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [folderManagerOpen, setFolderManagerOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedTransferAccounts, setSelectedTransferAccounts] = useState<Account[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("active");
 
   const [page, setPage] = useState(1);
@@ -110,27 +114,41 @@ export default function AccountsListPage() {
             {user?.role !== "owner" && ` (${user?.role || "basic"} plan)`}
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-          <button
-            onClick={() => setFolderManagerOpen(true)}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-          >
-            <FolderOpen className="h-4 w-4" />
-            {_("accountFolders.manageFolders")}
-          </button>
-          {atLimit ? (
-            <span className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
-              <Info className="h-4 w-4" />
-              Limit Reached
-            </span>
-          ) : (
-            <Link
-              href="/accounts/add"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setFolderManagerOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
             >
-              <Plus className="h-4 w-4" />
-              {_("accountsList.addAccount")}
-            </Link>
+              <FolderOpen className="h-4 w-4" />
+              {_("accountFolders.manageFolders")}
+            </button>
+            {atLimit ? (
+              <span className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
+                <Info className="h-4 w-4" />
+                Limit Reached
+              </span>
+            ) : (
+              <Link
+                href="/accounts/add"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                {_("accountsList.addAccount")}
+              </Link>
+            )}
+          </div>
+          {user?.role === "owner" && (
+            <button
+              onClick={() => {
+                setSelectedTransferAccounts([]);
+                setTransferDialogOpen(true);
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              {_("accountsList.transferAccounts")}
+            </button>
           )}
         </div>
       </div>
@@ -183,6 +201,18 @@ export default function AccountsListPage() {
               )}
             >
               {_("accountsList.statusExpired")}
+            </button>
+            <button
+              onClick={() => handleSelectStatus("premium")}
+              className={cn(
+                "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1.5",
+                statusFilter === "premium"
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs font-semibold"
+                  : "text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
+              )}
+            >
+              <Star className={cn("h-3.5 w-3.5", statusFilter === "premium" ? "fill-white text-white" : "fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400")} />
+              {_("accountsList.statusPremium")}
             </button>
             <button
               onClick={() => handleSelectStatus("all")}
@@ -283,6 +313,14 @@ export default function AccountsListPage() {
               account={account}
               onDelete={(id) => deleteMutation.mutate(id)}
               onView={(id) => router.push(`/accounts/${id}`)}
+              onTransfer={
+                user?.role === "owner"
+                  ? (acc) => {
+                      setSelectedTransferAccounts([acc]);
+                      setTransferDialogOpen(true);
+                    }
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -301,48 +339,13 @@ export default function AccountsListPage() {
               total: totalItems,
             })}
           </p>
-          <div className="flex max-w-full items-center gap-1 self-start overflow-x-auto pb-1 sm:self-auto sm:overflow-visible sm:pb-0">
-            <button
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page === 1}
-              aria-label={_("accountsList.prev")}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-              title={_("accountsList.prev")}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {generatePageNumbers(page, totalPages).map((pageNumber, index) =>
-              pageNumber === "…" ? (
-                <span key={`ellipsis-${index}`} aria-hidden="true" className="inline-flex size-9 shrink-0 items-center justify-center text-sm text-gray-400 dark:text-slate-400">
-                  …
-                </span>
-              ) : (
-                <button
-                  key={pageNumber}
-                  onClick={() => setPage(pageNumber)}
-                  aria-current={page === pageNumber ? "page" : undefined}
-                  aria-label={`Page ${pageNumber}`}
-                  className={cn(
-                    "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                    page === pageNumber
-                      ? "border-primary-600 bg-primary-600 text-white"
-                      : "border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
-                  )}
-                >
-                  {pageNumber}
-                </button>
-              )
-            )}
-            <button
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page === totalPages}
-              aria-label={_("accountsList.next")}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-              title={_("accountsList.next")}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <DataPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            labels={{ prev: _("accountsList.prev"), next: _("accountsList.next") }}
+            className="w-auto mx-0"
+          />
         </nav>
       )}
 
@@ -351,23 +354,15 @@ export default function AccountsListPage() {
         open={folderManagerOpen}
         onOpenChange={setFolderManagerOpen}
       />
+
+      {/* Transfer Accounts Dialog (Owner Only) */}
+      {user?.role === "owner" && (
+        <TransferAccountsDialog
+          open={transferDialogOpen}
+          onOpenChange={setTransferDialogOpen}
+          initialSelectedAccounts={selectedTransferAccounts}
+        />
+      )}
     </div>
   );
-}
-
-function generatePageNumbers(current: number, total: number): (number | "…")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-
-  const pages: (number | "…")[] = [1];
-  if (current > 3) pages.push("…");
-
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  for (let pageNumber = start; pageNumber <= end; pageNumber += 1) {
-    pages.push(pageNumber);
-  }
-
-  if (current < total - 2) pages.push("…");
-  pages.push(total);
-  return pages;
 }

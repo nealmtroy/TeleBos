@@ -27,6 +27,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "@/components/ui/date-picker-range";
 import { DateRange } from "react-day-picker";
+import { DataPagination } from "@/components/ui/pagination";
 
 type HistoryTab = "all" | "accounts" | "smm";
 
@@ -754,86 +755,26 @@ export default function OrderHistoryPage() {
 
           {/* Pagination Component */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
-              <div className="flex flex-1 justify-between sm:hidden">
-                <Button
-                  variant="outline"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="rounded-xl border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200"
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="rounded-xl border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200"
-                >
-                  Next
-                </Button>
-              </div>
-              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
-                    {locale === "id" ? "Menampilkan" : "Showing"}{" "}
-                    <span className="font-bold text-gray-900 dark:text-slate-100">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
-                    {locale === "id" ? "sampai" : "to"}{" "}
-                    <span className="font-bold text-gray-900 dark:text-slate-100">{Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}</span>{" "}
-                    {locale === "id" ? "dari" : "of"}{" "}
-                    <span className="font-bold text-gray-900 dark:text-slate-100">{filteredItems.length}</span>{" "}
-                    {locale === "id" ? "order" : "orders"}
-                  </p>
-                </div>
-                <div>
-                  <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="rounded-xl border-gray-200 dark:border-slate-700 px-3 text-gray-700 dark:text-slate-200"
-                    >
-                      Previous
-                    </Button>
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const pNum = idx + 1;
-                      if (totalPages > 5 && pNum !== 1 && pNum !== totalPages && Math.abs(pNum - page) > 1) {
-                        if (pNum === 2 && page > 3) {
-                          return <span key={pNum} className="px-2 text-gray-400 dark:text-slate-500">...</span>;
-                        }
-                        if (pNum === totalPages - 1 && page < totalPages - 2) {
-                          return <span key={pNum} className="px-2 text-gray-400 dark:text-slate-500">...</span>;
-                        }
-                        return null;
-                      }
-                      return (
-                        <Button
-                          key={pNum}
-                          variant={page === pNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setPage(pNum)}
-                          className={cn(
-                            "rounded-xl px-3",
-                            page === pNum ? "bg-primary text-white hover:bg-primary/90" : "border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
-                          )}
-                        >
-                          {pNum}
-                        </Button>
-                      );
-                    })}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                      className="rounded-xl border-gray-200 dark:border-slate-700 px-3 text-gray-700 dark:text-slate-200"
-                    >
-                      Next
-                    </Button>
-                  </nav>
-                </div>
-              </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                {locale === "id" ? "Menampilkan" : "Showing"}{" "}
+                <span className="font-bold text-gray-900 dark:text-slate-100">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
+                {locale === "id" ? "sampai" : "to"}{" "}
+                <span className="font-bold text-gray-900 dark:text-slate-100">{Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}</span>{" "}
+                {locale === "id" ? "dari" : "of"}{" "}
+                <span className="font-bold text-gray-900 dark:text-slate-100">{filteredItems.length}</span>{" "}
+                {locale === "id" ? "order" : "orders"}
+              </p>
+              <DataPagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                labels={{
+                  prev: locale === "id" ? "Sebelumnya" : "Prev",
+                  next: locale === "id" ? "Berikutnya" : "Next",
+                }}
+                className="w-auto mx-0"
+              />
             </div>
           )}
         </div>

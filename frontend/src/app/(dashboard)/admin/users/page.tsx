@@ -40,6 +40,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataPagination } from "@/components/ui/pagination";
 import { cn, formatDate } from "@/lib/utils";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -541,46 +542,18 @@ function UsersContent() {
 
         {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between p-3.5 bg-gray-50/70 border-t border-gray-100 text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 bg-gray-50/70 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-500 dark:text-slate-400">
             <p>
-              Showing <span className="font-semibold text-gray-800">{offset + 1}</span>–
-              <span className="font-semibold text-gray-800">{Math.min(offset + PAGE_SIZE, data?.total || 0)}</span> of{" "}
-              <span className="font-semibold text-gray-800">{data?.total}</span> users
+              Showing <span className="font-semibold text-gray-800 dark:text-slate-200">{offset + 1}</span>–
+              <span className="font-semibold text-gray-800 dark:text-slate-200">{Math.min(offset + PAGE_SIZE, data?.total || 0)}</span> of{" "}
+              <span className="font-semibold text-gray-800 dark:text-slate-200">{data?.total}</span> users
             </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {generatePageNumbers(page, totalPages).map((p, i) =>
-                p === "…" ? (
-                  <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-gray-400">…</span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p as number)}
-                    className={cn(
-                      "px-2.5 py-1 text-xs font-semibold rounded-lg transition",
-                      page === p
-                        ? "bg-primary-600 text-white shadow-sm"
-                        : "text-gray-600 hover:bg-gray-100"
-                    )}
-                  >
-                    {p}
-                  </button>
-                )
-              )}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            <DataPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="w-auto mx-0"
+            />
           </div>
         )}
       </div>
@@ -794,21 +767,4 @@ function UsersContent() {
       />
     </div>
   );
-}
-
-function generatePageNumbers(current: number, total: number): (number | "…")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-
-  const pages: (number | "…")[] = [1];
-  if (current > 3) pages.push("…");
-
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-
-  for (let i = start; i <= end; i++) pages.push(i);
-
-  if (current < total - 2) pages.push("…");
-  pages.push(total);
-
-  return pages;
 }

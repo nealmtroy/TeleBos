@@ -8,6 +8,7 @@ import Link from "next/link";
 import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Link as LinkIcon, ShieldAlert,
 } from "lucide-react";
+import { DataPagination } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
 import { ChatAvatar } from "@/components/chat/ChatAvatar";
@@ -303,22 +304,13 @@ function PublicGroupsChannelsContent() {
             })}
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 py-3 border-t border-gray-50">
-                <button
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page <= 1}
-                  className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="h-4 w-4 text-gray-500" />
-                </button>
-                <span className="text-xs text-gray-400">{_("groupsChannels.page")} {page} / {totalPages}</span>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= totalPages}
-                  className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="h-4 w-4 text-gray-500" />
-                </button>
+              <div className="py-2 border-t border-gray-100 dark:border-slate-800">
+                <DataPagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  compact
+                />
               </div>
             )}
           </div>

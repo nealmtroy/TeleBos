@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[a244df3e](https://github.com/nealmtroy/TeleBos/commit/a244df3e)**: feat(accounts): support premium account distinction, profile sync, and account transfer
 - **[87e84a29](https://github.com/nealmtroy/TeleBos/commit/87e84a29)**: fix(telethon): treat AuthKeyNotFound as a dead session
 - **[549819bc](https://github.com/nealmtroy/TeleBos/commit/549819bc)**: fix(devices): report Telegram's fresh-session reset limit as a temporary state
 - **[6d43701e](https://github.com/nealmtroy/TeleBos/commit/6d43701e)**: fix(media): align Telegram download offsets to the request size
