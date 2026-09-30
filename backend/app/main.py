@@ -1,5 +1,6 @@
 """Main FastAPI application with middleware, routers, and lifespan."""
 
+import asyncio
 import ipaddress
 import logging
 from contextlib import asynccontextmanager
@@ -294,6 +295,78 @@ logging.getLogger("telethon.network.connection.connection").addFilter(
 )
 
 
+async def _cancel_task(task: asyncio.Task) -> None:
+    """Cancel and await a background task, swallowing cancellation."""
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+async def _shutdown_resources(
+    *,
+    cleanup_task: asyncio.Task,
+    smm_sync_task: asyncio.Task,
+    smm_orders_poll_task: asyncio.Task,
+    media_cleanup_task: asyncio.Task,
+    redis_ws_bridge_task: asyncio.Task,
+) -> None:
+    """Tear down background tasks, Telegram clients, Redis, and the DB engine.
+
+    Every step is guarded. An exception escaping the lifespan's __aexit__
+    aborts whatever teardown has not run yet and is reported as a starlette
+    "merged_lifespan" traceback whose real cause sits past Sentry's truncation
+    limit, making it undiagnosable (PYTHON-FASTAPI-3). Disconnecting a live
+    MTProto socket can legitimately fail, and a partial teardown must still
+    release Redis and the connection pool.
+    """
+    for task in (
+        cleanup_task,
+        smm_sync_task,
+        smm_orders_poll_task,
+        media_cleanup_task,
+        redis_ws_bridge_task,
+    ):
+        await _cancel_task(task)
+
+    try:
+        from app.services.smm_service import close_smm_http_client
+
+        await close_smm_http_client()
+    except Exception as e:
+        logger.warning("Error closing SMM HTTP client: %s", e)
+
+    # Stop Telegram clients while Redis and DB connections are still active.
+    try:
+        await session_manager.stop()
+    except Exception as e:
+        logger.warning("Error stopping session manager: %s", e, exc_info=True)
+
+    # session_manager.stop() only detaches event handlers; it does not disconnect
+    # the pooled Telethon clients. Without this, each cached client keeps its
+    # send/recv loop tasks alive and asyncio reports "Task was destroyed but it
+    # is pending!" on shutdown (PYTHON-FASTAPI-B/C/D/E).
+    try:
+        from app.services.telegram_client import client_pool
+
+        await client_pool.stop()
+    except Exception as e:
+        logger.warning("Error stopping Telegram client pool: %s", e, exc_info=True)
+
+    try:
+        from app.utils.redis import redis_client
+
+        await redis_client.close()
+    except Exception as e:
+        logger.warning("Error closing Redis client: %s", e)
+
+    try:
+        await engine.dispose()
+    except Exception as e:
+        logger.warning("Error disposing database engine: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown."""
@@ -403,60 +476,13 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down TeleBos API...")
 
-    # 3. Cancel background tasks
-    cleanup_task.cancel()
-    try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        pass
-
-    smm_sync_task.cancel()
-    try:
-        await smm_sync_task
-    except asyncio.CancelledError:
-        pass
-
-    smm_orders_poll_task.cancel()
-    try:
-        await smm_orders_poll_task
-    except asyncio.CancelledError:
-        pass
-
-    media_cleanup_task.cancel()
-    try:
-        await media_cleanup_task
-    except asyncio.CancelledError:
-        pass
-
-    # Close shared SMM HTTP client
-    try:
-        from app.services.smm_service import close_smm_http_client
-        await close_smm_http_client()
-    except Exception as e:
-        logger.warning("Error closing SMM HTTP client: %s", e)
-
-    # 4. Cancel Redis WebSocket bridge
-    redis_ws_bridge_task.cancel()
-    try:
-        await redis_ws_bridge_task
-    except asyncio.CancelledError:
-        pass
-
-    # 5. Stop Telegram clients while Redis and DB connections are still active
-    await session_manager.stop()
-
-    # session_manager.stop() only detaches event handlers; it does not disconnect
-    # the pooled Telethon clients. Without this, each cached client keeps its
-    # send/recv loop tasks alive and asyncio reports "Task was destroyed but it
-    # is pending!" on shutdown (PYTHON-FASTAPI-B/C/D/E).
-    from app.services.telegram_client import client_pool
-    await client_pool.stop()
-
-    # 6. Close Redis client connection and dispose database engine
-    from app.utils.redis import redis_client
-
-    await redis_client.close()
-    await engine.dispose()
+    await _shutdown_resources(
+        cleanup_task=cleanup_task,
+        smm_sync_task=smm_sync_task,
+        smm_orders_poll_task=smm_orders_poll_task,
+        media_cleanup_task=media_cleanup_task,
+        redis_ws_bridge_task=redis_ws_bridge_task,
+    )
 
 
 app = FastAPI(
@@ -610,6 +636,7 @@ async def health(response: Response):
     # 2. Check Redis connection
     try:
         from app.utils.redis import redis_client
+
         pong = await redis_client.ping()
         checks["redis"] = "ok" if pong else "no_pong"
         if not pong:

@@ -541,7 +541,12 @@ class TelegramClientPool:
             self._locks.pop(account_id, None)
 
     async def stop(self) -> None:
-        """Cancel pool-owned background work and disconnect all cached clients."""
+        """Cancel pool-owned background work and disconnect all cached clients.
+
+        Teardown is best-effort per account: one client failing to disconnect
+        must not leave the rest connected, and must not propagate out of the
+        caller's shutdown (PYTHON-FASTAPI-3).
+        """
         if self._cleanup_task and not self._cleanup_task.done():
             self._cleanup_task.cancel()
             await asyncio.gather(self._cleanup_task, return_exceptions=True)
@@ -550,7 +555,15 @@ class TelegramClientPool:
         if self._catch_up_tasks:
             await asyncio.gather(*list(self._catch_up_tasks), return_exceptions=True)
         for account_id in list(self._clients):
-            await self.remove(account_id, save_state=False)
+            try:
+                await self.remove(account_id, save_state=False)
+            except Exception as exc:
+                logger.warning(
+                    "Error disconnecting client for account %s during pool stop: %s",
+                    account_id,
+                    exc,
+                )
+                self._clients.pop(account_id, None)
 
     async def get_connected_clients(self) -> dict[str, TelegramClient]:
         """Return dict of still-connected clients."""
