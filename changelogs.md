@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-09-30
+- **[cbfe8047](https://github.com/nealmtroy/TeleBos/commit/cbfe8047)**: feat(backup): add automated database backup script to Cloudflare R2
 - **[efc1498c](https://github.com/nealmtroy/TeleBos/commit/efc1498c)**: chore(scripts): add simulate_autoreply_monte_carlo test script
 
 ## 2026-09-29

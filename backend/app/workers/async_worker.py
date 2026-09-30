@@ -168,6 +168,51 @@ async def control_subscriber_loop() -> None:
                     pass
 
 
+async def resume_jobs_when_schema_ready(max_attempts: int = 30, retry_delay: float = 2.0) -> None:
+    """Auto-resume active jobs, waiting for the schema to exist first.
+
+    Only the webserver runs create_all/run_migrations, and docker-compose
+    starts this worker as soon as Postgres is healthy -- so on a fresh or
+    migrated deployment the job tables may not exist yet. Querying them
+    directly killed the process at startup with
+    'relation "broadcast_jobs" does not exist' (PYTHON-FASTAPI-T), leaving
+    the worker crash-looping until the webserver happened to finish first.
+    Wait for the table instead of dying; the compose restart policy then
+    brings us back when it never appears.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            async with async_session_factory() as db:
+                resumed_b = await broadcast_service.resume_running_broadcasts_on_startup(db)
+                resumed_i = await invite_service.resume_running_invites_on_startup(db)
+            logger.info(
+                "Startup complete: Auto-resumed %d broadcast jobs and %d invite jobs",
+                resumed_b,
+                resumed_i,
+            )
+            return
+        except Exception as exc:
+            # Only retry while the schema looks absent. A genuine fault
+            # (bad credentials, corrupted session) must still fail loudly.
+            is_missing_schema = "does not exist" in str(exc) or (
+                "UndefinedTable" in type(exc).__name__
+            )
+            if not is_missing_schema:
+                logger.critical("Failed to auto-resume jobs on startup: %s", exc)
+                raise
+            if attempt == max_attempts:
+                logger.critical("Schema did not become ready in time; exiting for restart.")
+                sys.exit(1)
+            logger.warning(
+                "Schema not ready yet (attempt %d/%d): %s. Retrying in %ss...",
+                attempt,
+                max_attempts,
+                exc,
+                retry_delay,
+            )
+            await asyncio.sleep(retry_delay)
+
+
 async def main() -> None:
     logger.info("Initializing TeleBos Dedicated Async Worker Daemon...")
 
@@ -185,11 +230,8 @@ async def main() -> None:
     client_pool.receive_updates = False
     logger.info("Worker client pool configured (is_worker=True, default receive_updates=False)")
 
-    # 3. Gracefully auto-resume all active running jobs on worker startup
-    async with async_session_factory() as db:
-        resumed_b = await broadcast_service.resume_running_broadcasts_on_startup(db)
-        resumed_i = await invite_service.resume_running_invites_on_startup(db)
-        logger.info("Startup complete: Auto-resumed %d broadcast jobs and %d invite jobs", resumed_b, resumed_i)
+    # 3. Wait for the schema, then auto-resume active jobs.
+    await resume_jobs_when_schema_ready()
 
     # 4. Start background loops
     consumer_task = asyncio.create_task(queue_consumer_loop())

@@ -254,6 +254,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         csp = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; "  # Next.js needs these + Cloudflare Web Analytics + FastAPI docs
+            "worker-src 'self' blob:; "
+            "child-src 'self' blob:; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com; "
             "font-src 'self' data:; "
