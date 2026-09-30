@@ -731,11 +731,52 @@ async def execute_invite(job_id: str):
         skipped = 0
         total = len(members_list)
         max_peer_floods = 3  # Stop using an account after 3 consecutive PeerFlood errors
+        max_member_retries = 3  # Re-attempts for one member after a flood wait
         current_acc_idx = 0
+        last_acc = None  # Account that last hit a flood, reused on retry
+        retry_delay_sec = 0.0
 
         for idx, member_entry in enumerate(members_list):
-            # Find the next ready account
-            while True:
+            # Retry the same member after a flood wait instead of dropping it.
+            # A flood is a temporary server-side throttle, not a verdict on
+            # this member, so the inner loop re-runs the same member once the
+            # cooldown the server asked for has elapsed. max_member_retries
+            # bounds it so a permanent throttle cannot spin forever.
+            member_attempts = 0
+            retry_same_member = False
+            member_done = False
+            while not member_done:
+                if retry_same_member:
+                    member_attempts += 1
+                    if member_attempts > max_member_retries:
+                        failed += 1
+                        member_done = True
+                        break
+                    await interruptible_sleep(job_id, retry_delay_sec)
+                    if await _get_invite_job_status(job_uuid) == "cancelled":
+                        member_done = True
+                        break
+                    # Reuse the same account that hit the flood, so the retry
+                    # lands once its cooldown has passed.
+                    selected_acc = last_acc
+                    client = selected_acc["client"]
+                    acc_id_str = selected_acc["account_id"]
+                    acc_name = selected_acc["account_name"]
+                    retry_same_member = False
+                    user_id_tg = member_entry["id"]
+                    access_hash = member_entry["access_hash"]
+                    username = member_entry["username"]
+                    first_name = member_entry["first_name"]
+                    source_group = member_entry["source_group"]
+                    log = InviteLog(
+                        job_id=job_uuid,
+                        user_id_tg=user_id_tg,
+                        username=username,
+                        first_name=first_name,
+                        source_group=source_group,
+                        account_id_used=_uuid.UUID(acc_id_str),
+                    )
+                # Find the next ready account
                 job_status = await _get_invite_job_status(job_uuid)
                 if job_status == "cancelled":
                     break
@@ -882,6 +923,8 @@ async def execute_invite(job_id: str):
                         "account_name": acc_name,
                     },
                 )
+                # Already a member — no invite needed for this one.
+                member_done = True
                 continue
 
             try:
@@ -942,6 +985,8 @@ async def execute_invite(job_id: str):
                     username or first_name,
                     job_destination_group,
                 )
+                # Member handled — move to the next one.
+                member_done = True
 
             except Exception as exc:
                 err_type, err_msg = classify_telegram_error(exc)
@@ -954,6 +999,8 @@ async def execute_invite(job_id: str):
                     already += 1
                     selected_acc["consecutive_peer_floods"] = 0
                     dest_member_ids.add(user_id_tg)
+                    # Member handled — move to the next one.
+                    member_done = True
 
                 elif err_type in (
                     "privacy_restricted",
@@ -966,15 +1013,22 @@ async def execute_invite(job_id: str):
                     log.status = "skipped"
                     skipped += 1
                     selected_acc["consecutive_peer_floods"] = 0
+                    # Terminal for this member, but still finish the loop body
+                    # (log + delay) below before moving on.
+                    member_done = True
 
                 elif err_type == "flood":
                     log.status = "error"
-                    failed += 1
                     wait = 30
                     if hasattr(exc, "seconds"):
                         wait = exc.seconds
                     fc.record_flood(acc_id_str, wait)
                     selected_acc["cooldown_until"] = time.time() + wait
+                    last_acc = selected_acc
+                    retry_delay_sec = wait
+                    # Do not count this as a failure yet — the member is
+                    # re-tried below once the cooldown has elapsed.
+                    retry_same_member = True
 
                     await _push_invite(
                         job_id,
@@ -982,18 +1036,28 @@ async def execute_invite(job_id: str):
                         {
                             "wait_seconds": wait,
                             "account": acc_name,
-                            "message": f"Flood wait on {acc_name}: waiting {wait} seconds...",
+                            "message": (
+                                f"Flood wait on {acc_name}: waiting {wait} seconds "
+                                f"then retrying member {user_id_tg}..."
+                            ),
                         },
                     )
+                    # Loop back: the top of this loop sleeps out the cooldown
+                    # and re-attempts the same member. Not member_done.
+                    continue
 
                 elif err_type == "peer_flood":
                     log.status = "error"
-                    failed += 1
                     selected_acc["consecutive_peer_floods"] += 1
 
                     backoff_time = 300  # 5 minutes
                     fc.record_flood(acc_id_str, backoff_time)
                     selected_acc["cooldown_until"] = time.time() + backoff_time
+                    last_acc = selected_acc
+                    retry_delay_sec = backoff_time
+                    # Same treatment as flood: the member is re-tried after the
+                    # backoff rather than written off.
+                    retry_same_member = True
 
                     await _push_invite(
                         job_id,
@@ -1002,10 +1066,16 @@ async def execute_invite(job_id: str):
                             "backoff_seconds": backoff_time,
                             "consecutive": selected_acc["consecutive_peer_floods"],
                             "account": acc_name,
-                            "message": f"PeerFlood on {acc_name} ({selected_acc['consecutive_peer_floods']}x). Backing off {backoff_time}s...",
+                            "message": (
+                                f"PeerFlood on {acc_name} "
+                                f"({selected_acc['consecutive_peer_floods']}x). Backing off "
+                                f"{backoff_time}s then retrying member {user_id_tg}..."
+                            ),
                         },
                     )
 
+                    # Retire an account that keeps getting throttled, so the
+                    # retry does not hammer the same one forever.
                     if selected_acc["consecutive_peer_floods"] >= max_peer_floods:
                         await _push_invite(
                             job_id,
@@ -1027,10 +1097,12 @@ async def execute_invite(job_id: str):
                     log.status = "skipped"
                     skipped += 1
                     selected_acc["consecutive_peer_floods"] = 0
+                    member_done = True
 
                 elif err_type == "phone_banned":
                     log.status = "error"
                     failed += 1
+                    member_done = True
                     await _push_invite(
                         job_id,
                         "account_failed",
@@ -1050,6 +1122,7 @@ async def execute_invite(job_id: str):
                 elif err_type in ("admin_only", "admin_invite_only"):
                     log.status = "error"
                     failed += 1
+                    member_done = True
 
                     await _push_invite(
                         job_id,
@@ -1071,11 +1144,13 @@ async def execute_invite(job_id: str):
                     log.status = "skipped"
                     skipped += 1
                     selected_acc["consecutive_peer_floods"] = 0
+                    member_done = True
 
                 else:
                     log.status = "error"
                     failed += 1
                     selected_acc["consecutive_peer_floods"] = 0
+                    member_done = True
                     logger.warning(
                         "Unknown invite error | account=%s user=%s type=%s msg=%s",
                         acc_id_str,
@@ -1163,10 +1238,12 @@ async def execute_invite(job_id: str):
                 },
             )
 
-            # Delay between invites
-            flood_delay = (
-                fc.get_delay(acc_id_str) if selected_acc["cooldown_until"] <= time.time() else 0
-            )
+            # Delay between invites. get_delay() already returns the *remaining*
+            # cooldown when a flood is active, so it must be consulted
+            # unconditionally — gating it on an expired cooldown (as this once
+            # did) discarded the flood wait entirely and fell back to the
+            # ordinary inter-invite delay.
+            flood_delay = fc.get_delay(acc_id_str)
             actual_delay = max(job_delay_per_invite, flood_delay)
 
             if (idx + 1) % job_batch_size == 0 and job_delay_per_batch > 0:
