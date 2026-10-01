@@ -260,6 +260,17 @@ export function connectInviteSocket(jobId: string): ReconnectingWebSocket {
   return ws;
 }
 
+export function connectAutoJoinSocket(jobId: string): ReconnectingWebSocket {
+  const key = `autojoin:${jobId}`;
+  const existing = getSocket(key);
+  if (existing) return existing;
+
+  const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/autojoin/${jobId}`);
+  ws.connect();
+  registerSocket(key, ws);
+  return ws;
+}
+
 export function disconnectSocket(key: string) {
   const ws = sockets.get(key);
   if (ws) {

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services import broadcast_service, invite_service
+from app.services import broadcast_service, invite_service, auto_join_service
 from app.workers.async_worker import resume_jobs_when_schema_ready
 
 
@@ -30,6 +30,11 @@ async def test_retries_until_table_exists_then_resumes():
         patch.object(
             invite_service, "resume_running_invites_on_startup", new=AsyncMock(return_value=1)
         ) as mock_invite,
+        patch.object(
+            auto_join_service,
+            "resume_running_auto_joins_on_startup",
+            new=AsyncMock(return_value=1),
+        ) as mock_autojoin,
         patch("asyncio.sleep", new=AsyncMock()) as mock_sleep,
     ):
         _session_factory_patch(mock_factory)
@@ -94,6 +99,11 @@ async def test_first_attempt_success_does_not_sleep():
         ),
         patch.object(
             invite_service, "resume_running_invites_on_startup", new=AsyncMock(return_value=2)
+        ),
+        patch.object(
+            auto_join_service,
+            "resume_running_auto_joins_on_startup",
+            new=AsyncMock(return_value=1),
         ),
         patch("asyncio.sleep", new=AsyncMock()) as mock_sleep,
     ):

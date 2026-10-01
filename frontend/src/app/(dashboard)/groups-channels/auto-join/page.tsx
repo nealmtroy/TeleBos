@@ -1,42 +1,137 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import api from "@/lib/api";
-import { useAccounts, type Account } from "@/hooks/use-accounts";
-import { useGroupLists, useCreateGroupList, type GroupList, type GroupListItem } from "@/hooks/use-broadcast";
+import { useAccounts } from "@/hooks/use-accounts";
+import { useGroupLists, useCreateGroupList, type GroupListItem } from "@/hooks/use-broadcast";
+import {
+  useAutoJoinJobs,
+  useAutoJoinJob,
+  useStartAutoJoin,
+  useAutoJoinAction,
+  useAutoJoinLogs,
+  useDeleteAutoJoinJob,
+  type AutoJoinJob,
+  type AutoJoinLog,
+} from "@/hooks/use-auto-join";
+import { useAutoJoinSocket } from "@/hooks/use-socket";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { buildJoinTasks, shouldDelayBeforeNext } from "./autoJoinTaskPlan";
-import { cn } from "@/lib/utils";
+import { buildJoinTasks } from "./autoJoinTaskPlan";
+import { cn, formatDate } from "@/lib/utils";
 import {
-  Users,
   Hash,
   UserPlus,
   Play,
   Pause,
   Square,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Clock,
   RefreshCw,
-  Search,
-  Copy,
   FileText,
   Check,
   ChevronRight,
-  Shield,
   Layers,
-  ArrowRight,
   Bookmark,
-  Sparkles,
-  Info,
+  Trash2,
+  History,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
+
+/** Where the still-running job id is remembered so navigation never orphans a run. */
+const ACTIVE_JOB_KEY = "telebos:auto-join-active-job";
+
+/** How many log rows we are willing to render, newest first. */
+const LOG_RENDER_CAP = 500;
+
+type JobStatus = AutoJoinJob["status"];
+
+const TERMINAL_STATUSES: JobStatus[] = ["completed", "cancelled", "failed"];
+
+function isTerminal(status: JobStatus | undefined): boolean {
+  return !!status && TERMINAL_STATUSES.includes(status);
+}
+
+/**
+ * One row shape for both log sources. Persisted rows carry an `id` and a
+ * `joined_at`; live WebSocket rows carry neither, so we synthesize a key and a
+ * clock time for them.
+ */
+interface LogRow {
+  key: string;
+  time: string;
+  accountName: string;
+  target: string;
+  status: AutoJoinLog["status"];
+  errorType: string | null;
+  detail: string;
+}
+
+/** Read the persisted id in a way that survives SSR and private-mode storage. */
+function readStoredJobId(): string | null {
+  try {
+    return window.localStorage.getItem(ACTIVE_JOB_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredJobId(jobId: string | null) {
+  try {
+    if (jobId) window.localStorage.setItem(ACTIVE_JOB_KEY, jobId);
+    else window.localStorage.removeItem(ACTIVE_JOB_KEY);
+  } catch {
+    /* storage unavailable — the run still works, it just won't be restored */
+  }
+}
+
+/**
+ * Stable identity for a join attempt within one job. A job visits each
+ * (account, target) pair at most once, so this is unique per log — which is
+ * what lets a live WebSocket row and its later persisted twin collapse into a
+ * single table row.
+ */
+function logIdentity(accountId: string | null | undefined, target: string | null | undefined) {
+  return `${accountId ?? "?"}|${target ?? "?"}`;
+}
+
+function formatClock(value: string | null | undefined): string {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? "--:--:--" : date.toLocaleTimeString();
+}
+
+/** Status → badge label and Tailwind classes, matching the palette already in use. */
+function jobStatusBadge(status: JobStatus, t: (key: string) => string) {
+  return {
+    pending: {
+      text: t("autoJoin.statusPending"),
+      badge: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-600",
+    },
+    running: {
+      text: t("autoJoin.statusRunning"),
+      badge: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-950/60 dark:text-primary-300 dark:border-primary-800/60",
+    },
+    paused: {
+      text: t("autoJoin.statusPaused"),
+      badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50",
+    },
+    completed: {
+      text: t("autoJoin.statusCompleted"),
+      badge: "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50",
+    },
+    cancelled: {
+      text: t("autoJoin.statusCancelled"),
+      badge: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600",
+    },
+    failed: {
+      text: t("autoJoin.statusFailed"),
+      badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50",
+    },
+  }[status];
+}
 
 /**
  * Parses raw text input into clean Telegram identifiers.
@@ -99,18 +194,6 @@ function parseRawTargets(text: string): string[] {
   return items;
 }
 
-interface JoinLog {
-  id: string;
-  time: string;
-  accountPhone: string;
-  accountName: string;
-  target: string;
-  status: "success" | "already_member" | "flood_wait" | "failed";
-  chatTitle?: string;
-  chatType?: string;
-  message: string;
-}
-
 export default function AutoJoinPage() {
   const _ = useT();
   const { toast } = useToast();
@@ -151,21 +234,111 @@ export default function AutoJoinPage() {
   const [randomizeDelay, setRandomizeDelay] = useState<boolean>(true);
   const [distributionMode, setDistributionMode] = useState<"all" | "distribute">("all");
 
-  // Execution state
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [currentProgress, setCurrentProgress] = useState({ current: 0, total: 0 });
-  const [stats, setStats] = useState({ success: 0, already: 0, flood: 0, failed: 0 });
-  const [logs, setLogs] = useState<JoinLog[]>([]);
+  // ── Job tracking ──────────────────────────────────────────────────────────
+  // The run lives in the backend worker; this page only watches it. The active
+  // job id is persisted so navigating away and back re-attaches to a run that
+  // is still going instead of orphaning it.
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activeJobLoaded, setActiveJobLoaded] = useState(false);
 
-  // Refs for async control
-  const stopRequestedRef = useRef(false);
-  const pauseRequestedRef = useRef(false);
-
-  // Synchronize pause state to ref
   useEffect(() => {
-    pauseRequestedRef.current = isPaused;
-  }, [isPaused]);
+    setActiveJobId(readStoredJobId());
+    setActiveJobLoaded(true);
+  }, []);
+
+  const { data: job, isLoading: jobLoading, isError: jobError, refetch: refetchJob } = useAutoJoinJob(activeJobId);
+  const { connected, logs: liveLogs, phaseMessage } = useAutoJoinSocket(activeJobId);
+  const { data: persistedLogs } = useAutoJoinLogs(activeJobId);
+  const { data: recentJobs, isLoading: historyLoading } = useAutoJoinJobs(20);
+  const startMutation = useStartAutoJoin();
+  const actionMutation = useAutoJoinAction(activeJobId ?? "");
+  const deleteMutation = useDeleteAutoJoinJob();
+
+  const jobStatus = job?.status;
+
+  // Poll the job row while it is live. The WebSocket streams logs but the job
+  // counters live in the database, so a slow poll keeps them honest even if the
+  // socket drops.
+  useEffect(() => {
+    if (!activeJobId || isTerminal(jobStatus)) return;
+    const id = window.setInterval(() => {
+      refetchJob();
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [activeJobId, jobStatus, refetchJob]);
+
+  const isJobActive = !!job && !isTerminal(jobStatus);
+  const isRunning = jobStatus === "running" || jobStatus === "paused";
+  const isPaused = jobStatus === "paused";
+  const progressPercent = Math.min(100, Math.max(0, job?.progress ?? 0));
+
+  const normalizedLogs = useMemo<LogRow[]>(() => {
+    const rows: LogRow[] = [];
+    const seen = new Set<string>();
+
+    const push = (identity: string, row: LogRow) => {
+      if (seen.has(identity)) return;
+      seen.add(identity);
+      rows.push(row);
+    };
+
+    // Persisted rows first so their real joined_at wins for a given attempt.
+    persistedLogs?.forEach((log) => {
+      push(logIdentity(log.account_id_used, log.target), {
+        key: log.id,
+        time: formatClock(log.joined_at),
+        accountName: log.account_name || "—",
+        target: log.target,
+        status: log.status,
+        errorType: log.error_type,
+        detail: log.error_message || log.chat_title || log.chat_type || "—",
+      });
+    });
+
+    // Live rows have no id and no joined_at. Keying them by (account, target)
+    // means that when the row is later persisted, the two collapse instead of
+    // the table showing every attempt twice.
+    liveLogs.forEach((raw) => {
+      const entry = raw as Partial<AutoJoinLog>;
+      push(logIdentity(entry.account_id_used, entry.target), {
+        key: `live:${logIdentity(entry.account_id_used, entry.target)}`,
+        time: formatClock(null),
+        accountName: entry.account_name || "—",
+        target: entry.target || "—",
+        status: (entry.status as AutoJoinLog["status"]) || "error",
+        errorType: entry.error_type ?? null,
+        detail: entry.error_message || entry.chat_title || entry.chat_type || "—",
+      });
+    });
+
+    // The API returns newest-first; keep that order across the merged list.
+    return rows;
+  }, [persistedLogs, liveLogs]);
+
+  const visibleLogs = useMemo(
+    () => normalizedLogs.slice(0, LOG_RENDER_CAP),
+    [normalizedLogs]
+  );
+
+  const attachJob = (jobId: string | null) => {
+    setActiveJobId(jobId);
+    writeStoredJobId(jobId);
+  };
+
+  // Forget the persisted job once it finishes — the history table still has it.
+  useEffect(() => {
+    if (activeJobId && isTerminal(job?.status)) {
+      writeStoredJobId(null);
+    }
+  }, [activeJobId, job?.status]);
+
+  // A job id that no longer resolves (deleted elsewhere, or from another tab)
+  // must not leave the page stuck on a permanent "loading" spinner.
+  useEffect(() => {
+    if (activeJobId && jobError) {
+      attachJob(null);
+    }
+  }, [activeJobId, jobError]);
 
   // Auto-select first account if none selected
   useEffect(() => {
@@ -184,6 +357,16 @@ export default function AutoJoinPage() {
     }
     return [];
   }, [sourceMode, parsedTargets, activeSavedList]);
+
+  /**
+   * How many joins this configuration would produce. Purely a preview of what
+   * the worker will do — the worker owns the real run and its own pacing.
+   */
+  const estimatedJoins = useMemo(() => {
+    const selected = activeAccounts.filter((a) => selectedAccountIds.has(a.id));
+    if (selected.length === 0 || effectiveTargets.length === 0) return 0;
+    return buildJoinTasks(effectiveTargets, selected, distributionMode).length;
+  }, [effectiveTargets, activeAccounts, selectedAccountIds, distributionMode]);
 
   // Toggle account selection
   const toggleAccount = (id: string) => {
@@ -237,32 +420,7 @@ export default function AutoJoinPage() {
     }
   };
 
-  // Sleep utility with abort/pause support
-  const sleep = (ms: number) => {
-    return new Promise<void>((resolve) => {
-      const start = Date.now();
-      const interval = setInterval(() => {
-        if (stopRequestedRef.current) {
-          clearInterval(interval);
-          resolve();
-          return;
-        }
-        if (Date.now() - start >= ms) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 200);
-    });
-  };
-
-  // Wait while paused
-  const waitWhilePaused = async () => {
-    while (pauseRequestedRef.current && !stopRequestedRef.current) {
-      await new Promise((r) => setTimeout(r, 400));
-    }
-  };
-
-  // Start execution
+  // Hand the run to the backend worker. Everything after this is observation.
   const handleStart = async () => {
     if (effectiveTargets.length === 0) {
       toast({
@@ -283,130 +441,49 @@ export default function AutoJoinPage() {
       return;
     }
 
-    stopRequestedRef.current = false;
-    pauseRequestedRef.current = false;
-    setIsRunning(true);
-    setIsPaused(false);
-    setStats({ success: 0, already: 0, flood: 0, failed: 0 });
-    setLogs([]);
-
-    // Plan tasks: every selected account joins the same group before moving to
-    // the next one, so the run is paced per group rather than per individual
-    // join. See autoJoinTaskPlan.ts.
+    // The same per-group pacing the worker applies is previewed here so the
+    // button can tell the user how big the run will be.
     const tasks = buildJoinTasks(effectiveTargets, selectedAccountsList, distributionMode);
 
-    setCurrentProgress({ current: 0, total: tasks.length });
-
-    toast({
-      variant: "info",
-      title: "Auto Join Dimulai",
-      description: `Memproses ${tasks.length} total join untuk ${selectedAccountsList.length} akun.`,
-    });
-
-    for (let i = 0; i < tasks.length; i++) {
-      if (stopRequestedRef.current) {
-        break;
-      }
-
-      await waitWhilePaused();
-      if (stopRequestedRef.current) break;
-
-      const { account, target } = tasks[i];
-      const nowStr = new Date().toLocaleTimeString();
-
-      try {
-        const response = await api.post<{
-          chat_id: number;
-          title: string;
-          username: string | null;
-          chat_type: string;
-          already_joined?: boolean;
-        }>(`/accounts/${account.id}/chats/join`, { identifier: target });
-
-        const isAlready = response.data.already_joined === true;
-
-        const newLog: JoinLog = {
-          id: Math.random().toString(36).slice(2),
-          time: nowStr,
-          accountPhone: account.phone,
-          accountName: account.first_name || "Account",
-          target,
-          status: isAlready ? "already_member" : "success",
-          chatTitle: response.data.title,
-          chatType: response.data.chat_type,
-          message: isAlready
-            ? `Sudah bergabung sebelumnya: "${response.data.title}"`
-            : `Berhasil bergabung ke: "${response.data.title}" (${response.data.chat_type})`,
-        };
-
-        setLogs((prev) => [newLog, ...prev]);
-        setStats((prev) => ({
-          ...prev,
-          success: isAlready ? prev.success : prev.success + 1,
-          already: isAlready ? prev.already + 1 : prev.already,
-        }));
-      } catch (err: any) {
-        const errMsg = err?.response?.data?.detail || err?.message || "Gagal bergabung";
-        const isFlood = errMsg.toLowerCase().includes("flood") || errMsg.toLowerCase().includes("wait");
-
-        const newLog: JoinLog = {
-          id: Math.random().toString(36).slice(2),
-          time: nowStr,
-          accountPhone: account.phone,
-          accountName: account.first_name || "Account",
-          target,
-          status: isFlood ? "flood_wait" : "failed",
-          message: errMsg,
-        };
-
-        setLogs((prev) => [newLog, ...prev]);
-        setStats((prev) => ({
-          ...prev,
-          flood: isFlood ? prev.flood + 1 : prev.flood,
-          failed: isFlood ? prev.failed : prev.failed + 1,
-        }));
-      }
-
-      setCurrentProgress({ current: i + 1, total: tasks.length });
-
-      // Pace the run per group, not per join. In "all" mode every account joins
-      // the same group back to back, so delaying after each individual join
-      // stalled three accounts against a single group for three delays before
-      // moving on. Waiting only when the next task targets a different group
-      // keeps the pause between groups, which is the point of the setting.
-      const nextStartsNewGroup = shouldDelayBeforeNext(tasks, i);
-
-      if (nextStartsNewGroup && !stopRequestedRef.current) {
-        let actualDelay = delaySeconds;
-        if (randomizeDelay) {
-          const jitter = Math.random() * 4 - 2; // +/- 2 seconds
-          actualDelay = Math.max(2, delaySeconds + jitter);
-        }
-        await sleep(actualDelay * 1000);
-      }
+    try {
+      const created = await startMutation.mutateAsync({
+        account_ids: selectedAccountsList.map((a) => a.id),
+        targets: effectiveTargets.map((value) => ({
+          type: value.startsWith("http") ? "link" : "username",
+          value,
+        })),
+        distribution_mode: distributionMode,
+        delay_per_group: delaySeconds,
+        delay_randomized: randomizeDelay,
+      });
+      attachJob(created.id);
+      toast({
+        variant: "info",
+        title: "Auto Join Dimulai",
+        description: `Memproses ${tasks.length} total join untuk ${selectedAccountsList.length} akun di worker backend.`,
+      });
+    } catch {
+      /* the mutation already surfaced a toast */
     }
-
-    setIsRunning(false);
-    setIsPaused(false);
-    toast({
-      variant: "success",
-      title: "Auto Join Selesai",
-      description: "Semua antrean auto join telah selesai diproses.",
-    });
   };
 
-  const handleStop = () => {
-    stopRequestedRef.current = true;
-    setIsPaused(false);
+  const handleJobAction = (action: "pause" | "resume" | "stop") => {
+    if (!activeJobId) return;
+    actionMutation.mutate(action);
   };
 
-  const handleTogglePause = () => {
-    setIsPaused((prev) => !prev);
+  const handleDeleteJob = async (jobId: string) => {
+    if (jobId === activeJobId) {
+      attachJob(null);
+    }
+    try {
+      await deleteMutation.mutateAsync(jobId);
+    } catch {
+      /* the mutation already surfaced a toast */
+    }
   };
 
-  const progressPercent = currentProgress.total > 0
-    ? Math.round((currentProgress.current / currentProgress.total) * 100)
-    : 0;
+  const canStart = effectiveTargets.length > 0 && selectedAccountIds.size > 0 && !startMutation.isPending;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fadeIn">
@@ -813,19 +890,24 @@ export default function AutoJoinPage() {
 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center gap-2">
-                {!isRunning ? (
+                {!isJobActive ? (
                   <Button
                     onClick={handleStart}
-                    disabled={effectiveTargets.length === 0 || selectedAccountIds.size === 0}
+                    disabled={!canStart}
                     className="flex-1 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs py-2.5 flex items-center justify-center gap-2"
                   >
-                    <Play className="h-4 w-4 fill-white" />
-                    Mulai Auto Join ({effectiveTargets.length} Target)
+                    {startMutation.isPending ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4 fill-white" />
+                    )}
+                    Mulai Auto Join ({estimatedJoins} Join)
                   </Button>
                 ) : (
                   <>
                     <Button
-                      onClick={handleTogglePause}
+                      onClick={() => handleJobAction(isPaused ? "resume" : "pause")}
+                      disabled={actionMutation.isPending || jobStatus === "pending"}
                       className={cn(
                         "flex-1 rounded-xl font-bold text-xs py-2.5 flex items-center justify-center gap-2 transition-colors",
                         isPaused
@@ -844,7 +926,8 @@ export default function AutoJoinPage() {
                       )}
                     </Button>
                     <Button
-                      onClick={handleStop}
+                      onClick={() => handleJobAction("stop")}
+                      disabled={actionMutation.isPending}
                       variant="destructive"
                       className="rounded-xl font-bold text-xs py-2.5 px-4 flex items-center justify-center gap-1.5"
                     >
@@ -863,127 +946,262 @@ export default function AutoJoinPage() {
                 <Layers className="h-4 w-4 text-primary-500" />
                 Progres Eksekusi
               </h2>
-              {isRunning && (
-                <span className="flex items-center gap-1.5 text-xs text-primary-600 font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-primary-500 animate-ping" />
-                  Berjalan...
-                </span>
-              )}
+              {job ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={cn("text-[11px] uppercase font-bold", jobStatusBadge(jobStatus!, _).badge)}>
+                    {jobStatusBadge(jobStatus!, _).text}
+                  </Badge>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1.5 text-[11px] font-semibold",
+                      connected ? "text-primary-600" : "text-gray-400 dark:text-slate-400"
+                    )}
+                    title={connected ? _("autoJoin.live") : _("autoJoin.offline")}
+                  >
+                    {connected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+                    {connected ? _("autoJoin.live") : _("autoJoin.offline")}
+                  </span>
+                </div>
+              ) : null}
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-gray-500 dark:text-slate-300">
-                <span>
-                  Progres: {currentProgress.current} / {currentProgress.total}
-                </span>
-                <span className="font-bold text-gray-900 dark:text-slate-100">{progressPercent}%</span>
+            {!job ? (
+              <div className="text-center py-6 text-gray-400 dark:text-slate-400 text-xs">
+                {activeJobId && jobLoading ? "Memuat job..." : _("autoJoin.noActiveJob")}
               </div>
-              <div className="w-full bg-gray-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-primary-600 h-full transition-all duration-300 rounded-full"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-slate-300">
+                    <span>
+                      {job.success_count + job.already_count + job.fail_count} / {job.total_tasks} tugas
+                    </span>
+                    <span className="font-bold text-gray-900 dark:text-slate-100">{progressPercent}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-primary-600 h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
 
-            {/* Metric counters */}
-            <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-slate-700/70 pt-2 text-center">
-              <div className="px-2">
-                <span className="block text-lg font-bold text-green-700 dark:text-emerald-300">{stats.success}</span>
-                <span className="text-xs text-green-600 dark:text-emerald-400 font-semibold">Sukses</span>
-              </div>
-              <div className="px-2">
-                <span className="block text-lg font-bold text-blue-700 dark:text-blue-300">{stats.already}</span>
-                <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">Member</span>
-              </div>
-              <div className="px-2">
-                <span className="block text-lg font-bold text-amber-700 dark:text-amber-300">{stats.flood}</span>
-                <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">FloodWait</span>
-              </div>
-              <div className="px-2">
-                <span className="block text-lg font-bold text-rose-700 dark:text-rose-300">{stats.failed}</span>
-                <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Gagal</span>
-              </div>
-            </div>
+                {/* Metric counters — these live on the job row, not in the browser */}
+                <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-slate-700/70 pt-2 text-center">
+                  <div className="px-2">
+                    <span className="block text-lg font-bold text-green-700 dark:text-emerald-300">{job.success_count}</span>
+                    <span className="text-xs text-green-600 dark:text-emerald-400 font-semibold">{_("autoJoin.success")}</span>
+                  </div>
+                  <div className="px-2">
+                    <span className="block text-lg font-bold text-blue-700 dark:text-blue-300">{job.already_count}</span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">{_("autoJoin.already")}</span>
+                  </div>
+                  <div className="px-2">
+                    <span className="block text-lg font-bold text-rose-700 dark:text-rose-300">{job.fail_count}</span>
+                    <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{_("autoJoin.failed")}</span>
+                  </div>
+                </div>
+
+                {phaseMessage && (
+                  <p className="text-xs text-gray-500 dark:text-slate-300 pt-1 border-t border-gray-100 dark:border-slate-700">
+                    {phaseMessage}
+                  </p>
+                )}
+
+                {isJobActive && (
+                  <p className="text-xs text-gray-400 dark:text-slate-400 pt-1 border-t border-gray-100 dark:border-slate-700">
+                    {_("autoJoin.runningInWorker")}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* Live Log Console Table */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+        <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary-500" />
             <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">Log Aktivitas Real-Time</h2>
             <Badge variant="outline" className="text-[11px] bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-200 font-mono ml-1">
-              {logs.length} catatan
+              {normalizedLogs.length} catatan
             </Badge>
+            {job && (
+              <Badge variant="outline" className="text-[11px] bg-white dark:bg-slate-700 text-gray-500 dark:text-slate-300 font-mono">
+                {job.id.slice(0, 8)}
+              </Badge>
+            )}
           </div>
-
-          {logs.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setLogs([])}
-              className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium transition-colors"
-            >
-              Bersihkan Log
-            </button>
-          )}
         </div>
 
         <div className="p-0">
-          {logs.length === 0 ? (
+          {visibleLogs.length === 0 ? (
             <div className="text-center py-12 text-gray-400 dark:text-slate-400 text-xs">
-              Belum ada log aktivitas. Mulai auto join untuk melihat hasil di sini.
+              {activeJobId
+                ? "Belum ada log untuk job ini."
+                : activeJobLoaded
+                  ? "Belum ada log aktivitas. Mulai auto join untuk melihat hasil di sini."
+                  : "Memuat..."}
             </div>
           ) : (
-            <div className="overflow-x-auto max-h-80 overflow-y-auto">
-              <Table className="w-full text-left text-xs">
-                <TableHeader className="bg-gray-50 dark:bg-slate-700/70 text-gray-500 dark:text-slate-200 font-semibold sticky top-0 border-b border-gray-100 dark:border-slate-700 [&_tr]:border-b-0">
-                  <TableRow className="hover:bg-gray-50 dark:hover:bg-slate-700/70 border-b-0">
-                    <TableHead className="py-2.5 px-4 w-24">Waktu</TableHead>
-                    <TableHead className="py-2.5 px-4 w-36">Akun</TableHead>
-                    <TableHead className="py-2.5 px-4">Target</TableHead>
-                    <TableHead className="py-2.5 px-4 w-32">Status</TableHead>
-                    <TableHead className="py-2.5 px-4">Detail</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100 dark:divide-slate-700 font-mono text-[11px]">
-                  {logs.map((log) => {
-                    const statusConfig = {
-                      success: { text: "Sukses", badge: "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
-                      already_member: { text: "Member", badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
-                      flood_wait: { text: "FloodWait", badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50" },
-                      failed: { text: "Gagal", badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50" },
-                    }[log.status];
+            <>
+              {normalizedLogs.length > LOG_RENDER_CAP && (
+                <p className="px-4 py-2 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-950/20 border-b border-amber-100 dark:border-amber-900/40">
+                  {_("autoJoin.logCap", { shown: visibleLogs.length, total: normalizedLogs.length })}
+                </p>
+              )}
+              <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                <Table className="w-full text-left text-xs">
+                  <TableHeader className="bg-gray-50 dark:bg-slate-700/70 text-gray-500 dark:text-slate-200 font-semibold sticky top-0 border-b border-gray-100 dark:border-slate-700 [&_tr]:border-b-0">
+                    <TableRow className="hover:bg-gray-50 dark:hover:bg-slate-700/70 border-b-0">
+                      <TableHead className="py-2.5 px-4 w-24">{_("autoJoin.created")}</TableHead>
+                      <TableHead className="py-2.5 px-4 w-36">{_("autoJoin.detail")}</TableHead>
+                      <TableHead className="py-2.5 px-4">Target</TableHead>
+                      <TableHead className="py-2.5 px-4 w-32">{_("autoJoin.status")}</TableHead>
+                      <TableHead className="py-2.5 px-4">{_("autoJoin.detail")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-gray-100 dark:divide-slate-700 font-mono text-[11px]">
+                    {visibleLogs.map((log) => {
+                      const statusConfig = {
+                        success: { text: _("autoJoin.success"), badge: "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+                        already_member: { text: _("autoJoin.already"), badge: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
+                        error: { text: _("autoJoin.failed"), badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50" },
+                      }[log.status] ?? {
+                        text: log.status,
+                        badge: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600",
+                      };
 
-                    return (
-                      <TableRow key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
-                        <TableCell className="py-2.5 px-4 text-gray-400 dark:text-slate-300 whitespace-nowrap">{log.time}</TableCell>
-                        <TableCell className="py-2.5 px-4 whitespace-nowrap">
-                          <span className="font-semibold text-gray-900 dark:text-slate-100 block font-sans">{log.accountName}</span>
-                          <span className="text-gray-400 dark:text-slate-300 text-[11px]">{log.accountPhone}</span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-2.5 px-4 text-gray-800 dark:text-slate-200 font-bold max-w-xs truncate" title={log.target}>
-                          {log.target}
-                        </TableCell>
-                        <TableCell className="py-2.5 px-4 whitespace-nowrap">
-                          <Badge variant="outline" className={cn("text-[11px] uppercase font-sans font-bold", statusConfig.badge)}>
-                            {statusConfig.text}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-2.5 px-4 text-gray-600 dark:text-slate-300 font-sans max-w-md truncate" title={log.message}>
-                          {log.message}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                      return (
+                        <TableRow key={log.key} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                          <TableCell className="py-2.5 px-4 text-gray-400 dark:text-slate-300 whitespace-nowrap">{log.time}</TableCell>
+                          <TableCell className="py-2.5 px-4 whitespace-nowrap">
+                            <span className="font-semibold text-gray-900 dark:text-slate-100 block font-sans">{log.accountName}</span>
+                            {log.errorType && (
+                              <span className="text-gray-400 dark:text-slate-300 text-[11px]">{log.errorType}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap py-2.5 px-4 text-gray-800 dark:text-slate-200 font-bold max-w-xs truncate" title={log.target}>
+                            {log.target}
+                          </TableCell>
+                          <TableCell className="py-2.5 px-4 whitespace-nowrap">
+                            <Badge variant="outline" className={cn("text-[11px] uppercase font-sans font-bold", statusConfig.badge)}>
+                              {statusConfig.text}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap py-2.5 px-4 text-gray-600 dark:text-slate-300 font-sans max-w-md truncate" title={log.detail}>
+                            {log.detail}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </div>
+      </div>
+
+      {/* Job History */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2">
+          <History className="h-4 w-4 text-primary-500" />
+          <div>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">{_("autoJoin.history")}</h2>
+            <p className="text-xs text-gray-500 dark:text-slate-300">{_("autoJoin.historyDesc")}</p>
+          </div>
+        </div>
+
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-8 text-gray-400 dark:text-slate-400 text-xs gap-2">
+            <RefreshCw className="h-4 w-4 animate-spin text-primary-500" />
+            Memuat riwayat...
+          </div>
+        ) : (recentJobs || []).length === 0 ? (
+          <div className="text-center py-10 text-gray-400 dark:text-slate-400 text-xs">{_("autoJoin.noJobs")}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table className="w-full text-left text-xs">
+              <TableHeader className="bg-gray-50 dark:bg-slate-700/70 text-gray-500 dark:text-slate-200 font-semibold border-b border-gray-100 dark:border-slate-700">
+                <TableRow className="hover:bg-gray-50 dark:hover:bg-slate-700/70 border-b-0">
+                  <TableHead className="py-2.5 px-4 w-24">{_("autoJoin.jobId")}</TableHead>
+                  <TableHead className="py-2.5 px-4 w-40">{_("autoJoin.created")}</TableHead>
+                  <TableHead className="py-2.5 px-4 w-32">{_("autoJoin.status")}</TableHead>
+                  <TableHead className="py-2.5 px-4 w-40">{_("autoJoin.progress")}</TableHead>
+                  <TableHead className="py-2.5 px-4">{_("autoJoin.detail")}</TableHead>
+                  <TableHead className="py-2.5 px-4 w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100 dark:divide-slate-700">
+                {(recentJobs || []).map((row) => {
+                  const isActiveRow = row.id === activeJobId;
+                  return (
+                    <TableRow
+                      key={row.id}
+                      onClick={() => attachJob(row.id)}
+                      className={cn(
+                        "transition-colors cursor-pointer",
+                        isActiveRow
+                          ? "bg-primary-50/60 dark:bg-primary-950/30"
+                          : "hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                      )}
+                    >
+                      <TableCell className="py-2.5 px-4 font-mono text-gray-700 dark:text-slate-300">
+                        {row.id.slice(0, 8)}
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4 text-gray-500 dark:text-slate-300 whitespace-nowrap">
+                        {formatDate(row.created_at)}
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4 whitespace-nowrap">
+                        <Badge variant="outline" className={cn("text-[11px] uppercase font-bold", jobStatusBadge(row.status, _).badge)}>
+                          {jobStatusBadge(row.status, _).text}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-gray-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-primary-600 h-full rounded-full"
+                              style={{ width: `${Math.min(100, Math.max(0, row.progress))}%` }}
+                            />
+                          </div>
+                          <span className="font-mono text-[11px] text-gray-500 dark:text-slate-300">{row.progress}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4 text-[11px] font-sans whitespace-nowrap">
+                        <span className="text-green-700 dark:text-emerald-300">{row.success_count} {_("autoJoin.success").toLowerCase()}</span>
+                        <span className="text-gray-300 dark:text-slate-600"> · </span>
+                        <span className="text-blue-700 dark:text-blue-300">{row.already_count} {_("autoJoin.already").toLowerCase()}</span>
+                        <span className="text-gray-300 dark:text-slate-600"> · </span>
+                        <span className="text-rose-700 dark:text-rose-300">{row.fail_count} {_("autoJoin.failed").toLowerCase()}</span>
+                      </TableCell>
+                      <TableCell className="py-2.5 px-4">
+                        {isTerminal(row.status) ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteJob(row.id);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            title={_("autoJoin.delete")}
+                            className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </div>
   );

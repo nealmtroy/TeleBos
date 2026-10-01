@@ -950,6 +950,35 @@ const id: Dict = {
     autoJoinDesc: "Bergabung ke banyak grup dan channel secara otomatis dengan akun Telegram Anda.",
   },
 
+  // ── Auto Join ──────────────────────────────────────────────────────────────
+  autoJoin: {
+    live: "Langsung",
+    offline: "Terputus",
+    history: "Riwayat Job",
+    historyDesc: "Proses terbaru. Klik baris untuk melihat log-nya.",
+    noJobs: "Belum ada job auto join.",
+    jobId: "Job",
+    created: "Dibuat",
+    status: "Status",
+    progress: "Progres",
+    detail: "Detail",
+    inspect: "Lihat log",
+    delete: "Hapus job",
+    noActiveJob: "Belum ada job auto join yang berjalan.",
+    logCap: "Menampilkan {shown} entri terbaru dari {total}.",
+    runningInWorker: "Proses ini berjalan di worker backend. Anda boleh meninggalkan halaman ini — proses tetap jalan.",
+    estimated: "Perkiraan join",
+    statusPending: "Menunggu",
+    statusRunning: "Berjalan",
+    statusPaused: "Dijeda",
+    statusCompleted: "Selesai",
+    statusCancelled: "Dibatalkan",
+    statusFailed: "Gagal",
+    success: "Sukses",
+    already: "Member",
+    failed: "Gagal",
+  },
+
   // ── 404 Tidak Ditemukan ────────────────────────────────────────────────
   notFound: {
     title: "Halaman Tidak Ditemukan",

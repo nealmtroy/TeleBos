@@ -5,6 +5,7 @@ import {
   connectChatSocket,
   connectBroadcastSocket,
   connectInviteSocket,
+  connectAutoJoinSocket,
   disconnectSocket,
 } from "@/lib/socket";
 
@@ -53,7 +54,7 @@ export function useChatSocket(accountId: string | null) {
 /**
  * Hook: subscribe to generic job progress (broadcast or invite) via WebSocket.
  */
-export function useJobSocket(jobType: "broadcast" | "invite", jobId: string | null) {
+export function useJobSocket(jobType: "broadcast" | "invite" | "autojoin", jobId: string | null) {
   const [connected, setConnected] = useState(false);
   const [progress, setProgress] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
@@ -62,7 +63,12 @@ export function useJobSocket(jobType: "broadcast" | "invite", jobId: string | nu
   useEffect(() => {
     if (!jobId) return;
 
-    const ws = jobType === "broadcast" ? connectBroadcastSocket(jobId) : connectInviteSocket(jobId);
+    const ws =
+      jobType === "broadcast"
+        ? connectBroadcastSocket(jobId)
+        : jobType === "invite"
+          ? connectInviteSocket(jobId)
+          : connectAutoJoinSocket(jobId);
 
     // Event-driven status tracking (REN-03)
     setConnected(ws.connected);
@@ -113,4 +119,12 @@ export function useBroadcastSocket(jobId: string | null) {
 export function useInviteSocket(jobId: string | null) {
   const { connected, progress, logs, phaseMessage } = useJobSocket("invite", jobId);
   return { connected, progress, logs, phase: "", phaseMessage };
+}
+
+/**
+ * Hook: subscribe to auto-join job progress via WebSocket.
+ */
+export function useAutoJoinSocket(jobId: string | null) {
+  const { connected, progress, logs, phaseMessage } = useJobSocket("autojoin", jobId);
+  return { connected, progress, logs, phaseMessage };
 }

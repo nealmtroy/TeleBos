@@ -15,7 +15,7 @@ import sys
 from app.database import async_session_factory, engine
 from app.utils.redis import redis_client
 from app.utils.redis_dispatcher import JOBS_QUEUE_KEY, JOBS_CONTROL_CHANNEL
-from app.services import broadcast_service, invite_service
+from app.services import broadcast_service, invite_service, auto_join_service
 from app.utils.async_helpers import wake_job
 
 logging.basicConfig(
@@ -91,6 +91,9 @@ async def queue_consumer_loop() -> None:
                     elif job_type == "invite":
                         logger.info("Spawning invite job %s in async worker", job_id)
                         invite_service.start_invite_task(job_id)
+                    elif job_type == "autojoin":
+                        logger.info("Spawning auto-join job %s in async worker", job_id)
+                        auto_join_service.start_auto_join_task(job_id)
                     else:
                         logger.warning("Unknown job type received in queue: %s", job_type)
             except Exception as parse_exc:
@@ -144,6 +147,8 @@ async def control_subscriber_loop() -> None:
                             broadcast_service.start_broadcast_task(job_id)
                         elif job_type == "invite":
                             invite_service.start_invite_task(job_id)
+                        elif job_type == "autojoin":
+                            auto_join_service.start_auto_join_task(job_id)
                     elif action == "stop":
                         wake_job(job_id)
                         if job_type == "broadcast":
@@ -152,6 +157,10 @@ async def control_subscriber_loop() -> None:
                                 task.cancel()
                         elif job_type == "invite":
                             task = invite_service._running_invite_tasks.get(job_id)
+                            if task and not task.done():
+                                task.cancel()
+                        elif job_type == "autojoin":
+                            task = auto_join_service._running_auto_join_tasks.get(job_id)
                             if task and not task.done():
                                 task.cancel()
                 except Exception as proc_exc:
@@ -189,10 +198,12 @@ async def resume_jobs_when_schema_ready(max_attempts: int = 30, retry_delay: flo
             async with async_session_factory() as db:
                 resumed_b = await broadcast_service.resume_running_broadcasts_on_startup(db)
                 resumed_i = await invite_service.resume_running_invites_on_startup(db)
+                resumed_a = await auto_join_service.resume_running_auto_joins_on_startup(db)
             logger.info(
-                "Startup complete: Auto-resumed %d broadcast jobs and %d invite jobs",
+                "Startup complete: Auto-resumed %d broadcast, %d invite and %d auto-join jobs",
                 resumed_b,
                 resumed_i,
+                resumed_a,
             )
             return
         except Exception as exc:
@@ -274,8 +285,12 @@ async def main() -> None:
 
     cancelled_b = await broadcast_service.cancel_all_broadcast_tasks()
     cancelled_i = await invite_service.cancel_all_invite_tasks()
+    cancelled_a = await auto_join_service.cancel_all_auto_join_tasks()
     logger.info(
-        "Gracefully cancelled %d broadcast tasks and %d invite tasks", cancelled_b, cancelled_i
+        "Gracefully cancelled %d broadcast, %d invite and %d auto-join tasks",
+        cancelled_b,
+        cancelled_i,
+        cancelled_a,
     )
 
     # Disconnect pooled Telegram clients while the event loop is still running.

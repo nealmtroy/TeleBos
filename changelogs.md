@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-01
+- **[17ca6092](https://github.com/nealmtroy/TeleBos/commit/17ca6092)**: fix(auto-join): pace the run per group instead of per individual join
 - **[6e683755](https://github.com/nealmtroy/TeleBos/commit/6e683755)**: fix(profile): do not send an empty username to Telegram
 - **[674a519f](https://github.com/nealmtroy/TeleBos/commit/674a519f)**: fix(broadcast): a join flood must skip one group, not stall the whole cycle
 - **[34a612a5](https://github.com/nealmtroy/TeleBos/commit/34a612a5)**: fix(broadcast): report each cycle's own totals instead of repeating cycle 1

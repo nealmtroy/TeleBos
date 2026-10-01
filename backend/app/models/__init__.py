@@ -9,6 +9,8 @@ from .broadcast_log import BroadcastLog
 from .auto_reply_log import AutoReplyLog
 from .invite_job import InviteJob
 from .invite_log import InviteLog
+from .auto_join_job import AutoJoinJob
+from .auto_join_log import AutoJoinLog
 from .order import Order
 from .smm_service import SmmService
 from .smm_setting import SmmSetting
@@ -34,6 +36,8 @@ __all__ = [
     "AutoReplyLog",
     "InviteJob",
     "InviteLog",
+    "AutoJoinJob",
+    "AutoJoinLog",
     "Order",
     "SmmService",
     "SmmSetting",

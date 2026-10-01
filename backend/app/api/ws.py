@@ -340,3 +340,46 @@ async def ws_invite(websocket: WebSocket, job_id: str):
         logger.warning("WS invite %s error: %s", channel, exc)
     finally:
         manager.disconnect(channel, websocket)
+
+
+@router.websocket("/ws/autojoin/{job_id}")
+async def ws_autojoin(websocket: WebSocket, job_id: str):
+    """Listen for real-time progress updates on an auto-join job."""
+    channel = f"autojoin:{job_id}"
+
+    user = await _wait_for_auth_message(websocket)
+    if not user:
+        return
+
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid job ID")
+        return
+
+    from app.models.auto_join_job import AutoJoinJob
+
+    async with async_session_factory() as db:
+        result = await db.execute(select(AutoJoinJob).where(AutoJoinJob.id == job_uuid))
+        job = result.scalar_one_or_none()
+        if job is None or job.user_id != user.id:
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION,
+                reason="Unauthorized or job not found",
+            )
+            return
+
+    if not await manager.connect(channel, websocket):
+        return
+    try:
+        while True:
+            data = await websocket.receive_text()
+            msg = json.loads(data)
+            if msg.get("type") == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        logger.warning("WS autojoin %s error: %s", channel, exc)
+    finally:
+        manager.disconnect(channel, websocket)

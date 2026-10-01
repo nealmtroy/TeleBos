@@ -950,6 +950,35 @@ const en: Dict = {
     autoJoinDesc: "Automatically join multiple groups and channels using your Telegram accounts.",
   },
 
+  // ── Auto Join ──────────────────────────────────────────────────────────────
+  autoJoin: {
+    live: "Live",
+    offline: "Offline",
+    history: "Job History",
+    historyDesc: "Recent runs. Click a row to inspect its log.",
+    noJobs: "No auto join jobs yet.",
+    jobId: "Job",
+    created: "Created",
+    status: "Status",
+    progress: "Progress",
+    detail: "Detail",
+    inspect: "Inspect log",
+    delete: "Delete job",
+    noActiveJob: "No auto join job is running yet.",
+    logCap: "Showing the newest {shown} of {total} entries.",
+    runningInWorker: "This run is executing in the backend worker. You can leave this page — it keeps going.",
+    estimated: "Estimated joins",
+    statusPending: "Pending",
+    statusRunning: "Running",
+    statusPaused: "Paused",
+    statusCompleted: "Completed",
+    statusCancelled: "Cancelled",
+    statusFailed: "Failed",
+    success: "Success",
+    already: "Member",
+    failed: "Failed",
+  },
+
   // ── 404 Not Found ──────────────────────────────────────────────────────────
   notFound: {
     title: "Page Not Found",

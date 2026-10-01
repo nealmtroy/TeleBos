@@ -222,20 +222,22 @@ async def test_worker_main_spawns_schedulers():
         with patch("app.workers.async_worker.async_session_factory", return_value=mock_db):
             with patch("app.services.broadcast_service.resume_running_broadcasts_on_startup", return_value=0):
                 with patch("app.services.invite_service.resume_running_invites_on_startup", return_value=0):
-                    with patch("app.workers.async_worker.queue_consumer_loop", return_value=None):
-                        with patch("app.workers.async_worker.control_subscriber_loop", return_value=None):
-                            with patch("app.schedulers.background_tasks.adaptive_sequential_sync_loop", return_value=None) as mock_sync:
-                                with patch("app.services.stats_service.background_stats_updater", return_value=None) as mock_stats:
-                                    with patch("app.services.twofa_sync_service.background_twofa_updater", return_value=None) as mock_twofa:
-                                        with patch("app.services.broadcast_service.cancel_all_broadcast_tasks", return_value=0):
-                                            with patch("app.services.invite_service.cancel_all_invite_tasks", return_value=0):
-                                                with patch("app.workers.async_worker.engine", new_callable=AsyncMock):
-                                                    # Trigger immediate shutdown
-                                                    async_worker.shutdown_event.set()
-                                                    await async_worker.main()
+                    with patch("app.services.auto_join_service.resume_running_auto_joins_on_startup", return_value=0):
+                        with patch("app.workers.async_worker.queue_consumer_loop", return_value=None):
+                            with patch("app.workers.async_worker.control_subscriber_loop", return_value=None):
+                                with patch("app.schedulers.background_tasks.adaptive_sequential_sync_loop", return_value=None) as mock_sync:
+                                    with patch("app.services.stats_service.background_stats_updater", return_value=None) as mock_stats:
+                                        with patch("app.services.twofa_sync_service.background_twofa_updater", return_value=None) as mock_twofa:
+                                            with patch("app.services.broadcast_service.cancel_all_broadcast_tasks", return_value=0):
+                                                with patch("app.services.invite_service.cancel_all_invite_tasks", return_value=0):
+                                                    with patch("app.services.auto_join_service.cancel_all_auto_join_tasks", return_value=0):
+                                                        with patch("app.workers.async_worker.engine", new_callable=AsyncMock):
+                                                            # Trigger immediate shutdown
+                                                            async_worker.shutdown_event.set()
+                                                            await async_worker.main()
 
-                                                    mock_sync.assert_called_once()
-                                                    mock_stats.assert_called_once()
-                                                    mock_twofa.assert_called_once()
+                                                            mock_sync.assert_called_once()
+                                                            mock_stats.assert_called_once()
+                                                            mock_twofa.assert_called_once()
 
 

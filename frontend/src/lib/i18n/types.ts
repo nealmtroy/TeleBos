@@ -898,6 +898,34 @@ export interface Dict {
     autoJoinDesc: string;
   };
 
+  autoJoin: {
+    live: string;
+    offline: string;
+    history: string;
+    historyDesc: string;
+    noJobs: string;
+    jobId: string;
+    created: string;
+    status: string;
+    progress: string;
+    detail: string;
+    inspect: string;
+    delete: string;
+    noActiveJob: string;
+    logCap: string;
+    runningInWorker: string;
+    estimated: string;
+    statusPending: string;
+    statusRunning: string;
+    statusPaused: string;
+    statusCompleted: string;
+    statusCancelled: string;
+    statusFailed: string;
+    success: string;
+    already: string;
+    failed: string;
+  };
+
   // 404 Not Found
   notFound: {
     title: string;
