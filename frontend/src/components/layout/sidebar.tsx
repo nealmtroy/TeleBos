@@ -63,8 +63,6 @@ interface SubItem {
 
 const broadcastSubItems: SubItem[] = [
   { href: "/broadcast/new", labelKey: "nav.newBroadcast", icon: Plus },
-  { href: "/broadcast/group-lists", labelKey: "nav.groupLists", icon: Users },
-  { href: "/broadcast/text-lists", labelKey: "nav.textLists", icon: FileText },
   { href: "/broadcast/history", labelKey: "nav.broadcastHistory", icon: Clock },
   { href: "/broadcast/logs", labelKey: "nav.broadcastLogs", icon: ClipboardList },
 ];
@@ -78,7 +76,6 @@ const inviteSubItems: SubItem[] = [
 const groupsChannelsSubItems: SubItem[] = [
   { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone, exact: true },
   { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search, exact: true },
-  { href: "/groups-channels/auto-join", labelKey: "groupsChannels.autoJoin", icon: UserPlus, exact: true },
 ];
 
 const accountsSubItems: SubItem[] = [
@@ -272,11 +269,22 @@ export function Sidebar() {
       id: "automation",
       labelKey: locale === "id" ? "AUTOMASI" : "AUTOMATION",
       items: [
+        // Group and Text Lists sit above the features that consume them:
+        // both Broadcast and Auto Join pick targets from these lists.
+        { href: "/broadcast/group-lists", labelKey: "nav.groupLists", icon: Users, minRole: 0 },
+        { href: "/broadcast/text-lists", labelKey: "nav.textLists", icon: FileText, minRole: 0 },
+        {
+          href: "/groups-channels/auto-join",
+          labelKey: "groupsChannels.autoJoin",
+          icon: UserPlus,
+          exact: true,
+          minRole: 1,
+        },
         { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 1 },
         {
           href: "/invite",
           labelKey: "invite.navLabel",
-          icon: UserPlus,
+          icon: Send,
           hasSubItems: true,
           subItems: inviteSubItems,
           minRole: 1,
@@ -284,7 +292,7 @@ export function Sidebar() {
         {
           href: "/broadcast",
           labelKey: "nav.broadcast",
-          icon: Send,
+          icon: Radio,
           hasSubItems: true,
           subItems: broadcastSubItems,
           minRole: 0,

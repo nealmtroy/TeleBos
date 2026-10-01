@@ -7,7 +7,7 @@ const en: Dict = {
     accounts: "Accounts",
     chats: "Chats",
     broadcast: "Broadcast",
-    autoReply: "Auto Reply",
+    autoReply: "Auto Reply DM",
     newBroadcast: "New Broadcast",
     groupLists: "Group Lists",
     textLists: "Text Lists",
@@ -1268,7 +1268,7 @@ const en: Dict = {
   invite: {
     title: "Member Invite",
     desc: "Invite members from source groups to a destination group or channel",
-    navLabel: "Member Invite",
+    navLabel: "Members Inviter",
     newInvite: "New Invite",
     inviteHistory: "Invite History",
     inviteLogs: "Invite Logs",

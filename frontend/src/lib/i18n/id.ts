@@ -7,7 +7,7 @@ const id: Dict = {
     accounts: "Akun",
     chats: "Obrolan",
     broadcast: "Siaran",
-    autoReply: "Balas Otomatis",
+    autoReply: "Balas DM Otomatis",
     newBroadcast: "Siaran Baru",
     groupLists: "Daftar Grup",
     textLists: "Daftar Teks",

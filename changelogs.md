@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[9c008165](https://github.com/nealmtroy/TeleBos/commit/9c008165)**: docs: restore RESEND.md
 - **[12ccbf51](https://github.com/nealmtroy/TeleBos/commit/12ccbf51)**: fix(auto-join): widen chat_id to bigint so large channel joins persist
 - **[d3f0303d](https://github.com/nealmtroy/TeleBos/commit/d3f0303d)**: feat(auto-join): run joins in the worker so a run survives the tab
 
