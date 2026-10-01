@@ -24,6 +24,8 @@ class MarketplaceStockCategory(BaseModel):
 class MarketplaceAccountSummary(BaseModel):
     id: UUID
     telegram_id: int | None = None
+    country_code: str | None = None
+    country_name: str | None = None
     twofa_enabled: bool
     recovery_email_available: bool
     sell_price: int | None = None

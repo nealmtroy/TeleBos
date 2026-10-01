@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   AlertCircle,
   Sparkles,
-  ChevronDown,
   Wallet,
   ShieldCheck,
   CheckCircle2,
@@ -19,21 +18,18 @@ import {
   Mail,
   RefreshCw,
   Plus,
-  LayoutGrid,
-  List,
+  Users,
+  Calendar,
+  Zap,
+  SlidersHorizontal,
+  X,
+  ThumbsDown,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import {
   Eyebrow,
@@ -48,7 +44,6 @@ import {
   useMarketplaceStock,
   useMarketplaceStockAccounts,
   useBuyAccount,
-  type StockCategory,
   type MarketplaceAccountSummary,
 } from "@/hooks/use-marketplace";
 
@@ -57,21 +52,47 @@ export default function BuyAccountsPage() {
   const { toast } = useToast();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
-  const { data: stock, isLoading: stockLoading, refetch: refetchStock, isRefetching } = useMarketplaceStock();
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"bento" | "table">("bento");
 
+  // Stock categories for filter counts
+  const {
+    data: stockCategories,
+    isLoading: categoriesLoading,
+    refetch: refetchCategories,
+    isRefetching: categoriesRefetching,
+  } = useMarketplaceStock();
+
+  // Filters State
+  const [selectedCountry, setSelectedCountry] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [spamFilter, setSpamFilter] = useState<"all" | "clean" | "risk">("all");
+  const [twofaFilter, setTwofaFilter] = useState<"all" | "disabled" | "required">("all");
+  const [resaleFilter, setResaleFilter] = useState<"all" | "fresh" | "resale">("all");
+  const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "contacts-desc">("price-asc");
+
+  // Query accounts based on selected country (or 'all' by default)
+  const {
+    data: rawAccounts,
+    isLoading: accountsLoading,
+    refetch: refetchAccounts,
+    isRefetching: accountsRefetching,
+    error: accountsError,
+  } = useMarketplaceStockAccounts(selectedCountry);
+
+  // Buy Dialog State
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false);
   const [pendingBuyAccount, setPendingBuyAccount] = useState<{
     id: string;
     telegram_id: number | null;
     buy_price: number;
     country_code: string;
+    country_name?: string;
     spam_status?: string | null;
     twofa_enabled?: boolean;
+    contacts_count?: number;
+    est_reg_date_age?: string | null;
   } | null>(null);
 
+  // Success Modal State
   const [successOpen, setSuccessOpen] = useState(false);
   const [boughtAccount, setBoughtAccount] = useState<{
     id: string;
@@ -90,7 +111,7 @@ export default function BuyAccountsPage() {
       const res = await buyMutation.mutateAsync(pendingBuyAccount.id);
       setBoughtAccount(res);
       await fetchMe();
-      await refetchStock();
+      await Promise.all([refetchCategories(), refetchAccounts()]);
       toast({
         variant: "success",
         title: "Order Fulfilled",
@@ -111,29 +132,83 @@ export default function BuyAccountsPage() {
 
   const balance = user?.balance ?? 0;
 
-  // Filtered country categories
-  const filteredStock = useMemo(() => {
-    if (!stock) return [];
-    if (!searchQuery.trim()) return stock;
-    const query = searchQuery.toLowerCase().trim();
-    return stock.filter(
-      (cat) =>
-        cat.country_name.toLowerCase().includes(query) ||
-        cat.country_code.toLowerCase().includes(query)
-    );
-  }, [stock, searchQuery]);
-
-  // Aggregate metrics
+  // Total ready stock count across categories
   const totalStockCount = useMemo(() => {
-    if (!stock) return 0;
-    return stock.reduce((sum, item) => sum + (item.ready_stock || 0), 0);
-  }, [stock]);
+    if (!stockCategories) return 0;
+    return stockCategories.reduce((sum, item) => sum + (item.ready_stock || 0), 0);
+  }, [stockCategories]);
 
+  // Lowest starting price
   const lowestPrice = useMemo(() => {
-    if (!stock || stock.length === 0) return 0;
-    const prices = stock.map((s) => s.price).filter((p) => p > 0);
+    if (!stockCategories || stockCategories.length === 0) return 0;
+    const prices = stockCategories.map((s) => s.price).filter((p) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : 0;
-  }, [stock]);
+  }, [stockCategories]);
+
+  // Filter & sort account list
+  const filteredAccounts = useMemo(() => {
+    if (!rawAccounts) return [];
+    let list = [...rawAccounts];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((acc) => {
+        const tid = String(acc.telegram_id || "");
+        const ccode = (acc.country_code || "").toLowerCase();
+        const cname = (acc.country_name || "").toLowerCase();
+        return tid.includes(q) || ccode.includes(q) || cname.includes(q);
+      });
+    }
+
+    // Filter by SpamBot health
+    if (spamFilter === "clean") {
+      list = list.filter((acc) => acc.spam_status === "normal");
+    } else if (spamFilter === "risk") {
+      list = list.filter((acc) => acc.spam_status === "limited" || acc.spam_status === "risk");
+    }
+
+    // Filter by 2FA
+    if (twofaFilter === "disabled") {
+      list = list.filter((acc) => !acc.twofa_enabled);
+    } else if (twofaFilter === "required") {
+      list = list.filter((acc) => acc.twofa_enabled);
+    }
+
+    // Filter by Resale
+    if (resaleFilter === "fresh") {
+      list = list.filter((acc) => !acc.is_resale);
+    } else if (resaleFilter === "resale") {
+      list = list.filter((acc) => acc.is_resale);
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      const priceA = a.buy_price ?? a.sell_price ?? 7000;
+      const priceB = b.buy_price ?? b.sell_price ?? 7000;
+      if (sortBy === "price-asc") return priceA - priceB;
+      if (sortBy === "price-desc") return priceB - priceA;
+      if (sortBy === "contacts-desc") return (b.contacts_count || 0) - (a.contacts_count || 0);
+      return 0;
+    });
+
+    return list;
+  }, [rawAccounts, searchQuery, spamFilter, twofaFilter, resaleFilter, sortBy]);
+
+  const hasActiveFilters =
+    selectedCountry !== "all" ||
+    searchQuery.trim() !== "" ||
+    spamFilter !== "all" ||
+    twofaFilter !== "all" ||
+    resaleFilter !== "all";
+
+  const clearAllFilters = () => {
+    setSelectedCountry("all");
+    setSearchQuery("");
+    setSpamFilter("all");
+    setTwofaFilter("all");
+    setResaleFilter("all");
+  };
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -144,8 +219,10 @@ export default function BuyAccountsPage() {
     });
   };
 
+  const isRefreshing = categoriesRefetching || accountsRefetching;
+
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-28">
       {/* ── Top Command Bar & Atmosphere ─────────────────────────── */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1.5">
@@ -160,7 +237,7 @@ export default function BuyAccountsPage() {
             {_("orders.buyAccounts") || "Buy Telegram Accounts"}
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            Acquire pre-warmed, non-restricted Telegram sessions with verified MTProto credentials and 30-minute automated escrow replacement guarantee.
+            Acquire pre-warmed, non-restricted Telegram sessions with verified MTProto credentials and 30-minute automated escrow replacement warranty.
           </p>
         </div>
 
@@ -196,17 +273,17 @@ export default function BuyAccountsPage() {
           label="Total Ready Stock"
           value={totalStockCount.toLocaleString()}
           subtext="Verified MTProto sessions"
-          icon={<ShoppingCart className="h-4 w-4" />}
+          icon={<ShoppingCart className="h-4 w-4 text-primary" />}
         />
         <MetricReadout
           label="Starting From"
           value={<PriceTag value={lowestPrice} size="lg" />}
           subtext="Regional tier pricing"
-          icon={<Sparkles className="h-4 w-4" />}
+          icon={<Sparkles className="h-4 w-4 text-amber-500" />}
         />
         <MetricReadout
           label="Coverage"
-          value={`${stock?.length || 0} Regions`}
+          value={`${stockCategories?.length || 0} Regions`}
           subtext="Global carrier prefixes"
           icon={<span className="text-base">🌐</span>}
         />
@@ -219,285 +296,406 @@ export default function BuyAccountsPage() {
         />
       </div>
 
-      {/* ── Search, Filter & View Controls ───────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-y border-border/50 py-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by country name or dial prefix (e.g. Indonesia, +62)..."
-            className="w-full h-9 rounded-xl border border-input bg-card/60 pl-9 pr-4 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-          />
+      {/* ── Filter Engine (Country Pills + Search + Filters) ─────────── */}
+      <div className="space-y-3.5 rounded-2xl border border-border/80 bg-card/40 p-4 sm:p-5 backdrop-blur-sm shadow-xs">
+        {/* Country Filter Pills Ribbon */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <span>Filter By Country / Region</span>
+              {stockCategories && (
+                <span className="text-foreground/70 font-mono text-[10px]">({stockCategories.length} available)</span>
+              )}
+            </span>
+
+            <button
+              onClick={() => {
+                refetchCategories();
+                refetchAccounts();
+              }}
+              disabled={isRefreshing}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            >
+              <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+              <span>Refresh Pool</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {/* 'All Countries' Pill */}
+            <button
+              onClick={() => setSelectedCountry("all")}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all select-none border",
+                selectedCountry === "all"
+                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                  : "bg-card border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              )}
+            >
+              <span className="text-sm">🌐</span>
+              <span>All Countries</span>
+              <span
+                className={cn(
+                  "ml-0.5 rounded-md px-1.5 py-0.2 font-mono text-[10px]",
+                  selectedCountry === "all" ? "bg-black/20 text-white" : "bg-muted text-muted-foreground"
+                )}
+              >
+                {totalStockCount}
+              </span>
+            </button>
+
+            {/* Individual Country Category Pills */}
+            {stockCategories?.map((cat) => {
+              const flag = getCountryFlag(cat.country_code);
+              const isSelected = selectedCountry === cat.country_code;
+
+              return (
+                <button
+                  key={cat.country_code}
+                  onClick={() => setSelectedCountry(isSelected ? "all" : cat.country_code)}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition-all select-none border",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs font-semibold"
+                      : "bg-card border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  )}
+                >
+                  <span className="text-sm">{flag}</span>
+                  <span>{cat.country_name}</span>
+                  <span className="font-mono text-[10px] opacity-70">({cat.country_code})</span>
+                  <span
+                    className={cn(
+                      "rounded-md px-1.5 py-0.2 font-mono text-[10px]",
+                      isSelected ? "bg-black/20 text-white" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {cat.ready_stock}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <button
-            onClick={() => refetchStock()}
-            disabled={isRefetching}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-input bg-card/60 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            title="Refresh stock"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", isRefetching && "animate-spin")} />
-          </button>
+        {/* Secondary Filters Bar: Search + Tag Controls + Sorting */}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-t border-border/50 pt-3.5">
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by ID, country name, or dial prefix..."
+              className="w-full h-8.5 rounded-xl border border-input bg-background/80 pl-8.5 pr-3 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
 
-          <div className="flex items-center rounded-xl border border-input bg-card/60 p-0.5">
-            <button
-              onClick={() => setViewMode("bento")}
-              className={cn(
-                "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-all",
-                viewMode === "bento"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+          {/* Quick Filter Selectors */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Spam Filter */}
+            <div className="flex items-center rounded-lg border border-input bg-background/60 p-0.5 text-xs">
+              <button
+                onClick={() => setSpamFilter("all")}
+                className={cn(
+                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  spamFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Spam: All
+              </button>
+              <button
+                onClick={() => setSpamFilter("clean")}
+                className={cn(
+                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors flex items-center gap-1",
+                  spamFilter === "clean" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Clean Only
+              </button>
+            </div>
+
+            {/* 2FA Filter */}
+            <div className="flex items-center rounded-lg border border-input bg-background/60 p-0.5 text-xs">
+              <button
+                onClick={() => setTwofaFilter("all")}
+                className={cn(
+                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  twofaFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                2FA: All
+              </button>
+              <button
+                onClick={() => setTwofaFilter("disabled")}
+                className={cn(
+                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  twofaFilter === "disabled" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Disabled
+              </button>
+            </div>
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="h-8 rounded-lg border border-input bg-background/80 px-2.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
             >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Bento Grid</span>
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={cn(
-                "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-all",
-                viewMode === "table"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <List className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Pro Table</span>
-            </button>
+              <option value="price-asc">Price: Lowest First</option>
+              <option value="price-desc">Price: Highest First</option>
+              <option value="contacts-desc">Most Contacts</option>
+            </select>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Reset
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Catalog Body ─────────────────────────────────────────── */}
-      {stockLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-36 rounded-2xl bg-muted/60 animate-pulse border border-border/40" />
+      {/* ── Active Status Count Bar ─────────────────────────────── */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+        <p>
+          Showing <strong className="text-foreground font-semibold">{filteredAccounts.length}</strong> available accounts
+          {selectedCountry !== "all" && ` in ${stockCategories?.find((s) => s.country_code === selectedCountry)?.country_name || selectedCountry}`}
+        </p>
+      </div>
+
+      {/* ── Account Cards Feed ──────────────────────────────────── */}
+      {accountsLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-28 rounded-2xl bg-muted/60 animate-pulse border border-border/40" />
           ))}
         </div>
-      ) : !filteredStock || filteredStock.length === 0 ? (
+      ) : accountsError ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="font-semibold">Unable to Load Accounts</p>
+            <p className="opacity-90">There was an error communicating with the marketplace inventory.</p>
+          </div>
+        </div>
+      ) : filteredAccounts.length === 0 ? (
         <DoubleBezelShell>
-          <div className="py-16 text-center space-y-3">
+          <div className="py-14 text-center space-y-3">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/80 text-muted-foreground">
               <ShoppingCart className="h-6 w-6 opacity-60" />
             </div>
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-foreground">
-                {searchQuery ? "No matching countries found" : "No Ready Stock Available"}
+                {hasActiveFilters ? "No accounts match current filters" : "No Ready Stock in this Category"}
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                {searchQuery
-                  ? "Try clearing your search query or check back for new regional inventory."
-                  : "All accounts are currently reserved or sold. Fresh inventory is synchronized regularly."}
+                {hasActiveFilters
+                  ? "Try adjusting your search query, country selection, or spam filters to see more results."
+                  : "All accounts in this category are currently sold out. Fresh sessions arrive continuously."}
               </p>
             </div>
-            {searchQuery && (
+            {hasActiveFilters && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSearchQuery("")}
-                className="rounded-xl text-xs"
+                onClick={clearAllFilters}
+                className="rounded-xl text-xs font-semibold"
               >
-                Clear Search
+                Clear All Filters
               </Button>
             )}
           </div>
         </DoubleBezelShell>
       ) : (
-        <div className="space-y-6">
-          {/* Bento Grid View */}
-          {viewMode === "bento" && (
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredStock.map((cat) => {
-                const isExpanded = selectedCountry === cat.country_code;
-                const affordable = balance >= cat.price;
-                const flag = getCountryFlag(cat.country_code);
+        <div className="space-y-3.5">
+          {filteredAccounts.map((acc) => {
+            const price = acc.buy_price ?? acc.sell_price ?? 7000;
+            const canAfford = !user || user.balance >= price;
+            const countryCode = acc.country_code || selectedCountry;
+            const flag = getCountryFlag(countryCode);
+            const countryName = acc.country_name || (countryCode === "+62" ? "Indonesia" : countryCode === "+91" ? "India" : "Telegram Account");
 
-                return (
-                  <DoubleBezelShell
-                    key={cat.country_code}
-                    hover
-                    selected={isExpanded}
-                    onClick={() =>
-                      setSelectedCountry(isExpanded ? null : cat.country_code)
-                    }
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setSelectedCountry(isExpanded ? null : cat.country_code);
-                      }
-                    }}
-                    innerClassName="p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-foreground/[0.04] border border-foreground/[0.06] text-2xl shadow-2xs">
-                          {flag}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="truncate font-semibold text-foreground text-sm">
-                              {cat.country_name}
-                            </h3>
-                            <span className="font-mono text-xs font-semibold text-muted-foreground/80 bg-foreground/[0.04] px-1.5 py-0.5 rounded-md border border-foreground/[0.06]">
-                              {cat.country_code}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {cat.ready_stock > 0
-                              ? `${cat.ready_stock} units in pool`
-                              : "Out of stock"}
-                          </p>
-                        </div>
-                      </div>
+            return (
+              <DoubleBezelShell
+                key={acc.id}
+                hover
+                innerClassName="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+              >
+                {/* ── Left Content (Identity + Tags + Metadata) ─────── */}
+                <div className="space-y-2.5 min-w-0 flex-1">
+                  {/* Title & Identity Row */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xl sm:text-2xl shrink-0 leading-none select-none">
+                      {flag}
+                    </span>
+                    <h3 className="font-bold text-foreground text-sm sm:text-base flex items-center gap-1.5">
+                      <span>{countryName}</span>
+                      <span className="font-mono text-xs font-semibold text-muted-foreground">
+                        ({countryCode})
+                      </span>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="font-mono text-xs font-semibold text-foreground/90">
+                        ID: {acc.telegram_id || "Unassigned"}
+                      </span>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {acc.is_resale ? "Resale Asset" : "Standard MTProto"}
+                      </span>
+                    </h3>
+                  </div>
 
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <Chip
-                          tone={cat.ready_stock > 0 ? "positive" : "neutral"}
-                          dot={cat.ready_stock > 0}
-                        >
-                          {cat.ready_stock} ready
-                        </Chip>
-                      </div>
+                  {/* Badges / Chips Row (Inspired by Padang Store screenshot reference) */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* SpamBot Health Chip */}
+                    {acc.spam_status === "normal" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <Check className="h-3 w-3 shrink-0" />
+                        Spam Clean
+                      </span>
+                    ) : acc.spam_status === "limited" || acc.spam_status === "risk" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                        <ThumbsDown className="h-3 w-3 shrink-0" />
+                        Spam Risk
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium bg-muted/80 text-muted-foreground border border-border/60">
+                        Unchecked
+                      </span>
+                    )}
+
+                    {/* Account Age Chip */}
+                    <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium bg-foreground/[0.04] text-foreground border border-foreground/[0.08]">
+                      {acc.est_reg_date_age ? `Age: ${acc.est_reg_date_age}` : "New Session"}
+                    </span>
+
+                    {/* 2FA Status Chip */}
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium border",
+                        acc.twofa_enabled
+                          ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                          : "bg-foreground/[0.04] text-foreground border-foreground/[0.08]"
+                      )}
+                    >
+                      <Lock className="h-3 w-3 shrink-0 opacity-70" />
+                      {acc.twofa_enabled ? "2FA Required" : "2FA Disabled"}
+                    </span>
+
+                    {/* Category Type Chip */}
+                    <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-medium bg-foreground/[0.03] text-muted-foreground border border-foreground/[0.06]">
+                      {acc.is_resale ? "Resale" : "Personal"}
+                    </span>
+
+                    {/* Recovery Email Chip */}
+                    {acc.recovery_email_available && (
+                      <span className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                        <Mail className="h-3 w-3" />
+                        Recovery Email
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Metadata Row */}
+                  <div className="flex flex-wrap items-center gap-3.5 text-xs text-muted-foreground/90 pt-0.5">
+                    <span className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground/70" />
+                      <span>{acc.contacts_count || 0} contacts</span>
+                    </span>
+
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground/70" />
+                      <span>
+                        {acc.est_reg_date
+                          ? `Registered ${new Date(acc.est_reg_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+                          : "Verified MTProto"}
+                      </span>
+                    </span>
+
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      <span>30-Min Warranty Escrow</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── Right Content (Verification Badge + Price + Actions) ── */}
+                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-3 shrink-0 border-t lg:border-t-0 border-border/50 pt-3 lg:pt-0">
+                  {/* Verified Escrow Desk Badge */}
+                  <div className="hidden lg:flex items-center gap-1.5 text-right">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold">
+                      ✓
                     </div>
-
-                    <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Starting Price
-                        </span>
-                        <div className="flex items-baseline gap-1.5">
-                          <PriceTag value={cat.price} size="lg" />
-                          {!affordable && cat.ready_stock > 0 && (
-                            <span className="text-[10px] font-medium text-destructive">
-                              needs top-up
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-primary group">
-                        <span>{isExpanded ? "Hide Accounts" : "View Accounts"}</span>
-                        <ChevronDown
-                          className={cn(
-                            "h-4 w-4 transition-transform duration-300",
-                            isExpanded && "rotate-180"
-                          )}
-                        />
-                      </div>
+                    <div className="space-y-0 text-[11px]">
+                      <span className="font-semibold text-foreground">TeleBos Escrow</span>
+                      <span className="text-[10px] text-muted-foreground block">Verified Seller Pool</span>
                     </div>
-                  </DoubleBezelShell>
-                );
-              })}
-            </div>
-          )}
+                  </div>
 
-          {/* Pro Table View */}
-          {viewMode === "table" && (
-            <DoubleBezelShell innerClassName="p-0 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-border/60 bg-muted/30">
-                    <TableHead className="w-16 text-center">Flag</TableHead>
-                    <TableHead>Country / Region</TableHead>
-                    <TableHead className="w-28 text-center">Dial Code</TableHead>
-                    <TableHead className="w-32 text-center">Ready Stock</TableHead>
-                    <TableHead className="w-36 text-right">Unit Price</TableHead>
-                    <TableHead className="w-36 text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStock.map((cat) => {
-                    const isExpanded = selectedCountry === cat.country_code;
-                    const affordable = balance >= cat.price;
-                    const flag = getCountryFlag(cat.country_code);
+                  {/* Price Tag */}
+                  <div className="text-left lg:text-right space-y-0.5">
+                    <PriceTag
+                      value={price}
+                      size="xl"
+                      className="text-xl sm:text-2xl font-bold tracking-tight text-foreground"
+                    />
+                    {!canAfford && (
+                      <p className="text-[10px] font-medium text-destructive">
+                        Needs Rp {(price - balance).toLocaleString()} more
+                      </p>
+                    )}
+                  </div>
 
-                    return (
-                      <TableRow
-                        key={cat.country_code}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          isExpanded && "bg-primary/[0.04]"
-                        )}
-                        onClick={() =>
-                          setSelectedCountry(isExpanded ? null : cat.country_code)
-                        }
-                      >
-                        <TableCell className="text-center text-xl">
-                          {flag}
-                        </TableCell>
-                        <TableCell>
-                          <p className="font-semibold text-foreground text-sm">
-                            {cat.country_name}
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-center font-mono text-xs font-semibold text-muted-foreground">
-                          {cat.country_code}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Chip
-                            tone={cat.ready_stock > 0 ? "positive" : "neutral"}
-                            dot={cat.ready_stock > 0}
-                          >
-                            {cat.ready_stock} units
-                          </Chip>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <PriceTag value={cat.price} size="md" />
-                          {!affordable && cat.ready_stock > 0 && (
-                            <p className="text-[10px] text-destructive">above balance</p>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant={isExpanded ? "secondary" : "outline"}
-                            size="sm"
-                            className="h-8 gap-1.5 rounded-lg text-xs"
-                          >
-                            <span>{isExpanded ? "Collapse" : "Explore"}</span>
-                            <ChevronDown
-                              className={cn(
-                                "h-3.5 w-3.5 transition-transform duration-200",
-                                isExpanded && "rotate-180"
-                              )}
-                            />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </DoubleBezelShell>
-          )}
-
-          {/* ── Expanded Country Accounts Explorer ─────────────────── */}
-          {selectedCountry && (
-            <CountryAccountsExplorer
-              countryCode={selectedCountry}
-              countryName={
-                stock?.find((s) => s.country_code === selectedCountry)?.country_name ||
-                selectedCountry
-              }
-              onClose={() => setSelectedCountry(null)}
-              onBuyClick={(acc) => {
-                setPendingBuyAccount({
-                  id: acc.id,
-                  telegram_id: acc.telegram_id,
-                  buy_price: acc.buy_price ?? acc.sell_price ?? 7000,
-                  country_code: selectedCountry,
-                  spam_status: acc.spam_status,
-                  twofa_enabled: acc.twofa_enabled,
-                });
-                setBuyConfirmOpen(true);
-              }}
-            />
-          )}
+                  {/* Action CTA Button */}
+                  <div className="flex items-center gap-2">
+                    <ButtonInButton
+                      size="md"
+                      onClick={() => {
+                        setPendingBuyAccount({
+                          id: acc.id,
+                          telegram_id: acc.telegram_id,
+                          buy_price: price,
+                          country_code: countryCode,
+                          country_name: countryName,
+                          spam_status: acc.spam_status,
+                          twofa_enabled: acc.twofa_enabled,
+                          contacts_count: acc.contacts_count,
+                          est_reg_date_age: acc.est_reg_date_age,
+                        });
+                        setBuyConfirmOpen(true);
+                      }}
+                      disabled={!canAfford}
+                      className={cn(
+                        "h-10 px-5 text-xs font-bold rounded-xl",
+                        canAfford
+                          ? "bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+                          : "opacity-40"
+                      )}
+                      icon={<Zap className="h-3.5 w-3.5" />}
+                    >
+                      {canAfford ? "Buy Now" : "Insufficient Balance"}
+                    </ButtonInButton>
+                  </div>
+                </div>
+              </DoubleBezelShell>
+            );
+          })}
         </div>
       )}
 
@@ -522,7 +720,7 @@ export default function BuyAccountsPage() {
                     </span>
                     <div>
                       <p className="text-xs font-semibold text-foreground">
-                        Region: {pendingBuyAccount.country_code}
+                        Region: {pendingBuyAccount.country_name || pendingBuyAccount.country_code} ({pendingBuyAccount.country_code})
                       </p>
                       <p className="font-mono text-[11px] text-muted-foreground">
                         User ID: {pendingBuyAccount.telegram_id || "Unassigned"}
@@ -699,264 +897,5 @@ export default function BuyAccountsPage() {
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * ── Country Accounts Explorer Component ─────────────────────────────
- * Shows granular list of accounts available under the chosen country.
- */
-function CountryAccountsExplorer({
-  countryCode,
-  countryName,
-  onClose,
-  onBuyClick,
-}: {
-  countryCode: string;
-  countryName: string;
-  onClose: () => void;
-  onBuyClick: (acc: MarketplaceAccountSummary) => void;
-}) {
-  const user = useAuthStore((s) => s.user);
-  const { data: accounts, isLoading, error } = useMarketplaceStockAccounts(countryCode);
-  const [filterSpamOnly, setFilterSpamOnly] = useState(false);
-
-  const filteredAccounts = useMemo(() => {
-    if (!accounts) return [];
-    if (!filterSpamOnly) return accounts;
-    return accounts.filter((a) => a.spam_status === "normal");
-  }, [accounts, filterSpamOnly]);
-
-  const flag = getCountryFlag(countryCode);
-
-  if (isLoading) {
-    return (
-      <DoubleBezelShell>
-        <div className="space-y-3 p-4">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-6 w-32 rounded-lg" />
-            <Skeleton className="h-5 w-16 rounded-md" />
-          </div>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-xl" />
-          ))}
-        </div>
-      </DoubleBezelShell>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
-        <AlertCircle className="h-5 w-5 shrink-0" />
-        <div className="space-y-0.5">
-          <p className="font-semibold">Unable to Load Regional Inventory</p>
-          <p className="opacity-90">There was a problem querying accounts for {countryName}.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!accounts || accounts.length === 0) {
-    return (
-      <DoubleBezelShell>
-        <div className="py-12 text-center space-y-2">
-          <p className="text-sm font-semibold text-foreground">
-            No active listings found for {countryName} ({countryCode})
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Stock might have been claimed by other buyers. Please select another country.
-          </p>
-        </div>
-      </DoubleBezelShell>
-    );
-  }
-
-  return (
-    <DoubleBezelShell innerClassName="p-0 overflow-hidden">
-      {/* Explorer Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 bg-muted/20 px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{flag}</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-foreground">
-                {countryName} Available Accounts
-              </h2>
-              <span className="font-mono text-xs font-semibold text-muted-foreground bg-foreground/[0.04] px-1.5 py-0.5 rounded border border-foreground/[0.06]">
-                {countryCode}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {accounts.length} {accounts.length === 1 ? "session" : "sessions"} available · each verified individually
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setFilterSpamOnly(!filterSpamOnly)}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors",
-              filterSpamOnly
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                : "bg-card/60 text-muted-foreground border-border/60 hover:text-foreground"
-            )}
-          >
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                filterSpamOnly ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
-              )}
-            />
-            <span>Clean SpamBot Only</span>
-          </button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="h-8 rounded-lg text-xs"
-          >
-            Close Explorer
-          </Button>
-        </div>
-      </div>
-
-      {/* Desktop Accounts Table */}
-      <div className="hidden sm:block">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-border/60 bg-muted/10">
-              <TableHead className="w-36">Telegram User ID</TableHead>
-              <TableHead className="w-24 text-center">Account Age</TableHead>
-              <TableHead className="w-28 text-center">Spam Health</TableHead>
-              <TableHead className="w-24 text-center">Contacts</TableHead>
-              <TableHead className="w-24 text-center">2FA Shield</TableHead>
-              <TableHead className="w-28 text-center">Recovery Email</TableHead>
-              <TableHead className="w-32 text-right">Price</TableHead>
-              <TableHead className="w-28 text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAccounts.map((acc) => {
-              const price = acc.buy_price ?? acc.sell_price ?? 7000;
-              const canAfford = !user || user.balance >= price;
-
-              return (
-                <TableRow
-                  key={acc.id}
-                  className="hover:bg-muted/30 transition-colors"
-                >
-                  <TableCell className="font-mono font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-foreground">{acc.telegram_id || "—"}</span>
-                      {acc.is_resale && <Chip tone="accent">Resale</Chip>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center text-xs text-muted-foreground">
-                    {acc.est_reg_date_age || "—"}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {acc.spam_status === "normal" ? (
-                      <Chip tone="positive" dot>Clean</Chip>
-                    ) : acc.spam_status === "limited" ? (
-                      <Chip tone="negative" dot>Limited</Chip>
-                    ) : (
-                      <Chip tone="neutral">Unchecked</Chip>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                    {acc.contacts_count || 0}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Chip tone={acc.twofa_enabled ? "caution" : "neutral"}>
-                      <Lock className="mr-1 h-3 w-3 inline" />
-                      {acc.twofa_enabled ? "Required" : "None"}
-                    </Chip>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Chip tone={acc.recovery_email_available ? "accent" : "neutral"}>
-                      <Mail className="mr-1 h-3 w-3 inline" />
-                      {acc.recovery_email_available ? "Available" : "None"}
-                    </Chip>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <PriceTag value={price} size="md" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ButtonInButton
-                      size="sm"
-                      onClick={() => onBuyClick(acc)}
-                      disabled={!canAfford}
-                      className={cn(
-                        "h-8 text-xs font-semibold",
-                        !canAfford && "opacity-40"
-                      )}
-                      icon={<ShoppingCart className="h-3 w-3" />}
-                    >
-                      {canAfford ? "Buy" : "Need Funds"}
-                    </ButtonInButton>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Mobile Accounts List */}
-      <div className="divide-y divide-border/60 sm:hidden">
-        {filteredAccounts.map((acc) => {
-          const price = acc.buy_price ?? acc.sell_price ?? 7000;
-          const canAfford = !user || user.balance >= price;
-
-          return (
-            <div key={acc.id} className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-sm font-bold text-foreground">
-                      {acc.telegram_id || "Unassigned"}
-                    </span>
-                    {acc.is_resale && <Chip tone="accent">Resale</Chip>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Age: {acc.est_reg_date_age || "Unknown"} · Contacts: {acc.contacts_count || 0}
-                  </p>
-                </div>
-                <PriceTag value={price} size="md" />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {acc.spam_status === "normal" ? (
-                  <Chip tone="positive" dot>Clean</Chip>
-                ) : acc.spam_status === "limited" ? (
-                  <Chip tone="negative" dot>Limited</Chip>
-                ) : (
-                  <Chip tone="neutral">Unchecked</Chip>
-                )}
-                <Chip tone={acc.twofa_enabled ? "caution" : "neutral"}>
-                  2FA: {acc.twofa_enabled ? "Required" : "None"}
-                </Chip>
-                <Chip tone={acc.recovery_email_available ? "accent" : "neutral"}>
-                  Email: {acc.recovery_email_available ? "Yes" : "No"}
-                </Chip>
-              </div>
-
-              <ButtonInButton
-                size="sm"
-                onClick={() => onBuyClick(acc)}
-                disabled={!canAfford}
-                className="w-full justify-center"
-                icon={<ShoppingCart className="h-3 w-3" />}
-              >
-                {canAfford ? "Purchase Account" : "Insufficient Balance"}
-              </ButtonInButton>
-            </div>
-          );
-        })}
-      </div>
-    </DoubleBezelShell>
   );
 }

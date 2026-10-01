@@ -391,14 +391,17 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
     estimates = await reg_date_service.estimate_registration_dates_batch(db, telegram_ids) if telegram_ids else {}
 
     matched = []
+    is_all = country_code.lower() in ("all", "*")
     for acc in accounts:
-        prefix, _ = get_country_code_and_name(acc.phone)
-        if prefix == country_code:
+        prefix, name = get_country_code_and_name(acc.phone)
+        if is_all or prefix == country_code:
             est = estimates.get(acc.telegram_id) if acc.telegram_id else None
             matched.append(
                 {
                     "id": acc.id,
                     "telegram_id": acc.telegram_id,
+                    "country_code": prefix,
+                    "country_name": name,
                     "twofa_enabled": acc.twofa_enabled,
                     "recovery_email_available": acc.recovery_email is not None,
                     "sell_price": acc.sell_price,

@@ -17,6 +17,8 @@ export interface StockCategory {
 export interface MarketplaceAccountSummary {
   id: string;
   telegram_id: number | null;
+  country_code?: string | null;
+  country_name?: string | null;
   twofa_enabled: boolean;
   recovery_email_available: boolean;
   sell_price: number | null;
@@ -69,16 +71,55 @@ export function useMarketplaceStock() {
   });
 }
 
-export function useMarketplaceStockAccounts(countryCode: string) {
+export function useMarketplaceStockAccounts(countryCode: string = "all") {
   return useQuery<MarketplaceAccountSummary[]>({
     queryKey: ["marketplace", "stock", countryCode],
     queryFn: async () => {
-      // Url encode country code prefix to handle "+" character safely
-      const encodedPrefix = encodeURIComponent(countryCode);
-      const { data } = await api.get(`/marketplace/stock/${encodedPrefix}/accounts`);
-      return data || [];
+      const code = countryCode || "all";
+      const encodedPrefix = encodeURIComponent(code);
+
+      try {
+        const { data } = await api.get(`/marketplace/stock/${encodedPrefix}/accounts`);
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        if (code !== "all") throw err;
+      }
+
+      // If 'all' was requested and returned empty or 404, aggregate across all active stock categories
+      if (code === "all") {
+        try {
+          const { data: stock } = await api.get<StockCategory[]>("/marketplace/stock");
+          if (!stock || stock.length === 0) return [];
+
+          const accountPromises = stock
+            .filter((cat) => cat.ready_stock > 0)
+            .map(async (cat) => {
+              try {
+                const res = await api.get<MarketplaceAccountSummary[]>(
+                  `/marketplace/stock/${encodeURIComponent(cat.country_code)}/accounts`
+                );
+                return (res.data || []).map((acc) => ({
+                  ...acc,
+                  country_code: acc.country_code || cat.country_code,
+                  country_name: acc.country_name || cat.country_name,
+                }));
+              } catch {
+                return [];
+              }
+            });
+
+          const nested = await Promise.all(accountPromises);
+          return nested.flat();
+        } catch {
+          return [];
+        }
+      }
+
+      return [];
     },
-    enabled: !!countryCode,
+    enabled: true,
   });
 }
 
