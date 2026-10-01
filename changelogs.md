@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[e10b74fe](https://github.com/nealmtroy/TeleBos/commit/e10b74fe)**: feat(orders): redesign the buy and sell marketplace pages
 - **[1f8d3119](https://github.com/nealmtroy/TeleBos/commit/1f8d3119)**: refactor(sidebar): regroup automation around the resources it consumes
 - **[9c008165](https://github.com/nealmtroy/TeleBos/commit/9c008165)**: docs: restore RESEND.md
 - **[12ccbf51](https://github.com/nealmtroy/TeleBos/commit/12ccbf51)**: fix(auto-join): widen chat_id to bigint so large channel joins persist
