@@ -554,14 +554,11 @@ export default function SellAccountsPage() {
       {/* ── Sticky Liquidation Bottom Dock Island ─────────────────── */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-4 left-0 right-0 z-40 px-4 sm:left-auto sm:right-6 sm:w-[420px] sm:px-0">
-          <DoubleBezelShell
-            tone="amber"
-            innerClassName="p-4 shadow-xl backdrop-blur-xl bg-card/95"
-          >
+          <div className="rounded-xl border border-border/80 bg-card p-4 shadow-xl">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Selected For Liquidation
                   </span>
                   <p className="text-sm font-bold text-foreground">
@@ -570,7 +567,7 @@ export default function SellAccountsPage() {
                 </div>
 
                 <div className="text-right space-y-0.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Estimated Proceeds
                   </span>
                   <div className="text-emerald-600 dark:text-emerald-400">
@@ -580,7 +577,7 @@ export default function SellAccountsPage() {
               </div>
 
               {/* Selected Accounts Mini Scroll */}
-              <div className="max-h-24 overflow-y-auto space-y-1 rounded-xl bg-muted/40 p-2 text-xs divide-y divide-border/40">
+              <div className="max-h-24 overflow-y-auto space-y-1 rounded-lg bg-muted/40 p-2 text-xs divide-y divide-border/40">
                 {selectedIds.map((id) => {
                   const acc = eligible?.find((a) => a.id === id);
                   return (
@@ -594,21 +591,21 @@ export default function SellAccountsPage() {
                 })}
               </div>
 
-              <ButtonInButton
-                variant="amber"
-                size="md"
+              <Button
+                variant="default"
+                size="default"
                 onClick={() => setSellConfirmOpen(true)}
-                className="w-full justify-center"
-                icon={<DollarSign className="h-4 w-4" />}
+                className="w-full justify-center gap-2 h-10 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs shadow-sm"
               >
-                List {selectedIds.length} Account(s) For Sale
-              </ButtonInButton>
+                <DollarSign className="h-4 w-4" />
+                <span>List {selectedIds.length} Account(s) For Sale</span>
+              </Button>
 
-              <p className="text-center text-[10px] text-muted-foreground/80 leading-tight">
+              <p className="text-center text-xs text-muted-foreground/80 leading-tight">
                 Funds settled into wallet immediately upon buyer purchase.
               </p>
             </div>
-          </DoubleBezelShell>
+          </div>
         </div>
       )}
 
@@ -625,8 +622,8 @@ export default function SellAccountsPage() {
               Active automation (broadcasting and auto-replies) will be suspended on these sessions to maintain buyer trust.
             </p>
 
-            <DoubleBezelShell innerClassName="p-3.5 space-y-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="rounded-xl border border-border/80 bg-card p-3.5 space-y-2.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Itemized Valuation Breakdown
               </p>
               <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs divide-y divide-border/40">
@@ -638,7 +635,7 @@ export default function SellAccountsPage() {
                         <p className="truncate font-semibold text-foreground">
                           {acc?.first_name || "Unnamed"} ({acc?.phone})
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           Age: {acc?.est_reg_date_age || "—"} · Contacts: {acc?.contacts_count || 0}
                         </p>
                       </div>
@@ -652,7 +649,7 @@ export default function SellAccountsPage() {
                 <span className="text-foreground text-xs font-semibold">Total Estimated Payout:</span>
                 <PriceTag value={totalReceive} size="lg" className="text-emerald-600 dark:text-emerald-400 font-bold" />
               </div>
-            </DoubleBezelShell>
+            </div>
 
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-400 space-y-1">
               <p className="font-bold flex items-center gap-1.5">

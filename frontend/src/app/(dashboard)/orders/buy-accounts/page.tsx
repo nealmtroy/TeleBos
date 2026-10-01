@@ -21,6 +21,7 @@ import {
   Users,
   Calendar,
   Zap,
+  Globe,
   SlidersHorizontal,
   X,
   ThumbsDown,
@@ -35,8 +36,6 @@ import {
   Eyebrow,
   Chip,
   PriceTag,
-  DoubleBezelShell,
-  ButtonInButton,
   MetricReadout,
   getCountryFlag,
 } from "@/components/layout/trade-surface";
@@ -228,24 +227,24 @@ export default function BuyAccountsPage() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Eyebrow>Marketplace // Escrow Exchange</Eyebrow>
-            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Live Custody Pool
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl text-balance">
             {_("orders.buyAccounts") || "Buy Telegram Accounts"}
           </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+          <p className="text-sm text-muted-foreground max-w-xl leading-relaxed text-pretty">
             Acquire pre-warmed, non-restricted Telegram sessions with verified MTProto credentials and 30-minute automated escrow replacement warranty.
           </p>
         </div>
 
         {/* Balance Card & Wallet Top-up */}
         <div className="flex items-center gap-3 shrink-0">
-          <DoubleBezelShell className="w-full sm:w-auto" innerClassName="p-3 sm:p-3.5">
+          <div className="rounded-xl border border-border/80 bg-card p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Wallet className="h-4 w-4" />
               </div>
               <div className="space-y-0.5 min-w-[120px]">
@@ -257,13 +256,13 @@ export default function BuyAccountsPage() {
                 </p>
               </div>
               <Link href="/wallet">
-                <Button variant="outline" size="sm" className="h-8 gap-1 rounded-lg text-xs font-semibold">
-                  <Plus className="h-3 w-3" />
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs font-semibold">
+                  <Plus className="h-3.5 w-3.5" />
                   Top Up
                 </Button>
               </Link>
             </div>
-          </DoubleBezelShell>
+          </div>
         </div>
       </div>
 
@@ -279,34 +278,36 @@ export default function BuyAccountsPage() {
           label="Starting From"
           value={<PriceTag value={lowestPrice} size="lg" />}
           subtext="Regional tier pricing"
-          icon={<Sparkles className="h-4 w-4 text-amber-500" />}
+          icon={<Sparkles className="h-4 w-4 text-muted-foreground" />}
         />
         <MetricReadout
           label="Coverage"
           value={`${stockCategories?.length || 0} Regions`}
           subtext="Global carrier prefixes"
-          icon={<span className="text-base">🌐</span>}
+          icon={<Globe className="h-4 w-4 text-muted-foreground" />}
         />
         <MetricReadout
           label="Escrow Protection"
           value="30-Min Warranty"
           subtext="Auto-replacement on login fail"
-          icon={<ShieldCheck className="h-4 w-4 text-emerald-500" />}
-          badge={<Chip tone="positive" dot>Active</Chip>}
+          icon={<ShieldCheck className="h-4 w-4 text-muted-foreground" />}
+          badge={<Chip tone="neutral">Active</Chip>}
         />
       </div>
 
       {/* ── Filter Engine (Country Pills + Search + Filters) ─────────── */}
-      <div className="space-y-3.5 rounded-2xl border border-border/80 bg-card/40 p-4 sm:p-5 backdrop-blur-sm shadow-xs">
+      <div className="space-y-3.5 rounded-xl border border-border/80 bg-card p-4 sm:p-5 shadow-2xs">
         {/* Country Filter Pills Ribbon */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <span>Filter By Country / Region</span>
               {stockCategories && (
-                <span className="text-foreground/70 font-mono text-[10px]">({stockCategories.length} available)</span>
+                <span className="text-muted-foreground font-mono text-xs font-normal">
+                  ({stockCategories.length} available)
+                </span>
               )}
-            </span>
+            </h2>
 
             <button
               onClick={() => {
@@ -314,9 +315,9 @@ export default function BuyAccountsPage() {
                 refetchAccounts();
               }}
               disabled={isRefreshing}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
             >
-              <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
               <span>Refresh Pool</span>
             </button>
           </div>
@@ -336,7 +337,7 @@ export default function BuyAccountsPage() {
               <span>All Countries</span>
               <span
                 className={cn(
-                  "ml-0.5 rounded-md px-1.5 py-0.2 font-mono text-[10px]",
+                  "ml-0.5 rounded-md px-1.5 py-0.5 font-mono text-xs",
                   selectedCountry === "all" ? "bg-black/20 text-white" : "bg-muted text-muted-foreground"
                 )}
               >
@@ -362,10 +363,10 @@ export default function BuyAccountsPage() {
                 >
                   <span className="text-sm">{flag}</span>
                   <span>{cat.country_name}</span>
-                  <span className="font-mono text-[10px] opacity-70">({cat.country_code})</span>
+                  <span className="font-mono text-xs opacity-75">({cat.country_code})</span>
                   <span
                     className={cn(
-                      "rounded-md px-1.5 py-0.2 font-mono text-[10px]",
+                      "rounded-md px-1.5 py-0.5 font-mono text-xs",
                       isSelected ? "bg-black/20 text-white" : "bg-muted text-muted-foreground"
                     )}
                   >
@@ -406,7 +407,7 @@ export default function BuyAccountsPage() {
               <button
                 onClick={() => setSpamFilter("all")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
                   spamFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -415,7 +416,7 @@ export default function BuyAccountsPage() {
               <button
                 onClick={() => setSpamFilter("clean")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors flex items-center gap-1",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors flex items-center gap-1",
                   spamFilter === "clean" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -429,7 +430,7 @@ export default function BuyAccountsPage() {
               <button
                 onClick={() => setTwofaFilter("all")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
                   twofaFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -438,7 +439,7 @@ export default function BuyAccountsPage() {
               <button
                 onClick={() => setTwofaFilter("disabled")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
                   twofaFilter === "disabled" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -450,7 +451,7 @@ export default function BuyAccountsPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="h-8 rounded-lg border border-input bg-background/80 px-2.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="h-8 rounded-lg border border-input bg-background/80 px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
             >
               <option value="price-asc">Price: Lowest First</option>
               <option value="price-desc">Price: Highest First</option>
@@ -484,11 +485,11 @@ export default function BuyAccountsPage() {
       {accountsLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-2xl bg-muted/60 animate-pulse border border-border/40" />
+            <div key={i} className="h-28 rounded-xl bg-muted/60 animate-pulse border border-border/40" />
           ))}
         </div>
       ) : accountsError ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
+        <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <div className="space-y-0.5">
             <p className="font-semibold">Unable to Load Accounts</p>
@@ -496,35 +497,33 @@ export default function BuyAccountsPage() {
           </div>
         </div>
       ) : filteredAccounts.length === 0 ? (
-        <DoubleBezelShell>
-          <div className="py-14 text-center space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/80 text-muted-foreground">
-              <ShoppingCart className="h-6 w-6 opacity-60" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">
-                {hasActiveFilters ? "No accounts match current filters" : "No Ready Stock in this Category"}
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                {hasActiveFilters
-                  ? "Try adjusting your search query, country selection, or spam filters to see more results."
-                  : "All accounts in this category are currently sold out. Fresh sessions arrive continuously."}
-              </p>
-            </div>
-            {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearAllFilters}
-                className="rounded-xl text-xs font-semibold"
-              >
-                Clear All Filters
-              </Button>
-            )}
+        <div className="rounded-xl border border-border/80 bg-card py-14 text-center space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-muted/80 text-muted-foreground">
+            <ShoppingCart className="h-6 w-6 opacity-60" />
           </div>
-        </DoubleBezelShell>
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-foreground">
+              {hasActiveFilters ? "No accounts match current filters" : "No Ready Stock in this Category"}
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              {hasActiveFilters
+                ? "Try adjusting your search query, country selection, or spam filters to see more results."
+                : "All accounts in this category are currently sold out. Fresh sessions arrive continuously."}
+            </p>
+          </div>
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAllFilters}
+              className="rounded-lg text-xs font-semibold"
+            >
+              Clear All Filters
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="space-y-3.5">
+        <div className="space-y-3">
           {filteredAccounts.map((acc) => {
             const price = acc.buy_price ?? acc.sell_price ?? 7000;
             const canAfford = !user || user.balance >= price;
@@ -533,10 +532,9 @@ export default function BuyAccountsPage() {
             const countryName = acc.country_name || (countryCode === "+62" ? "Indonesia" : countryCode === "+91" ? "India" : "Telegram Account");
 
             return (
-              <DoubleBezelShell
+              <div
                 key={acc.id}
-                hover
-                innerClassName="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                className="rounded-xl border border-border/80 bg-card p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors hover:border-primary/40 hover:bg-card/90"
               >
                 {/* ── Left Content (Identity + Tags + Metadata) ─────── */}
                 <div className="space-y-2.5 min-w-0 flex-1">
@@ -561,34 +559,34 @@ export default function BuyAccountsPage() {
                     </h3>
                   </div>
 
-                  {/* Badges / Chips Row (Inspired by Padang Store screenshot reference) */}
+                  {/* Badges / Chips Row */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     {/* SpamBot Health Chip */}
                     {acc.spam_status === "normal" ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         <Check className="h-3 w-3 shrink-0" />
                         Spam Clean
                       </span>
                     ) : acc.spam_status === "limited" || acc.spam_status === "risk" ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                         <ThumbsDown className="h-3 w-3 shrink-0" />
                         Spam Risk
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium bg-muted/80 text-muted-foreground border border-border/60">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-muted/80 text-muted-foreground border border-border/60">
                         Unchecked
                       </span>
                     )}
 
                     {/* Account Age Chip */}
-                    <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium bg-foreground/[0.04] text-foreground border border-foreground/[0.08]">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-foreground/[0.04] text-foreground border border-foreground/[0.08]">
                       {acc.est_reg_date_age ? `Age: ${acc.est_reg_date_age}` : "New Session"}
                     </span>
 
                     {/* 2FA Status Chip */}
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium border",
+                        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border",
                         acc.twofa_enabled
                           ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                           : "bg-foreground/[0.04] text-foreground border-foreground/[0.08]"
@@ -599,13 +597,13 @@ export default function BuyAccountsPage() {
                     </span>
 
                     {/* Category Type Chip */}
-                    <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-medium bg-foreground/[0.03] text-muted-foreground border border-foreground/[0.06]">
+                    <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium bg-foreground/[0.03] text-muted-foreground border border-foreground/[0.06]">
                       {acc.is_resale ? "Resale" : "Personal"}
                     </span>
 
                     {/* Recovery Email Chip */}
                     {acc.recovery_email_available && (
-                      <span className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                      <span className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                         <Mail className="h-3 w-3" />
                         Recovery Email
                       </span>
@@ -628,8 +626,8 @@ export default function BuyAccountsPage() {
                       </span>
                     </span>
 
-                    <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <ShieldCheck className="h-3.5 w-3.5" />
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                       <span>30-Min Warranty Escrow</span>
                     </span>
                   </div>
@@ -638,13 +636,13 @@ export default function BuyAccountsPage() {
                 {/* ── Right Content (Verification Badge + Price + Actions) ── */}
                 <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-3 shrink-0 border-t lg:border-t-0 border-border/50 pt-3 lg:pt-0">
                   {/* Verified Escrow Desk Badge */}
-                  <div className="hidden lg:flex items-center gap-1.5 text-right">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold">
-                      ✓
+                  <div className="hidden lg:flex items-center gap-2 text-right">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary">
+                      <Check className="h-3 w-3" />
                     </div>
-                    <div className="space-y-0 text-[11px]">
-                      <span className="font-semibold text-foreground">TeleBos Escrow</span>
-                      <span className="text-[10px] text-muted-foreground block">Verified Seller Pool</span>
+                    <div className="space-y-0 text-xs">
+                      <span className="font-semibold text-foreground block">TeleBos Escrow</span>
+                      <span className="text-xs text-muted-foreground block">Verified Seller Pool</span>
                     </div>
                   </div>
 
@@ -656,7 +654,7 @@ export default function BuyAccountsPage() {
                       className="text-xl sm:text-2xl font-bold tracking-tight text-foreground"
                     />
                     {!canAfford && (
-                      <p className="text-[10px] font-medium text-destructive">
+                      <p className="text-xs font-medium text-destructive">
                         Needs Rp {(price - balance).toLocaleString()} more
                       </p>
                     )}
@@ -664,8 +662,8 @@ export default function BuyAccountsPage() {
 
                   {/* Action CTA Button */}
                   <div className="flex items-center gap-2">
-                    <ButtonInButton
-                      size="md"
+                    <Button
+                      size="default"
                       onClick={() => {
                         setPendingBuyAccount({
                           id: acc.id,
@@ -682,24 +680,24 @@ export default function BuyAccountsPage() {
                       }}
                       disabled={!canAfford}
                       className={cn(
-                        "h-10 px-5 text-xs font-bold rounded-xl",
+                        "h-10 px-5 text-xs font-bold rounded-lg gap-2",
                         canAfford
-                          ? "bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+                          ? "bg-amber-500 hover:bg-amber-600 text-black shadow-sm"
                           : "opacity-40"
                       )}
-                      icon={<Zap className="h-3.5 w-3.5" />}
                     >
-                      {canAfford ? "Buy Now" : "Insufficient Balance"}
-                    </ButtonInButton>
+                      <Zap className="h-3.5 w-3.5" />
+                      <span>{canAfford ? "Buy Now" : "Insufficient Balance"}</span>
+                    </Button>
                   </div>
                 </div>
-              </DoubleBezelShell>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* ── High-End Double-Bezel Confirmation Modal ──────────────── */}
+      {/* ── High-End Confirmation Modal ──────────────── */}
       <ConfirmDialog
         open={buyConfirmOpen}
         onOpenChange={setBuyConfirmOpen}
@@ -712,7 +710,7 @@ export default function BuyAccountsPage() {
             </p>
 
             {pendingBuyAccount && (
-              <DoubleBezelShell innerClassName="p-3.5 space-y-2.5">
+              <div className="rounded-xl border border-border/80 bg-card p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between border-b border-border/40 pb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">
@@ -722,7 +720,7 @@ export default function BuyAccountsPage() {
                       <p className="text-xs font-semibold text-foreground">
                         Region: {pendingBuyAccount.country_name || pendingBuyAccount.country_code} ({pendingBuyAccount.country_code})
                       </p>
-                      <p className="font-mono text-[11px] text-muted-foreground">
+                      <p className="font-mono text-xs text-muted-foreground">
                         User ID: {pendingBuyAccount.telegram_id || "Unassigned"}
                       </p>
                     </div>
@@ -751,7 +749,7 @@ export default function BuyAccountsPage() {
                 </div>
 
                 {user && (
-                  <div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] border border-border/40 px-2.5 py-1.5 text-[11px]">
+                  <div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] border border-border/40 px-2.5 py-1.5 text-xs">
                     <span className="text-muted-foreground">Your Balance:</span>
                     <span
                       className={cn(
@@ -765,12 +763,12 @@ export default function BuyAccountsPage() {
                     </span>
                   </div>
                 )}
-              </DoubleBezelShell>
+              </div>
             )}
 
             <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-700 dark:text-emerald-400">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-              <p className="leading-relaxed text-[11px]">
+              <p className="leading-relaxed text-xs">
                 <strong>30-Minute Escrow Warranty:</strong> If session credentials or MTProto auth keys fail upon initial sync, your balance will be refunded immediately.
               </p>
             </div>
@@ -786,15 +784,12 @@ export default function BuyAccountsPage() {
       {successOpen && boughtAccount && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="fixed inset-0 bg-background/80 backdrop-blur-md"
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setSuccessOpen(false)}
           />
           <div className="relative w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
-            <DoubleBezelShell
-              tone="emerald"
-              innerClassName="p-6 text-center space-y-5"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
+            <div className="rounded-xl border border-border/80 bg-card p-6 text-center space-y-5 shadow-lg">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
 
@@ -866,19 +861,19 @@ export default function BuyAccountsPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-                <ButtonInButton
-                  variant="primary"
-                  size="md"
+                <Button
+                  variant="default"
+                  size="default"
                   onClick={() => {
                     setSuccessOpen(false);
                     setBoughtAccount(null);
                     window.location.href = "/accounts";
                   }}
-                  className="flex-1 justify-center"
-                  icon={<ArrowRight className="h-3.5 w-3.5" />}
+                  className="flex-1 justify-center gap-2 h-10 rounded-lg text-xs font-semibold"
                 >
-                  Manage in My Accounts
-                </ButtonInButton>
+                  <span>Manage in My Accounts</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
 
                 <Button
                   variant="outline"
@@ -887,12 +882,12 @@ export default function BuyAccountsPage() {
                     setSuccessOpen(false);
                     setBoughtAccount(null);
                   }}
-                  className="h-10 rounded-xl text-xs font-semibold"
+                  className="h-10 rounded-lg text-xs font-semibold"
                 >
                   Continue Shopping
                 </Button>
               </div>
-            </DoubleBezelShell>
+            </div>
           </div>
         </div>
       )}

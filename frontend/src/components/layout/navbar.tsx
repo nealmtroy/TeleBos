@@ -107,7 +107,7 @@ export function Navbar() {
               <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
             <div className="flex flex-col text-left">
-              <span className="text-[10px] uppercase font-bold text-emerald-600/90 dark:text-emerald-400/90 leading-none hidden sm:block tracking-wider">
+              <span className="text-[11px] uppercase font-bold text-emerald-600/90 dark:text-emerald-400/90 leading-none hidden sm:block tracking-wider">
                 Saldo
               </span>
               <span className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono tracking-tight leading-tight">
