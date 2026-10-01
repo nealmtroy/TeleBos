@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,7 +32,11 @@ class AutoJoinLog(Base):
     target_type: Mapped[str | None] = mapped_column(String(20))
 
     # Telegram metadata returned by the join
-    chat_id: Mapped[int | None] = mapped_column(nullable=True)
+        # Telegram chat ids exceed int32 (supergroups are negative, and channels
+    # run well past 2147483647), so this must be BigInteger like
+    # telegram_chats.chat_id. Leaving it to the default Integer overflowed on
+    # the first channel join.
+    chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     chat_title: Mapped[str | None] = mapped_column(String(500))
     chat_username: Mapped[str | None] = mapped_column(String(255))
     chat_type: Mapped[str | None] = mapped_column(String(20))

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-02
+- **[d3f0303d](https://github.com/nealmtroy/TeleBos/commit/d3f0303d)**: feat(auto-join): run joins in the worker so a run survives the tab
+
 ## 2026-10-01
 - **[17ca6092](https://github.com/nealmtroy/TeleBos/commit/17ca6092)**: fix(auto-join): pace the run per group instead of per individual join
 - **[6e683755](https://github.com/nealmtroy/TeleBos/commit/6e683755)**: fix(profile): do not send an empty username to Telegram
