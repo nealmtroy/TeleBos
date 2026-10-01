@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[09efc3ba](https://github.com/nealmtroy/TeleBos/commit/09efc3ba)**: fix(accounts): remove overflow-hidden on AddAccount card to prevent country popover clipping
 - **[7c6c5bea](https://github.com/nealmtroy/TeleBos/commit/7c6c5bea)**: fix(accounts): polish dark mode theming for phone input, country selector popover, and login flow
 - **[2598bd5a](https://github.com/nealmtroy/TeleBos/commit/2598bd5a)**: fix(accounts): use universal local SVG flags for OTP login country picker and settings language options
 - **[574281bd](https://github.com/nealmtroy/TeleBos/commit/574281bd)**: fix(flags): bundle country SVG flags locally in public/flags to comply with strict CSP img-src

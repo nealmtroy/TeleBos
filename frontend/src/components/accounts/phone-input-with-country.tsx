@@ -33,6 +33,66 @@ const FALLBACK_COUNTRIES: TelegramCountry[] = [
   { iso2: "TH", name: "Thailand", code: "66", flag: "🇹🇭" },
 ];
 
+export const COUNTRY_SAMPLE_FORMATS: Record<string, string> = {
+  "62": "812 3456 7890",    // Indonesia
+  "1": "201 555 0123",      // USA / Canada
+  "44": "7911 123456",      // UK
+  "60": "12 345 6789",      // Malaysia
+  "65": "8123 4567",        // Singapore
+  "91": "98765 43210",      // India
+  "7": "912 345 6789",      // Russia / Kazakhstan
+  "61": "412 345 678",      // Australia
+  "49": "151 2345 6789",    // Germany
+  "33": "6 12 34 56 78",    // France
+  "81": "90 1234 5678",     // Japan
+  "82": "10 1234 5678",     // South Korea
+  "84": "91 234 5678",      // Vietnam
+  "63": "912 345 6789",     // Philippines
+  "66": "81 234 5678",      // Thailand
+  "92": "301 2345678",      // Pakistan
+  "90": "512 345 6789",     // Turkey
+  "380": "50 123 4567",     // Ukraine
+  "998": "90 123 4567",     // Uzbekistan
+  "971": "50 123 4567",     // UAE
+  "966": "50 123 4567",     // Saudi Arabia
+  "234": "802 345 6789",    // Nigeria
+  "55": "11 91234 5678",    // Brazil
+  "48": "512 345 678",      // Poland
+  "39": "312 345 6789",     // Italy
+  "34": "612 345 678",      // Spain
+  "31": "6 12345678",       // Netherlands
+  "52": "55 1234 5678",     // Mexico
+  "57": "300 123 4567",     // Colombia
+  "54": "11 1234 5678",     // Argentina
+  "27": "82 123 4567",      // South Africa
+  "254": "712 345678",      // Kenya
+  "212": "612 345678",      // Morocco
+  "213": "550 12 34 56",    // Algeria
+  "994": "50 123 4567",     // Azerbaijan
+  "880": "1712 345678",     // Bangladesh
+  "98": "912 345 6789",     // Iran
+  "375": "29 123 4567",     // Belarus
+  "351": "912 345 678",     // Portugal
+};
+
+export function getDynamicPlaceholder(country: TelegramCountry): string {
+  if (COUNTRY_SAMPLE_FORMATS[country.code]) {
+    return COUNTRY_SAMPLE_FORMATS[country.code];
+  }
+  const iso = country.iso2?.toLowerCase();
+  if (iso && COUNTRY_SAMPLE_FORMATS[iso]) {
+    return COUNTRY_SAMPLE_FORMATS[iso];
+  }
+  if (country.patterns && country.patterns.length > 0 && country.patterns[0]) {
+    let digit = 1;
+    return country.patterns[0].replace(/X/g, () => {
+      const d = (digit++ % 9) + 1;
+      return String(d);
+    });
+  }
+  return "123 456 7890";
+}
+
 let globalCachedCountries: TelegramCountry[] | null = null;
 
 interface PhoneInputWithCountryProps {
@@ -239,14 +299,7 @@ export function PhoneInputWithCountry({
             autoFocus={autoFocus}
             value={nationalNumber}
             onChange={(e) => handleNationalNumberChange(e.target.value)}
-            placeholder={
-              placeholder ||
-              (selectedCountry.patterns && selectedCountry.patterns[0]
-                ? selectedCountry.patterns[0].replace(/X/g, "8")
-                : selectedCountry.code === "62"
-                ? "812 3456 7890"
-                : "123 456 7890")
-            }
+            placeholder={getDynamicPlaceholder(selectedCountry)}
             className="w-full bg-transparent px-3.5 py-2.5 text-sm font-mono font-medium text-foreground placeholder:text-muted-foreground/50 outline-none disabled:cursor-not-allowed"
           />
           {nationalNumber && !disabled && (

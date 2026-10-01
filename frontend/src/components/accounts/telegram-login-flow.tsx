@@ -158,7 +158,6 @@ export function TelegramLoginFlow() {
           onChange={setPhone}
           disabled={loading}
           autoFocus
-          placeholder={_("addAccount.phonePlaceholder")}
         />
         <p className="mt-1.5 text-xs text-muted-foreground">{_("addAccount.phoneHint")}</p>
       </div>
