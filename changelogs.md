@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[3f350c47](https://github.com/nealmtroy/TeleBos/commit/3f350c47)**: fix(orders): rebuild buy and sell on the existing UI primitives
 - **[e10b74fe](https://github.com/nealmtroy/TeleBos/commit/e10b74fe)**: feat(orders): redesign the buy and sell marketplace pages
 - **[1f8d3119](https://github.com/nealmtroy/TeleBos/commit/1f8d3119)**: refactor(sidebar): regroup automation around the resources it consumes
 - **[9c008165](https://github.com/nealmtroy/TeleBos/commit/9c008165)**: docs: restore RESEND.md
