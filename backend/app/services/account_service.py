@@ -815,6 +815,11 @@ async def update_profile(
     tg_last_name = last_name if last_name is not None else (account.last_name or "")
     tg_bio = bio if bio is not None else (account.bio or "")
 
+    # Telegram has no API for removing a username, and UpdateUsernameRequest
+    # rejects an empty value. Clearing it is a local-only change; only a real
+    # value is pushed.
+    new_username = username if username else None
+
     try:
         await client(UpdateProfileRequest(
             first_name=tg_first_name,
@@ -822,8 +827,8 @@ async def update_profile(
             about=tg_bio,
         ))
 
-        if username is not None and username != account.username:
-            await client(UpdateUsernameRequest(username=username))
+        if new_username is not None and new_username != account.username:
+            await client(UpdateUsernameRequest(username=new_username))
     except UsernameOccupiedError:
         raise RuntimeError("Username sudah digunakan oleh akun lain.")
     except UsernameInvalidError:

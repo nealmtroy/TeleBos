@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-01
+- **[674a519f](https://github.com/nealmtroy/TeleBos/commit/674a519f)**: fix(broadcast): a join flood must skip one group, not stall the whole cycle
 - **[34a612a5](https://github.com/nealmtroy/TeleBos/commit/34a612a5)**: fix(broadcast): report each cycle's own totals instead of repeating cycle 1
 - **[262d3c9f](https://github.com/nealmtroy/TeleBos/commit/262d3c9f)**: fix(broadcast): stop re-attempting a join-flooded group every cycle
 - **[854daa65](https://github.com/nealmtroy/TeleBos/commit/854daa65)**: fix(broadcast): treat slowmode as a per-group limit, not per-account
