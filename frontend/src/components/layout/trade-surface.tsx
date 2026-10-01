@@ -357,6 +357,103 @@ const COUNTRY_FLAGS: Record<string, string> = {
   "+994": "🇦🇿",
 };
 
+export const DIAL_TO_ISO: Record<string, string> = {
+  "+62": "id",
+  "+1": "us",
+  "+44": "gb",
+  "+7": "ru",
+  "+91": "in",
+  "+234": "ng",
+  "+55": "br",
+  "+49": "de",
+  "+33": "fr",
+  "+84": "vn",
+  "+63": "ph",
+  "+60": "my",
+  "+65": "sg",
+  "+86": "cn",
+  "+81": "jp",
+  "+82": "kr",
+  "+90": "tr",
+  "+380": "ua",
+  "+20": "eg",
+  "+92": "pk",
+  "+880": "bd",
+  "+971": "ae",
+  "+966": "sa",
+  "+48": "pl",
+  "+39": "it",
+  "+34": "es",
+  "+31": "nl",
+  "+52": "mx",
+  "+57": "co",
+  "+54": "ar",
+  "+27": "za",
+  "+254": "ke",
+  "+212": "ma",
+  "+213": "dz",
+  "+998": "uz",
+  "+994": "az",
+  "+61": "au",
+};
+
+export function getCountryIso(countryCodeOrDial: string): string {
+  const clean = countryCodeOrDial.trim().toLowerCase();
+  if (clean.startsWith("+")) {
+    return DIAL_TO_ISO[clean] || "un";
+  }
+  if (clean.length === 2 && /^[a-z]{2}$/.test(clean)) {
+    return clean;
+  }
+  if (DIAL_TO_ISO[`+${clean}`]) {
+    return DIAL_TO_ISO[`+${clean}`];
+  }
+  return "un";
+}
+
+/**
+ * Universal SVG Flag component.
+ * Ensures country flags render identically on Windows desktop (which lacks emoji flags)
+ * and mobile devices, without displaying fallback two-letter text like "ID" or "IN".
+ */
+export function CountryFlag({
+  countryCode,
+  className,
+  size = "md",
+}: {
+  countryCode: string;
+  className?: string;
+  size?: "sm" | "md" | "lg";
+}) {
+  const iso = getCountryIso(countryCode);
+  const sizeClasses = {
+    sm: "w-4 h-3 rounded-[2px]",
+    md: "w-5 h-3.5 rounded-[3px]",
+    lg: "w-6 h-4 rounded-[4px]",
+  }[size];
+
+  if (iso === "un" || !iso) {
+    return <span className={cn("text-base select-none", className)}>🌐</span>;
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center overflow-hidden border border-black/15 dark:border-white/15 bg-muted/40 shadow-2xs select-none",
+        sizeClasses,
+        className
+      )}
+    >
+      <img
+        src={`https://flagcdn.com/${iso}.svg`}
+        alt={`${iso.toUpperCase()} flag`}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+    </span>
+  );
+}
+
 export function getCountryFlag(countryCode: string): string {
   const cleanCode = countryCode.trim();
   const withPlus = cleanCode.startsWith("+") ? cleanCode : `+${cleanCode}`;

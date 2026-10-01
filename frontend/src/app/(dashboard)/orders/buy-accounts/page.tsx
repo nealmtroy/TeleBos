@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Lock,
   Mail,
-  RefreshCw,
   Plus,
   Users,
   Calendar,
@@ -37,7 +36,7 @@ import {
   Chip,
   PriceTag,
   MetricReadout,
-  getCountryFlag,
+  CountryFlag,
 } from "@/components/layout/trade-surface";
 import {
   useMarketplaceStock,
@@ -308,18 +307,6 @@ export default function BuyAccountsPage() {
                 </span>
               )}
             </h2>
-
-            <button
-              onClick={() => {
-                refetchCategories();
-                refetchAccounts();
-              }}
-              disabled={isRefreshing}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
-              <span>Refresh Pool</span>
-            </button>
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -347,7 +334,6 @@ export default function BuyAccountsPage() {
 
             {/* Individual Country Category Pills */}
             {stockCategories?.map((cat) => {
-              const flag = getCountryFlag(cat.country_code);
               const isSelected = selectedCountry === cat.country_code;
 
               return (
@@ -361,7 +347,7 @@ export default function BuyAccountsPage() {
                       : "bg-card border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                   )}
                 >
-                  <span className="text-sm">{flag}</span>
+                  <CountryFlag countryCode={cat.country_code} size="sm" />
                   <span>{cat.country_name}</span>
                   <span className="font-mono text-xs opacity-75">({cat.country_code})</span>
                   <span
@@ -534,7 +520,6 @@ export default function BuyAccountsPage() {
             const price = acc.buy_price ?? acc.sell_price ?? 7000;
             const canAfford = !user || user.balance >= price;
             const countryCode = acc.country_code || selectedCountry;
-            const flag = getCountryFlag(countryCode);
             const countryName = acc.country_name || (countryCode === "+62" ? "Indonesia" : countryCode === "+91" ? "India" : "Telegram Account");
 
             return (
@@ -546,10 +531,8 @@ export default function BuyAccountsPage() {
                 <div className="space-y-2.5 min-w-0 flex-1">
                   {/* Title & Identity Row */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xl sm:text-2xl shrink-0 leading-none select-none">
-                      {flag}
-                    </span>
-                    <h3 className="font-bold text-foreground text-sm sm:text-base flex items-center gap-1.5">
+                    <CountryFlag countryCode={countryCode} size="lg" />
+                    <h3 className="font-bold text-foreground text-sm sm:text-base flex items-center gap-1.5 flex-wrap">
                       <span>{countryName}</span>
                       <span className="font-mono text-xs font-semibold text-muted-foreground">
                         ({countryCode})
@@ -558,10 +541,14 @@ export default function BuyAccountsPage() {
                       <span className="font-mono text-xs font-semibold text-foreground/90">
                         ID: {acc.telegram_id || "Unassigned"}
                       </span>
-                      <span className="text-muted-foreground/60">•</span>
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {acc.is_resale ? "Resale Asset" : "Standard MTProto"}
-                      </span>
+                      {acc.is_resale && (
+                        <>
+                          <span className="text-muted-foreground/60">•</span>
+                          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                            Resale Asset
+                          </span>
+                        </>
+                      )}
                     </h3>
                   </div>
 
@@ -718,10 +705,8 @@ export default function BuyAccountsPage() {
             {pendingBuyAccount && (
               <div className="rounded-xl border border-border/80 bg-card p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">
-                      {getCountryFlag(pendingBuyAccount.country_code)}
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <CountryFlag countryCode={pendingBuyAccount.country_code} size="lg" />
                     <div>
                       <p className="text-xs font-semibold text-foreground">
                         Region: {pendingBuyAccount.country_name || pendingBuyAccount.country_code} ({pendingBuyAccount.country_code})
