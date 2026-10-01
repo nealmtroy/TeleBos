@@ -10,7 +10,7 @@ import { FolderManagerDialog } from "@/components/accounts/folder-manager-dialog
 import { TransferAccountsDialog } from "@/components/accounts/transfer-accounts-dialog";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { useRouter } from "next/navigation";
-import { Plus, FolderOpen, Info, Search, Smartphone, ArrowRightLeft, Star } from "lucide-react";
+import { Plus, FolderOpen, Info, Search, Smartphone, ArrowRightLeft } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
@@ -26,6 +26,16 @@ const ROLE_LIMITS: Record<string, number> = {
   owner: 999999,
 };
 
+// Order here is the order the filter row renders in.
+const STATUS_FILTERS = [
+  { value: "all", label: "accountsList.statusAll" },
+  { value: "active", label: "accountsList.statusActive" },
+  { value: "limited", label: "accountsList.statusLimited" },
+  { value: "premium", label: "accountsList.statusPremium" },
+  { value: "inactive", label: "accountsList.statusInactive" },
+  { value: "expired", label: "accountsList.statusExpired" },
+] as const;
+
 export default function AccountsListPage() {
   const PAGE_SIZE = 12;
   const _ = useT();
@@ -37,7 +47,7 @@ export default function AccountsListPage() {
   const [folderManagerOpen, setFolderManagerOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedTransferAccounts, setSelectedTransferAccounts] = useState<Account[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -156,73 +166,20 @@ export default function AccountsListPage() {
         {/* Status filters & Search bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar border border-transparent dark:border-slate-700/60">
-            <button
-              onClick={() => handleSelectStatus("active")}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                statusFilter === "active"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
-                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              )}
-            >
-              {_("accountsList.statusActive")}
-            </button>
-            <button
-              onClick={() => handleSelectStatus("limited")}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                statusFilter === "limited"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
-                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              )}
-            >
-              {_("accountsList.statusLimited")}
-            </button>
-            <button
-              onClick={() => handleSelectStatus("inactive")}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                statusFilter === "inactive"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
-                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              )}
-            >
-              {_("accountsList.statusInactive")}
-            </button>
-            <button
-              onClick={() => handleSelectStatus("expired")}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                statusFilter === "expired"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
-                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              )}
-            >
-              {_("accountsList.statusExpired")}
-            </button>
-            <button
-              onClick={() => handleSelectStatus("premium")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1.5",
-                statusFilter === "premium"
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs font-semibold"
-                  : "text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
-              )}
-            >
-              <Star className={cn("h-3.5 w-3.5", statusFilter === "premium" ? "fill-white text-white" : "fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400")} />
-              {_("accountsList.statusPremium")}
-            </button>
-            <button
-              onClick={() => handleSelectStatus("all")}
-              className={cn(
-                "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                statusFilter === "all"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
-                  : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              )}
-            >
-              {_("accountsList.statusAll")}
-            </button>
+            {STATUS_FILTERS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => handleSelectStatus(value)}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                  statusFilter === value
+                    ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
+                    : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
+                )}
+              >
+                {_(label)}
+              </button>
+            ))}
           </div>
 
           <div className="relative w-full md:w-72 shrink-0">

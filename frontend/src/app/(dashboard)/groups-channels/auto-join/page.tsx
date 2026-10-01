@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildJoinTasks, shouldDelayBeforeNext } from "./autoJoinTaskPlan";
 import { cn } from "@/lib/utils";
 import {
   Users,
@@ -289,23 +290,10 @@ export default function AutoJoinPage() {
     setStats({ success: 0, already: 0, flood: 0, failed: 0 });
     setLogs([]);
 
-    // Plan tasks
-    type Task = { account: Account; target: string };
-    const tasks: Task[] = [];
-
-    if (distributionMode === "all") {
-      for (const target of effectiveTargets) {
-        for (const account of selectedAccountsList) {
-          tasks.push({ account, target });
-        }
-      }
-    } else {
-      // Distribute round-robin
-      effectiveTargets.forEach((target, idx) => {
-        const account = selectedAccountsList[idx % selectedAccountsList.length];
-        tasks.push({ account, target });
-      });
-    }
+    // Plan tasks: every selected account joins the same group before moving to
+    // the next one, so the run is paced per group rather than per individual
+    // join. See autoJoinTaskPlan.ts.
+    const tasks = buildJoinTasks(effectiveTargets, selectedAccountsList, distributionMode);
 
     setCurrentProgress({ current: 0, total: tasks.length });
 
@@ -381,11 +369,17 @@ export default function AutoJoinPage() {
 
       setCurrentProgress({ current: i + 1, total: tasks.length });
 
-      // Apply delay if there are more tasks
-      if (i < tasks.length - 1 && !stopRequestedRef.current) {
+      // Pace the run per group, not per join. In "all" mode every account joins
+      // the same group back to back, so delaying after each individual join
+      // stalled three accounts against a single group for three delays before
+      // moving on. Waiting only when the next task targets a different group
+      // keeps the pause between groups, which is the point of the setting.
+      const nextStartsNewGroup = shouldDelayBeforeNext(tasks, i);
+
+      if (nextStartsNewGroup && !stopRequestedRef.current) {
         let actualDelay = delaySeconds;
         if (randomizeDelay) {
-          const jitter = (Math.random() * 4 - 2); // +/- 2 seconds
+          const jitter = Math.random() * 4 - 2; // +/- 2 seconds
           actualDelay = Math.max(2, delaySeconds + jitter);
         }
         await sleep(actualDelay * 1000);
@@ -749,7 +743,7 @@ export default function AutoJoinPage() {
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-gray-700 dark:text-slate-200">Jeda Antar Join:</span>
+                  <span className="font-semibold text-gray-700 dark:text-slate-200">Jeda Antar Grup:</span>
                   <span className="font-bold text-primary-600 dark:text-primary-400 font-mono">{delaySeconds} Detik</span>
                 </div>
                 <input
