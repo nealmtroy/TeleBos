@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[e99d9a58](https://github.com/nealmtroy/TeleBos/commit/e99d9a58)**: fix(marketplace): replace emoji flags with universal SVG flags, remove refresh pool button and standard mtproto label
 - **[8322db64](https://github.com/nealmtroy/TeleBos/commit/8322db64)**: fix(marketplace): fix search input visibility, icon overlap, and contrast in buy accounts
 - **[58fe78a0](https://github.com/nealmtroy/TeleBos/commit/58fe78a0)**: fix(marketplace): address Impeccable design findings - eliminate nested cards, fix headings hierarchy, typography floors, and colors
 - **[b3fb4660](https://github.com/nealmtroy/TeleBos/commit/b3fb4660)**: feat(marketplace): convert buy accounts to direct card feed with rich country and attribute filters

@@ -395,6 +395,17 @@ export const DIAL_TO_ISO: Record<string, string> = {
   "+998": "uz",
   "+994": "az",
   "+61": "au",
+  "+66": "th",
+  "+98": "ir",
+  "+992": "tj",
+  "+993": "tm",
+  "+995": "ge",
+  "+996": "kg",
+  "+370": "lt",
+  "+371": "lv",
+  "+372": "ee",
+  "+375": "by",
+  "+351": "pt",
 };
 
 export function getCountryIso(countryCodeOrDial: string): string {
@@ -425,6 +436,7 @@ export function CountryFlag({
   className?: string;
   size?: "sm" | "md" | "lg";
 }) {
+  const [hasError, setHasError] = React.useState(false);
   const iso = getCountryIso(countryCode);
   const sizeClasses = {
     sm: "w-4 h-3 rounded-[2px]",
@@ -432,7 +444,7 @@ export function CountryFlag({
     lg: "w-6 h-4 rounded-[4px]",
   }[size];
 
-  if (iso === "un" || !iso) {
+  if (iso === "un" || !iso || hasError) {
     return <span className={cn("text-base select-none", className)}>🌐</span>;
   }
 
@@ -445,10 +457,11 @@ export function CountryFlag({
       )}
     >
       <img
-        src={`https://flagcdn.com/${iso}.svg`}
+        src={`/flags/${iso}.svg`}
         alt={`${iso.toUpperCase()} flag`}
         className="w-full h-full object-cover"
         loading="lazy"
+        onError={() => setHasError(true)}
       />
     </span>
   );
