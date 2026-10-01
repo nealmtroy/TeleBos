@@ -205,10 +205,10 @@ export function PhoneInputWithCountry({
     <div ref={containerRef} className={cn("relative space-y-1", className)}>
       <div
         className={cn(
-          "flex items-center rounded-xl border bg-white transition-all shadow-sm",
+          "flex items-center rounded-xl border bg-card transition-all shadow-xs",
           disabled
-            ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-75"
-            : "border-slate-300 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 hover:border-slate-400"
+            ? "bg-muted/40 border-border/60 cursor-not-allowed opacity-75"
+            : "border-border/80 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 hover:border-border"
         )}
       >
         {/* Country Selector Trigger Button */}
@@ -217,15 +217,15 @@ export function PhoneInputWithCountry({
           disabled={disabled}
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
-            "flex items-center gap-2 px-3 py-2.5 bg-slate-50/70 border-r border-slate-200 rounded-l-xl text-slate-800 text-sm font-semibold transition hover:bg-slate-100 shrink-0",
+            "flex items-center gap-2 px-3 py-2.5 bg-muted/40 border-r border-border/80 rounded-l-xl text-foreground text-sm font-semibold transition hover:bg-muted/70 shrink-0",
             disabled && "cursor-not-allowed hover:bg-transparent"
           )}
           title={`Select Country (Currently ${selectedCountry.name} +${selectedCountry.code})`}
         >
           <CountryFlag countryCode={selectedCountry.iso2 || selectedCountry.code} size="md" />
-          <span className="font-mono text-xs font-bold text-slate-700">+{selectedCountry.code}</span>
+          <span className="font-mono text-xs font-bold text-foreground/90">+{selectedCountry.code}</span>
           <ChevronDown
-            className={cn("h-3.5 w-3.5 text-slate-400 transition-transform duration-200", isOpen && "rotate-180")}
+            className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")}
           />
         </button>
 
@@ -247,13 +247,13 @@ export function PhoneInputWithCountry({
                 ? "812 3456 7890"
                 : "123 456 7890")
             }
-            className="w-full bg-transparent px-3.5 py-2.5 text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 outline-none disabled:cursor-not-allowed"
+            className="w-full bg-transparent px-3.5 py-2.5 text-sm font-mono font-medium text-foreground placeholder:text-muted-foreground/50 outline-none disabled:cursor-not-allowed"
           />
           {nationalNumber && !disabled && (
             <button
               type="button"
               onClick={() => handleNationalNumberChange("")}
-              className="mr-2.5 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              className="mr-2.5 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition"
               title="Clear input"
             >
               <X className="h-3.5 w-3.5" />
@@ -264,11 +264,11 @@ export function PhoneInputWithCountry({
 
       {/* Helper text preview */}
       {nationalNumber && (
-        <div className="flex items-center justify-between px-1 text-xs text-slate-500">
+        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
           <span className="truncate">
-            Selected: <span className="font-medium text-slate-700">{selectedCountry.name}</span>
+            Selected: <span className="font-medium text-foreground">{selectedCountry.name}</span>
           </span>
-          <span className="font-mono text-blue-600 font-semibold shrink-0">
+          <span className="font-mono text-primary font-semibold shrink-0">
             +{selectedCountry.code} {nationalNumber}
           </span>
         </div>
@@ -276,24 +276,24 @@ export function PhoneInputWithCountry({
 
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-80 sm:w-96 rounded-2xl border border-border bg-popover text-popover-foreground shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Search Box Header */}
-          <div className="p-3 border-b border-slate-100 bg-slate-50/70">
+          <div className="p-3 border-b border-border/80 bg-muted/30">
             <div className="relative flex items-center">
-              <Search className="absolute left-3 h-4 w-4 text-slate-400 pointer-events-none" />
+              <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search country or code (e.g. 62, ID)..."
-                className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-border/80 bg-background pl-9 pr-8 py-2 text-xs font-medium text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -303,7 +303,7 @@ export function PhoneInputWithCountry({
             {/* Quick Popular Countries chips */}
             {!search && (
               <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
                   Popular:
                 </span>
                 {popularCountries.map((c) => (
@@ -312,10 +312,10 @@ export function PhoneInputWithCountry({
                     type="button"
                     onClick={() => handleSelectCountry(c)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium transition shrink-0",
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition shrink-0 select-none",
                       selectedCountry.iso2 === c.iso2
-                        ? "bg-blue-50 border-blue-200 text-blue-700 font-bold"
-                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                        ? "bg-primary text-primary-foreground border-primary font-bold shadow-2xs"
+                        : "bg-background border-border/80 text-foreground hover:bg-muted/80"
                     )}
                   >
                     <CountryFlag countryCode={c.iso2 || c.code} size="sm" />
@@ -327,11 +327,11 @@ export function PhoneInputWithCountry({
           </div>
 
           {/* Countries List */}
-          <div className="max-h-64 overflow-y-auto divide-y divide-slate-100/60 p-1">
+          <div className="max-h-64 overflow-y-auto divide-y divide-border/40 p-1">
             {filteredCountries.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
-                <Globe className="h-7 w-7 mx-auto mb-1.5 opacity-40 text-slate-400" />
-                <p className="font-semibold text-slate-600">No matching country found</p>
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                <Globe className="h-7 w-7 mx-auto mb-1.5 opacity-40 text-muted-foreground" />
+                <p className="font-semibold text-foreground">No matching country found</p>
                 <p className="text-[11px] mt-0.5">Try searching with a country name or dialing code</p>
               </div>
             ) : (
@@ -345,24 +345,24 @@ export function PhoneInputWithCountry({
                     className={cn(
                       "w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition text-xs group",
                       isSelected
-                        ? "bg-blue-50/80 text-blue-900 font-semibold"
-                        : "hover:bg-slate-50 text-slate-700"
+                        ? "bg-primary/10 text-primary font-semibold border border-primary/20"
+                        : "hover:bg-muted/60 text-foreground"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <CountryFlag countryCode={c.iso2 || c.code} size="md" />
-                      <span className="truncate block font-medium group-hover:text-slate-900">
+                      <span className="truncate block font-medium group-hover:text-foreground">
                         {c.name}
                       </span>
-                      <span className="text-[10px] font-mono text-slate-400 uppercase shrink-0">
+                      <span className="text-[10px] font-mono text-muted-foreground uppercase shrink-0">
                         ({c.iso2})
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 group-hover:bg-slate-200 px-2 py-0.5 rounded transition">
+                      <span className="font-mono text-xs font-semibold text-muted-foreground bg-muted group-hover:bg-muted/80 px-2 py-0.5 rounded transition">
                         +{c.code}
                       </span>
-                      {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
+                      {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
                     </div>
                   </button>
                 );
@@ -371,9 +371,9 @@ export function PhoneInputWithCountry({
           </div>
 
           {/* Footer note */}
-          <div className="px-3.5 py-2 border-t border-slate-100 bg-slate-50/70 text-[11px] text-slate-400 flex items-center justify-between">
+          <div className="px-3.5 py-2 border-t border-border/80 bg-muted/30 text-[11px] text-muted-foreground flex items-center justify-between">
             <span>Powered by Telegram MTProto API</span>
-            <span className="font-mono font-semibold text-slate-500">{countries.length} countries</span>
+            <span className="font-mono font-semibold text-foreground/80">{countries.length} countries</span>
           </div>
         </div>
       )}

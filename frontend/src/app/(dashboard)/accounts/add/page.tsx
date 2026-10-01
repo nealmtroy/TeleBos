@@ -17,15 +17,15 @@ export default function AddAccountPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("addAccount.title")}</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">{_("addAccount.title")}</h1>
+        <p className="text-muted-foreground mt-1">
           {_("addAccount.subtitle")}
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="flex border-b border-gray-100">
+      <div className="bg-card rounded-2xl border border-border/80 shadow-2xs overflow-hidden">
+        <div className="flex border-b border-border/80 bg-muted/20">
           {[
             { key: "otp", label: _("addAccount.tabOtp") },
             { key: "qr", label: "QR Code" },
@@ -35,10 +35,10 @@ export default function AddAccountPage() {
               key={t.key}
               onClick={() => setTab(t.key as typeof tab)}
               className={cn(
-                "flex-1 py-3 text-sm font-medium border-b-2 transition",
+                "flex-1 py-3.5 text-sm font-medium border-b-2 transition select-none",
                 tab === t.key
-                  ? "border-primary-600 text-primary-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-primary text-primary font-bold bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
               {t.label}
