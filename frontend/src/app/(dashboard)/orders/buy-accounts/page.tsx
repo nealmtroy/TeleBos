@@ -381,21 +381,23 @@ export default function BuyAccountsPage() {
         {/* Secondary Filters Bar: Search + Tag Controls + Sorting */}
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-t border-border/50 pt-3.5">
           {/* Search Input */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="relative flex-1 min-w-[240px] max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by ID, country name, or dial prefix..."
-              className="w-full h-8.5 rounded-xl border border-input bg-background/80 pl-8.5 pr-3 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              className="w-full h-9 rounded-lg border border-border/90 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 pl-10 pr-8 text-xs font-medium text-foreground placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-xs"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-sm hover:bg-muted"
+                title="Clear search"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
@@ -403,20 +405,22 @@ export default function BuyAccountsPage() {
           {/* Quick Filter Selectors */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Spam Filter */}
-            <div className="flex items-center rounded-lg border border-input bg-background/60 p-0.5 text-xs">
+            <div className="flex items-center rounded-lg border border-border/80 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 p-0.5 text-xs h-9 shadow-xs">
               <button
+                type="button"
                 onClick={() => setSpamFilter("all")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                   spamFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Spam: All
               </button>
               <button
+                type="button"
                 onClick={() => setSpamFilter("clean")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs font-medium transition-colors flex items-center gap-1",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors flex items-center gap-1.5",
                   spamFilter === "clean" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -426,20 +430,22 @@ export default function BuyAccountsPage() {
             </div>
 
             {/* 2FA Filter */}
-            <div className="flex items-center rounded-lg border border-input bg-background/60 p-0.5 text-xs">
+            <div className="flex items-center rounded-lg border border-border/80 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 p-0.5 text-xs h-9 shadow-xs">
               <button
+                type="button"
                 onClick={() => setTwofaFilter("all")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                   twofaFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 2FA: All
               </button>
               <button
+                type="button"
                 onClick={() => setTwofaFilter("disabled")}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                   twofaFilter === "disabled" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -451,7 +457,7 @@ export default function BuyAccountsPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="h-8 rounded-lg border border-input bg-background/80 px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="h-9 rounded-lg border border-border/80 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs cursor-pointer"
             >
               <option value="price-asc">Price: Lowest First</option>
               <option value="price-desc">Price: Highest First</option>
@@ -464,7 +470,7 @@ export default function BuyAccountsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearAllFilters}
-                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                className="h-9 text-xs text-muted-foreground hover:text-foreground"
               >
                 Reset
               </Button>
