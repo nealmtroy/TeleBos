@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import QRCode from "react-qr-code";
 import { useAuthStore } from "@/store/auth-store";
 import { useThemeStore } from "@/store/theme-store";
+import { CountryFlag } from "@/components/layout/trade-surface";
 
 type TabKey = "security" | "2fa" | "api-keys" | "appearance" | "language";
 
@@ -1742,7 +1743,7 @@ export default function SettingsPage() {
                   {/* Visual mockup preview */}
                   <div className="w-full h-28 rounded-lg bg-slate-900 border border-slate-800 p-3 flex flex-col justify-between mb-4 shadow-xs overflow-hidden select-none">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl select-none" role="img" aria-label="English">🇬🇧</span>
+                      <CountryFlag countryCode="gb" size="lg" className="w-8 h-5.5 rounded-sm shadow-sm" />
                       <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
                         EN
                       </span>
@@ -1788,7 +1789,7 @@ export default function SettingsPage() {
                   {/* Visual mockup preview */}
                   <div className="w-full h-28 rounded-lg bg-slate-900 border border-slate-800 p-3 flex flex-col justify-between mb-4 shadow-xs overflow-hidden select-none">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl select-none" role="img" aria-label="Bahasa Indonesia">🇮🇩</span>
+                      <CountryFlag countryCode="id" size="lg" className="w-8 h-5.5 rounded-sm shadow-sm" />
                       <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
                         ID
                       </span>

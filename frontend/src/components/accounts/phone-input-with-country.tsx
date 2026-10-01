@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronDown, Search, X, Check, Globe } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { CountryFlag } from "@/components/layout/trade-surface";
 
 export interface TelegramCountry {
   iso2: string;
@@ -216,12 +217,12 @@ export function PhoneInputWithCountry({
           disabled={disabled}
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-2.5 bg-slate-50/70 border-r border-slate-200 rounded-l-xl text-slate-800 text-sm font-semibold transition hover:bg-slate-100 shrink-0",
+            "flex items-center gap-2 px-3 py-2.5 bg-slate-50/70 border-r border-slate-200 rounded-l-xl text-slate-800 text-sm font-semibold transition hover:bg-slate-100 shrink-0",
             disabled && "cursor-not-allowed hover:bg-transparent"
           )}
           title={`Select Country (Currently ${selectedCountry.name} +${selectedCountry.code})`}
         >
-          <span className="text-xl leading-none select-none">{selectedCountry.flag}</span>
+          <CountryFlag countryCode={selectedCountry.iso2 || selectedCountry.code} size="md" />
           <span className="font-mono text-xs font-bold text-slate-700">+{selectedCountry.code}</span>
           <ChevronDown
             className={cn("h-3.5 w-3.5 text-slate-400 transition-transform duration-200", isOpen && "rotate-180")}
@@ -311,13 +312,13 @@ export function PhoneInputWithCountry({
                     type="button"
                     onClick={() => handleSelectCountry(c)}
                     className={cn(
-                      "inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition shrink-0",
+                      "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium transition shrink-0",
                       selectedCountry.iso2 === c.iso2
                         ? "bg-blue-50 border-blue-200 text-blue-700 font-bold"
                         : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                     )}
                   >
-                    <span>{c.flag}</span>
+                    <CountryFlag countryCode={c.iso2 || c.code} size="sm" />
                     <span className="font-mono text-[11px]">+{c.code}</span>
                   </button>
                 ))}
@@ -349,7 +350,7 @@ export function PhoneInputWithCountry({
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-xl leading-none shrink-0 select-none">{c.flag}</span>
+                      <CountryFlag countryCode={c.iso2 || c.code} size="md" />
                       <span className="truncate block font-medium group-hover:text-slate-900">
                         {c.name}
                       </span>
