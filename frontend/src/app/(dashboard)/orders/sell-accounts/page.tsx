@@ -6,19 +6,22 @@ import { useAuthStore } from "@/store/auth-store";
 import {
   DollarSign,
   AlertCircle,
-  Wallet,
-  Hash,
-  Clock,
   CheckCircle2,
   AlertTriangle,
   Users,
+  ArrowUpRight,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
+import {
+  TradeSurface,
+  Eyebrow,
+  TradeButton,
+  TradeGhostButton,
+  Chip,
+  Rule,
+} from "@/components/layout/trade-surface";
 import {
   isMarketplaceSellUnknownOutcome,
   useSellEligibleAccounts,
@@ -91,12 +94,14 @@ export default function SellAccountsPage() {
   };
 
   const totalReceive = selectedIds.reduce((sum, id) => sum + getPriceForAccount(id), 0);
+  const balance = user?.balance ?? 0;
+  const allSelected = !!eligible && selectedIds.length === eligible.length;
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-20 rounded-[1.75rem] bg-slate-200/60 animate-pulse" />
         ))}
       </div>
     );
@@ -104,7 +109,7 @@ export default function SellAccountsPage() {
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+      <div className="flex items-center gap-3 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700 ring-1 ring-rose-600/15 dark:bg-rose-500/10 dark:text-rose-300">
         <AlertCircle className="h-5 w-5" />
         <p>Failed to load eligible accounts.</p>
       </div>
@@ -113,205 +118,260 @@ export default function SellAccountsPage() {
 
   if (!eligible || eligible.length === 0) {
     return (
-      <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl">
-        <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="font-semibold text-gray-900 mb-1">{_("orders.noEligibleAccounts")}</h3>
-        <p className="text-sm text-gray-500">
-          All your connected accounts are already sold or in custody, or you don't have any verified accounts.
-        </p>
-      </div>
+      <TradeSurface>
+        <div className="px-6 py-20 text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900/[0.04] dark:bg-white/[0.05]">
+            <DollarSign className="h-6 w-6 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {_("orders.noEligibleAccounts")}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            All your connected accounts are already sold or in custody, or you don't have any
+            verified accounts.
+          </p>
+        </div>
+      </TradeSurface>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header + Balance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("orders.sellAccounts")}</h1>
-          <p className="text-gray-500 mt-0.5 sm:mt-1 text-sm sm:text-base">
-            Sell your connected Telegram accounts for platform credit.
-          </p>
-        </div>
-        {user && (
-          <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl self-start sm:self-auto w-full sm:w-auto justify-center sm:justify-start">
-            <Wallet className="h-4 w-4 text-emerald-600" />
-            <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
-              {_("orders.yourBalance")}: <span className="text-base sm:text-lg">{user.balance?.toLocaleString() || 0}</span>
-            </span>
+    <div className="space-y-8 pb-32">
+      {/* Masthead */}
+      <TradeSurface>
+        <div className="px-6 py-8 sm:px-10 sm:py-10">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-xl space-y-4">
+              <Eyebrow>Marketplace</Eyebrow>
+              <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] text-slate-900 dark:text-slate-50">
+                {_("orders.sellAccounts")}
+              </h1>
+              <p className="text-sm sm:text-base leading-relaxed text-slate-500 dark:text-slate-400">
+                Sell your connected Telegram accounts for platform credit. Pricing is set per
+                Telegram ID prefix by the platform owner.
+              </p>
+            </div>
+
+            {user && (
+              <div className="shrink-0 rounded-2xl bg-slate-900/[0.03] dark:bg-white/[0.04] px-6 py-5 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.07]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  {_("orders.yourBalance")}
+                </p>
+                <p className="mt-1.5 text-3xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  {balance.toLocaleString()}
+                </p>
+                {selectedIds.length > 0 && (
+                  <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    +{totalReceive.toLocaleString()} pending
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Info Banner */}
-      <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-        <DollarSign className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-amber-800 space-y-1">
-          <p className="font-semibold">Auto-Pricing by Telegram ID Prefix</p>
-          <p>
-            Each account has a price based on its Telegram ID prefix (set by the platform owner).
-            Your balance will <strong>not</strong> be credited immediately — you only get paid when a buyer purchases your account.
-          </p>
         </div>
-      </div>
+      </TradeSurface>
 
-      {/* Eligible Accounts Table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <Table className="w-full text-sm">
-            <TableHeader>
-              <TableRow className="border-b border-gray-200 hover:bg-gray-50/50 bg-gray-50/50 text-gray-500 font-medium">
-                <TableHead className="py-3 px-4 text-left w-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length === eligible.length}
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
-                  />
-                </TableHead>
-                <TableHead className="py-3 px-4 text-left">Telegram Account</TableHead>
-                <TableHead className="py-3 px-3 text-center">Umur Akun</TableHead>
-                <TableHead className="py-3 px-3 text-center">Spam Bot</TableHead>
-                <TableHead className="py-3 px-3 text-center">Kontak</TableHead>
-                <TableHead className="py-3 px-4 text-left">Username</TableHead>
-                <TableHead className="py-3 px-4 text-left">Telegram ID</TableHead>
-                <TableHead className="py-3 px-4 text-center">Price (Rp)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {eligible.map((acc) => {
-                const isSelected = selectedIds.includes(acc.id);
-                const price = acc.sell_price || 0;
-                return (
-                  <TableRow
-                    key={acc.id}
-                    className={cn(
-                      "border-b border-gray-100 hover:bg-gray-50/50 transition-colors last:border-b-0 cursor-pointer",
-                      isSelected && "bg-primary-50/20"
-                    )}
-                    onClick={() => handleToggleSelect(acc.id)}
-                  >
-                    <TableCell className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleSelect(acc.id)}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
-                      />
-                    </TableCell>
-                    <TableCell className="whitespace-normal py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center font-bold text-primary-700 text-xs shrink-0">
-                          {acc.first_name ? acc.first_name[0].toUpperCase() : "U"}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-semibold text-gray-900">
-                              {acc.first_name || "Unnamed"} {acc.last_name || ""}
-                            </p>
-                            {acc.is_resale && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-                                Resale
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-mono text-gray-500">{acc.phone}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-3 text-center">
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-700 font-medium">
-                        <Clock className="h-3 w-3 text-gray-400" />
-                        {acc.est_reg_date_age || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-3 text-center">
-                      {acc.spam_status === "normal" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" /> Bersih
-                        </span>
-                      ) : acc.spam_status === "limited" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          <AlertTriangle className="h-3 w-3" /> Terbatas
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200">
-                          Belum Dicek
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-3 text-center">
-                      <span className="inline-flex items-center gap-1 text-xs font-mono font-medium text-gray-700">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        {acc.contacts_count || 0}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-4 text-gray-600 font-mono text-xs">
-                      {acc.username ? `@${acc.username}` : "—"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-4 text-gray-600 font-mono text-xs">
-                      <div className="flex items-center gap-1">
-                        <Hash className="h-3 w-3 text-gray-400" />
-                        {acc.telegram_id || "—"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-4 text-center">
-                      {price > 0 ? (
-                        <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold px-2.5 py-1">
-                          Rp {price.toLocaleString()}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">No price set</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* Sell Floating Action Panel */}
-      {selectedIds.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 bg-white border border-gray-200 shadow-2xl rounded-2xl p-4 sm:p-5 flex flex-col space-y-4 animate-in slide-in-from-bottom-6 duration-200">
-          <div className="space-y-2">
-            <div className="space-y-1.5 max-h-36 overflow-y-auto">
-              {selectedIds.slice(0, 5).map((id) => {
-                const acc = eligible.find((a) => a.id === id);
-                const price = getPriceForAccount(id);
-                return (
-                  <div key={id} className="flex justify-between text-xs text-gray-500">
-                    <span className="truncate">{acc?.phone || id.slice(0, 8)}</span>
-                    <span className="font-semibold text-gray-700">Rp {price.toLocaleString()}</span>
-                  </div>
-                );
-              })}
-              {selectedIds.length > 5 && (
-                <p className="text-xs text-gray-400">+{selectedIds.length - 5} more accounts</p>
-              )}
-            </div>
-            <div className="flex justify-between items-center text-sm font-semibold text-gray-900 border-t border-gray-100 pt-2">
-              <span>{_("orders.balanceToReceive")}:</span>
-              <span className="text-emerald-600 text-lg font-bold">
-                Rp {totalReceive.toLocaleString()}
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 italic">
-              You'll only be paid when a buyer purchases your account(s).
+      {/* Deferred payment notice — placed ahead of the list because it changes
+          how every price on this page should be read. */}
+      <TradeSurface>
+        <div className="flex items-start gap-4 px-6 py-5">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 ring-1 ring-amber-600/15 dark:bg-amber-500/10 dark:ring-amber-400/20">
+            <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </span>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Payment is deferred until a buyer purchases
+            </p>
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Your balance will <strong className="font-semibold text-slate-700 dark:text-slate-300">not</strong>{" "}
+              be credited immediately — you only get paid when a buyer purchases your account.
             </p>
           </div>
-          <Button
-            onClick={() => setSellConfirmOpen(true)}
-            className="w-full bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white border-none shadow-sm font-semibold"
-          >
-            <DollarSign className="h-4 w-4 mr-2" />
-            Sell {selectedIds.length} Account(s)
-          </Button>
+        </div>
+      </TradeSurface>
+
+      {/* Eligible accounts */}
+      <TradeSurface>
+        <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Eyebrow>Eligible</Eyebrow>
+            <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              Accounts ready to list
+            </h2>
+          </div>
+          <TradeGhostButton onClick={handleSelectAll} icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
+            {allSelected ? "Clear selection" : `Select all ${eligible.length}`}
+          </TradeGhostButton>
+        </div>
+
+        <Rule />
+
+        {/* Column header */}
+        <div className="hidden lg:grid grid-cols-[2.25rem_minmax(0,1.6fr)_repeat(3,minmax(0,1fr))_minmax(0,1fr)_minmax(0,0.9fr)] items-center gap-x-4 px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+          <span className="flex justify-center">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={handleSelectAll}
+              aria-label="Select all accounts"
+              className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-slate-900 dark:accent-white"
+            />
+          </span>
+          <span>Account</span>
+          <span className="text-center">Age</span>
+          <span className="text-center">Spam</span>
+          <span className="text-center">Contacts</span>
+          <span>Username</span>
+          <span className="text-right">Price</span>
+        </div>
+
+        {/* Rows */}
+        {eligible.map((acc, i) => {
+          const isSelected = selectedIds.includes(acc.id);
+          const price = acc.sell_price || 0;
+          return (
+            <div
+              key={acc.id}
+              role="checkbox"
+              aria-checked={isSelected}
+              tabIndex={0}
+              onClick={() => handleToggleSelect(acc.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleToggleSelect(acc.id);
+                }
+              }}
+              className={cn(
+                "grid cursor-pointer grid-cols-1 items-center gap-4 px-6 py-4 transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:grid-cols-[2.25rem_minmax(0,1.6fr)_repeat(3,minmax(0,1fr))_minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-x-4",
+                i > 0 && "border-t border-slate-900/[0.05] dark:border-white/[0.06]",
+                isSelected
+                  ? "bg-slate-900/[0.03] dark:bg-white/[0.04]"
+                  : "hover:bg-slate-900/[0.015] dark:hover:bg-white/[0.015]"
+              )}
+            >
+              {/* checkbox */}
+              <div className="flex justify-center lg:justify-center" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => handleToggleSelect(acc.id)}
+                  aria-label={`Select account ${acc.phone}`}
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-slate-900 dark:accent-white"
+                />
+              </div>
+
+              {/* account */}
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300",
+                    isSelected
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "bg-slate-900/[0.06] text-slate-600 dark:bg-white/[0.08] dark:text-slate-300"
+                  )}
+                >
+                  {acc.first_name ? acc.first_name[0].toUpperCase() : "U"}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {acc.first_name || "Unnamed"} {acc.last_name || ""}
+                    </p>
+                    {acc.is_resale && <Chip tone="accent">Resale</Chip>}
+                  </div>
+                  <p className="truncate font-mono text-xs text-slate-400">
+                    {acc.phone} · {acc.telegram_id ? `#${acc.telegram_id}` : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* age */}
+              <div className="flex items-center gap-2 lg:justify-center">
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                  {acc.est_reg_date_age || "—"}
+                </span>
+              </div>
+
+              {/* spam */}
+              <div className="flex items-center gap-2 lg:justify-center">
+                {acc.spam_status === "normal" ? (
+                  <Chip tone="positive" icon={<CheckCircle2 className="h-3 w-3" />}>
+                    Clean
+                  </Chip>
+                ) : acc.spam_status === "limited" ? (
+                  <Chip tone="negative" icon={<AlertTriangle className="h-3 w-3" />}>
+                    Limited
+                  </Chip>
+                ) : (
+                  <Chip>Unchecked</Chip>
+                )}
+              </div>
+
+              {/* contacts */}
+              <div className="flex items-center gap-2 lg:justify-center">
+                <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <Users className="h-3 w-3 text-slate-400" />
+                  {acc.contacts_count || 0}
+                </span>
+              </div>
+
+              {/* username */}
+              <div className="truncate font-mono text-xs text-slate-500">
+                {acc.username ? `@${acc.username}` : "—"}
+              </div>
+
+              {/* price */}
+              <div className="text-right">
+                {price > 0 ? (
+                  <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+                    Rp {price.toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400">No price set</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </TradeSurface>
+
+      {/* Selection action bar — only appears once something is picked */}
+      {selectedIds.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4 sm:inset-x-auto sm:right-6 sm:w-[26rem] sm:px-0 sm:pb-0">
+          <TradeSurface>
+            <div className="px-5 py-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {selectedIds.length} selected
+                </p>
+                <p className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  Rp {totalReceive.toLocaleString()}
+                </p>
+              </div>
+
+              <p className="mt-1 text-xs text-slate-400">
+                {_("orders.balanceToReceive")} — paid when a buyer purchases.
+              </p>
+
+              <div className="mt-4 flex gap-2">
+                <TradeButton
+                  onClick={() => setSellConfirmOpen(true)}
+                  className="flex-1 justify-center"
+                  icon={<ArrowUpRight className="h-3.5 w-3.5" />}
+                >
+                  List {selectedIds.length} account{selectedIds.length === 1 ? "" : "s"}
+                </TradeButton>
+                <TradeGhostButton onClick={() => setSelectedIds([])} className="px-4">
+                  Clear
+                </TradeGhostButton>
+              </div>
+            </div>
+          </TradeSurface>
         </div>
       )}
 
-      {/* Multi-Sell Confirmation Dialog */}
+      {/* Multi-sell confirmation */}
       <ConfirmDialog
         open={sellConfirmOpen}
         onOpenChange={setSellConfirmOpen}
@@ -320,28 +380,36 @@ export default function SellAccountsPage() {
         message={
           <div className="space-y-3 text-left">
             <p className="text-sm text-gray-500">
-              Are you sure you want to sell these {selectedIds.length} Telegram account(s)? This will stop all active broadcasting and auto-replies immediately.
+              Are you sure you want to sell these {selectedIds.length} Telegram account(s)? This
+              will stop all active broadcasting and auto-replies immediately.
             </p>
-            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2 text-xs text-gray-600">
-              <p className="font-semibold text-gray-900 text-[11px] uppercase tracking-wider">Price Breakdown</p>
+            <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3.5 text-xs text-gray-600">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-900">
+                Price Breakdown
+              </p>
               {selectedIds.map((id) => {
                 const acc = eligible.find((a) => a.id === id);
                 const price = getPriceForAccount(id);
                 return (
                   <div key={id} className="flex justify-between">
-                    <span className="truncate mr-2">{acc?.phone || id.slice(0, 8)}</span>
+                    <span className="mr-2 truncate">{acc?.phone || id.slice(0, 8)}</span>
                     <span className="font-semibold text-gray-900">Rp {price.toLocaleString()}</span>
                   </div>
                 );
               })}
               <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
                 <span className="text-gray-900">Total:</span>
-                <span className="text-emerald-600 font-bold">Rp {totalReceive.toLocaleString()}</span>
+                <span className="font-bold text-emerald-600">
+                  Rp {totalReceive.toLocaleString()}
+                </span>
               </div>
             </div>
-            <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-xs text-amber-700">
-              <p className="font-semibold mb-0.5">⏳ Deferred Payment</p>
-              <p>Your balance will <strong>not</strong> be credited now. You only receive payment when a buyer purchases your listed account(s).</p>
+            <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-700">
+              <p className="mb-0.5 font-semibold">⏳ Deferred Payment</p>
+              <p>
+                Your balance will <strong>not</strong> be credited now. You only receive payment
+                when a buyer purchases your listed account(s).
+              </p>
             </div>
           </div>
         }

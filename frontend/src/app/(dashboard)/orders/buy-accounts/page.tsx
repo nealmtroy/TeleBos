@@ -5,26 +5,29 @@ import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import {
   ShoppingCart,
-  Globe,
   Shield,
   Mail,
   Sparkles,
   AlertCircle,
-  Wallet,
-  Tag,
   Clock,
   CheckCircle2,
   AlertTriangle,
   Users,
+  ArrowUpRight,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
+import {
+  TradeSurface,
+  Eyebrow,
+  TradeButton,
+  TradeGhostButton,
+  Chip,
+  Rule,
+  Metric,
+} from "@/components/layout/trade-surface";
 import {
   useMarketplaceStock,
   useMarketplaceStockAccounts,
@@ -86,83 +89,127 @@ export default function BuyAccountsPage() {
     }
   };
 
+  const balance = user?.balance ?? 0;
+  const cheapest = stock?.length
+    ? stock.reduce((min, c) => (c.price < min ? c.price : min), stock[0].price)
+    : 0;
+  const totalStock = stock?.reduce((sum, c) => sum + c.ready_stock, 0) ?? 0;
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header + Balance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("orders.buyAccounts")}</h1>
-          <p className="text-gray-500 mt-0.5 sm:mt-1 text-sm sm:text-base">
-            Purchase verified Telegram accounts directly from sellers.
-          </p>
-        </div>
-        {user && (
-          <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl self-start sm:self-auto w-full sm:w-auto justify-center sm:justify-start">
-            <Wallet className="h-4 w-4 text-emerald-600" />
-            <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
-              {_("orders.yourBalance")}: <span className="text-base sm:text-lg">{user.balance?.toLocaleString() || 0}</span>
-            </span>
+    <div className="space-y-8">
+      {/* Masthead */}
+      <TradeSurface>
+        <div className="px-6 py-8 sm:px-10 sm:py-10">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-xl space-y-4">
+              <Eyebrow>Marketplace</Eyebrow>
+              <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] text-slate-900 dark:text-slate-50">
+                {_("orders.buyAccounts")}
+              </h1>
+              <p className="text-sm sm:text-base leading-relaxed text-slate-500 dark:text-slate-400">
+                Purchase verified Telegram accounts directly from sellers. Each account
+                carries its own price, age and reputation — compare before you commit.
+              </p>
+            </div>
+
+            {user && (
+              <div className="shrink-0 rounded-2xl bg-slate-900/[0.03] dark:bg-white/[0.04] px-6 py-5 ring-1 ring-slate-900/[0.06] dark:ring-white/[0.07]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  {_("orders.yourBalance")}
+                </p>
+                <p className="mt-1.5 text-3xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  {balance.toLocaleString()}
+                </p>
+                {cheapest > 0 && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    From Rp {cheapest.toLocaleString()} · {totalStock} in stock
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </TradeSurface>
 
       {stockLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-44 rounded-[1.75rem] bg-slate-200/60 animate-pulse" />
           ))}
         </div>
       ) : !stock || stock.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl">
-          <ShoppingCart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="font-semibold text-gray-900 mb-1">{_("orders.noOrders") || "No Ready Stock"}</h3>
-          <p className="text-sm text-gray-500">Check back later for newly added stock!</p>
-        </div>
+        <TradeSurface>
+          <div className="px-6 py-20 text-center">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900/[0.04] dark:bg-white/[0.05]">
+              <ShoppingCart className="h-6 w-6 text-slate-400" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              {_("orders.noOrders") || "No Ready Stock"}
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">Check back later for newly added stock!</p>
+          </div>
+        </TradeSurface>
       ) : (
-        <div className="space-y-6">
-          {/* Stock Category Cards */}
+        <div className="space-y-8">
+          {/* Country selection */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {stock.map((cat) => {
               const isExpanded = selectedCountry === cat.country_code;
+              const affordable = balance >= cat.price;
               return (
-                <Card
-                  key={cat.country_code}
-                  className={cn(
-                    "hover:shadow-md transition cursor-pointer border-2",
-                    isExpanded ? "border-primary-500 shadow-sm" : "border-gray-200"
-                  )}
-                  onClick={() => setSelectedCountry(isExpanded ? null : cat.country_code)}
-                >
-                  <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4 text-gray-400" />
-                          <span className="font-bold text-gray-900">{cat.country_name}</span>
+                <TradeSurface key={cat.country_code} className={EASE_PRESS}>
+                  <button
+                    onClick={() => setSelectedCountry(isExpanded ? null : cat.country_code)}
+                    aria-pressed={isExpanded}
+                    className="group block w-full text-left"
+                  >
+                    <div className="px-6 py-6 space-y-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1.5">
+                          <p className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+                            {cat.country_name}
+                          </p>
+                          <p className="font-mono text-xs uppercase tracking-[0.12em] text-slate-400">
+                            {cat.country_code}
+                          </p>
                         </div>
-                        <p className="text-sm font-mono text-gray-500 font-semibold">{cat.country_code}</p>
+                        <Chip tone={cat.ready_stock > 0 ? "positive" : "neutral"}>
+                          {cat.ready_stock} {_("orders.readyStock")}
+                        </Chip>
                       </div>
-                      <Badge variant="outline" className="text-xs bg-primary-50 text-primary-700 border-primary-200 font-semibold px-2.5 py-1">
-                        {cat.ready_stock} {_("orders.readyStock")}
-                      </Badge>
+
+                      <Rule />
+
+                      <div className="flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                            {_("orders.pricePerAccount")}
+                          </p>
+                          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                            {cat.price > 0 ? `Rp ${cat.price.toLocaleString()}` : "—"}
+                            {cat.price > 0 && (
+                              <span className="ml-1 text-sm font-normal text-slate-400">+</span>
+                            )}
+                          </p>
+                        </div>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.04] dark:bg-white/[0.06] text-slate-500 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px">
+                          <ArrowUpRight className="h-4 w-4" />
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-400">
+                        {affordable
+                          ? "Prices vary per account. Open to see the full list."
+                          : "Your balance is below the starting price for this country."}
+                      </p>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                      <span className="text-xs text-gray-400 font-medium">{_("orders.pricePerAccount")}:</span>
-                      <span className="text-base font-bold text-gray-900">
-                        Rp {cat.price.toLocaleString()}
-                        {cat.price > 0 && <span className="text-xs text-gray-400 font-normal ml-1">+</span>}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 italic -mt-2">
-                      Prices vary per account. Click to see details.
-                    </p>
-                  </CardContent>
-                </Card>
+                  </button>
+                </TradeSurface>
               );
             })}
           </div>
 
-          {/* Expanded Country Account Details */}
+          {/* Expanded country account details */}
           {selectedCountry && (
             <CountryAccountsList
               countryCode={selectedCountry}
@@ -188,29 +235,36 @@ export default function BuyAccountsPage() {
         title={_("orders.confirmBuyTitle")}
         message={
           <div className="space-y-3 text-left">
-            <p className="text-sm text-gray-500">
-              {_("orders.confirmBuyMsg")}
-            </p>
+            <p className="text-sm text-gray-500">{_("orders.confirmBuyMsg")}</p>
             {pendingBuyAccount && (
-              <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
+              <div className="space-y-2.5 rounded-xl bg-gray-50 p-3.5 text-xs text-gray-600 border border-gray-100">
                 <div className="flex justify-between">
                   <span>User ID:</span>
                   <span className="font-semibold text-gray-900">{pendingBuyAccount.telegram_id || "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Country Prefix:</span>
-                  <span className="font-semibold text-gray-900 font-mono">{pendingBuyAccount.country_code}</span>
+                  <span className="font-semibold text-gray-900 font-mono">
+                    {pendingBuyAccount.country_code}
+                  </span>
                 </div>
                 <div className="flex justify-between border-t border-gray-200 pt-2 font-medium">
                   <span className="text-gray-900">Total Price:</span>
-                  <span className="text-primary-600 font-bold">
+                  <span className="font-bold text-primary-600">
                     Rp {pendingBuyAccount.buy_price.toLocaleString()}
                   </span>
                 </div>
                 {user && (
-                  <div className="flex justify-between text-[11px] pt-1">
+                  <div className="flex justify-between pt-1 text-[11px]">
                     <span>{_("orders.yourBalance")}:</span>
-                    <span className={cn("font-medium", user.balance < pendingBuyAccount.buy_price ? "text-red-600" : "text-green-600")}>
+                    <span
+                      className={cn(
+                        "font-medium",
+                        user.balance < pendingBuyAccount.buy_price
+                          ? "text-red-600"
+                          : "text-green-600"
+                      )}
+                    >
                       Rp {user.balance.toLocaleString()}
                     </span>
                   </div>
@@ -228,65 +282,71 @@ export default function BuyAccountsPage() {
       {/* Purchase Success Modal */}
       {successOpen && boughtAccount && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                <Sparkles className="h-6 w-6 text-emerald-600" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">
-                {_("orders.buySuccess")}
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                The account has been transferred to your custody. Here are the account details:
-              </p>
+          <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md rounded-[1.75rem] bg-white p-1.5 shadow-2xl ring-1 ring-slate-900/10 animate-in fade-in zoom-in duration-300">
+            <div className="rounded-[1.5rem] bg-white px-6 py-8">
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-600/15">
+                  <Sparkles className="h-6 w-6 text-emerald-600" />
+                </div>
+                <h3 className="mb-1 text-lg font-semibold text-slate-900">
+                  {_("orders.buySuccess")}
+                </h3>
+                <p className="mb-6 text-sm text-slate-500">
+                  The account has been transferred to your custody. Here are the account details:
+                </p>
 
-              <div className="w-full bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-left text-xs space-y-2.5 mb-6">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Phone Number:</span>
-                  <span className="font-semibold text-gray-900 font-mono">{boughtAccount.phone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">User ID:</span>
-                  <span className="font-semibold text-gray-900 font-mono">{boughtAccount.telegram_id || "—"}</span>
-                </div>
-                {(boughtAccount.first_name || boughtAccount.last_name) && (
+                <div className="mb-6 w-full space-y-2.5 rounded-xl bg-emerald-50/50 p-4 text-left text-xs ring-1 ring-emerald-600/10">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Name:</span>
-                    <span className="font-semibold text-gray-900">
-                      {boughtAccount.first_name || ""} {boughtAccount.last_name || ""}
+                    <span className="text-gray-500">Phone Number:</span>
+                    <span className="font-mono font-semibold text-gray-900">{boughtAccount.phone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">User ID:</span>
+                    <span className="font-mono font-semibold text-gray-900">
+                      {boughtAccount.telegram_id || "—"}
                     </span>
                   </div>
-                )}
-                {boughtAccount.username && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Username:</span>
-                    <span className="font-semibold text-gray-900 font-mono">@{boughtAccount.username}</span>
-                  </div>
-                )}
-              </div>
+                  {(boughtAccount.first_name || boughtAccount.last_name) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Name:</span>
+                      <span className="font-semibold text-gray-900">
+                        {boughtAccount.first_name || ""} {boughtAccount.last_name || ""}
+                      </span>
+                    </div>
+                  )}
+                  {boughtAccount.username && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Username:</span>
+                      <span className="font-mono font-semibold text-gray-900">
+                        @{boughtAccount.username}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex gap-3 w-full">
-                <Button
-                  onClick={() => {
-                    setSuccessOpen(false);
-                    setBoughtAccount(null);
-                    window.location.href = "/accounts";
-                  }}
-                  className="w-full"
-                >
-                  View in My Accounts
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSuccessOpen(false);
-                    setBoughtAccount(null);
-                  }}
-                  className="w-full"
-                >
-                  Close
-                </Button>
+                <div className="flex w-full flex-col gap-2 sm:flex-row">
+                  <TradeButton
+                    onClick={() => {
+                      setSuccessOpen(false);
+                      setBoughtAccount(null);
+                      window.location.href = "/accounts";
+                    }}
+                    className="justify-center flex-1"
+                    icon={<ArrowUpRight className="h-3.5 w-3.5" />}
+                  >
+                    View in My Accounts
+                  </TradeButton>
+                  <TradeGhostButton
+                    onClick={() => {
+                      setSuccessOpen(false);
+                      setBoughtAccount(null);
+                    }}
+                    className="justify-center flex-1"
+                  >
+                    Close
+                  </TradeGhostButton>
+                </div>
               </div>
             </div>
           </div>
@@ -296,6 +356,8 @@ export default function BuyAccountsPage() {
   );
 }
 
+const EASE_PRESS = "transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]";
+
 function CountryAccountsList({
   countryCode,
   onBuyClick,
@@ -303,26 +365,25 @@ function CountryAccountsList({
   countryCode: string;
   onBuyClick: (acc: any) => void;
 }) {
-  const _ = useT();
   const user = useAuthStore((s) => s.user);
   const { data: accounts, isLoading, error } = useMarketplaceStockAccounts(countryCode);
 
   if (isLoading) {
     return (
-      <div className="space-y-2 mt-4 p-4 border border-gray-150 rounded-xl bg-gray-50/50">
-        <Skeleton className="h-6 w-32 animate-pulse bg-gray-200" />
-        <div className="space-y-2">
+      <TradeSurface>
+        <div className="space-y-3 p-6">
+          <Skeleton className="h-6 w-32 animate-pulse bg-slate-200" />
           {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full animate-pulse bg-gray-200" />
+            <Skeleton key={i} className="h-14 w-full animate-pulse bg-slate-100" />
           ))}
         </div>
-      </div>
+      </TradeSurface>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 mt-4 text-xs">
+      <div className="flex items-center gap-3 rounded-2xl bg-rose-50 p-4 text-xs text-rose-700 ring-1 ring-rose-600/15 dark:bg-rose-500/10 dark:text-rose-300">
         <AlertCircle className="h-4 w-4" />
         <p>Failed to load accounts for this country.</p>
       </div>
@@ -331,215 +392,200 @@ function CountryAccountsList({
 
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="text-center py-8 border border-dashed border-gray-200 rounded-xl mt-4 text-xs text-gray-500 bg-white">
+      <div className="rounded-2xl border border-dashed border-slate-300 py-10 text-center text-xs text-slate-500 dark:border-slate-700">
         No accounts available in this country.
       </div>
     );
   }
 
   return (
-    <Card className="mt-4 border border-gray-200">
-      <CardHeader className="py-4 px-5 bg-gray-50/50 border-b border-gray-100 flex flex-row justify-between items-center">
+    <TradeSurface>
+      {/* Panel head */}
+      <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <CardTitle className="text-sm font-bold text-gray-900">
-            Stock Details ({countryCode})
-          </CardTitle>
-          <CardDescription className="text-xs">
+          <Eyebrow>{countryCode}</Eyebrow>
+          <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            Available accounts
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
             Each account has its own price. Purchase to unlock full credentials.
-          </CardDescription>
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="p-0 divide-y divide-gray-150">
-        <div className="hidden sm:block overflow-x-auto">
-          <Table className="w-full text-xs">
-            <TableHeader>
-              <TableRow className="bg-gray-50 hover:bg-gray-50 text-gray-500 font-medium">
-                <TableHead className="text-left py-2.5 px-4">Telegram User ID</TableHead>
-                <TableHead className="text-center py-2.5 px-3">Umur Akun</TableHead>
-                <TableHead className="text-center py-2.5 px-3">Spam Bot</TableHead>
-                <TableHead className="text-center py-2.5 px-3">Kontak</TableHead>
-                <TableHead className="text-center py-2.5 px-3">2FA Password</TableHead>
-                <TableHead className="text-center py-2.5 px-3">Recovery Email</TableHead>
-                <TableHead className="text-center py-2.5 px-4">Price</TableHead>
-                <TableHead className="text-right py-2.5 px-4">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.map((acc) => {
-                const price = acc.buy_price ?? acc.sell_price ?? 7000;
-                return (
-                  <TableRow key={acc.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
-                    <TableCell className="whitespace-nowrap py-3 px-4 font-mono text-gray-900 font-semibold">
-                      <div className="flex items-center gap-1.5">
-                        <span>{acc.telegram_id || "—"}</span>
-                        {acc.is_resale && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 font-sans">
-                            Resale
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3 px-3 text-center">
-                      <span className="inline-flex items-center gap-1 text-gray-700 font-medium">
-                        <Clock className="h-3 w-3 text-gray-400" />
-                        {acc.est_reg_date_age || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-3 px-3 text-center">
-                      {acc.spam_status === "normal" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" /> Bersih
-                        </span>
-                      ) : acc.spam_status === "limited" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          <AlertTriangle className="h-3 w-3" /> Terbatas
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200">
-                          Belum Dicek
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3 px-3 text-center">
-                      <span className="inline-flex items-center gap-1 font-mono text-gray-700 font-medium">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        {acc.contacts_count || 0}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-3 px-3 text-center">
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
-                        acc.twofa_enabled
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-gray-50 text-gray-500 border-gray-200"
-                      )}>
-                        <Shield className="h-3 w-3" />
-                        {acc.twofa_enabled ? "Required" : "Not Required"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-3 px-3 text-center">
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
-                        acc.recovery_email_available
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-gray-50 text-gray-500 border-gray-200"
-                      )}>
-                        <Mail className="h-3 w-3" />
-                        {acc.recovery_email_available ? "Available" : "Not Available"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
-                        <Tag className="h-3 w-3 text-primary-500" />
-                        Rp {price.toLocaleString()}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap py-3 px-4 text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => onBuyClick(acc)}
-                        disabled={user ? user.balance < price : false}
-                        className="text-xs h-8"
-                      >
-                        <ShoppingCart className="h-3.5 w-3.5 mr-1" />
-                        Buy Now
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <p className="shrink-0 text-sm text-slate-400">
+          {accounts.length} {accounts.length === 1 ? "account" : "accounts"}
+        </p>
+      </div>
+
+      <Rule />
+
+      {/* Desktop rows */}
+      <div className="hidden sm:block">
+        <div className="grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))_minmax(0,0.9fr)_auto] items-center gap-x-3 px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+          <span>User ID</span>
+          <span className="text-center">Age</span>
+          <span className="text-center">Spam</span>
+          <span className="text-center">Contacts</span>
+          <span className="text-center">2FA</span>
+          <span className="text-center">Recovery</span>
+          <span className="text-right">Price</span>
+          <span className="w-24" />
         </div>
 
-        <div className="sm:hidden divide-y divide-gray-100">
-          {accounts.map((acc) => {
-            const price = acc.buy_price ?? acc.sell_price ?? 7000;
-            return (
-              <div key={acc.id} className="p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <span className="text-xs text-gray-400 font-medium">User ID:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold text-gray-900 font-mono">{acc.telegram_id || "—"}</span>
-                    {acc.is_resale && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-                        Resale
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="space-y-1">
-                    <p className="text-gray-400 font-medium">Umur Akun</p>
-                    <span className="inline-flex items-center gap-1 font-medium text-gray-800">
-                      <Clock className="h-3 w-3 text-gray-400" />
-                      {acc.est_reg_date_age || "—"}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-gray-400 font-medium">Spam Bot</p>
-                    {acc.spam_status === "normal" ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3" /> Bersih
-                      </span>
-                    ) : acc.spam_status === "limited" ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                        <AlertTriangle className="h-3 w-3" /> Terbatas
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-500 border border-gray-200">
-                        Belum Dicek
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-gray-400 font-medium">Kontak</p>
-                    <span className="inline-flex items-center gap-1 font-mono font-medium text-gray-800">
-                      <Users className="h-3 w-3 text-gray-400" />
-                      {acc.contacts_count || 0}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="space-y-1">
-                    <p className="text-gray-400 font-medium">2FA Password</p>
-                    <span className={cn(
-                      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
-                      acc.twofa_enabled ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-gray-50 text-gray-500 border-gray-200"
-                    )}>
-                      {acc.twofa_enabled ? "Required" : "Not Required"}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-gray-400 font-medium">Recovery Email</p>
-                    <span className={cn(
-                      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
-                      acc.recovery_email_available ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-500 border-gray-200"
-                    )}>
-                      {acc.recovery_email_available ? "Available" : "Not Available"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-                  <span className="inline-flex items-center gap-1 text-sm font-bold text-gray-900">
-                    <Tag className="h-3.5 w-3.5 text-primary-500" />
-                    Rp {price.toLocaleString()}
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={() => onBuyClick(acc)}
-                    disabled={user ? user.balance < price : false}
-                    className="text-xs"
-                  >
-                    <ShoppingCart className="h-3.5 w-3.5 mr-1" />
-                    Buy
-                  </Button>
-                </div>
+        {accounts.map((acc, i) => {
+          const price = acc.buy_price ?? acc.sell_price ?? 7000;
+          const canAfford = !user || user.balance >= price;
+          return (
+            <div
+              key={acc.id}
+              className={cn(
+                "grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))_minmax(0,0.9fr)_auto] items-center gap-x-3 px-6 py-4 transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-slate-900/[0.02] dark:hover:bg-white/[0.02]",
+                i > 0 && "border-t border-slate-900/[0.05] dark:border-white/[0.06]"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="truncate font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {acc.telegram_id || "—"}
+                </span>
+                {acc.is_resale && (
+                  <Chip tone="accent">Resale</Chip>
+                )}
               </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+
+              <div className="flex justify-center">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <Clock className="h-3 w-3 text-slate-400" />
+                  {acc.est_reg_date_age || "—"}
+                </span>
+              </div>
+
+              <div className="flex justify-center">
+                {acc.spam_status === "normal" ? (
+                  <Chip tone="positive" icon={<CheckCircle2 className="h-3 w-3" />}>
+                    Clean
+                  </Chip>
+                ) : acc.spam_status === "limited" ? (
+                  <Chip tone="negative" icon={<AlertTriangle className="h-3 w-3" />}>
+                    Limited
+                  </Chip>
+                ) : (
+                  <Chip>Unchecked</Chip>
+                )}
+              </div>
+
+              <div className="flex justify-center">
+                <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <Users className="h-3 w-3 text-slate-400" />
+                  {acc.contacts_count || 0}
+                </span>
+              </div>
+
+              <div className="flex justify-center">
+                <Chip
+                  tone={acc.twofa_enabled ? "caution" : "neutral"}
+                  icon={<Shield className="h-3 w-3" />}
+                >
+                  {acc.twofa_enabled ? "Required" : "None"}
+                </Chip>
+              </div>
+
+              <div className="flex justify-center">
+                <Chip
+                  tone={acc.recovery_email_available ? "accent" : "neutral"}
+                  icon={<Mail className="h-3 w-3" />}
+                >
+                  {acc.recovery_email_available ? "Available" : "None"}
+                </Chip>
+              </div>
+
+              <div className="text-right">
+                <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+                  Rp {price.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex w-24 justify-end">
+                <TradeButton
+                  onClick={() => onBuyClick(acc)}
+                  disabled={!canAfford}
+                  className="h-9 pl-4 text-xs"
+                  icon={<ShoppingCart className="h-3.5 w-3.5" />}
+                >
+                  Buy
+                </TradeButton>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden">
+        {accounts.map((acc, i) => {
+          const price = acc.buy_price ?? acc.sell_price ?? 7000;
+          const canAfford = !user || user.balance >= price;
+          return (
+            <div
+              key={acc.id}
+              className={cn(
+                "space-y-4 px-6 py-5",
+                i > 0 && "border-t border-slate-900/[0.05] dark:border-white/[0.06]"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {acc.telegram_id || "—"}
+                  </span>
+                  {acc.is_resale && <Chip tone="accent">Resale</Chip>}
+                </div>
+                <span className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+                  Rp {price.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Metric label="Age" value={acc.est_reg_date_age || "—"} />
+                <Metric label="Contacts" value={acc.contacts_count || 0} />
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {acc.spam_status === "normal" ? (
+                  <Chip tone="positive" icon={<CheckCircle2 className="h-3 w-3" />}>
+                    Spam clean
+                  </Chip>
+                ) : acc.spam_status === "limited" ? (
+                  <Chip tone="negative" icon={<AlertTriangle className="h-3 w-3" />}>
+                    Spam limited
+                  </Chip>
+                ) : (
+                  <Chip>Spam unchecked</Chip>
+                )}
+                <Chip
+                  tone={acc.twofa_enabled ? "caution" : "neutral"}
+                  icon={<Shield className="h-3 w-3" />}
+                >
+                  {acc.twofa_enabled ? "2FA required" : "No 2FA"}
+                </Chip>
+                <Chip
+                  tone={acc.recovery_email_available ? "accent" : "neutral"}
+                  icon={<Mail className="h-3 w-3" />}
+                >
+                  {acc.recovery_email_available ? "Recovery email" : "No recovery"}
+                </Chip>
+              </div>
+
+              <TradeButton
+                onClick={() => onBuyClick(acc)}
+                disabled={!canAfford}
+                className="w-full justify-center"
+                icon={<ShoppingCart className="h-3.5 w-3.5" />}
+              >
+                Buy
+              </TradeButton>
+            </div>
+          );
+        })}
+      </div>
+    </TradeSurface>
   );
 }
