@@ -202,7 +202,7 @@ export function PhoneInputWithCountry({
   };
 
   return (
-    <div ref={containerRef} className={cn("relative space-y-1", className)}>
+    <div ref={containerRef} className={cn("relative space-y-1", isOpen ? "z-50" : "z-10", className)}>
       <div
         className={cn(
           "flex items-center rounded-xl border bg-card transition-all shadow-xs",

@@ -24,8 +24,8 @@ export default function AddAccountPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-card rounded-2xl border border-border/80 shadow-2xs overflow-hidden">
-        <div className="flex border-b border-border/80 bg-muted/20">
+      <div className="bg-card rounded-2xl border border-border/80 shadow-2xs">
+        <div className="flex border-b border-border/80 bg-muted/20 rounded-t-2xl overflow-hidden">
           {[
             { key: "otp", label: _("addAccount.tabOtp") },
             { key: "qr", label: "QR Code" },
