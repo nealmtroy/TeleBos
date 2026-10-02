@@ -3,7 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
-- **[5eb7f0b6](https://github.com/nealmtroy/TeleBos/commit/5eb7f0b6)**: fix: harden error handling, lock admin balance writes, widen balance to BIGINT
+- **[1509b2e5](https://github.com/nealmtroy/TeleBos/commit/1509b2e5)**: fix: harden error handling, lock admin balance writes, widen balance to BIGINT
 - **[ae3da63d](https://github.com/nealmtroy/TeleBos/commit/ae3da63d)**: fix(accounts): make phone placeholder dynamic based on selected country pattern
 - **[09efc3ba](https://github.com/nealmtroy/TeleBos/commit/09efc3ba)**: fix(accounts): remove overflow-hidden on AddAccount card to prevent country popover clipping
 - **[7c6c5bea](https://github.com/nealmtroy/TeleBos/commit/7c6c5bea)**: fix(accounts): polish dark mode theming for phone input, country selector popover, and login flow
