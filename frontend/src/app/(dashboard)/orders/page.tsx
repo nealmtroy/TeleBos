@@ -776,7 +776,7 @@ export default function OrderHistoryPage() {
                 ? "Cari ID Order / Layanan / Target..."
                 : "Search Order ID / Service / Target..."
             }
-            className="w-full pl-9 pr-8 py-2 border border-border/80 bg-card rounded-xl text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs transition-all"
+            className="w-full pl-9 pr-8 py-2 border border-border/90 dark:border-slate-700/80 bg-card dark:bg-slate-900/90 rounded-xl text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/70 outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150"
           />
           {search && (
             <button
@@ -801,7 +801,7 @@ export default function OrderHistoryPage() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full sm:w-[150px] appearance-none border border-border/80 rounded-xl px-3 py-2 text-xs font-semibold bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs cursor-pointer"
+              className="w-full sm:w-[150px] appearance-none border border-border/90 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs font-semibold bg-card dark:bg-slate-900/90 text-foreground outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150 cursor-pointer"
             >
               <option value="all">
                 {locale === "id" ? "Semua Status" : "All Statuses"}

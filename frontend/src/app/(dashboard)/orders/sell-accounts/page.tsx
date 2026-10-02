@@ -318,7 +318,7 @@ export default function SellAccountsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by phone, name, or username..."
-                className="w-full h-9 rounded-xl border border-input bg-card/60 pl-9 pr-4 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                className="w-full h-9 rounded-xl border border-border/90 dark:border-slate-700/80 bg-card/60 dark:bg-slate-900/90 pl-9 pr-4 text-xs font-medium text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150"
               />
             </div>
 
