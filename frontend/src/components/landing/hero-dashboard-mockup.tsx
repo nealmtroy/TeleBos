@@ -4,7 +4,7 @@
 // mobile shows the same accounts inside a handset mockup.
 // Marked with aria-hidden="true" as an illustrative visual preview.
 
-import { Bot, MessageSquare, Radio, Send, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { Bot, MessageSquare, Send, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
 const STATS = [
   { label: "Total Akun", value: "18", delta: "+2" },
@@ -114,19 +114,24 @@ export function HeroDashboardMockup() {
         </div>
       </div>
 
-      {/* Mobile: tilted handset mockup */}
-      <div className="relative mx-auto w-[16rem] sm:w-[17rem] lg:hidden">
+      {/* Mobile: tilted handset mockup.
+          No aspect-ratio on purpose. Declaring 9/19.5 pinned the frame height
+          while the screen content came out shorter, and the leftover exposed
+          the titanium rail as a wide grey bar under the home indicator. Letting
+          the content define the height keeps the rail exactly 3px all the way
+          round. Width stays narrow so the tilted handset clears the fold. */}
+      <div className="relative mx-auto w-[14rem] sm:w-[15rem] lg:hidden">
         <div
-          className="relative origin-[50%_45%] rotate-[4deg] aspect-[9/19.5]"
+          className="relative origin-[50%_45%] rotate-[4deg]"
           style={{
             background: "linear-gradient(148deg,#9aa4b2 0%,#39424f 12%,#1a212c 46%,#4a5666 84%,#8a94a3 100%)",
-            borderRadius: "3rem",
+            borderRadius: "2.75rem",
             padding: "3px",
             boxShadow: "0 10px 25px -8px rgba(0,0,0,0.6)",
           }}
         >
-          <div className="relative overflow-hidden rounded-[2.85rem] bg-[#04070d] p-[2.5px]">
-            <div className="relative overflow-hidden rounded-[2.65rem] bg-[#070b14] px-1">
+          <div className="relative overflow-hidden rounded-[2.6rem] bg-[#04070d] p-[2.5px]">
+            <div className="relative overflow-hidden rounded-[2.4rem] bg-[#070b14] px-1">
               {/* Status bar */}
               <div className="flex items-center justify-between px-5 pt-3.5 pb-1">
                 <span className="text-xs font-semibold tracking-tight text-[var(--public-text)]">9:41</span>
@@ -142,10 +147,10 @@ export function HeroDashboardMockup() {
                   <TelegramMark className="h-3 w-3" />
                 </span>
                 <span className="text-xs font-semibold text-[var(--public-text)]">TeleBos</span>
-                <Radio className="ml-auto h-3.5 w-3.5 text-[var(--public-success)]" />
+                <span className="ml-auto text-[11px] font-semibold text-[var(--public-success)]">Online</span>
               </div>
 
-              {/* Mobile Stats */}
+              {/* Stat row. */}
               <div className="grid grid-cols-3 gap-1.5 px-3 py-2">
                 {STATS.map((stat) => (
                   <div
@@ -162,12 +167,12 @@ export function HeroDashboardMockup() {
                 ))}
               </div>
 
-              {/* Mobile Account list */}
+              {/* Account list */}
               <div className="px-2 pb-1">
                 <AccountList bare />
               </div>
 
-              {/* Mobile Activity list */}
+              {/* Activity list */}
               <div className="px-3 pt-1 pb-2">
                 <p className="mb-1 text-xs font-semibold text-[var(--public-muted)]">
                   Aktivitas Terbaru
