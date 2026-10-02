@@ -2,10 +2,18 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
-import { useTelegramServices, usePlaceOrder, usePlaceMassOrder, SMMService } from "@/hooks/use-orders";
+import {
+  useTelegramServices,
+  usePlaceOrder,
+  usePlaceMassOrder,
+  SMMService,
+} from "@/hooks/use-orders";
 import { useToast } from "@/components/ui/toast";
+import { parseSmmSpeed, getFastestSpeedDisplay } from "@/lib/smm-speed-parser";
 import {
   ShoppingCart,
   Plus,
@@ -18,24 +26,90 @@ import {
   FileText,
   Wallet,
   ChevronDown,
+  ChevronUp,
   X,
   Zap,
+  CheckCircle2,
+  Users,
+  Heart,
+  Eye,
+  History,
+  Info,
+  Clock,
+  ArrowRight,
+  TrendingUp,
+  ShieldCheck,
+  Tag,
+  Layers,
+  ArrowUpDown,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Tab = "services" | "mass";
+type SortOption = "default" | "price_asc" | "price_desc" | "speed" | "min_asc";
 
 interface SmmOrderManagerProps {
   title: string;
   description: string;
   allowedServiceIds: number[];
+  categoryKey?: "members" | "reactions" | "auto-reactions" | "post-views";
+  targetPlaceholder?: string;
+  targetHelperText?: string;
+  targetExample?: string;
 }
 
-export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOrderManagerProps) {
+const SMM_NAV_ITEMS = [
+  {
+    id: "members",
+    href: "/orders/members",
+    label: "Telegram Members",
+    icon: Users,
+    tag: "Channel & Group",
+  },
+  {
+    id: "reactions",
+    href: "/orders/reactions",
+    label: "Reactions",
+    icon: Heart,
+    tag: "Post Emojis",
+  },
+  {
+    id: "auto-reactions",
+    href: "/orders/auto-reactions",
+    label: "Auto Reactions",
+    icon: Zap,
+    tag: "Future Posts",
+  },
+  {
+    id: "post-views",
+    href: "/orders/post-views",
+    label: "Post Views",
+    icon: Eye,
+    tag: "Impressions",
+  },
+  {
+    id: "history",
+    href: "/orders",
+    label: "Riwayat Order",
+    icon: History,
+    tag: "Semua Pesanan",
+  },
+];
+
+export function SmmOrderManager({
+  title,
+  description,
+  allowedServiceIds,
+  categoryKey,
+  targetPlaceholder,
+  targetHelperText,
+  targetExample,
+}: SmmOrderManagerProps) {
   const _ = useT();
+  const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const [tab, setTab] = useState<Tab>("services");
   const { data: services, isLoading, error } = useTelegramServices();
@@ -47,9 +121,41 @@ export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOr
     return services?.filter((s) => allowedServiceIds.includes(Number(s.id))) ?? [];
   }, [services, allowedServiceIds]);
 
+  // Executive KPI stats derived from available services
+  const stats = useMemo(() => {
+    if (filteredServices.length === 0) {
+      return {
+        total: 0,
+        minPrice: 0,
+        fastestSpeed: "Real-time",
+        activeCount: 0,
+      };
+    }
+    const prices = filteredServices.map((s) => s.price);
+    const minPrice = Math.min(...prices);
+    const speeds = filteredServices.map((s) => s.speed);
+    const fastestSpeed = getFastestSpeedDisplay(speeds);
+
+    return {
+      total: filteredServices.length,
+      minPrice,
+      fastestSpeed,
+      activeCount: filteredServices.length,
+    };
+  }, [filteredServices]);
+
   const tabs = [
-    { id: "services" as Tab, label: _("orders.services") || "Services", icon: ListOrdered },
-    { id: "mass" as Tab, label: _("orders.massOrder") || "Mass Order", icon: FileText },
+    {
+      id: "services" as Tab,
+      label: _("orders.services") || "Katalog Layanan",
+      icon: ListOrdered,
+      count: filteredServices.length,
+    },
+    {
+      id: "mass" as Tab,
+      label: _("orders.massOrder") || "Mass Order (Bulk)",
+      icon: FileText,
+    },
   ];
 
   const handleOrderSelect = (service: SMMService) => {
@@ -58,56 +164,217 @@ export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOr
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header + Balance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-slate-700 pb-5">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">{title}</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1 text-sm">{description}</p>
-        </div>
-        {user && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl self-start sm:self-auto">
-            <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 whitespace-nowrap">
-              {_("orders.yourBalance")}: <span className="text-sm font-bold text-emerald-700 dark:text-emerald-200 ml-1">Rp {user.balance?.toLocaleString() || 0}</span>
-            </span>
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* SMM Category Navigator Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-border/50">
+        {SMM_NAV_ITEMS.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+              )}
+            >
+              <Icon className={cn("h-3.5 w-3.5", isActive ? "text-white" : "text-muted-foreground")} />
+              <span>{item.label}</span>
+              {isActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Double-Bezel Header & Wallet Balance */}
+      <div className="rounded-2xl border border-border/70 dark:border-slate-800 bg-muted/20 dark:bg-slate-900/40 p-1.5">
+        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xs">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider">
+                <Zap className="h-3 w-3" />
+                TeleBos SMM Hub
+              </span>
+              <span className="text-xs text-muted-foreground">• Server Aktif</span>
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground text-balance">
+              {title}
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground max-w-2xl leading-relaxed">
+              {description}
+            </p>
           </div>
-        )}
+
+          {/* Executive Wallet Card */}
+          {user && (
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 dark:bg-emerald-950/20 p-3.5 flex items-center justify-between md:justify-end gap-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Wallet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {_("orders.yourBalance") || "Saldo Tersedia"}
+                  </div>
+                  <div className="text-base md:text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    Rp {user.balance?.toLocaleString("id-ID") || 0}
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/wallet"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors shrink-0"
+              >
+                <span>Top Up</span>
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Tab Navigation (Pill style) */}
-      <div className="bg-gray-100/50 dark:bg-slate-800/50 p-1 rounded-xl flex gap-1 self-start border border-gray-200/60 dark:border-slate-700/60 max-w-fit">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap focus:outline-none",
-              tab === t.id
-                ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 border border-gray-200/20 dark:border-slate-600 shadow-sm"
-                : "text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200"
+      {/* 4-Card Executive KPI Bento Deck */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Card 1: Total Services */}
+        <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Layanan Aktif
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <Layers className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-foreground tabular-nums">
+            {stats.total}{" "}
+            <span className="text-xs font-normal text-muted-foreground">Pilihan</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Semua teruji & terhubung
+          </div>
+        </div>
+
+        {/* Card 2: Starting Price */}
+        <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Harga Mulai
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+              <Tag className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-foreground tabular-nums">
+            {stats.minPrice > 0 ? (
+              <>
+                Rp {stats.minPrice.toLocaleString("id-ID")}{" "}
+                <span className="text-xs font-normal text-muted-foreground">/1k</span>
+              </>
+            ) : (
+              "—"
             )}
-          >
-            <t.icon className="h-3.5 w-3.5" />
-            {t.label}
-          </button>
-        ))}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Tarif termurah tersedia
+          </div>
+        </div>
+
+        {/* Card 3: Average Speed */}
+        <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Kecepatan Rata-Rata
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <Clock className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-foreground tabular-nums truncate" title={stats.fastestSpeed}>
+            {stats.fastestSpeed}
+          </div>
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+            <Zap className="h-3 w-3" /> Diproses otomatis
+          </div>
+        </div>
+
+        {/* Card 4: Status Server */}
+        <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Status Sistem
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+              <ShieldCheck className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+            Online
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            BuzzerPanel SMM Gateway
+          </div>
+        </div>
       </div>
 
-      {/* Tab Views */}
-      <div className="mt-4">
+      {/* Tab Switcher: Services Catalog vs Mass Order */}
+      <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+        <div className="inline-flex rounded-xl bg-muted/40 p-1 border border-border/50">
+          {tabs.map((t) => {
+            const isTabActive = tab === t.id;
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 focus:outline-none",
+                  isTabActive
+                    ? "bg-card text-foreground shadow-xs border border-border/60"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{t.label}</span>
+                {t.count !== undefined && (
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "text-[10px] px-1.5 py-0 rounded font-mono font-bold",
+                      isTabActive
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {t.count}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tab Content Views */}
+      <div className="pt-2">
         {tab === "services" && (
           <ServicesListView
             services={filteredServices}
             isLoading={isLoading}
             error={error}
             onOrderSelect={handleOrderSelect}
+            targetPlaceholder={targetPlaceholder}
+            targetHelperText={targetHelperText}
+            targetExample={targetExample}
           />
         )}
         {tab === "mass" && (
-          <MassOrderForm
-            services={filteredServices}
-          />
+          <MassOrderForm services={filteredServices} />
         )}
       </div>
 
@@ -119,205 +386,396 @@ export function SmmOrderManager({ title, description, allowedServiceIds }: SmmOr
             setIsModalOpen(false);
             setSelectedService(null);
           }}
+          targetPlaceholder={targetPlaceholder}
+          targetHelperText={targetHelperText}
+          targetExample={targetExample}
         />
       )}
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVICES LIST VIEW (CATALOG)
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface ServicesListViewProps {
   services: SMMService[];
   isLoading: boolean;
   error: any;
   onOrderSelect: (service: SMMService) => void;
+  targetPlaceholder?: string;
+  targetHelperText?: string;
+  targetExample?: string;
 }
 
-function ServicesListView({ services, isLoading, error, onOrderSelect }: ServicesListViewProps) {
+function ServicesListView({
+  services,
+  isLoading,
+  error,
+  onOrderSelect,
+  targetPlaceholder,
+  targetHelperText,
+  targetExample,
+}: ServicesListViewProps) {
   const _ = useT();
   const [search, setSearch] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("default");
+  const [expandedNotes, setExpandedNotes] = useState<Record<number, boolean>>({});
 
-  const { grouped, categories } = useMemo(() => {
-    const filtered = services.filter(
-      (s) =>
-        !search ||
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.category.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const map = new Map<string, SMMService[]>();
-    for (const s of filtered) {
-      const cat = s.category || "Other";
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(s);
-    }
-
-    const sortedCategories = Array.from(map.keys()).sort();
-    return { grouped: map, categories: sortedCategories };
-  }, [services, search]);
-
-  useEffect(() => {
-    if (categories.length > 0) {
-      const defaultExpanded: Record<string, boolean> = {};
-      for (const cat of categories) {
-        defaultExpanded[cat] = true;
-      }
-      setExpandedCategories(defaultExpanded);
-    }
-  }, [categories]);
-
-  const toggleCategory = (cat: string) => {
-    setExpandedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  const toggleNote = (serviceId: number) => {
+    setExpandedNotes((prev) => ({ ...prev, [serviceId]: !prev[serviceId] }));
   };
 
-  const totalInCategory = useMemo(() => {
-    const m = new Map<string, number>();
+  // Extract unique categories for quick filtering
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
     for (const s of services) {
-      m.set(s.category, (m.get(s.category) || 0) + 1);
+      if (s.category) set.add(s.category);
     }
-    return m;
+    return Array.from(set).sort();
   }, [services]);
+
+  // Filtered & Sorted Services
+  const processedServices = useMemo(() => {
+    let result = services.filter((s) => {
+      const matchesSearch =
+        !search ||
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.category.toLowerCase().includes(search.toLowerCase()) ||
+        String(s.id).includes(search);
+
+      const matchesCategory =
+        selectedCategoryFilter === "all" || s.category === selectedCategoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+
+    // Sorting
+    if (sortBy === "price_asc") {
+      result.sort((a, b) => a.price - b.price);
+    } else if (sortBy === "price_desc") {
+      result.sort((a, b) => b.price - a.price);
+    } else if (sortBy === "min_asc") {
+      result.sort((a, b) => a.min - b.min);
+    } else if (sortBy === "speed") {
+      result.sort((a, b) => {
+        const speedA = parseSmmSpeed(a.speed);
+        const speedB = parseSmmSpeed(b.speed);
+        if (speedA?.isFast && !speedB?.isFast) return -1;
+        if (!speedA?.isFast && speedB?.isFast) return 1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [services, search, selectedCategoryFilter, sortBy]);
 
   if (isLoading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        {Array.from({ length: 2 }).map((_, gi) => (
-          <div key={gi} className="border border-gray-200 dark:border-slate-700 rounded-xl p-4 space-y-3 bg-white dark:bg-slate-800">
-            <div className="h-5 w-40 bg-gray-100 dark:bg-slate-700 rounded" />
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-16 bg-gray-100 dark:bg-slate-700/60 rounded-xl" />
-              ))}
+      <div className="space-y-4">
+        <div className="h-10 w-full sm:max-w-md bg-muted/40 animate-pulse rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-border/60 bg-muted/20 p-1.5 animate-pulse"
+            >
+              <div className="rounded-xl bg-card border border-border/40 p-5 space-y-4">
+                <div className="h-4 bg-muted rounded w-24" />
+                <div className="h-6 bg-muted rounded w-3/4" />
+                <div className="h-10 bg-muted/50 rounded-lg" />
+                <div className="flex justify-between items-center pt-2">
+                  <div className="h-6 bg-muted rounded w-28" />
+                  <div className="h-9 bg-muted rounded-xl w-32" />
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 rounded-xl text-red-800 dark:text-red-300">
-        <AlertCircle className="h-5 w-5 flex-shrink-0" />
-        <p className="text-sm font-medium">Failed to load services</p>
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-destructive flex items-center gap-3">
+        <AlertCircle className="h-5 w-5 shrink-0" />
+        <div>
+          <div className="font-bold text-sm">Gagal Memuat Layanan</div>
+          <div className="text-xs opacity-90 mt-0.5">
+            Terjadi kendala saat menyinkronkan katalog layanan SMM. Silakan muat ulang halaman.
+          </div>
+        </div>
       </div>
     );
   }
 
   if (services.length === 0) {
     return (
-      <div className="text-center py-16 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-2xl">
-        <Search className="h-10 w-10 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
-        <p className="font-semibold text-gray-900 dark:text-slate-100 text-sm">No services available</p>
+      <div className="rounded-2xl border border-border/70 bg-card p-12 text-center space-y-3">
+        <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mx-auto text-muted-foreground">
+          <Search className="h-6 w-6" />
+        </div>
+        <h3 className="text-base font-bold text-foreground">Tidak Ada Layanan</h3>
+        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          Layanan untuk kategori ini sedang diperbarui atau belum tersedia saat ini.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Search Input */}
-      <div className="relative w-full sm:max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={_("orders.searchService") || "Search services..."}
-          className="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
-        />
+    <div className="space-y-5">
+      {/* Search & Sort Controls Toolbar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Anti-Glitch Search Bar */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari ID, nama layanan, atau kata kunci..."
+            className="w-full pl-9 pr-9 py-2 rounded-xl text-sm bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Sort Select */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+            <ArrowUpDown className="h-3.5 w-3.5" /> Urutkan:
+          </span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="rounded-xl border border-input bg-background text-foreground text-xs px-3 py-2 outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-medium"
+          >
+            <option value="default">Default</option>
+            <option value="price_asc">Harga: Termurah</option>
+            <option value="price_desc">Harga: Termahal</option>
+            <option value="speed">Kecepatan: Tercepat</option>
+            <option value="min_asc">Min Order: Terkecil</option>
+          </select>
+        </div>
       </div>
 
-      <div className="space-y-5">
-        {categories.map((cat) => {
-          const items = grouped.get(cat) ?? [];
-          const isExpanded = expandedCategories[cat] ?? true;
-          const totalCount = totalInCategory.get(cat) || 0;
+      {/* Subcategory Pills Filter (if > 1 categories exist) */}
+      {availableCategories.length > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <button
+            onClick={() => setSelectedCategoryFilter("all")}
+            className={cn(
+              "px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors",
+              selectedCategoryFilter === "all"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+            )}
+          >
+            Semua Subkategori ({services.length})
+          </button>
+          {availableCategories.map((cat) => {
+            const count = services.filter((s) => s.category === cat).length;
+            const isCatActive = selectedCategoryFilter === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategoryFilter(cat)}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors",
+                  isCatActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+                )}
+              >
+                {cat} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Results Count */}
+      <div className="text-xs text-muted-foreground flex items-center justify-between">
+        <div>
+          Menampilkan <span className="font-bold text-foreground">{processedServices.length}</span> dari{" "}
+          <span className="font-bold text-foreground">{services.length}</span> layanan
+        </div>
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="text-primary hover:underline text-xs"
+          >
+            Reset pencarian
+          </button>
+        )}
+      </div>
+
+      {/* Double-Bezel Services Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {processedServices.map((service) => {
+          const speedInfo = parseSmmSpeed(service.speed);
+          const isNoteExpanded = expandedNotes[service.id] || false;
 
           return (
-            <div key={cat} className="space-y-3">
-              {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(cat)}
-                className="w-full flex items-center justify-between py-2 text-left transition-colors focus:outline-none"
-              >
-                <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">{cat}</h2>
-                  <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 font-semibold px-2 py-0.5">
-                    {items.length}/{totalCount} {_("orders.services")}
-                  </Badge>
-                </div>
-                <ChevronDown className={cn("h-4 w-4 text-gray-400 dark:text-slate-500 transition-transform duration-200", !isExpanded && "rotate-180")} />
-              </button>
+            <div
+              key={service.id}
+              className="rounded-2xl border border-border/70 dark:border-slate-800 bg-muted/20 dark:bg-slate-900/40 p-1.5 hover:border-primary/40 transition-colors group"
+            >
+              <div className="rounded-xl bg-card border border-border/40 p-5 flex flex-col justify-between gap-4 h-full shadow-xs">
+                {/* Header: ID + Badges */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-muted text-foreground border border-border/50">
+                        #{service.id}
+                      </span>
+                      {service.category && (
+                        <span className="text-[11px] font-semibold text-muted-foreground px-2 py-0.5 rounded-md bg-muted/40 border border-border/30 truncate max-w-[200px]">
+                          {service.category}
+                        </span>
+                      )}
+                    </div>
 
-              {isExpanded && (
-                <div className="grid grid-cols-1 gap-4">
-                  {items.map((service) => (
-                    <div key={service.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 flex flex-col md:flex-row md:items-start justify-between gap-5 hover:border-gray-300 dark:hover:border-slate-600 transition-colors duration-150">
-                      <div className="space-y-3 flex-1 min-w-0">
-                        {/* Title and ID */}
-                        <div className="flex items-start gap-2">
-                          <Badge variant="outline" className="text-[11px] font-mono font-bold bg-gray-50 dark:bg-slate-700/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-600 px-1.5 py-0.5 shrink-0 mt-0.5">
-                            ID: {service.id}
-                          </Badge>
-                          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100 leading-snug">
-                            {service.name}
-                          </h3>
-                        </div>
-
-                        {/* Flat service limits and speed (no nested cards) */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs border-b border-gray-100/50 dark:border-slate-700 pb-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400 dark:text-slate-400 font-medium">Min:</span>
-                            <span className="font-bold text-gray-800 dark:text-slate-200">{service.min.toLocaleString()}</span>
-                          </div>
-                          <div className="h-3 w-px bg-gray-200 dark:bg-slate-700" />
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400 dark:text-slate-400 font-medium">Max:</span>
-                            <span className="font-bold text-gray-800 dark:text-slate-200">{service.max.toLocaleString()}</span>
-                          </div>
-                          {service.speed && (
-                            <>
-                              <div className="h-3 w-px bg-gray-200 dark:bg-slate-700" />
-                              <div className="flex items-center gap-1.5">
-                                <Zap className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                                <span className="text-gray-400 dark:text-slate-400 font-medium">Speed:</span>
-                                <span className="font-bold text-blue-800 dark:text-blue-400 truncate max-w-[200px]" title={service.speed}>
-                                  {service.speed}
-                                </span>
-                              </div>
-                            </>
+                    {/* Speed & Order Stats Badges (Parsed from BuzzerPanel) */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {speedInfo?.avgSpeed && (
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border",
+                            speedInfo.isFast
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                           )}
+                          title={speedInfo.tooltip}
+                        >
+                          <Zap className="h-3 w-3 shrink-0" />
+                          <span>⚡ {speedInfo.avgSpeed}</span>
                         </div>
+                      )}
 
-                        {/* Note Description (no nested cards) */}
-                        {service.note && (
-                          <div className="text-xs text-gray-500 dark:text-slate-400 pl-3 border-l border-gray-200 dark:border-slate-700 leading-relaxed whitespace-pre-wrap">
-                            {service.note}
+                      {speedInfo?.avgOrders && (
+                        <div
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          title={`Rata-rata ${speedInfo.avgOrders} order berhasil diselesaikan`}
+                        >
+                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          <span>{speedInfo.avgOrders} Selesai</span>
+                        </div>
+                      )}
+
+                      {!speedInfo && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-muted text-muted-foreground border border-border/40">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span>Real-time</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Service Title */}
+                  <h3 className="text-sm md:text-base font-bold text-foreground leading-snug">
+                    {service.name}
+                  </h3>
+                </div>
+
+                {/* Service Specs Strip (Flat layout, no nested cards) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 py-2.5 px-3 rounded-lg bg-muted/30 border border-border/30 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                      Min Order
+                    </span>
+                    <span className="font-bold text-foreground tabular-nums">
+                      {service.min.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                      Max Order
+                    </span>
+                    <span className="font-bold text-foreground tabular-nums">
+                      {service.max.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                      Kecepatan Proses
+                    </span>
+                    <span className="font-bold text-foreground truncate block" title={speedInfo?.tooltip || "Otomatis"}>
+                      {speedInfo?.avgSpeed || speedInfo?.displayText || "Instan"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Service Note Accordion */}
+                {service.note && (
+                  <div className="text-xs border-t border-border/40 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleNote(service.id)}
+                      className="flex items-center justify-between w-full text-muted-foreground hover:text-foreground font-semibold text-[11px] py-1 transition-colors"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 text-primary" />
+                        {isNoteExpanded ? "Sembunyikan Petunjuk Layanan" : "Lihat Petunjuk & Keterangan"}
+                      </span>
+                      {isNoteExpanded ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+
+                    {isNoteExpanded && (
+                      <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-sans">
+                        {service.note}
+                        {targetExample && (
+                          <div className="mt-2 pt-2 border-t border-border/40 text-[11px]">
+                            <span className="font-bold text-foreground">Format Target:</span>{" "}
+                            <code className="px-1.5 py-0.5 rounded bg-background border border-border/50 text-primary font-mono text-[10px]">
+                              {targetExample}
+                            </code>
                           </div>
                         )}
                       </div>
+                    )}
+                  </div>
+                )}
 
-                      {/* Pricing and Action */}
-                      <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-4 md:gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-gray-200 dark:border-slate-700 shrink-0">
-                        <div className="md:text-right">
-                          <span className="text-[11px] text-gray-500 dark:text-slate-400 font-bold block uppercase tracking-wider">{_("orders.price") || "Price"}</span>
-                          <span className="text-base font-extrabold text-primary-600 dark:text-primary-400">
-                            Rp {service.price.toLocaleString()}
-                            <span className="text-xs text-gray-400 dark:text-slate-500 font-normal">/1k</span>
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => onOrderSelect(service)}
-                          className="bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-semibold h-9 px-4"
-                        >
-                          <ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> {_("orders.placeOrder")}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                {/* Price and Island Button Footer */}
+                <div className="pt-3 border-t border-border/40 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Harga / 1.000
+                    </span>
+                    <span className="text-lg md:text-xl font-extrabold text-primary tabular-nums">
+                      Rp {service.price.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+
+                  {/* Island Button with Nested Icon */}
+                  <Button
+                    size="sm"
+                    onClick={() => onOrderSelect(service)}
+                    className="h-10 px-4 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-xs group/btn flex items-center transition-all"
+                  >
+                    <span>Order Sekarang</span>
+                    <span className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center ml-2 group-hover/btn:translate-x-0.5 transition-transform">
+                      <ShoppingCart className="h-3.5 w-3.5 text-white" />
+                    </span>
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
@@ -326,12 +784,25 @@ function ServicesListView({ services, isLoading, error, onOrderSelect }: Service
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ORDER MODAL DIALOG
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface OrderModalProps {
   service: SMMService;
   onClose: () => void;
+  targetPlaceholder?: string;
+  targetHelperText?: string;
+  targetExample?: string;
 }
 
-function OrderModal({ service, onClose }: OrderModalProps) {
+function OrderModal({
+  service,
+  onClose,
+  targetPlaceholder,
+  targetHelperText,
+  targetExample,
+}: OrderModalProps) {
   const _ = useT();
   const { toast } = useToast();
   const user = useAuthStore((s) => s.user);
@@ -341,35 +812,56 @@ function OrderModal({ service, onClose }: OrderModalProps) {
   const [quantity, setQuantity] = useState(service.min);
   const [comments, setComments] = useState("");
 
-  const estimatedPrice = Math.max(1, (service.price * quantity) / 1000);
-  const hasSufficientBalance = user ? user.balance >= estimatedPrice : false;
+  const speedInfo = parseSmmSpeed(service.speed);
+
+  // Price calculations
+  const estimatedPrice = Math.max(1, Math.round((service.price * quantity) / 1000));
+  const userBalance = user?.balance || 0;
+  const hasSufficientBalance = userBalance >= estimatedPrice;
+  const balanceRemaining = userBalance - estimatedPrice;
+
+  // Preset increments
+  const handleQuickAdd = (amount: number) => {
+    setQuantity((prev) => Math.min(service.max, Math.max(service.min, prev + amount)));
+  };
+
+  const handleSetMax = () => {
+    setQuantity(service.max);
+  };
+
+  const handleSetMin = () => {
+    setQuantity(service.min);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dataTarget) return;
+    if (!dataTarget.trim()) return;
 
     try {
       await placeOrder.mutateAsync({
         service_id: Number(service.id),
-        data_target: dataTarget,
+        data_target: dataTarget.trim(),
         quantity,
-        comments: comments || undefined,
+        comments: comments.trim() || undefined,
       });
+
       toast({
         variant: "success",
-        title: _("orders.orderPlaced") || "Order placed successfully!",
+        title: _("orders.orderPlaced") || "Pesanan Berhasil Dibuat!",
+        description: `Order untuk ${service.name} sebanyak ${quantity.toLocaleString("id-ID")} berhasil dikirim.`,
       });
       onClose();
     } catch (err: any) {
       toast({
         variant: "error",
-        title: _("orders.orderFailed") || "Order failed",
-        description: err?.response?.data?.detail || "An error occurred",
+        title: _("orders.orderFailed") || "Gagal Membuat Pesanan",
+        description:
+          err?.response?.data?.detail || "Terjadi kesalahan saat memproses pesanan.",
       });
     }
   };
 
-  // Prevent scroll background
+  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -378,183 +870,322 @@ function OrderModal({ service, onClose }: OrderModalProps) {
   }, []);
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" />
-
-      {/* Dialog Body */}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Double-Bezel Modal Container */}
       <div
-        className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 w-full max-w-xl p-6 md:p-8 z-10 overflow-y-auto max-h-[90vh]"
+        className="rounded-2xl border border-border/80 dark:border-slate-700 bg-card p-1.5 shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
-          animation: "scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+          animation: "modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-gray-200 dark:border-slate-700 pb-4 mb-5">
-          <div className="pr-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">{_("orders.newOrder") || "New Order"}</h3>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Order service via SMM panel</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Selected Service Info */}
-        <div className="p-4 bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-xl text-xs space-y-3 mb-5">
-          <div>
-            <span className="text-[10px] font-mono font-bold bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-gray-300 dark:border-slate-600">
-              ID: {service.id}
-            </span>
-            <p className="font-bold text-gray-900 dark:text-slate-100 mt-1.5 leading-snug">{service.name}</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center border-t border-gray-200 dark:border-slate-700 pt-3">
+        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 overflow-y-auto space-y-5">
+          {/* Header */}
+          <div className="flex items-start justify-between border-b border-border/50 pb-4">
             <div>
-              <span className="text-[9px] text-gray-400 dark:text-slate-400 font-bold block uppercase tracking-wider">Min</span>
-              <span className="text-xs font-bold text-gray-800 dark:text-slate-200">{service.min.toLocaleString()}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-muted text-foreground border border-border/50">
+                  ID: #{service.id}
+                </span>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  {service.category}
+                </span>
+              </div>
+              <h2 className="text-base md:text-lg font-bold text-foreground mt-1 leading-snug">
+                {service.name}
+              </h2>
             </div>
-            <div>
-              <span className="text-[9px] text-gray-400 dark:text-slate-400 font-bold block uppercase tracking-wider">Max</span>
-              <span className="text-xs font-bold text-gray-800 dark:text-slate-200">{service.max.toLocaleString()}</span>
-            </div>
-            <div>
-              <span className="text-[9px] text-gray-400 dark:text-slate-400 font-bold block uppercase tracking-wider">Speed</span>
-              <span className="text-xs font-bold text-blue-700 dark:text-blue-400 truncate block" title={service.speed}>{service.speed || "Instant"}</span>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          {service.note && (
-            <p className="text-gray-500 dark:text-slate-400 leading-relaxed border-t border-gray-200 dark:border-slate-700 pt-2.5 italic">
-              {service.note}
-            </p>
-          )}
-        </div>
-
-        {/* Order Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">{_("orders.dataTarget")}</label>
-            <input
-              type="text"
-              value={dataTarget}
-              onChange={(e) => setDataTarget(e.target.value)}
-              placeholder={_("orders.dataTargetPlaceholder") || "Enter target URL or username..."}
-              className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">{_("orders.quantity")}</label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setQuantity(Math.max(service.min, quantity - 100))}
-                className="p-3 border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0"
-              >
-                <Minus className="h-4 w-4 text-gray-500 dark:text-slate-300" />
-              </button>
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                min={service.min}
-                max={service.max}
-                className="w-full text-center border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-sm font-bold text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-              <button
-                type="button"
-                onClick={() => setQuantity(Math.min(service.max, quantity + 100))}
-                className="p-3 border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0"
-              >
-                <Plus className="h-4 w-4 text-gray-500 dark:text-slate-300" />
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Comments <span className="text-gray-400 dark:text-slate-500 font-normal">(optional)</span></label>
-            <textarea
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              rows={3}
-              placeholder="One comment per line for comment services..."
-              className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
-            />
-          </div>
-
-          {/* Order Summary */}
-          <div className="p-4 bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-xl space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-400 mb-1">Order Summary</h4>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500 dark:text-slate-400">{_("orders.price")}:</span>
-              <span className="font-semibold text-gray-800 dark:text-slate-200">Rp {service.price.toLocaleString()}/1k</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500 dark:text-slate-400">{_("orders.quantity")}:</span>
-              <span className="font-semibold text-gray-800 dark:text-slate-200">{quantity.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-sm font-bold border-t border-gray-200 dark:border-slate-700 pt-2.5">
-              <span className="text-gray-900 dark:text-slate-100">{_("orders.totalPrice")}:</span>
-              <span className="text-primary-600 dark:text-primary-400">Rp {estimatedPrice.toLocaleString()}</span>
-            </div>
-          </div>
-
-          {/* Balance Alert Banner */}
-          {user && (
-            <div className={cn(
-              "p-3 rounded-xl border text-xs font-semibold flex items-center gap-2",
-              hasSufficientBalance
-                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
-                : "bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900/50 text-red-800 dark:text-red-300"
-            )}>
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          {/* Service Specs Strip with Parsed Speed */}
+          <div className="rounded-xl border border-border/50 bg-muted/30 p-3.5 space-y-3">
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div>
-                {hasSufficientBalance ? (
-                  <span>Balance sufficient. Rp {(user.balance - estimatedPrice).toLocaleString()} will remain.</span>
-                ) : (
-                  <span>Insufficient balance. Required: Rp {estimatedPrice.toLocaleString()} (Your balance: Rp {user.balance.toLocaleString()}).</span>
-                )}
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Min Limit
+                </span>
+                <span className="font-bold text-foreground tabular-nums">
+                  {service.min.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Max Limit
+                </span>
+                <span className="font-bold text-foreground tabular-nums">
+                  {service.max.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Tarif / 1k
+                </span>
+                <span className="font-bold text-primary tabular-nums">
+                  Rp {service.price.toLocaleString("id-ID")}
+                </span>
               </div>
             </div>
-          )}
 
-          <div className="flex gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={placeOrder.isPending}
-              className="flex-1 rounded-xl border-gray-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 h-11 text-sm font-semibold"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={placeOrder.isPending || !dataTarget || !hasSufficientBalance}
-              className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold shadow-sm transition-colors border-0"
-            >
-              {placeOrder.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {_("orders.placingOrder")}</>
-              ) : (
-                <><ShoppingCart className="h-4 w-4 mr-2" /> {_("orders.placeOrder")}</>
+            {/* Speed & Order Volume Row */}
+            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                <Zap className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                <span>Kecepatan Rata-Rata:</span>
+                <span className="font-bold text-foreground">
+                  {speedInfo?.avgSpeed || speedInfo?.displayText || "Instan / Otomatis"}
+                </span>
+              </div>
+              {speedInfo?.avgOrders && (
+                <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  <span>Selesai:</span>
+                  <span className="font-bold text-foreground">
+                    {speedInfo.avgOrders} Order
+                  </span>
+                </div>
               )}
-            </Button>
+            </div>
+
+            {service.note && (
+              <div className="pt-2 border-t border-border/40 text-[11px] text-muted-foreground italic leading-relaxed">
+                {service.note}
+              </div>
+            )}
           </div>
-        </form>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Target Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-foreground">
+                  {_("orders.dataTarget") || "Target / Link Telegram"}
+                </label>
+                {targetExample && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {targetExample}
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={dataTarget}
+                onChange={(e) => setDataTarget(e.target.value)}
+                placeholder={
+                  targetPlaceholder ||
+                  _("orders.dataTargetPlaceholder") ||
+                  "https://t.me/channel_name atau @channel_name"
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
+                required
+              />
+              {targetHelperText && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {targetHelperText}
+                </p>
+              )}
+            </div>
+
+            {/* Quantity Stepper & Presets */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-foreground">
+                  {_("orders.quantity") || "Jumlah Pemesanan"}
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  Batas: {service.min.toLocaleString("id-ID")} - {service.max.toLocaleString("id-ID")}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuantity(Math.max(service.min, quantity - 100))}
+                  className="p-2.5 rounded-xl border border-input bg-muted/40 hover:bg-muted text-foreground transition-colors shrink-0"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) =>
+                    setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                  }
+                  min={service.min}
+                  max={service.max}
+                  className="w-full text-center py-2.5 rounded-xl text-base font-bold bg-background border border-input text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQuantity(Math.min(service.max, quantity + 100))}
+                  className="p-2.5 rounded-xl border border-input bg-muted/40 hover:bg-muted text-foreground transition-colors shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Quick Preset Pills */}
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSetMin}
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  Min ({service.min.toLocaleString("id-ID")})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd(100)}
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  +100
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd(500)}
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  +500
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd(1000)}
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  +1.000
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAdd(5000)}
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  +5.000
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSetMax}
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  Max ({service.max.toLocaleString("id-ID")})
+                </button>
+              </div>
+            </div>
+
+            {/* Optional Comments */}
+            <div>
+              <label className="block text-xs font-bold text-foreground mb-1.5">
+                Komentar Tambahan <span className="text-muted-foreground font-normal">(Opsional)</span>
+              </label>
+              <textarea
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                rows={2}
+                placeholder="Khusus layanan custom comments: satu komentar per baris..."
+                className="w-full px-3.5 py-2 rounded-xl text-xs bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary resize-none"
+              />
+            </div>
+
+            {/* Live Price & Wallet Gauge Summary */}
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Tarif Satuan:</span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  Rp {service.price.toLocaleString("id-ID")} / 1.000
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Kuantitas:</span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {quantity.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-bold border-t border-border/50 pt-2">
+                <span className="text-foreground">Total Estimasi Biaya:</span>
+                <span className="text-base text-primary tabular-nums">
+                  Rp {estimatedPrice.toLocaleString("id-ID")}
+                </span>
+              </div>
+
+              {/* Balance Verification */}
+              {user && (
+                <div
+                  className={cn(
+                    "p-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 mt-2",
+                    hasSufficientBalance
+                      ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
+                      : "bg-destructive/10 border-destructive/25 text-destructive"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {hasSufficientBalance ? (
+                        <>Saldo cukup. Sisa saldo: Rp {balanceRemaining.toLocaleString("id-ID")}</>
+                      ) : (
+                        <>Saldo kurang. Dibutuhkan Rp {estimatedPrice.toLocaleString("id-ID")} (Saldo Anda: Rp {userBalance.toLocaleString("id-ID")})</>
+                      )}
+                    </span>
+                  </div>
+                  {!hasSufficientBalance && (
+                    <Link
+                      href="/wallet"
+                      className="px-2.5 py-1 rounded bg-destructive text-white hover:bg-destructive/90 text-[11px] font-bold shrink-0"
+                    >
+                      Top Up
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={placeOrder.isPending}
+                className="flex-1 rounded-xl h-11 text-xs font-semibold"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  placeOrder.isPending || !dataTarget.trim() || !hasSufficientBalance
+                }
+                className="flex-1 rounded-xl h-11 text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs"
+              >
+                {placeOrder.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Konfirmasi Order
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <style jsx global>{`
-        @keyframes scaleIn {
+        @keyframes modalFadeIn {
           from {
             opacity: 0;
-            transform: scale(0.95) translateY(10px);
+            transform: scale(0.97) translateY(8px);
           }
           to {
             opacity: 1;
@@ -567,6 +1198,10 @@ function OrderModal({ service, onClose }: OrderModalProps) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MASS ORDER FORM (BULK SUBMISSIONS)
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface MassOrderFormProps {
   services: SMMService[];
 }
@@ -577,9 +1212,9 @@ function MassOrderForm({ services }: MassOrderFormProps) {
   const user = useAuthStore((s) => s.user);
   const placeMassOrder = usePlaceMassOrder();
 
-  const [items, setItems] = useState<Array<{ service_id: number | ""; data_target: string; quantity: number }>>([
-    { service_id: "", data_target: "", quantity: 100 },
-  ]);
+  const [items, setItems] = useState<
+    Array<{ service_id: number | ""; data_target: string; quantity: number }>
+  >([{ service_id: "", data_target: "", quantity: 100 }]);
 
   const addItem = () => {
     setItems([...items, { service_id: "", data_target: "", quantity: 100 }]);
@@ -598,160 +1233,229 @@ function MassOrderForm({ services }: MassOrderFormProps) {
   const totalCost = items.reduce((sum, item) => {
     const svc = services.find((s) => Number(s.id) === Number(item.service_id));
     if (!svc || !item.service_id) return sum;
-    return sum + Math.max(1, (svc.price * item.quantity) / 1000);
+    return sum + Math.max(1, Math.round((svc.price * item.quantity) / 1000));
   }, 0);
 
-  const hasSufficientBalance = user ? user.balance >= totalCost : false;
+  const userBalance = user?.balance || 0;
+  const hasSufficientBalance = userBalance >= totalCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validItems = items.filter((i) => i.service_id && i.data_target);
+    const validItems = items.filter((i) => i.service_id && i.data_target.trim());
     if (validItems.length === 0) return;
 
     try {
       await placeMassOrder.mutateAsync(
         validItems.map((i) => ({
           service_id: Number(i.service_id),
-          data_target: i.data_target,
+          data_target: i.data_target.trim(),
           quantity: i.quantity,
         }))
       );
       toast({
         variant: "success",
-        title: _("orders.orderPlaced") || "Orders placed successfully!",
-        description: `Successfully placed ${validItems.length} orders.`,
+        title: "Mass Order Berhasil!",
+        description: `Berhasil membuat ${validItems.length} pesanan sekaligus.`,
       });
       setItems([{ service_id: "", data_target: "", quantity: 100 }]);
     } catch (err: any) {
       toast({
         variant: "error",
-        title: _("orders.orderFailed") || "Orders failed",
-        description: err?.response?.data?.detail || "An error occurred",
+        title: "Gagal Membuat Mass Order",
+        description:
+          err?.response?.data?.detail || "Terjadi kesalahan saat memproses pesanan massal.",
       });
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <Card className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm rounded-2xl overflow-hidden">
-        <CardHeader className="border-b border-gray-100 dark:border-slate-700 py-4 px-6 bg-gray-50/50 dark:bg-slate-900/50">
-          <CardTitle className="text-base sm:text-lg font-bold text-gray-900 dark:text-slate-100">{_("orders.massOrder") || "Mass Order"}</CardTitle>
-          <CardDescription className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{_("orders.massOrderDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6 space-y-5">
+    <div className="max-w-4xl mx-auto">
+      <div className="rounded-2xl border border-border/70 dark:border-slate-800 bg-muted/20 dark:bg-slate-900/40 p-1.5">
+        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 space-y-5 shadow-xs">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">
+              {_("orders.massOrder") || "Mass Order (Pemesanan Massal)"}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Masukkan beberapa pesanan sekaligus dalam satu kali klik.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-4">
-              {items.map((item, index) => (
-                <div key={index} className="p-4 border border-gray-200 dark:border-slate-700 rounded-xl space-y-3 relative bg-gray-50/30 dark:bg-slate-900/30">
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="absolute top-3 right-3 p-1.5 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors z-10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+            <div className="space-y-3">
+              {items.map((item, index) => {
+                const selectedSvc = services.find(
+                  (s) => Number(s.id) === Number(item.service_id)
+                );
+                const rowCost =
+                  selectedSvc && item.quantity
+                    ? Math.max(1, Math.round((selectedSvc.price * item.quantity) / 1000))
+                    : 0;
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider">
-                      {_("orders.services")} #{index + 1}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">{_("orders.services")}</label>
-                      <select
-                        value={item.service_id}
-                        onChange={(e) => updateItem(index, "service_id", e.target.value ? Number(e.target.value) : "")}
-                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                        required
+                return (
+                  <div
+                    key={index}
+                    className="p-4 rounded-xl border border-border/60 bg-muted/30 space-y-3 relative group"
+                  >
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="absolute top-3 right-3 p-1 text-destructive/80 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                       >
-                        <option value="">{_("orders.selectService")}</option>
-                        {services.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            [{s.id}] {s.name} - Rp {s.price.toLocaleString()}/1k
-                          </option>
-                        ))}
-                      </select>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded bg-muted text-foreground">
+                        Item #{index + 1}
+                      </span>
+                      {rowCost > 0 && (
+                        <span className="text-xs font-bold text-primary tabular-nums">
+                          Est: Rp {rowCost.toLocaleString("id-ID")}
+                        </span>
+                      )}
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-foreground mb-1">
+                          Pilih Layanan
+                        </label>
+                        <select
+                          value={item.service_id}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              "service_id",
+                              e.target.value ? Number(e.target.value) : ""
+                            )
+                          }
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-medium"
+                          required
+                        >
+                          <option value="">-- Pilih Layanan SMM --</option>
+                          {services.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              [#{s.id}] {s.name} — Rp {s.price.toLocaleString("id-ID")}/1k
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-foreground mb-1">
+                          Jumlah
+                        </label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              "quantity",
+                              Math.max(1, parseInt(e.target.value) || 1)
+                            )
+                          }
+                          min={selectedSvc?.min || 1}
+                          max={selectedSvc?.max || 1000000}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground font-bold outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums"
+                          required
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">{_("orders.quantity")}</label>
+                      <label className="block text-xs font-bold text-foreground mb-1">
+                        Target Link / Username Telegram
+                      </label>
                       <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, "quantity", Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                        type="text"
+                        value={item.data_target}
+                        onChange={(e) => updateItem(index, "data_target", e.target.value)}
+                        placeholder="https://t.me/channel_name atau @channel_name"
+                        className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
                         required
-                        min={1}
                       />
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">{_("orders.dataTarget")}</label>
-                    <input
-                      type="text"
-                      value={item.data_target}
-                      onChange={(e) => updateItem(index, "data_target", e.target.value)}
-                      placeholder={_("orders.dataTargetPlaceholder") || "Enter target URL or username..."}
-                      className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
-                      required
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <button
               type="button"
               onClick={addItem}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-primary hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-all w-full justify-center border border-dashed border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border/80 hover:border-primary/60 text-xs font-bold text-primary hover:bg-muted/40 transition-colors"
             >
-              <Plus className="h-4 w-4" /> {_("orders.addMore")}
+              <Plus className="h-4 w-4" /> Tambah Baris Order Lagi
             </button>
 
-            <div className="p-4 bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-xl space-y-2">
-              <div className="flex justify-between text-sm font-bold">
-                <span className="text-gray-900 dark:text-slate-100">{_("orders.totalAll")}:</span>
-                <span className="text-primary text-primary-600 dark:text-primary-400">Rp {totalCost.toLocaleString()}</span>
+            {/* Total Summary */}
+            <div className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
+              <div className="flex justify-between items-center text-sm font-bold">
+                <span className="text-foreground">Total Keseluruhan:</span>
+                <span className="text-lg text-primary tabular-nums">
+                  Rp {totalCost.toLocaleString("id-ID")}
+                </span>
               </div>
-            </div>
 
-            {/* Balance Alert Banner */}
-            {user && (
-              <div className={cn(
-                "p-3 rounded-xl border text-xs font-semibold flex items-center gap-2",
-                hasSufficientBalance
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
-                  : "bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900/50 text-red-800 dark:text-red-300"
-              )}>
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <div>
-                  {hasSufficientBalance ? (
-                    <span>Balance sufficient. Rp {(user.balance - totalCost).toLocaleString()} will remain.</span>
-                  ) : (
-                    <span>Insufficient balance. Required: Rp {totalCost.toLocaleString()} (Your balance: Rp {user.balance.toLocaleString()}).</span>
+              {/* Balance Alert */}
+              {user && (
+                <div
+                  className={cn(
+                    "p-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 mt-2",
+                    hasSufficientBalance
+                      ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
+                      : "bg-destructive/10 border-destructive/25 text-destructive"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      {hasSufficientBalance ? (
+                        <>Saldo mencukupi. Sisa saldo: Rp {(userBalance - totalCost).toLocaleString("id-ID")}</>
+                      ) : (
+                        <>Saldo kurang. Dibutuhkan Rp {totalCost.toLocaleString("id-ID")} (Saldo Anda: Rp {userBalance.toLocaleString("id-ID")})</>
+                      )}
+                    </span>
+                  </div>
+                  {!hasSufficientBalance && (
+                    <Link
+                      href="/wallet"
+                      className="px-2.5 py-1 rounded bg-destructive text-white hover:bg-destructive/90 text-[11px] font-bold shrink-0"
+                    >
+                      Top Up
+                    </Link>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <Button
               type="submit"
-              disabled={placeMassOrder.isPending || items.every((i) => !i.service_id || !i.data_target) || !hasSufficientBalance}
-              className="w-full h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold shadow-sm border-0 transition-colors"
+              disabled={
+                placeMassOrder.isPending ||
+                items.every((i) => !i.service_id || !i.data_target.trim()) ||
+                !hasSufficientBalance
+              }
+              className="w-full h-11 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs"
             >
               {placeMassOrder.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {_("orders.placingOrder")}</>
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses Mass Order...
+                </>
               ) : (
-                <><ShoppingCart className="h-4 w-4 mr-2" /> {_("orders.placeOrder")} ({items.filter((i) => i.service_id && i.data_target).length})</>
+                <>
+                  <ShoppingCart className="h-4 w-4 mr-2" /> Kirim{" "}
+                  {items.filter((i) => i.service_id && i.data_target.trim()).length} Pesanan Sekaligus
+                </>
               )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
