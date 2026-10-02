@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { Inter, JetBrains_Mono, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -15,6 +15,14 @@ const publicDisplay = Playfair_Display({
 const publicMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-public-mono",
+});
+// The public surface declares font-family: var(--font-public-sans), but that
+// variable was never defined, so every sans face on the landing page fell back
+// to the OS default and changed per device. This wires it to a real font:
+// warm and geometric, which sits correctly beside Playfair on a paper palette.
+const publicSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-public-sans",
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_URL || "https://telebos.app";
@@ -98,7 +106,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${publicDisplay.variable} ${publicMono.variable}`}
+      className={`${inter.variable} ${publicSans.variable} ${publicDisplay.variable} ${publicMono.variable}`}
     >
       <head>
         {/* Anti-FOUC: resolve dark/light theme before paint */}

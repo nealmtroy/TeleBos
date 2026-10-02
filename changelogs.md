@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-03
+- **[a0c7aaa4](https://github.com/nealmtroy/TeleBos/commit/a0c7aaa4)**: fix(public): stop mixing the old dark hex into the re-themed public pages
+
 ## 2026-10-02
 - **[0d660381](https://github.com/nealmtroy/TeleBos/commit/0d660381)**: style(landing): re-theme the landing navbar to the editorial palette
 - **[7528df7b](https://github.com/nealmtroy/TeleBos/commit/7528df7b)**: feat(landing): rebuild the page as an editorial layout on warm paper
