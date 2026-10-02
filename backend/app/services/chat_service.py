@@ -730,7 +730,32 @@ async def mark_read(db: AsyncSession, account: TelegramAccount, chat_id: int) ->
         raise RuntimeError("Account is disconnected. Please re-login.")
 
     entity = await resolve_chat_entity(client, account.id, chat_id)
-    await client.send_read_acknowledge(entity)
+
+    # Telegram rate-limits read receipts like any other RPC. Left unhandled the
+    # FloodWaitError surfaced as an opaque 500 and was reported to Sentry as an
+    # application fault, when it is really the account pacing itself too fast.
+    # Record it against the adaptive flood controller so the next attempt backs
+    # off, and surface the server's own retry window to the caller, which the
+    # route turns into a 400 with a readable message.
+    from telethon.errors import FloodWaitError
+
+    from app.utils.flood_control import flood_controller
+
+    account_key = str(account.id)
+    try:
+        await client.send_read_acknowledge(entity)
+    except FloodWaitError as fw:
+        wait_seconds = int(getattr(fw, "seconds", 0) or 0)
+        flood_controller.record_flood(account_key, wait_seconds)
+        logger.warning(
+            "FLOOD waiting %ss sending read receipt for account %s chat %s",
+            wait_seconds, account_key, chat_id,
+        )
+        raise RuntimeError(
+            f"Telegram is rate limiting this account. Try again in {wait_seconds}s."
+        ) from fw
+
+    flood_controller.record_success(account_key)
 
     # Update unread count in database
     stmt = (

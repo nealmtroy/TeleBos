@@ -47,7 +47,6 @@ public_api_bearer = HTTPBearer(
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
@@ -235,39 +234,75 @@ class RealIPMiddleware:
         await self.app(scope, receive, send)
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security hardening headers to every response."""
+class SecurityHeadersMiddleware:
+    """ASGI middleware that adds security hardening headers to every response.
 
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "0"  # Deprecated — disables legacy XSS auditor
+    Written as pure ASGI rather than a ``BaseHTTPMiddleware`` subclass because
+    ``BaseHTTPMiddleware`` runs the downstream app inside a task group, and when
+    the endpoint raises, the task group's ``__aexit__`` fires before ``call_next``
+    ever resumes — ``call_next`` then raises ``RuntimeError("No response
+    returned.")`` and Starlette wraps the real error in an ``ExceptionGroup``,
+    which the Sentry SDK cannot split into meaningful frames. Every failing
+    endpoint reported that instead of its own traceback, which hid real bugs
+    and made traces unreadable.
 
-        # HSTS
-        if app_settings.PRODUCTION:
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains; preload"
-            )
-        else:
-            # Short max-age in dev so it's not cached by browsers
-            response.headers["Strict-Transport-Security"] = "max-age=300; includeSubDomains"
+    Pure ASGI has no such wrapper: exceptions propagate untouched, and headers
+    are injected by wrapping ``send``.
+    """
 
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; "  # Next.js needs these + Cloudflare Web Analytics + FastAPI docs
-            "worker-src 'self' blob:; "
-            "child-src 'self' blob:; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com; "
-            "font-src 'self' data:; "
-            "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com https://cdn.jsdelivr.net; "
-            "frame-ancestors 'none'; "
-            "base-uri 'self'; "
-            "form-action 'self'"
-        )
-        response.headers["Content-Security-Policy"] = csp.strip()
-        return response
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = message.setdefault("headers", [])
+                # HSTS
+                if app_settings.PRODUCTION:
+                    hsts = "max-age=31536000; includeSubDomains; preload"
+                else:
+                    # Short max-age in dev so it's not cached by browsers
+                    hsts = "max-age=300; includeSubDomains"
+                _set_header(headers, b"strict-transport-security", hsts.encode())
+                _set_header(headers, b"x-content-type-options", b"nosniff")
+                _set_header(headers, b"x-frame-options", b"DENY")
+                # Deprecated — disables the legacy XSS auditor
+                _set_header(headers, b"x-xss-protection", b"0")
+                _set_header(headers, b"content-security-policy", _CSP.encode())
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
+# Next.js needs 'unsafe-inline'/'unsafe-eval' for scripts, plus Cloudflare Web
+# Analytics and jsDelivr. Kept module-level so it is built once, not per request.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; "
+    "worker-src 'self' blob:; "
+    "child-src 'self' blob:; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com; "
+    "font-src 'self' data:; "
+    "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com https://cdn.jsdelivr.net; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+
+
+def _set_header(headers: list, name: bytes, value: bytes) -> None:
+    """Replace a header if already present, else append (case-insensitive)."""
+    lowered = name.lower()
+    for i, (key, _value) in enumerate(headers):
+        if key.lower() == lowered:
+            headers[i] = (key, value)
+            return
+    headers.append((name, value))
 
 
 from app.database_migrator import run_migrations
