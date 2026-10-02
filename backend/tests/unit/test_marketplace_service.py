@@ -221,6 +221,40 @@ async def test_purchase_charges_buyer_buy_price_and_credits_seller_sell_price():
     assert ("sell", 5000) in audit_prices
 
 
+async def test_purchase_clears_stale_seller_id():
+    """After a sale the previous seller must not stay attached to the account.
+
+    seller_id is who *listed* the account. Leaving it in place after the sale
+    made the new owner look like they were still selling it, and kept
+    cancel_sell_account's ownership check (`seller_id != user.id and
+    user_id != user.id`) satisfiable by the wrong party on an account that had
+    already changed hands. Production had 22 such rows.
+    """
+    id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])
+    buyer_id, seller_id = id1, id2
+    account = make_account(seller_id, for_sale=True, sell_price=5000, buy_price=7000)
+    assert account.seller_id == seller_id  # still pointing at the seller pre-sale
+    buyer = SimpleNamespace(id=buyer_id, balance=10000)
+    seller = SimpleNamespace(id=seller_id, balance=0)
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[
+                FakeResult([account]),
+                FakeResult([buyer]),
+                FakeResult([seller]),
+                FakeResult([]),
+            ]
+        ),
+        add=MagicMock(),
+        flush=AsyncMock(),
+    )
+
+    await marketplace_service.buy_account(db, SimpleNamespace(id=buyer_id), str(account.id))
+
+    assert account.seller_id is None
+    assert account.user_id == buyer_id
+
+
 async def test_purchase_rejects_balance_below_buy_price():
     """Insufficient balance is judged against buy_price, not sell_price."""
     id1, id2 = sorted([uuid.uuid4(), uuid.uuid4()])

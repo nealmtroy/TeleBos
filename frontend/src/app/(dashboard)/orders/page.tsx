@@ -281,7 +281,31 @@ export default function OrderHistoryPage() {
 
     // Map Account Transactions
     if (logs) {
+      // A single account produces several audit rows over its life: listed, then
+      // sold (or cancelled). Each row used to be rendered on its own, so a
+      // listing that had since been sold stayed on screen as "Proses" forever —
+      // the log is append-only and nothing supersedes it.
+      //
+      // Collapse to the newest row per account so the status shown is the one
+      // that actually reflects where the account ended up.
+      const latestByAccount = new Map<string, (typeof logs)[number]>();
       for (const log of logs) {
+        if (!log.account_id) continue;
+        const current = latestByAccount.get(log.account_id);
+        if (!current || new Date(log.created_at) > new Date(current.created_at)) {
+          latestByAccount.set(log.account_id, log);
+        }
+      }
+      const superseded = new Set(
+        logs
+          .filter(
+            (l) => l.account_id && latestByAccount.get(l.account_id)?.id !== l.id,
+          )
+          .map((l) => l.id),
+      );
+
+      for (const log of logs) {
+        if (superseded.has(log.id)) continue;
         const displayId = `#TB-${log.id.toString().substring(0, 8).toUpperCase()}`;
 
         let typeLabel = locale === "id" ? "Pembelian Akun" : "Account Purchase";
@@ -652,20 +676,20 @@ export default function OrderHistoryPage() {
             type="button"
             onClick={() => handleTabChange("all")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none transition-all duration-200 font-semibold",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
               activeTab === "all"
-                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border border-primary"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
             )}
           >
             <ClipboardList className={cn("h-3.5 w-3.5", activeTab === "all" ? "text-primary-foreground" : "text-slate-400")} />
             <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
             <span
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-colors",
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
                 activeTab === "all"
-                  ? "bg-white/20 text-white font-bold"
-                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/60"
+                  ? "bg-white/20 text-white font-bold border-white/20"
+                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
               )}
             >
               {metrics.totalOrders}
@@ -676,20 +700,20 @@ export default function OrderHistoryPage() {
             type="button"
             onClick={() => handleTabChange("accounts")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none transition-all duration-200 font-semibold",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
               activeTab === "accounts"
-                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border border-primary"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
             )}
           >
             <User className={cn("h-3.5 w-3.5", activeTab === "accounts" ? "text-primary-foreground" : "text-slate-400")} />
             <span>{locale === "id" ? "Akun Telegram" : "Telegram Accounts"}</span>
             <span
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-colors",
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
                 activeTab === "accounts"
-                  ? "bg-white/20 text-white font-bold"
-                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/60"
+                  ? "bg-white/20 text-white font-bold border-white/20"
+                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
               )}
             >
               {metrics.totalAccounts}
@@ -700,20 +724,20 @@ export default function OrderHistoryPage() {
             type="button"
             onClick={() => handleTabChange("smm")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none transition-all duration-200 font-semibold",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
               activeTab === "smm"
-                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border border-primary"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
             )}
           >
             <ShoppingCart className={cn("h-3.5 w-3.5", activeTab === "smm" ? "text-primary-foreground" : "text-slate-400")} />
             <span>{locale === "id" ? "Layanan SMM" : "SMM Services"}</span>
             <span
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-colors",
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
                 activeTab === "smm"
-                  ? "bg-white/20 text-white font-bold"
-                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/60"
+                  ? "bg-white/20 text-white font-bold border-white/20"
+                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
               )}
             >
               {metrics.totalSmm}
