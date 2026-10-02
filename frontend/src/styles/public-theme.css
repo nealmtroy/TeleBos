@@ -115,6 +115,28 @@
   }
 }
 
+/* Slow drift for the cards behind the hero phone. Transform-only so it stays
+   on the compositor and never triggers layout. */
+@keyframes public-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -9px, 0);
+  }
+}
+
+.public-float {
+  animation: public-float 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-float {
+    animation: none;
+  }
+}
+
 /* Section rhythm is fluid rather than snapping between two fixed jumps. */
 .public-section {
   padding-block: clamp(4rem, 9vw, 10rem);

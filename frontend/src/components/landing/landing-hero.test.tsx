@@ -6,8 +6,8 @@ vi.mock("@/lib/i18n", async () => {
   return { ...actual, useT: () => (key: string) => key };
 });
 
-vi.mock("@/components/landing/hero-sculpture", () => ({
-  HeroSculpture: () => <div data-testid="sculpture" />,
+vi.mock("@/components/landing/hero-dashboard-mockup", () => ({
+  HeroDashboardMockup: () => <div data-testid="hero-dashboard-mockup" />,
 }));
 
 import { LandingHero } from "./landing-hero";

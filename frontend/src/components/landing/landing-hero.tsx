@@ -18,7 +18,7 @@ import Link from "next/link";
 
 import { motion, useReducedMotion } from "framer-motion";
 
-import { HeroSculpture } from "@/components/landing/hero-sculpture";
+import { HeroDashboardMockup } from "@/components/landing/hero-dashboard-mockup";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -149,7 +149,7 @@ export function LandingHero() {
         <motion.div variants={rise} className="min-w-0 lg:pl-4">
           <div className="rounded-[1.75rem] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-1.5 shadow-[0_30px_80px_-30px_rgba(45,143,255,0.35)] sm:rounded-[2rem]">
             <div className="overflow-hidden rounded-[calc(1.75rem-0.375rem)] border border-[var(--public-border)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] sm:rounded-[calc(2rem-0.375rem)]">
-              <HeroSculpture />
+              <HeroDashboardMockup />
             </div>
           </div>
         </motion.div>

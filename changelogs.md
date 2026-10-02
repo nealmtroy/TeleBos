@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[a18a7b79](https://github.com/nealmtroy/TeleBos/commit/a18a7b79)**: fix(nav): make the landing mobile menu slide smoothly
 - **[51f79ab8](https://github.com/nealmtroy/TeleBos/commit/51f79ab8)**: feat(landing): switch the public surface to deep navy and add a real infrastructure section
 - **[e04a7a7a](https://github.com/nealmtroy/TeleBos/commit/e04a7a7a)**: style(public): set display headings in Plus Jakarta Sans too
 - **[f03142f0](https://github.com/nealmtroy/TeleBos/commit/f03142f0)**: fix(fonts): load the public sans variable that the theme already referenced
