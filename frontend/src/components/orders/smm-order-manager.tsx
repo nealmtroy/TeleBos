@@ -9,11 +9,14 @@ import { useAuthStore } from "@/store/auth-store";
 import {
   useTelegramServices,
   usePlaceOrder,
-  usePlaceMassOrder,
   SMMService,
 } from "@/hooks/use-orders";
 import { useToast } from "@/components/ui/toast";
-import { parseSmmSpeed, getFastestSpeedDisplay } from "@/lib/smm-speed-parser";
+import {
+  parseSmmSpeed,
+  getFastestSpeedDisplay,
+  parseDurationToSeconds,
+} from "@/lib/smm-speed-parser";
 import {
   ShoppingCart,
   Plus,
@@ -21,9 +24,6 @@ import {
   Search,
   AlertCircle,
   Loader2,
-  Trash2,
-  ListOrdered,
-  FileText,
   Wallet,
   ChevronDown,
   ChevronUp,
@@ -37,18 +37,14 @@ import {
   Info,
   Clock,
   ArrowRight,
-  TrendingUp,
   ShieldCheck,
   Tag,
   Layers,
   ArrowUpDown,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type Tab = "services" | "mass";
 type SortOption = "default" | "price_asc" | "price_desc" | "speed" | "min_asc";
 
 interface SmmOrderManagerProps {
@@ -103,7 +99,6 @@ export function SmmOrderManager({
   title,
   description,
   allowedServiceIds,
-  categoryKey,
   targetPlaceholder,
   targetHelperText,
   targetExample,
@@ -111,7 +106,6 @@ export function SmmOrderManager({
   const _ = useT();
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<Tab>("services");
   const { data: services, isLoading, error } = useTelegramServices();
 
   const [selectedService, setSelectedService] = useState<SMMService | null>(null);
@@ -143,20 +137,6 @@ export function SmmOrderManager({
       activeCount: filteredServices.length,
     };
   }, [filteredServices]);
-
-  const tabs = [
-    {
-      id: "services" as Tab,
-      label: _("orders.services") || "Katalog Layanan",
-      icon: ListOrdered,
-      count: filteredServices.length,
-    },
-    {
-      id: "mass" as Tab,
-      label: _("orders.massOrder") || "Mass Order (Bulk)",
-      icon: FileText,
-    },
-  ];
 
   const handleOrderSelect = (service: SMMService) => {
     setSelectedService(service);
@@ -317,65 +297,22 @@ export function SmmOrderManager({
             Online
           </div>
           <div className="text-[11px] text-muted-foreground">
-            BuzzerPanel SMM Gateway
+            TeleBos Cloud Engine
           </div>
         </div>
       </div>
 
-      {/* Tab Switcher: Services Catalog vs Mass Order */}
-      <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-        <div className="inline-flex rounded-xl bg-muted/40 p-1 border border-border/50">
-          {tabs.map((t) => {
-            const isTabActive = tab === t.id;
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 focus:outline-none",
-                  isTabActive
-                    ? "bg-card text-foreground shadow-xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                <span>{t.label}</span>
-                {t.count !== undefined && (
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      "text-[10px] px-1.5 py-0 rounded font-mono font-bold",
-                      isTabActive
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {t.count}
-                  </Badge>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tab Content Views */}
-      <div className="pt-2">
-        {tab === "services" && (
-          <ServicesListView
-            services={filteredServices}
-            isLoading={isLoading}
-            error={error}
-            onOrderSelect={handleOrderSelect}
-            targetPlaceholder={targetPlaceholder}
-            targetHelperText={targetHelperText}
-            targetExample={targetExample}
-          />
-        )}
-        {tab === "mass" && (
-          <MassOrderForm services={filteredServices} />
-        )}
+      {/* Services Catalog View (Direct without tab headers) */}
+      <div className="pt-1">
+        <ServicesListView
+          services={filteredServices}
+          isLoading={isLoading}
+          error={error}
+          onOrderSelect={handleOrderSelect}
+          targetPlaceholder={targetPlaceholder}
+          targetHelperText={targetHelperText}
+          targetExample={targetExample}
+        />
       </div>
 
       {/* Order Modal Portal */}
@@ -418,7 +355,6 @@ function ServicesListView({
   targetHelperText,
   targetExample,
 }: ServicesListViewProps) {
-  const _ = useT();
   const [search, setSearch] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("default");
@@ -452,7 +388,7 @@ function ServicesListView({
       return matchesSearch && matchesCategory;
     });
 
-    // Sorting
+    // Accurate Sorting
     if (sortBy === "price_asc") {
       result.sort((a, b) => a.price - b.price);
     } else if (sortBy === "price_desc") {
@@ -460,12 +396,12 @@ function ServicesListView({
     } else if (sortBy === "min_asc") {
       result.sort((a, b) => a.min - b.min);
     } else if (sortBy === "speed") {
+      // Sort accurately by duration in seconds (fastest duration first)
       result.sort((a, b) => {
-        const speedA = parseSmmSpeed(a.speed);
-        const speedB = parseSmmSpeed(b.speed);
-        if (speedA?.isFast && !speedB?.isFast) return -1;
-        if (!speedA?.isFast && speedB?.isFast) return 1;
-        return 0;
+        const secA = parseDurationToSeconds(a.speed);
+        const secB = parseDurationToSeconds(b.speed);
+        if (secA !== secB) return secA - secB;
+        return a.price - b.price; // secondary tie-breaker by price
       });
     }
 
@@ -559,7 +495,7 @@ function ServicesListView({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="rounded-xl border border-input bg-background text-foreground text-xs px-3 py-2 outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-medium"
+            className="rounded-xl border border-input bg-background text-foreground text-xs px-3 py-2 outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-medium cursor-pointer"
           >
             <option value="default">Default</option>
             <option value="price_asc">Harga: Termurah</option>
@@ -647,7 +583,7 @@ function ServicesListView({
                       )}
                     </div>
 
-                    {/* Speed & Order Stats Badges (Parsed from BuzzerPanel) */}
+                    {/* Speed & Order Stats Badges */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {speedInfo?.avgSpeed && (
                         <div
@@ -1195,267 +1131,5 @@ function OrderModal({
       `}</style>
     </div>,
     document.body
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MASS ORDER FORM (BULK SUBMISSIONS)
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface MassOrderFormProps {
-  services: SMMService[];
-}
-
-function MassOrderForm({ services }: MassOrderFormProps) {
-  const _ = useT();
-  const { toast } = useToast();
-  const user = useAuthStore((s) => s.user);
-  const placeMassOrder = usePlaceMassOrder();
-
-  const [items, setItems] = useState<
-    Array<{ service_id: number | ""; data_target: string; quantity: number }>
-  >([{ service_id: "", data_target: "", quantity: 100 }]);
-
-  const addItem = () => {
-    setItems([...items, { service_id: "", data_target: "", quantity: 100 }]);
-  };
-
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
-
-  const updateItem = (index: number, field: string, value: any) => {
-    const updated = [...items];
-    (updated[index] as any)[field] = value;
-    setItems(updated);
-  };
-
-  const totalCost = items.reduce((sum, item) => {
-    const svc = services.find((s) => Number(s.id) === Number(item.service_id));
-    if (!svc || !item.service_id) return sum;
-    return sum + Math.max(1, Math.round((svc.price * item.quantity) / 1000));
-  }, 0);
-
-  const userBalance = user?.balance || 0;
-  const hasSufficientBalance = userBalance >= totalCost;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validItems = items.filter((i) => i.service_id && i.data_target.trim());
-    if (validItems.length === 0) return;
-
-    try {
-      await placeMassOrder.mutateAsync(
-        validItems.map((i) => ({
-          service_id: Number(i.service_id),
-          data_target: i.data_target.trim(),
-          quantity: i.quantity,
-        }))
-      );
-      toast({
-        variant: "success",
-        title: "Mass Order Berhasil!",
-        description: `Berhasil membuat ${validItems.length} pesanan sekaligus.`,
-      });
-      setItems([{ service_id: "", data_target: "", quantity: 100 }]);
-    } catch (err: any) {
-      toast({
-        variant: "error",
-        title: "Gagal Membuat Mass Order",
-        description:
-          err?.response?.data?.detail || "Terjadi kesalahan saat memproses pesanan massal.",
-      });
-    }
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="rounded-2xl border border-border/70 dark:border-slate-800 bg-muted/20 dark:bg-slate-900/40 p-1.5">
-        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 space-y-5 shadow-xs">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              {_("orders.massOrder") || "Mass Order (Pemesanan Massal)"}
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Masukkan beberapa pesanan sekaligus dalam satu kali klik.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-3">
-              {items.map((item, index) => {
-                const selectedSvc = services.find(
-                  (s) => Number(s.id) === Number(item.service_id)
-                );
-                const rowCost =
-                  selectedSvc && item.quantity
-                    ? Math.max(1, Math.round((selectedSvc.price * item.quantity) / 1000))
-                    : 0;
-
-                return (
-                  <div
-                    key={index}
-                    className="p-4 rounded-xl border border-border/60 bg-muted/30 space-y-3 relative group"
-                  >
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="absolute top-3 right-3 p-1 text-destructive/80 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded bg-muted text-foreground">
-                        Item #{index + 1}
-                      </span>
-                      {rowCost > 0 && (
-                        <span className="text-xs font-bold text-primary tabular-nums">
-                          Est: Rp {rowCost.toLocaleString("id-ID")}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-foreground mb-1">
-                          Pilih Layanan
-                        </label>
-                        <select
-                          value={item.service_id}
-                          onChange={(e) =>
-                            updateItem(
-                              index,
-                              "service_id",
-                              e.target.value ? Number(e.target.value) : ""
-                            )
-                          }
-                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-medium"
-                          required
-                        >
-                          <option value="">-- Pilih Layanan SMM --</option>
-                          {services.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              [#{s.id}] {s.name} — Rp {s.price.toLocaleString("id-ID")}/1k
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-foreground mb-1">
-                          Jumlah
-                        </label>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            updateItem(
-                              index,
-                              "quantity",
-                              Math.max(1, parseInt(e.target.value) || 1)
-                            )
-                          }
-                          min={selectedSvc?.min || 1}
-                          max={selectedSvc?.max || 1000000}
-                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground font-bold outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-foreground mb-1">
-                        Target Link / Username Telegram
-                      </label>
-                      <input
-                        type="text"
-                        value={item.data_target}
-                        onChange={(e) => updateItem(index, "data_target", e.target.value)}
-                        placeholder="https://t.me/channel_name atau @channel_name"
-                        className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
-                        required
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={addItem}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border/80 hover:border-primary/60 text-xs font-bold text-primary hover:bg-muted/40 transition-colors"
-            >
-              <Plus className="h-4 w-4" /> Tambah Baris Order Lagi
-            </button>
-
-            {/* Total Summary */}
-            <div className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-2">
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-foreground">Total Keseluruhan:</span>
-                <span className="text-lg text-primary tabular-nums">
-                  Rp {totalCost.toLocaleString("id-ID")}
-                </span>
-              </div>
-
-              {/* Balance Alert */}
-              {user && (
-                <div
-                  className={cn(
-                    "p-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 mt-2",
-                    hasSufficientBalance
-                      ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
-                      : "bg-destructive/10 border-destructive/25 text-destructive"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>
-                      {hasSufficientBalance ? (
-                        <>Saldo mencukupi. Sisa saldo: Rp {(userBalance - totalCost).toLocaleString("id-ID")}</>
-                      ) : (
-                        <>Saldo kurang. Dibutuhkan Rp {totalCost.toLocaleString("id-ID")} (Saldo Anda: Rp {userBalance.toLocaleString("id-ID")})</>
-                      )}
-                    </span>
-                  </div>
-                  {!hasSufficientBalance && (
-                    <Link
-                      href="/wallet"
-                      className="px-2.5 py-1 rounded bg-destructive text-white hover:bg-destructive/90 text-[11px] font-bold shrink-0"
-                    >
-                      Top Up
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              disabled={
-                placeMassOrder.isPending ||
-                items.every((i) => !i.service_id || !i.data_target.trim()) ||
-                !hasSufficientBalance
-              }
-              className="w-full h-11 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs"
-            >
-              {placeMassOrder.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses Mass Order...
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="h-4 w-4 mr-2" /> Kirim{" "}
-                  {items.filter((i) => i.service_id && i.data_target.trim()).length} Pesanan Sekaligus
-                </>
-              )}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
   );
 }

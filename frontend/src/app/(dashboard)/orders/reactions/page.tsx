@@ -9,7 +9,7 @@ export default function TelegramReactionsPage() {
   return (
     <SmmOrderManager
       title={t("nav.telegramReactions") || "Telegram Post Reactions"}
-      description="Tingkatkan engagement postingan Telegram dengan reaksi emoji positif, beragam emoji interaktif, dan tayangan instan dari SMM Gateway BuzzerPanel."
+      description="Tingkatkan engagement postingan Telegram dengan reaksi emoji positif, beragam emoji interaktif, dan tayangan instan dari server TeleBos Cloud Gateway."
       allowedServiceIds={TELEGRAM_REACTIONS_IDS}
       categoryKey="reactions"
       targetPlaceholder="https://t.me/channel_name/1234 (Link postingan publik)"

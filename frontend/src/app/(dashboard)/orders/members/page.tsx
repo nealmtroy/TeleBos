@@ -9,7 +9,7 @@ export default function TelegramMembersPage() {
   return (
     <SmmOrderManager
       title={t("nav.telegramMembers") || "Telegram Members & Subscribers"}
-      description="Pesan anggota grup dan subscriber channel Telegram berkualitas tinggi dengan proses cepat, stabil, dan bergaransi dari SMM Gateway BuzzerPanel."
+      description="Pesan anggota grup dan subscriber channel Telegram berkualitas tinggi dengan proses cepat, stabil, dan bergaransi dari server TeleBos Cloud Gateway."
       allowedServiceIds={TELEGRAM_MEMBERS_IDS}
       categoryKey="members"
       targetPlaceholder="https://t.me/channel_name atau @channel_name"
