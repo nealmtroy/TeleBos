@@ -946,26 +946,26 @@ export default function OrderHistoryPage() {
         <div className="space-y-4">
           {/* Desktop Precision Table */}
           <div className="hidden lg:block overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-            <Table className="text-xs">
+            <Table className="text-xs table-fixed w-full min-w-[1080px]">
               <TableHeader>
                 <TableRow className="border-b border-border/80 bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[120px]">
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[130px]">
                     Order ID
                   </TableHead>
-                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[130px]">
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[110px]">
                     {locale === "id" ? "Tipe" : "Type"}
                   </TableHead>
-                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[220px]">
                     {locale === "id" ? "Layanan" : "Service"}
                   </TableHead>
-                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground max-w-[200px]">
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[180px]">
                     Target / Detail
                   </TableHead>
-                  <TableHead className="py-3 px-4 text-right font-bold uppercase tracking-wider text-muted-foreground w-[100px]">
+                  <TableHead className="py-3 px-4 text-right font-bold uppercase tracking-wider text-muted-foreground w-[90px]">
                     {locale === "id" ? "Jumlah" : "Qty"}
                   </TableHead>
                   <TableHead
-                    className="py-3 px-4 text-right font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[130px]"
+                    className="py-3 px-4 text-right font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[120px]"
                     onClick={() => toggleSort("price")}
                   >
                     <div className="flex items-center justify-end gap-1">
@@ -982,11 +982,11 @@ export default function OrderHistoryPage() {
                       <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[120px]">
+                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[100px]">
                     {locale === "id" ? "Progres" : "Progress"}
                   </TableHead>
                   <TableHead
-                    className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[130px]"
+                    className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[120px]"
                     onClick={() => toggleSort("date")}
                   >
                     <div className="flex items-center gap-1">
@@ -994,7 +994,7 @@ export default function OrderHistoryPage() {
                       <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[90px]">
+                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[95px]">
                     {locale === "id" ? "Aksi" : "Action"}
                   </TableHead>
                 </TableRow>
@@ -1011,7 +1011,7 @@ export default function OrderHistoryPage() {
                       className="hover:bg-muted/40 transition-colors group"
                     >
                       {/* Order ID */}
-                      <TableCell className="py-3.5 px-4 font-mono whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 font-mono whitespace-nowrap w-[130px]">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-foreground tracking-tight">
                             {item.orderIdDisplay}
@@ -1032,7 +1032,7 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Tipe Order Badge */}
-                      <TableCell className="py-3.5 px-4 whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 whitespace-nowrap w-[110px]">
                         {item.type === "telegram_account" ? (
                           <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
                             <User className="h-3 w-3" />
@@ -1047,8 +1047,8 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Layanan & Kategori */}
-                      <TableCell className="py-3.5 px-4 max-w-[220px]">
-                        <div className="flex flex-col gap-0.5">
+                      <TableCell className="py-3.5 px-4 w-[220px]">
+                        <div className="flex flex-col gap-0.5 overflow-hidden">
                           <span
                             className="font-bold text-foreground truncate leading-snug"
                             title={item.serviceName}
@@ -1065,8 +1065,8 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Detail Target */}
-                      <TableCell className="py-3.5 px-4 max-w-[200px]">
-                        <div className="flex items-center gap-1.5">
+                      <TableCell className="py-3.5 px-4 w-[180px]">
+                        <div className="flex items-center gap-1.5 overflow-hidden">
                           <p
                             className="text-[11px] font-mono text-muted-foreground truncate select-all"
                             title={item.detail}
@@ -1091,17 +1091,17 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Jumlah */}
-                      <TableCell className="py-3.5 px-4 text-right font-medium text-foreground whitespace-nowrap tabular-nums">
+                      <TableCell className="py-3.5 px-4 text-right font-medium text-foreground whitespace-nowrap tabular-nums w-[90px]">
                         {item.quantityDisplay}
                       </TableCell>
 
                       {/* Nominal / Harga */}
-                      <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 text-right whitespace-nowrap w-[120px]">
                         <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
                       </TableCell>
 
                       {/* Status */}
-                      <TableCell className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 text-center whitespace-nowrap w-[110px]">
                         <span
                           className={cn(
                             "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border",
@@ -1121,15 +1121,15 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Progres */}
-                      <TableCell className="py-3.5 px-4">
-                        <div className="flex flex-col items-center justify-center gap-1 min-w-[80px]">
+                      <TableCell className="py-3.5 px-4 w-[100px]">
+                        <div className="flex flex-col items-center justify-center gap-1 w-full">
                           <span className="font-mono text-[10px] font-bold text-foreground">
                             {item.progressPercent}%
                           </span>
                           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden border border-border/40">
                             <div
                               className={cn(
-                                "h-full rounded-full transition-all duration-500 ease-out",
+                                "h-full rounded-full transition-[width] duration-300 ease-out",
                                 statusConf.progressColor
                               )}
                               style={{ width: `${item.progressPercent}%` }}
@@ -1139,7 +1139,7 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Waktu WIB */}
-                      <TableCell className="py-3.5 px-4 whitespace-nowrap text-muted-foreground">
+                      <TableCell className="py-3.5 px-4 whitespace-nowrap text-muted-foreground w-[120px]">
                         <div className="flex flex-col leading-tight">
                           <span className="font-medium text-foreground text-[11px]">
                             {item.dateStr}
@@ -1151,7 +1151,7 @@ export default function OrderHistoryPage() {
                       </TableCell>
 
                       {/* Aksi */}
-                      <TableCell className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 text-center whitespace-nowrap w-[95px]">
                         <div className="flex items-center justify-center gap-1.5">
                           <Button
                             variant="outline"

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[b67b9ff2](https://github.com/nealmtroy/TeleBos/commit/b67b9ff2)**: fix(orders): stop showing completed account sales as "Proses"
 - **[0b4d9baf](https://github.com/nealmtroy/TeleBos/commit/0b4d9baf)**: fix(orders): enhance dark mode active tab contrast and remove tab switch from clear filters trigger
 - **[7a745e55](https://github.com/nealmtroy/TeleBos/commit/7a745e55)**: feat(orders): redesign order history with high-end visual design and impeccable standards
 - **[75218984](https://github.com/nealmtroy/TeleBos/commit/75218984)**: feat(captcha): self-hosted Camoufox Turnstile solver to replace 2captcha
