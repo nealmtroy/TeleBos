@@ -129,23 +129,79 @@ export function HeroDashboardMockup() {
       {/* Mobile: the same accounts inside a tilted phone. */}
       <div className="relative mx-auto w-[15.5rem] sm:w-[17rem] lg:hidden">
         <FloatingCards />
-        <div className="relative rotate-[6deg] rounded-[2rem] border border-[var(--public-accent)]/40 bg-[var(--public-canvas)] p-2 shadow-[0_30px_70px_-25px_rgba(45,143,255,0.5)]">
-          <div className="relative overflow-hidden rounded-[1.6rem] border border-[var(--public-border)] bg-[var(--public-canvas-warm)]">
-            {/* Speaker detail */}
-            <div className="flex justify-center py-2" aria-hidden="true">
-              <span className="h-1 w-10 rounded-full bg-[var(--public-border)]" />
-            </div>
-            <div className="flex items-center gap-2 border-b border-[var(--public-border)] px-4 pb-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--public-accent)]/15 text-[var(--public-accent)]">
-                <TelegramMark className="h-3.5 w-3.5" />
-              </span>
-              <span className="text-[11px] font-medium text-[var(--public-text)]">TeleBos</span>
-              <Radio className="ml-auto h-3.5 w-3.5 text-[var(--public-success)]" aria-hidden="true" />
-            </div>
-            <div className="px-2 py-2">
-              <AccountList bare />
+        {/* Body. A 3px titanium rail on a near-black screen: the rail's own
+            gradient is the bezel, so the device reads as metal rather than a
+            rounded box. rotate happens on an inner wrapper so the rail stays
+            uniform instead of shading differently per corner. */}
+        <div
+          className="relative origin-[50%_45%] rotate-[6deg]"
+          style={{
+            background: "linear-gradient(148deg,#9aa4b2 0%,#39424f 12%,#1a212c 46%,#4a5666 84%,#8a94a3 100%)",
+            borderRadius: "3.2rem",
+            padding: "3px",
+            boxShadow:
+              "0 0 0 1px rgba(255,255,255,0.07), 0 40px 90px -30px rgba(45,143,255,0.55), 0 10px 26px -12px rgba(0,0,0,0.8)",
+          }}
+        >
+          {/* Screen. The 2px near-black inset separates the glass from the rail,
+              which is what makes the bezel look like a frame. */}
+          <div
+            className="relative overflow-hidden rounded-[2.95rem] bg-[#04070d]"
+            style={{ padding: "2.5px" }}
+          >
+            <div className="relative overflow-hidden rounded-[2.75rem] bg-[#070b14]">
+              {/* Status bar: time, then the Dynamic Island, then indicators. */}
+              <div className="flex items-center justify-between px-5 pt-3.5 pb-1" aria-hidden="true">
+                <span className="text-[9px] font-semibold tracking-tight text-[var(--public-text)]">9:41</span>
+                {/* Dynamic Island. The near-black pill on a near-black screen
+                    still reads because of the 1px rim, same trick as the
+                    camera notch on a real device. */}
+                <span
+                  className="relative h-[1.15rem] w-[4.2rem] rounded-full bg-[#000] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]"
+                >
+                  <span className="absolute right-1.5 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[#101a2c] shadow-[inset_0_0_0_1px_rgba(120,170,255,0.25)]" />
+                </span>
+                <span className="flex items-center gap-1 text-[9px] text-[var(--public-text)]">
+                  <span className="h-1.5 w-3 rounded-[1px] bg-[var(--public-text)]" />
+                  <span className="h-1.5 w-1.5 rounded-full border border-[var(--public-text)]" />
+                </span>
+              </div>
+
+              {/* App header */}
+              <div className="flex items-center gap-2 border-b border-[var(--public-border)] px-4 pb-3 pt-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--public-accent)]/15 text-[var(--public-accent)]">
+                  <TelegramMark className="h-3.5 w-3.5" />
+                </span>
+                <span className="text-[11px] font-medium text-[var(--public-text)]">TeleBos</span>
+                <Radio className="ml-auto h-3.5 w-3.5 text-[var(--public-success)]" aria-hidden="true" />
+              </div>
+
+              <div className="px-2 py-2">
+                <AccountList bare />
+              </div>
+
+              {/* Home indicator */}
+              <div className="flex justify-center pb-2 pt-1" aria-hidden="true">
+                <span className="h-[3px] w-24 rounded-full bg-[var(--public-border)]" />
+              </div>
             </div>
           </div>
+
+          {/* Side buttons. Drawn as siblings of the screen so they sit on the
+              rail, not on the glass. */}
+          <span
+            aria-hidden="true"
+            className="absolute left-[-2px] top-[30%] h-12 w-[3px] rounded-l-sm bg-gradient-to-b from-[#6b7686] to-[#2b333f]"
+            style={{ boxShadow: "-1px 0 0 rgba(0,0,0,0.5)" }}
+          />
+          <span
+            aria-hidden="true"
+            className="absolute left-[-2px] top-[46%] h-16 w-[3px] rounded-l-sm bg-gradient-to-b from-[#6b7686] to-[#2b333f]"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute right-[-2px] top-[38%] h-20 w-[3px] rounded-r-sm bg-gradient-to-b from-[#6b7686] to-[#2b333f]"
+          />
         </div>
       </div>
     </div>
