@@ -17,6 +17,7 @@ from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 from app.utils.telegram_errors import classify_telegram_error
 from app.utils.telethon_helpers import get_active_client, join_and_resolve_chat
+from app.utils.telethon_cleanup import close_and_reap_telethon_client
 from app.utils.account_ownership import OWNER_WORKER, acquire_lease, release_lease
 from app.utils.async_helpers import interruptible_sleep, wake_job, clear_job_event
 
@@ -490,7 +491,7 @@ async def execute_invite(job_id: str):
             )
             await _update_invite_job_status(job_uuid, "failed")
             for acc in active_accounts:
-                await acc["client"].disconnect()
+                await close_and_reap_telethon_client(acc["client"], "invite")
             await _push_invite(
                 job_id,
                 "error",
@@ -692,13 +693,13 @@ async def execute_invite(job_id: str):
         # Check if cancelled during scraping
         if await _get_invite_job_status(job_uuid) == "cancelled":
             for acc in active_accounts:
-                await acc["client"].disconnect()
+                await close_and_reap_telethon_client(acc["client"], "invite")
             return
 
         if not all_members:
             await _set_invite_job_total_members(job_uuid, 0, status="completed")
             for acc in active_accounts:
-                await acc["client"].disconnect()
+                await close_and_reap_telethon_client(acc["client"], "invite")
             await _push_invite(
                 job_id,
                 "completed",
@@ -1085,10 +1086,7 @@ async def execute_invite(job_id: str):
                                 "message": f"Account {acc_name} reached max consecutive PeerFloods. Removing from rotation.",
                             },
                         )
-                        try:
-                            await client.disconnect()
-                        except Exception:
-                            pass
+                        await close_and_reap_telethon_client(client, "invite")
                         active_accounts.remove(selected_acc)
                         if current_acc_idx >= len(active_accounts) and active_accounts:
                             current_acc_idx = 0
@@ -1111,10 +1109,7 @@ async def execute_invite(job_id: str):
                             "message": f"Account {acc_name} is banned from Telegram. Removing from rotation.",
                         },
                     )
-                    try:
-                        await client.disconnect()
-                    except Exception:
-                        pass
+                    await close_and_reap_telethon_client(client, "invite")
                     active_accounts.remove(selected_acc)
                     if current_acc_idx >= len(active_accounts) and active_accounts:
                         current_acc_idx = 0
@@ -1132,10 +1127,7 @@ async def execute_invite(job_id: str):
                             "message": f"Account {acc_name} cannot invite ({err_type}). Removing from rotation.",
                         },
                     )
-                    try:
-                        await client.disconnect()
-                    except Exception:
-                        pass
+                    await close_and_reap_telethon_client(client, "invite")
                     active_accounts.remove(selected_acc)
                     if current_acc_idx >= len(active_accounts) and active_accounts:
                         current_acc_idx = 0
@@ -1168,10 +1160,7 @@ async def execute_invite(job_id: str):
                                 "message": f"Account {acc_name} session is invalid/unauthorized. Removing.",
                             },
                         )
-                        try:
-                            await client.disconnect()
-                        except Exception:
-                            pass
+                        await close_and_reap_telethon_client(client, "invite")
                         active_accounts.remove(selected_acc)
                         if current_acc_idx >= len(active_accounts) and active_accounts:
                             current_acc_idx = 0
@@ -1311,7 +1300,7 @@ async def execute_invite(job_id: str):
 
                     await client_pool.remove(acc_id_str, save_state=False)
                 else:
-                    await acc["client"].disconnect()
+                    await close_and_reap_telethon_client(acc["client"], "invite")
             except Exception:
                 pass
             # Release ownership so the backend can resume auto-reply and chat

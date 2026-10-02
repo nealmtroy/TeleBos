@@ -22,7 +22,10 @@ from app.utils.photo_helper import (
     get_photo_path as _photo_path,
 )
 from app.utils.session_converter import convert_to_telethon
-from app.utils.telethon_cleanup import force_close_telethon_client
+from app.utils.telethon_cleanup import (
+    close_and_reap_telethon_client,
+    force_close_telethon_client,
+)
 from app.services.twofa_service import get_live_2fa_status
 
 class DuplicateAccountError(Exception):
@@ -518,10 +521,7 @@ async def login_with_session(
         # timeout keeps its _recv_loop/_send_loop tasks alive. asyncio then
         # reports "Task was destroyed but it is pending!" and the socket leaks
         # (PYTHON-FASTAPI-B/C/D/E/W/X/Y). Force the loop tasks down here.
-        try:
-            await asyncio.wait_for(test_client.disconnect(), timeout=3.0)
-        except Exception:
-            pass
+        await close_and_reap_telethon_client(test_client, "validate", timeout=3.0)
         force_close_telethon_client(test_client)
 
     # Use phone from Telegram if available, fallback to placeholder

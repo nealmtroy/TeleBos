@@ -1,78 +1,160 @@
-"""Half-open Telethon clients must not leak their loop tasks (PYTHON-FASTAPI-B/C/D/E/W/X/Y)."""
+"""Regression tests for the Telethon pending-task leak.
+
+Regression guard for PYTHON-FASTAPI-B/C/D/E/W/X/Y ("Task was destroyed but it is
+pending!").
+
+The previous helper looked for ``client._send_task`` / ``client._recv_task``.
+Those attributes live on ``Connection``, not ``TelegramClient``, so the helper
+was a silent no-op and every half-open client kept its transport tasks alive.
+These tests pin the real attribute location and the cancel-and-await behaviour.
+"""
 
 import asyncio
 
-from app.utils.telethon_cleanup import force_close_telethon_client
+import pytest
+
+from app.utils.telethon_cleanup import (
+    _transport_tasks,
+    close_and_reap_telethon_client,
+    force_close_telethon_client,
+)
 
 
-class _FakeTask:
-    def __init__(self):
-        self.cancelled = False
-        self.done_called = False
+class FakeConnection:
+    """Mimics telethon.network.connection.Connection task storage."""
 
-    def done(self) -> bool:
-        self.done_called = True
-        return False
-
-    def cancel(self) -> None:
-        self.cancelled = True
+    def __init__(self) -> None:
+        self._send_task: asyncio.Task | None = None
+        self._recv_task: asyncio.Task | None = None
 
 
-class _FakeClient:
-    def __init__(self, connected: bool):
-        self._connected = connected
-        self._recv_task = _FakeTask()
-        self._send_task = _FakeTask()
-        self.disconnect_called = False
+class FakeClient:
+    """Mimics TelegramClient: holds the connection, does NOT proxy its tasks."""
 
-    async def disconnect(self):
-        # Mirrors telethon.network.connection.Connection.disconnect
-        if not self._connected:
-            return
-        self._connected = False
-        self._recv_task.cancel()
-        self._send_task.cancel()
+    def __init__(self, disconnect_raises: Exception | None = None) -> None:
+        self._connection = FakeConnection()
+        self.disconnect_raises = disconnect_raises
+        self.disconnect_calls = 0
+
+    async def disconnect(self) -> None:
+        self.disconnect_calls += 1
+        if self.disconnect_raises is not None:
+            raise self.disconnect_raises
 
 
-def test_force_close_cancels_tasks_of_never_connected_client():
-    """The leak: disconnect() no-ops, so nothing else cancels the tasks."""
-    client = _FakeClient(connected=False)
+async def _make_busy_client(disconnect_raises=None) -> FakeClient:
+    """A client with live transport tasks, like a half-open connection."""
 
-    asyncio.run(client.disconnect())
-    assert not client._recv_task.cancelled, "precondition: no-op leaves tasks pending"
+    client = FakeClient(disconnect_raises=disconnect_raises)
+    started = asyncio.Event()
+
+    async def _loop() -> None:
+        started.set()
+        await asyncio.sleep(3600)
+
+    client._connection._send_task = asyncio.create_task(_loop())
+    client._connection._recv_task = asyncio.create_task(_loop())
+    await started.wait()
+    # let both tasks actually reach the sleep
+    await asyncio.sleep(0)
+    return client
+
+
+async def _drain() -> None:
+    """Give cancelled tasks a chance to process their cancellation."""
+    for _ in range(5):
+        await asyncio.sleep(0)
+
+
+@pytest.mark.asyncio
+async def test_transport_tasks_are_found_on_the_connection():
+    """The leak was invisible because the tasks live on _connection."""
+    client = await _make_busy_client()
+    tasks = _transport_tasks(client)
+
+    assert len(tasks) == 2, "must find the tasks Telethon actually created"
+    assert all(not t.done() for t in tasks)
+
+    for t in tasks:
+        t.cancel()
+    await _drain()
+
+
+@pytest.mark.asyncio
+async def test_force_close_cancels_transport_tasks():
+    """The old helper silently did nothing here."""
+    client = await _make_busy_client()
 
     force_close_telethon_client(client)
 
-    assert client._recv_task.cancelled
-    assert client._send_task.cancelled
+    assert client._connection._send_task.cancelled() or client._connection._send_task.cancelling()
+    assert client._connection._recv_task.cancelled() or client._connection._recv_task.cancelling()
+    await _drain()
 
 
-def test_force_close_is_safe_on_connected_client():
-    client = _FakeClient(connected=True)
+@pytest.mark.asyncio
+async def test_close_and_reap_awaits_cancelled_tasks():
+    """Cancelling without awaiting still logs 'destroyed but it is pending'."""
 
-    asyncio.run(client.disconnect())
-    assert client._recv_task.cancelled  # disconnect already handled it
+    async def _tracker() -> None:
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            raise
 
-    force_close_telethon_client(client)  # must not raise
+    client = await _make_busy_client()
+    tasks = [client._connection._send_task, client._connection._recv_task]
+
+    await close_and_reap_telethon_client(client, "acct-test")
+
+    assert client.disconnect_calls == 1
+    for t in tasks:
+        # fully finished, not merely cancelling: this is what stops the
+        # "Task was destroyed but it is pending!" log
+        assert t.done(), "task must be awaited to completion, not just cancelled"
 
 
-def test_force_close_tolerates_missing_tasks():
-    class Bare:
-        pass
+@pytest.mark.asyncio
+async def test_close_and_reap_survives_disconnect_failure():
+    """A disconnect that raises must not skip reaping the tasks."""
+    client = await _make_busy_client(disconnect_raises=RuntimeError("socket reset"))
+    tasks = [client._connection._send_task, client._connection._recv_task]
 
-    force_close_telethon_client(Bare())  # must not raise
+    await close_and_reap_telethon_client(client, "acct-test")
+
+    assert client.disconnect_calls == 1
+    for t in tasks:
+        assert t.done()
 
 
-def test_force_close_ignores_finished_tasks():
-    class Done:
-        def done(self):
-            return True
+@pytest.mark.asyncio
+async def test_close_and_reap_is_safe_without_connection():
+    """A client that never created a connection must not raise."""
+    client = FakeClient()
+    await close_and_reap_telethon_client(client, "acct-test")
+    assert client.disconnect_calls == 1
 
-        def cancel(self):
-            raise AssertionError("should not cancel a finished task")
 
-    client = _FakeClient(connected=True)
-    client._recv_task = Done()
-    client._send_task = Done()
+@pytest.mark.asyncio
+async def test_close_and_reap_tolerates_timeout():
+    """A hung disconnect still reaps the tasks instead of leaking them."""
 
-    force_close_telethon_client(client)  # must not raise
+    class HangingClient(FakeClient):
+        async def disconnect(self) -> None:
+            self.disconnect_calls += 1
+            await asyncio.sleep(3600)
+
+    client = HangingClient()
+    started = asyncio.Event()
+
+    async def _loop() -> None:
+        started.set()
+        await asyncio.sleep(3600)
+
+    client._connection._send_task = asyncio.create_task(_loop())
+    await started.wait()
+    task = client._connection._send_task
+
+    await close_and_reap_telethon_client(client, "acct-test", timeout=0.05)
+
+    assert task.done()

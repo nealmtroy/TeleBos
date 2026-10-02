@@ -517,11 +517,18 @@ async def test_unauthorized_client_tasks_cancelled_when_disconnect_times_out():
     client.connect = AsyncMock()
     client.is_user_authorized = AsyncMock(return_value=False)
     client.disconnect = AsyncMock(side_effect=asyncio.TimeoutError())
-    recv_task, send_task = MagicMock(), MagicMock()
-    recv_task.done.return_value = False
-    send_task.done.return_value = False
-    client._recv_task = recv_task
-    client._send_task = send_task
+    # Real asyncio tasks: the cleanup helper only cancels actual Task objects,
+    # so a MagicMock here would be skipped exactly like the production bug was.
+    # Telethon stores these on Connection (client._connection), NOT on the client
+    # itself -- putting them on the client is what made the previous cleanup
+    # helper a silent no-op.
+    async def _never() -> None:
+        await asyncio.sleep(3600)
+
+    recv_task = asyncio.create_task(_never())
+    send_task = asyncio.create_task(_never())
+    client._connection._recv_task = recv_task
+    client._connection._send_task = send_task
 
     with (
         patch("app.services.telegram_client.TelegramClient", return_value=client),
@@ -544,8 +551,8 @@ async def test_unauthorized_client_tasks_cancelled_when_disconnect_times_out():
         result = await pool.get(acc_id, "session-string")
 
     assert result is None
-    recv_task.cancel.assert_called_once()
-    send_task.cancel.assert_called_once()
+    assert recv_task.done(), "recv loop task must be cancelled and reaped"
+    assert send_task.done(), "send loop task must be cancelled and reaped"
 
     # The unauthorized branch must do the cleanup itself. The generic handler
     # also force-closes, so asserting only the cancel would pass even with this

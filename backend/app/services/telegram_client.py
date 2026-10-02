@@ -29,7 +29,10 @@ DEAD_SESSION_ERRORS = (
 
 from app.config import get_settings
 from app.utils.device_spoof import deterministic_ios_device, random_ios_device
-from app.utils.telethon_cleanup import force_close_telethon_client
+from app.utils.telethon_cleanup import (
+    close_and_reap_telethon_client,
+    force_close_telethon_client,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -268,10 +271,7 @@ class TelegramClientPool:
             return "unknown"
         finally:
             if client is not None:
-                try:
-                    await asyncio.wait_for(client.disconnect(), timeout=2.0)
-                except Exception:
-                    pass
+                await close_and_reap_telethon_client(client, account_id, timeout=2.0)
                 # A client that never connected makes disconnect() a no-op,
                 # stranding its loop tasks (force_close_telethon_client).
                 force_close_telethon_client(client)
@@ -309,12 +309,7 @@ class TelegramClientPool:
                 else:
                     logger.info("Evicting disconnected cached client for account %s", account_id)
                     self._clients.pop(account_id, None)
-                    try:
-                        await asyncio.wait_for(existing["client"].disconnect(), timeout=5.0)
-                    except (RuntimeError, ConnectionResetError, OSError) as e:
-                        logger.debug("Socket already closed or reset during eviction of account %s: %s", account_id, e)
-                    except Exception as e:
-                        logger.debug("Failed to disconnect old client before recreating: %s", e)
+                    await close_and_reap_telethon_client(existing["client"], account_id)
     
             # Check for valid Telegram API configuration
             if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
@@ -361,14 +356,7 @@ class TelegramClientPool:
                     # else will disconnect it. Leaving it behind strands Telethon's
                     # send/recv loop tasks, which asyncio then reports as destroyed
                     # pending tasks (PYTHON-FASTAPI-B/C/D/E) and leaks sockets.
-                    try:
-                        await asyncio.wait_for(client.disconnect(), timeout=5.0)
-                    except Exception as cleanup_exc:
-                        logger.debug(
-                            "Failed to disconnect client after connect timeout for %s: %s",
-                            account_id,
-                            cleanup_exc,
-                        )
+                    await close_and_reap_telethon_client(client, account_id)
                     return None
                 if not await client.is_user_authorized():
                     logger.warning("Session expired for account %s", account_id)
@@ -376,16 +364,8 @@ class TelegramClientPool:
                     # raise into the generic handler below, which marks the
                     # session expired but leaves the client connected with its
                     # loop tasks alive (PYTHON-FASTAPI-B/C/D/E).
-                    try:
-                        await asyncio.wait_for(client.disconnect(), timeout=2.0)
-                    except Exception as disconnect_exc:
-                        logger.debug(
-                            "Failed to disconnect unauthorized client for %s: %s",
-                            account_id,
-                            disconnect_exc,
-                        )
-                    finally:
-                        force_close_telethon_client(client)
+                    await close_and_reap_telethon_client(client, account_id, timeout=2.0)
+                    force_close_telethon_client(client)
                     self._clients.pop(account_id, None)
                     await self._handle_expired_session(account_id)
                     return None
@@ -476,14 +456,7 @@ class TelegramClientPool:
                 # The client may already be connected by this point; releasing
                 # it here is what keeps a dead session from stranding its loop
                 # tasks (PYTHON-FASTAPI-B/C/D/E).
-                try:
-                    await asyncio.wait_for(client.disconnect(), timeout=3.0)
-                except Exception as disconnect_exc:
-                    logger.debug(
-                        "Failed to disconnect expired client for %s: %s",
-                        account_id,
-                        disconnect_exc,
-                    )
+                await close_and_reap_telethon_client(client, account_id, timeout=3.0)
                 force_close_telethon_client(client)
                 await self._handle_expired_session(account_id)
                 return None
@@ -580,12 +553,7 @@ class TelegramClientPool:
                 except Exception as exc:
                     logger.debug("Failed to save update state on remove for account %s: %s", account_id, exc)
 
-            try:
-                await asyncio.wait_for(client.disconnect(), timeout=5.0)
-            except (RuntimeError, ConnectionResetError, OSError) as exc:
-                logger.debug("Socket already closed or reset during disconnect of client %s: %s", account_id, exc)
-            except Exception as exc:
-                logger.debug("Failed to disconnect client %s during removal: %s", account_id, exc)
+            await close_and_reap_telethon_client(client, account_id)
 
         # MEM-02: Evict lock once account removal is complete only if no other coroutines are holding it
         if not lock.locked():
