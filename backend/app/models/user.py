@@ -24,7 +24,7 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     role: Mapped[str] = mapped_column(String(20), default="basic")
-    balance: Mapped[int] = mapped_column(default=0)
+    balance: Mapped[int] = mapped_column(BigInteger, default=0)
     subscription_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )

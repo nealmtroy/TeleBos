@@ -55,6 +55,10 @@ from app.services.pending_login_service import pending_login_manager
 # Temporary in-memory store for QR code login flows: qr_id -> details dict
 _pending_qr_logins: dict[str, dict[str, Any]] = {}
 
+# Strong references to in-flight QR watcher tasks. Without these the event loop
+# may garbage-collect a task that is still polling Telegram for the scan.
+_qr_watch_tasks: set[asyncio.Task] = set()
+
 
 async def clean_pending_logins_task():
     """Background task to clean up expired pending logins and disconnect their Telethon clients."""
@@ -201,8 +205,8 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             _pending_qr_logins[qr_id]["error"] = sanitize_exception(exc)
         try:
             await client.disconnect()
-        except Exception:
-            pass
+        except Exception as disc_exc:
+            logger.warning("Failed to disconnect QR login client %s on error: %s", qr_id, disc_exc)
 
 
 @router.post("/qr-login/init", response_model=QRInitResponse)
@@ -228,7 +232,9 @@ async def qr_login_init(user: User = Depends(get_current_user)):
         }
         
         # Start background task to watch scan
-        asyncio.create_task(watch_qr_login(qr_id, client, qr_login, user.id))
+        watch_task = asyncio.create_task(watch_qr_login(qr_id, client, qr_login, user.id))
+        _qr_watch_tasks.add(watch_task)
+        watch_task.add_done_callback(_qr_watch_tasks.discard)
         
         return QRInitResponse(
             qr_id=qr_id,

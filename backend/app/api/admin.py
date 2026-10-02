@@ -492,7 +492,10 @@ async def update_user_balance(
     ip = request.client.host
     if not await rate_limiter.check(f"admin:ip:{ip}"):
         raise HTTPException(status_code=429, detail="Too many requests. Try later.")
-    result = await db.execute(select(User).where(User.id == UUID(payload.user_id)))
+    # Lock the row so concurrent balance adjustments cannot overwrite each other.
+    result = await db.execute(
+        select(User).where(User.id == UUID(payload.user_id)).with_for_update()
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -565,8 +568,13 @@ async def delete_user(
     for acc in user_accounts:
         try:
             await client_pool.remove(str(acc.id), save_state=False)
-        except Exception:
-            pass
+        except Exception as pool_exc:
+            logger.error(
+                "Failed to remove Telethon client for account %s while deleting user %s: %s",
+                acc.id,
+                user_id,
+                pool_exc,
+            )
         photo_path = os.path.join(settings.UPLOAD_DIR, "profile_photos", f"{acc.id}.jpg")
         if os.path.exists(photo_path):
             try:

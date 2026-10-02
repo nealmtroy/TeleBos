@@ -84,6 +84,10 @@ export function useJobSocket(jobType: "broadcast" | "invite" | "autojoin", jobId
         setLogs((prev) => [...prev, data]);
       } else if (data.type === "completed" || data.type === "error") {
         setProgress(data);
+        // The job is finished server-side. Without this the client keeps
+        // reconnecting for up to 10 attempts with backoff, burning sockets on
+        // a channel that will never produce another event.
+        setTimeout(() => disconnectSocket(`${jobType}:${jobId}`), 1000);
       } else if (data.message) {
         setPhaseMessage(data.message);
       }

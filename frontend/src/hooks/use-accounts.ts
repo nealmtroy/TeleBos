@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { getAccountPhotoUrl } from "@/lib/avatar";
+import { connectChatSocket } from "@/lib/socket";
 
 export interface Account {
   id: string;
@@ -271,7 +272,6 @@ export function useProfileSync(accountId: string | undefined) {
   useEffect(() => {
     if (!accountId) return;
 
-    const { connectChatSocket } = require("@/lib/socket");
     const ws = connectChatSocket(accountId);
 
     const handler = (data: any) => {

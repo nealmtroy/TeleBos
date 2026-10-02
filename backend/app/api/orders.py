@@ -1,5 +1,7 @@
 """Order endpoints — services list, place orders, history, status."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -228,8 +230,15 @@ async def place_mass_order(
                         existing_orders.append(ord_rec)
                 if existing_orders:
                     return existing_orders
-            except Exception:
-                pass
+            except Exception as cache_exc:
+                # Idempotency is best-effort. Falling through would let a retry
+                # create duplicate orders, so make the miss visible in logs.
+                logger.warning(
+                    "Idempotency cache lookup failed (key=%s); proceeding "
+                    "without deduplication: %s",
+                    cache_key,
+                    cache_exc,
+                )
 
     orders_data = [o.model_dump() for o in payload.orders]
     try:
