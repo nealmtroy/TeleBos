@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[0d660381](https://github.com/nealmtroy/TeleBos/commit/0d660381)**: style(landing): re-theme the landing navbar to the editorial palette
 - **[7528df7b](https://github.com/nealmtroy/TeleBos/commit/7528df7b)**: feat(landing): rebuild the page as an editorial layout on warm paper
 - **[9f2a9e27](https://github.com/nealmtroy/TeleBos/commit/9f2a9e27)**: feat(landing): rebuild hero with editorial split layout and sharper copy
 - **[02530b22](https://github.com/nealmtroy/TeleBos/commit/02530b22)**: fix(orders): stop SMM quantity field trapping itself at 1

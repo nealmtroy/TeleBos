@@ -45,23 +45,23 @@ export default function RegisterPage() {
   return (
     <PublicShell footer={<PublicFooter compact />} mainClassName="flex min-h-screen items-center justify-center px-4 py-16 sm:px-8">
       <div className="w-full max-w-lg">
-        <div className="mb-8 flex items-center justify-between gap-4"><Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]"><BrandLogo size="md" priority /></Link><Link href="/login" className="public-focus rounded-[6px] text-sm text-[#a1a4a5] hover:text-white">{_("register.signIn")}</Link></div>
-        <div className="rounded-[16px] border border-[#292d30] p-6 sm:p-9">
+        <div className="mb-8 flex items-center justify-between gap-4"><Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]"><BrandLogo size="md" priority /></Link><Link href="/login" className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">{_("register.signIn")}</Link></div>
+        <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
           <h1 className="public-display text-5xl leading-none text-white">{_("register.createAccount")}</h1>
-          <p className="mt-4 text-[#a1a4a5]">{_("register.getStarted")}</p>
+          <p className="mt-4 text-[var(--public-muted)]">{_("register.getStarted")}</p>
           <form onSubmit={handleSubmit} className="mt-9 space-y-5">
             {error && <div role="alert" aria-live="polite" className="rounded-[6px] border border-[#ff9592] p-4 text-sm text-[#ff9592]">{error}</div>}
-            {success && <div role="status" aria-live="polite" className="rounded-[6px] border border-[#3ad389] p-4 text-sm text-[#3ad389]">{success}</div>}
-            <div><label htmlFor="name" className="mb-2 block text-sm font-medium text-[#f0f0f0]">{_("register.fullNameLabel")}</label><PublicInput id="name" name="name" type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={_("register.fullNamePlaceholder")} /></div>
-            <div><label htmlFor="register-email" className="mb-2 block text-sm font-medium text-[#f0f0f0]">{_("register.emailLabel")}</label><PublicInput id="register-email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={_("register.emailPlaceholder")} /></div>
-            <div><label htmlFor="register-password" className="mb-2 block text-sm font-medium text-[#f0f0f0]">{_("register.passwordLabel")}</label><PublicInput id="register-password" name="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={_("register.passwordPlaceholder")} /></div>
-            <div className="flex items-start gap-3 rounded-[6px] border border-[#292d30] p-4">
+            {success && <div role="status" aria-live="polite" className="rounded-[6px] border border-[var(--public-success)] p-4 text-sm text-[var(--public-success)]">{success}</div>}
+            <div><label htmlFor="name" className="mb-2 block text-sm font-medium text-[var(--public-body)]">{_("register.fullNameLabel")}</label><PublicInput id="name" name="name" type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={_("register.fullNamePlaceholder")} /></div>
+            <div><label htmlFor="register-email" className="mb-2 block text-sm font-medium text-[var(--public-body)]">{_("register.emailLabel")}</label><PublicInput id="register-email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={_("register.emailPlaceholder")} /></div>
+            <div><label htmlFor="register-password" className="mb-2 block text-sm font-medium text-[var(--public-body)]">{_("register.passwordLabel")}</label><PublicInput id="register-password" name="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={_("register.passwordPlaceholder")} /></div>
+            <div className="flex items-start gap-3 rounded-[6px] border border-[var(--public-border)] p-4">
               <PublicCheckbox id="agree" name="agree" checked={agree} onChange={(event) => setAgree(event.target.checked)} aria-describedby="agreement-description" />
-              <div id="agreement-description" className="text-sm leading-6 text-[#a1a4a5]">
-                <label htmlFor="agree" className="cursor-pointer text-[#f0f0f0]">{_("register.agreePrefix")}</label>{" "}
-                <Link href="/privacy" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">{_("landing.navPrivacy")}</Link>{" "}
+              <div id="agreement-description" className="text-sm leading-6 text-[var(--public-muted)]">
+                <label htmlFor="agree" className="cursor-pointer text-[var(--public-body)]">{_("register.agreePrefix")}</label>{" "}
+                <Link href="/privacy" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">{_("landing.navPrivacy")}</Link>{" "}
                 {_("register.agreeAnd")}{" "}
-                <Link href="/tos" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">{_("landing.navTos")}</Link>
+                <Link href="/tos" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">{_("landing.navTos")}</Link>
               </div>
             </div>
             <button type="submit" disabled={loading} aria-busy={loading} className={`${publicButtonClass} w-full border-white`}>{loading ? _("register.creatingAccount") : _("register.createAccount")}</button>
@@ -72,4 +72,4 @@ export default function RegisterPage() {
   );
 }
 
-function LoadingState() { return <div className="public-theme flex min-h-screen items-center justify-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-[#292d30] border-t-[#2AABEE]" role="status"><span className="sr-only">Loading</span></div></div>; }
+function LoadingState() { return <div className="public-theme flex min-h-screen items-center justify-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--public-border)] border-t-[var(--public-accent)]" role="status"><span className="sr-only">Loading</span></div></div>; }

@@ -44,18 +44,18 @@ export default function ForgotPasswordPage() {
           <Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]">
             <BrandLogo size="md" priority />
           </Link>
-          <Link href="/login" className="public-focus rounded-[6px] text-sm text-[#a1a4a5] hover:text-white">
+          <Link href="/login" className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">
             {_("forgotPassword.backToLogin")}
           </Link>
         </div>
 
-        <div className="rounded-[16px] border border-[#292d30] p-6 sm:p-9">
+        <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
           <h1 className="public-display text-5xl leading-none text-white">{_("forgotPassword.title")}</h1>
-          <p className="mt-4 leading-7 text-[#a1a4a5]">{_("forgotPassword.subtitle")}</p>
+          <p className="mt-4 leading-7 text-[var(--public-muted)]">{_("forgotPassword.subtitle")}</p>
 
           {sent ? (
             <div className="mt-9 space-y-6">
-              <div role="status" aria-live="polite" className="rounded-[6px] border border-[#3ad389] p-4 text-sm leading-6 text-[#3ad389]">
+              <div role="status" aria-live="polite" className="rounded-[6px] border border-[var(--public-success)] p-4 text-sm leading-6 text-[var(--public-success)]">
                 {_("forgotPassword.success")}
               </div>
               <Link href="/login" className={`${publicButtonClass} w-full border-white`}>
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="mt-9 space-y-5">
               <div>
-                <label htmlFor="forgot-email" className="mb-2 block text-sm font-medium text-[#f0f0f0]">
+                <label htmlFor="forgot-email" className="mb-2 block text-sm font-medium text-[var(--public-body)]">
                   {_("forgotPassword.emailLabel")}
                 </label>
                 <PublicInput
@@ -84,9 +84,9 @@ export default function ForgotPasswordPage() {
                 {loading ? _("forgotPassword.sending") : _("forgotPassword.sendLink")}
               </button>
 
-              <p className="text-center text-sm text-[#a1a4a5]">
+              <p className="text-center text-sm text-[var(--public-muted)]">
                 {_("forgotPassword.rememberPassword")} {" "}
-                <Link href="/login" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">
+                <Link href="/login" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
                   {_("login.signIn")}
                 </Link>
               </p>

@@ -21,9 +21,9 @@ export default function ApiDocumentationPage() {
     <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
       <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="max-w-3xl">
-          <p className="public-mono text-xs text-[#2AABEE]">{_("help.developerResources")}</p>
+          <p className="public-mono text-xs text-[var(--public-accent)]">{_("help.developerResources")}</p>
           <h1 className="public-display mt-5 text-5xl leading-none text-white sm:text-7xl">{_("help.apiHeroTitle")}</h1>
-          <p className="mt-6 text-lg leading-8 text-[#a1a4a5]">{_("help.apiHeroDesc")}</p>
+          <p className="mt-6 text-lg leading-8 text-[var(--public-muted)]">{_("help.apiHeroDesc")}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/api/docs" className={`${publicButtonClass} border-white`}>{_("help.openDocs")}<ExternalLink className="h-4 w-4" aria-hidden="true" /></Link>
             <Link href="/api/openapi.json" className={publicButtonClass}>{_("help.downloadOpenApi")}<BookOpen className="h-4 w-4" aria-hidden="true" /></Link>
@@ -33,16 +33,16 @@ export default function ApiDocumentationPage() {
         <div className="mt-14 grid gap-5 md:grid-cols-3">
           {cards.map(({ icon: Icon, title, description }) => (
             <PublicCard key={title} className="p-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[6px] border border-[#292d30] text-[#2AABEE]"><Icon className="h-5 w-5" aria-hidden="true" /></div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-[6px] border border-[var(--public-border)] text-[var(--public-accent)]"><Icon className="h-5 w-5" aria-hidden="true" /></div>
               <h2 className="mt-5 font-medium text-white">{title}</h2>
-              <p className="mt-3 text-sm leading-6 text-[#a1a4a5]">{description}</p>
+              <p className="mt-3 text-sm leading-6 text-[var(--public-muted)]">{description}</p>
             </PublicCard>
           ))}
         </div>
 
-        <section className="mt-10 rounded-[16px] border border-[#292d30] p-6">
+        <section className="mt-10 rounded-[16px] border border-[var(--public-border)] p-6">
           <h2 className="text-lg font-medium text-[#ffca16]">{_("help.authWarningTitle")}</h2>
-          <p className="mt-3 text-sm leading-6 text-[#f0f0f0]">{_("help.authWarningDesc")}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--public-body)]">{_("help.authWarningDesc")}</p>
         </section>
 
         <section className="mt-10">

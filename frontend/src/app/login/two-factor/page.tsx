@@ -69,16 +69,16 @@ export default function TwoFactorPage() {
           <Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]">
             <BrandLogo size="md" priority />
           </Link>
-          <Link href="/login" className="public-focus rounded-[6px] text-sm text-[#a1a4a5] hover:text-white">
+          <Link href="/login" className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">
             {_("login.backToLogin")}
           </Link>
         </div>
 
-        <div className="rounded-[16px] border border-[#292d30] p-6 sm:p-9">
+        <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
           <h1 className="public-display text-4xl leading-none text-white">
             {mode === "totp" ? _("login.twoFactorTitle") : _("login.backupCodeTitle")}
           </h1>
-          <p className="mt-4 text-[#a1a4a5]">
+          <p className="mt-4 text-[var(--public-muted)]">
             {mode === "totp" ? _("login.twoFactorDesc") : _("login.backupCodeDesc")}
           </p>
 
@@ -90,7 +90,7 @@ export default function TwoFactorPage() {
             )}
 
             <div>
-              <label htmlFor="code" className="mb-2 block text-sm font-medium text-[#f0f0f0]">
+              <label htmlFor="code" className="mb-2 block text-sm font-medium text-[var(--public-body)]">
                 {mode === "totp" ? _("login.codeLabel") : _("login.backupCodeLabel")}
               </label>
               <PublicInput
@@ -112,7 +112,7 @@ export default function TwoFactorPage() {
               <div className="flex items-center text-sm">
                 <label
                   htmlFor="trustDevice"
-                  className="flex min-h-10 cursor-pointer items-center gap-3 rounded-[6px] text-[#a1a4a5] transition-colors hover:text-[#f0f0f0]"
+                  className="flex min-h-10 cursor-pointer items-center gap-3 rounded-[6px] text-[var(--public-muted)] transition-colors hover:text-[var(--public-body)]"
                 >
                   <PublicCheckbox
                     id="trustDevice"
@@ -133,7 +133,7 @@ export default function TwoFactorPage() {
               <button
                 type="button"
                 onClick={handleSwitchMode}
-                className="text-sm text-[#2AABEE] hover:text-white transition-colors duration-150 underline"
+                className="text-sm text-[var(--public-accent)] hover:text-[var(--public-text)] transition-colors duration-150 underline"
               >
                 {mode === "totp" ? _("login.useBackupCode") : _("login.useTotp")}
               </button>

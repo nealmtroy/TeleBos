@@ -21,17 +21,17 @@ export default function PrivacyPage() {
   return (
     <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
       <article className="mx-auto max-w-[880px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-        <header className="border-b border-[#292d30] pb-12">
-          <Shield className="h-8 w-8 text-[#2AABEE]" aria-hidden="true" />
+        <header className="border-b border-[var(--public-border)] pb-12">
+          <Shield className="h-8 w-8 text-[var(--public-accent)]" aria-hidden="true" />
           <h1 className="public-display mt-7 text-5xl leading-none text-white sm:text-7xl">{_("privacy.title")}</h1>
-          <p className="public-mono mt-5 text-xs text-[#6e727a]">{_("privacy.lastUpdated")}</p>
-          <p className="mt-8 max-w-3xl text-lg leading-8 text-[#a1a4a5]">{_("privacy.intro")}</p>
+          <p className="public-mono mt-5 text-xs text-[var(--public-subtle)]">{_("privacy.lastUpdated")}</p>
+          <p className="mt-8 max-w-3xl text-lg leading-8 text-[var(--public-muted)]">{_("privacy.intro")}</p>
         </header>
-        <ol className="divide-y divide-[#292d30]">
+        <ol className="divide-y divide-[var(--public-border)]">
           {sections.map((section, index) => (
             <li key={section.title} className="grid gap-4 py-9 sm:grid-cols-[3rem_1fr]">
-              <span className="public-mono text-sm text-[#2AABEE]">{String(index + 1).padStart(2, "0")}</span>
-              <div><h2 className="text-xl font-medium text-white">{section.title}</h2><p className="mt-4 leading-8 text-[#a1a4a5]">{section.description}</p></div>
+              <span className="public-mono text-sm text-[var(--public-accent)]">{String(index + 1).padStart(2, "0")}</span>
+              <div><h2 className="text-xl font-medium text-white">{section.title}</h2><p className="mt-4 leading-8 text-[var(--public-muted)]">{section.description}</p></div>
             </li>
           ))}
         </ol>

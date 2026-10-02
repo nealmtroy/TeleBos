@@ -104,18 +104,18 @@ function LoginForm() {
           <Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]">
             <BrandLogo size="md" priority />
           </Link>
-          <Link href="/register" className="public-focus rounded-[6px] text-sm text-[#a1a4a5] hover:text-white">
+          <Link href="/register" className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">
             {_("login.register")}
           </Link>
         </div>
 
-        <div className="rounded-[16px] border border-[#292d30] p-6 sm:p-9">
+        <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
           <h1 className="public-display text-5xl leading-none text-white">{_("login.welcomeBack")}</h1>
-          <p className="mt-4 text-[#a1a4a5]">{_("login.signInSubtitle")}</p>
+          <p className="mt-4 text-[var(--public-muted)]">{_("login.signInSubtitle")}</p>
 
           <form onSubmit={handleSubmit} className="mt-9 space-y-5">
             {verified && !error && !verificationSent && (
-              <div role="status" className="rounded-[6px] border border-[#3ad389] p-4 text-sm text-[#3ad389]">
+              <div role="status" className="rounded-[6px] border border-[var(--public-success)] p-4 text-sm text-[var(--public-success)]">
                 {_("login.verifiedSuccess")}
               </div>
             )}
@@ -147,13 +147,13 @@ function LoginForm() {
               </div>
             )}
             {verificationSent && (
-              <div role="status" className="rounded-[6px] border border-[#3ad389] p-4 text-sm text-[#3ad389]">
+              <div role="status" className="rounded-[6px] border border-[var(--public-success)] p-4 text-sm text-[var(--public-success)]">
                 {_("login.verificationSent")}
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-[#f0f0f0]">
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-[var(--public-body)]">
                 {_("login.emailLabel")}
               </label>
               <PublicInput
@@ -168,7 +168,7 @@ function LoginForm() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-[#f0f0f0]">
+              <label htmlFor="password" className="mb-2 block text-sm font-medium text-[var(--public-body)]">
                 {_("login.passwordLabel")}
               </label>
               <PublicInput
@@ -185,11 +185,11 @@ function LoginForm() {
             </div>
 
             <div className="flex items-center justify-between gap-4 text-sm">
-              <label htmlFor="rememberMe" className="flex min-h-10 cursor-pointer items-center gap-3 rounded-[6px] text-[#a1a4a5] transition-colors hover:text-[#f0f0f0]">
+              <label htmlFor="rememberMe" className="flex min-h-10 cursor-pointer items-center gap-3 rounded-[6px] text-[var(--public-muted)] transition-colors hover:text-[var(--public-body)]">
                 <PublicCheckbox id="rememberMe" name="rememberMe" />
                 <span>{_("login.rememberMe")}</span>
               </label>
-              <Link href="/forgot-password" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">
+              <Link href="/forgot-password" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
                 {_("login.forgotPassword")}
               </Link>
             </div>
@@ -197,9 +197,9 @@ function LoginForm() {
             <button type="submit" disabled={loading} aria-busy={loading} className={`${publicButtonClass} w-full border-white`}>
               {loading ? _("login.signingIn") : _("login.signIn")}
             </button>
-            <p className="text-center text-sm text-[#a1a4a5]">
+            <p className="text-center text-sm text-[var(--public-muted)]">
               {_("login.noAccount")} {" "}
-              <Link href="/register" className="public-focus rounded-[6px] text-[#2AABEE] hover:text-white">
+              <Link href="/register" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
                 {_("login.register")}
               </Link>
             </p>
@@ -213,7 +213,7 @@ function LoginForm() {
 function LoadingState() {
   return (
     <div className="public-theme flex min-h-screen items-center justify-center">
-      <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#292d30] border-t-[#2AABEE]" role="status">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--public-border)] border-t-[var(--public-accent)]" role="status">
         <span className="sr-only">Loading</span>
       </div>
     </div>
