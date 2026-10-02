@@ -24,7 +24,7 @@ export default function TosPage() {
       <article className="mx-auto max-w-[880px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <header className="border-b border-[var(--public-border)] pb-12">
           <Scale className="h-8 w-8 text-[var(--public-accent)]" aria-hidden="true" />
-          <h1 className="public-display mt-7 text-5xl leading-none text-white sm:text-7xl">{_("tos.title")}</h1>
+          <h1 className="public-display mt-7 text-5xl leading-none text-[var(--public-text)] sm:text-7xl">{_("tos.title")}</h1>
           <p className="public-mono mt-5 text-xs text-[var(--public-subtle)]">{_("tos.lastUpdated")}</p>
           <p className="mt-8 max-w-3xl text-lg leading-8 text-[var(--public-muted)]">{_("tos.intro")}</p>
         </header>

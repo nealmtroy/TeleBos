@@ -38,7 +38,7 @@ export default function HelpPage() {
       <section className="border-b border-[var(--public-border)]">
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
           <p className="public-mono text-xs text-[var(--public-accent)]">{_("help.apiTitle")}</p>
-          <h1 className="public-display mt-5 text-5xl leading-none text-white sm:text-7xl">{_("help.title")}</h1>
+          <h1 className="public-display mt-5 text-5xl leading-none text-[var(--public-text)] sm:text-7xl">{_("help.title")}</h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--public-muted)]">{_("help.desc")}</p>
           <div className="relative mt-9 max-w-xl">
             <label htmlFor="help-search" className="sr-only">{_("help.searchLabel")}</label>

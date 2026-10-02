@@ -42,27 +42,30 @@
 }
 
 .public-display {
-  font-family: var(--font-public-display), Georgia, "Times New Roman", serif;
-  font-weight: 400;
-  /* Optical tracking: display sizes need tighter spacing than body copy, and
-     the tracking has to ease off as the size drops on small screens or the
-     lines collide on a phone. */
-  letter-spacing: -0.028em;
+  /* Same face as the CTA and body copy: Plus Jakarta Sans. The whole public
+     surface is deliberately one typeface now, so headings and buttons cannot
+     drift apart across devices. */
+  font-family: var(--font-public-sans), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  /* Sans display sizes need less negative tracking than a serif did (no
+     contrast to absorb it) and a slightly heavier weight to hold a large
+     optical size. */
+  letter-spacing: -0.035em;
   font-feature-settings: "liga" 1, "kern" 1;
   text-rendering: optimizeLegibility;
 }
 
-/* Below the largest breakpoint a 6rem serif at -0.028em starts to clip its own
+/* Below the largest breakpoint a 5.5rem sans at -0.035em starts to clip its own
    descenders against the next line, so tracking relaxes on small screens. */
 @media (max-width: 640px) {
   .public-display {
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
   }
 }
 
 @media (min-width: 1024px) {
   .public-display {
-    letter-spacing: -0.035em;
+    letter-spacing: -0.045em;
   }
 }
 

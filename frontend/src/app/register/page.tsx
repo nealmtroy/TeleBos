@@ -47,7 +47,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-lg">
         <div className="mb-8 flex items-center justify-between gap-4"><Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]"><BrandLogo size="md" priority /></Link><Link href="/login" className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">{_("register.signIn")}</Link></div>
         <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
-          <h1 className="public-display text-5xl leading-none text-white">{_("register.createAccount")}</h1>
+          <h1 className="public-display text-5xl leading-none text-[var(--public-text)]">{_("register.createAccount")}</h1>
           <p className="mt-4 text-[var(--public-muted)]">{_("register.getStarted")}</p>
           <form onSubmit={handleSubmit} className="mt-9 space-y-5">
             {error && <div role="alert" aria-live="polite" className="rounded-[6px] border border-[#ff9592] p-4 text-sm text-[#ff9592]">{error}</div>}

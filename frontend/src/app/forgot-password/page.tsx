@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
-          <h1 className="public-display text-5xl leading-none text-white">{_("forgotPassword.title")}</h1>
+          <h1 className="public-display text-5xl leading-none text-[var(--public-text)]">{_("forgotPassword.title")}</h1>
           <p className="mt-4 leading-7 text-[var(--public-muted)]">{_("forgotPassword.subtitle")}</p>
 
           {sent ? (

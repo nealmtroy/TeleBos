@@ -23,7 +23,7 @@ export default function HelpDetailPage() {
       <PublicShell mainClassName="flex min-h-screen items-center justify-center px-4">
         <div className="max-w-md text-center">
           <BookOpen className="mx-auto h-10 w-10 text-[var(--public-subtle)]" aria-hidden="true" />
-          <h1 className="public-display mt-6 text-4xl text-white">{_("help.topicNotFound")}</h1>
+          <h1 className="public-display mt-6 text-4xl text-[var(--public-text)]">{_("help.topicNotFound")}</h1>
           <p className="mt-4 text-[var(--public-muted)]">{_("help.topicNotFoundDesc")}</p>
           <Link href="/help" className={`${publicButtonClass} mt-8`}><ArrowLeft className="h-4 w-4" aria-hidden="true" />{_("help.backToHelp")}</Link>
         </div>
@@ -44,7 +44,7 @@ export default function HelpDetailPage() {
       <article className="mx-auto max-w-[960px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <header className="border-b border-[var(--public-border)] pb-10">
           <p className="public-mono text-xs text-[var(--public-accent)]">{_("help.title")}</p>
-          <h1 className="public-display mt-5 text-5xl leading-none text-white sm:text-7xl">{_(section.titleKey)}</h1>
+          <h1 className="public-display mt-5 text-5xl leading-none text-[var(--public-text)] sm:text-7xl">{_(section.titleKey)}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--public-muted)]">{_(section.descKey)}</p>
         </header>
 

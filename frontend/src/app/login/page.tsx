@@ -110,7 +110,7 @@ function LoginForm() {
         </div>
 
         <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
-          <h1 className="public-display text-5xl leading-none text-white">{_("login.welcomeBack")}</h1>
+          <h1 className="public-display text-5xl leading-none text-[var(--public-text)]">{_("login.welcomeBack")}</h1>
           <p className="mt-4 text-[var(--public-muted)]">{_("login.signInSubtitle")}</p>
 
           <form onSubmit={handleSubmit} className="mt-9 space-y-5">

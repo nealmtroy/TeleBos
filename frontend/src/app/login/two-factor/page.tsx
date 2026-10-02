@@ -75,7 +75,7 @@ export default function TwoFactorPage() {
         </div>
 
         <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
-          <h1 className="public-display text-4xl leading-none text-white">
+          <h1 className="public-display text-4xl leading-none text-[var(--public-text)]">
             {mode === "totp" ? _("login.twoFactorTitle") : _("login.backupCodeTitle")}
           </h1>
           <p className="mt-4 text-[var(--public-muted)]">

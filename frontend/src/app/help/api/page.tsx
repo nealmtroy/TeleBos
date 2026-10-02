@@ -22,7 +22,7 @@ export default function ApiDocumentationPage() {
       <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="max-w-3xl">
           <p className="public-mono text-xs text-[var(--public-accent)]">{_("help.developerResources")}</p>
-          <h1 className="public-display mt-5 text-5xl leading-none text-white sm:text-7xl">{_("help.apiHeroTitle")}</h1>
+          <h1 className="public-display mt-5 text-5xl leading-none text-[var(--public-text)] sm:text-7xl">{_("help.apiHeroTitle")}</h1>
           <p className="mt-6 text-lg leading-8 text-[var(--public-muted)]">{_("help.apiHeroDesc")}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/api/docs" className={`${publicButtonClass} border-white`}>{_("help.openDocs")}<ExternalLink className="h-4 w-4" aria-hidden="true" /></Link>
