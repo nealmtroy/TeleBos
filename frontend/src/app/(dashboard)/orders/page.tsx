@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useOrderHistory, useRefreshAllOrders, useRefreshOrderStatus } from "@/hooks/use-orders";
@@ -11,17 +12,26 @@ import {
   AlertCircle,
   Wallet,
   ClipboardList,
-  History,
   ShoppingCart,
   User,
   Search,
-  Calendar,
   Download,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   X,
   Copy,
+  Check,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  ExternalLink,
+  ChevronRight,
+  Filter,
+  Plus,
+  Layers,
+  Info,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -36,42 +46,95 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  DoubleBezelShell,
+  ButtonInButton,
+  MetricReadout,
+  PriceTag,
+  Chip,
+  Eyebrow,
+} from "@/components/layout/trade-surface";
 
 type HistoryTab = "all" | "accounts" | "smm";
+type StatusType = "Selesai" | "Proses" | "Menunggu" | "Dibatalkan";
 
 interface UnifiedOrder {
   id: string;
   orderIdDisplay: string;
   type: "telegram_account" | "smm";
-  typeName: "Akun Telegram" | "SMM Order";
+  typeName: string;
   serviceName: string;
   serviceSublabel: string;
   detail: string;
   quantityDisplay: string;
+  quantityRaw: number;
   priceDisplay: string;
   priceRaw: number;
-  status: "Selesai" | "Proses" | "Menunggu" | "Dibatalkan";
+  status: StatusType;
   statusRaw: string;
   progressPercent: number;
   dateRaw: Date;
   dateStr: string;
   timeStr: string;
+  smmOrderId?: string | null;
+  remains?: number | null;
+  startCount?: number | null;
+  targetUrl?: string;
   originalItem: any;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-const STATUS_COLORS: Record<string, string> = {
-  Selesai: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Proses: "bg-blue-50 text-blue-700 border-blue-200",
-  Menunggu: "bg-amber-50 text-amber-700 border-amber-200",
-  Dibatalkan: "bg-rose-50 text-rose-700 border-rose-200",
+// Status styling configuration according to TeleBos product design system
+const STATUS_CONFIG: Record<
+  StatusType,
+  {
+    tone: "positive" | "accent" | "caution" | "negative";
+    labelId: string;
+    labelEn: string;
+    bgBadge: string;
+    dotColor: string;
+    progressColor: string;
+  }
+> = {
+  Selesai: {
+    tone: "positive",
+    labelId: "Selesai",
+    labelEn: "Completed",
+    bgBadge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+    dotColor: "bg-emerald-500",
+    progressColor: "bg-emerald-500",
+  },
+  Proses: {
+    tone: "accent",
+    labelId: "Proses",
+    labelEn: "Processing",
+    bgBadge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
+    dotColor: "bg-blue-500",
+    progressColor: "bg-blue-500",
+  },
+  Menunggu: {
+    tone: "caution",
+    labelId: "Menunggu",
+    labelEn: "Pending",
+    bgBadge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+    dotColor: "bg-amber-500",
+    progressColor: "bg-amber-400",
+  },
+  Dibatalkan: {
+    tone: "negative",
+    labelId: "Dibatalkan",
+    labelEn: "Cancelled",
+    bgBadge: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20",
+    dotColor: "bg-rose-500",
+    progressColor: "bg-rose-500",
+  },
 };
 
 // Date helpers for WIB (UTC+7)
-const formatWIBDate = (dateString: string) => {
+const formatWIBDate = (dateString: string, locale: string) => {
   const d = new Date(dateString);
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
     timeZone: "Asia/Jakarta",
     day: "2-digit",
     month: "short",
@@ -81,12 +144,14 @@ const formatWIBDate = (dateString: string) => {
 
 const formatWIBTime = (dateString: string) => {
   const d = new Date(dateString);
-  return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(d) + " WIB";
+  return (
+    new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(d) + " WIB"
+  );
 };
 
 export default function OrderHistoryPage() {
@@ -97,7 +162,7 @@ export default function OrderHistoryPage() {
 
   const [activeTab, setActiveTab] = useState<HistoryTab>("all");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
@@ -105,10 +170,13 @@ export default function OrderHistoryPage() {
   const [page, setPage] = useState(1);
 
   // Sorting
-  const [sortBy, setSortBy] = useState<"date" | "status">("date");
+  const [sortBy, setSortBy] = useState<"date" | "status" | "price">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Detail Modal
+  // Inline copy feedback tracking
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Detail Modal State
   const [selectedDetail, setSelectedDetail] = useState<UnifiedOrder | null>(null);
 
   // Prevent body scroll and close on ESC when detail modal is open
@@ -125,19 +193,13 @@ export default function OrderHistoryPage() {
     };
   }, [selectedDetail]);
 
-  // Fetch data
+  // Fetch data from real backend endpoints
   const { data: orders, isLoading: isSmmLoading, error: smmError } = useOrderHistory();
   const { data: logs, isLoading: isLogsLoading, error: logsError } = useMarketplaceHistory();
   const refreshOrder = useRefreshOrderStatus();
   const refreshAll = useRefreshAllOrders();
 
-  const tabs = [
-    { id: "all" as HistoryTab, label: locale === "id" ? "Semua Order" : "All Orders", icon: ClipboardList },
-    { id: "accounts" as HistoryTab, label: locale === "id" ? "Order Akun Telegram" : "Telegram Account", icon: User },
-    { id: "smm" as HistoryTab, label: locale === "id" ? "Order SMM" : "SMM Order", icon: ShoppingCart },
-  ];
-
-  // Map and unify data
+  // Map and unify SMM orders and account audit transactions
   const unifiedItems = useMemo(() => {
     const items: UnifiedOrder[] = [];
 
@@ -152,7 +214,11 @@ export default function OrderHistoryPage() {
           progress = 100;
         } else if (order.status === "Pending") {
           progress = 0;
-        } else if (order.status === "Failed" || order.status === "Error") {
+        } else if (
+          order.status === "Failed" ||
+          order.status === "Error" ||
+          order.status === "Canceled"
+        ) {
           progress = 0;
         } else if (order.status === "Processing" || order.status === "In progress") {
           if (order.quantity && order.remains !== null && order.remains !== undefined) {
@@ -163,38 +229,51 @@ export default function OrderHistoryPage() {
           }
         }
 
-        // Map status labels to Indonesian localized terms
-        let statusLabel: "Selesai" | "Proses" | "Menunggu" | "Dibatalkan" = "Menunggu";
+        // Map status to Indonesian localized terms
+        let statusLabel: StatusType = "Menunggu";
         if (order.status === "Success") statusLabel = "Selesai";
         else if (order.status === "Processing" || order.status === "In progress") statusLabel = "Proses";
         else if (order.status === "Pending") statusLabel = "Menunggu";
-        else if (order.status === "Failed" || order.status === "Error" || order.status === "Partial") statusLabel = "Dibatalkan";
+        else if (
+          order.status === "Failed" ||
+          order.status === "Error" ||
+          order.status === "Partial" ||
+          order.status === "Canceled"
+        )
+          statusLabel = "Dibatalkan";
 
-        // Extract unit label based on name
+        // Extract unit label based on service name
         let qtyUnit = locale === "id" ? "Layanan" : "Items";
-        const nameLower = order.service_name.toLowerCase();
+        const nameLower = (order.service_name || "").toLowerCase();
         if (nameLower.includes("reaction")) qtyUnit = locale === "id" ? "Reaksi" : "Reactions";
         else if (nameLower.includes("view")) qtyUnit = locale === "id" ? "Tayangan" : "Views";
-        else if (nameLower.includes("member") || nameLower.includes("subscriber")) qtyUnit = locale === "id" ? "Anggota" : "Members";
-        else if (nameLower.includes("follower")) qtyUnit = locale === "id" ? "Pengikut" : "Followers";
+        else if (nameLower.includes("member") || nameLower.includes("subscriber"))
+          qtyUnit = locale === "id" ? "Anggota" : "Members";
+        else if (nameLower.includes("follower"))
+          qtyUnit = locale === "id" ? "Pengikut" : "Followers";
 
         items.push({
           id: order.id,
           orderIdDisplay: displayId,
           type: "smm",
           typeName: "SMM Order",
-          serviceName: order.service_name,
-          serviceSublabel: order.category,
-          detail: `Link/Username: ${order.data_target}`,
-          quantityDisplay: `${order.quantity.toLocaleString()} ${qtyUnit}`,
-          priceDisplay: `Rp ${order.total_price.toLocaleString()}`,
-          priceRaw: order.total_price,
+          serviceName: order.service_name || "SMM Service",
+          serviceSublabel: order.category || "General",
+          detail: order.data_target || "-",
+          targetUrl: order.data_target,
+          quantityDisplay: `${order.quantity?.toLocaleString() || 1} ${qtyUnit}`,
+          quantityRaw: order.quantity || 1,
+          priceDisplay: `Rp ${(order.total_price || 0).toLocaleString()}`,
+          priceRaw: order.total_price || 0,
           status: statusLabel,
           statusRaw: order.status,
           progressPercent: progress,
           dateRaw: new Date(order.created_at),
-          dateStr: formatWIBDate(order.created_at),
+          dateStr: formatWIBDate(order.created_at, locale),
           timeStr: formatWIBTime(order.created_at),
+          smmOrderId: order.smm_order_id,
+          remains: order.remains,
+          startCount: order.start_count,
           originalItem: order,
         });
       }
@@ -205,34 +284,40 @@ export default function OrderHistoryPage() {
       for (const log of logs) {
         const displayId = `#TB-${log.id.toString().substring(0, 8).toUpperCase()}`;
 
-        let typeLabel = "Pembelian Akun";
-        if (log.action === "sell") typeLabel = "Penjualan Akun";
-        else if (log.action === "list_for_sale") typeLabel = "Pendaftaran Jual";
-        else if (log.action === "cancel_sale") typeLabel = "Pembatalan Jual";
+        let typeLabel = locale === "id" ? "Pembelian Akun" : "Account Purchase";
+        if (log.action === "sell") typeLabel = locale === "id" ? "Penjualan Akun" : "Account Sale";
+        else if (log.action === "list_for_sale")
+          typeLabel = locale === "id" ? "Pendaftaran Jual" : "Listing for Sale";
+        else if (log.action === "cancel_sale")
+          typeLabel = locale === "id" ? "Pembatalan Jual" : "Cancelled Listing";
 
-        let statusLabel: "Selesai" | "Proses" | "Menunggu" | "Dibatalkan" = "Selesai";
+        let statusLabel: StatusType = "Selesai";
         if (log.action === "list_for_sale") statusLabel = "Proses";
         else if (log.action === "cancel_sale") statusLabel = "Dibatalkan";
 
         let progress = 100;
         if (log.action === "cancel_sale") progress = 0;
 
+        const phoneDisplay = log.phone ? `+${log.phone.replace(/^\+/, "")}` : "-";
+
         items.push({
           id: log.id,
           orderIdDisplay: displayId,
           type: "telegram_account",
-          typeName: "Akun Telegram",
+          typeName: locale === "id" ? "Akun Telegram" : "Telegram Account",
           serviceName: typeLabel,
-          serviceSublabel: "Transaksi Akun",
-          detail: `Username: @${log.phone ? log.phone.substring(0, 8) : "user"}_owner\nPhone: ${log.phone || "-"}`,
-          quantityDisplay: "1 Akun",
-          priceDisplay: `Rp ${log.price.toLocaleString()}`,
-          priceRaw: log.price,
+          serviceSublabel: locale === "id" ? "Transaksi Akun" : "Account Trade",
+          detail: phoneDisplay,
+          targetUrl: phoneDisplay,
+          quantityDisplay: locale === "id" ? "1 Akun" : "1 Account",
+          quantityRaw: 1,
+          priceDisplay: `Rp ${(log.price || 0).toLocaleString()}`,
+          priceRaw: log.price || 0,
           status: statusLabel,
           statusRaw: log.action,
           progressPercent: progress,
           dateRaw: new Date(log.created_at),
-          dateStr: formatWIBDate(log.created_at),
+          dateStr: formatWIBDate(log.created_at, locale),
           timeStr: formatWIBTime(log.created_at),
           originalItem: log,
         });
@@ -242,6 +327,30 @@ export default function OrderHistoryPage() {
     return items;
   }, [orders, logs, locale]);
 
+  // Executive metrics calculations
+  const metrics = useMemo(() => {
+    const totalOrders = unifiedItems.length;
+    const totalAccounts = unifiedItems.filter((i) => i.type === "telegram_account").length;
+    const totalSmm = unifiedItems.filter((i) => i.type === "smm").length;
+    const totalSpend = unifiedItems.reduce((acc, i) => acc + (i.priceRaw || 0), 0);
+    const inProgressCount = unifiedItems.filter(
+      (i) => i.status === "Proses" || i.status === "Menunggu"
+    ).length;
+    const completedCount = unifiedItems.filter((i) => i.status === "Selesai").length;
+    const successRate =
+      totalOrders > 0 ? ((completedCount / totalOrders) * 100).toFixed(1) : "100.0";
+
+    return {
+      totalOrders,
+      totalAccounts,
+      totalSmm,
+      totalSpend,
+      inProgressCount,
+      completedCount,
+      successRate,
+    };
+  }, [unifiedItems]);
+
   // Tab Filtering
   const tabFilteredItems = useMemo(() => {
     if (activeTab === "smm") {
@@ -250,7 +359,7 @@ export default function OrderHistoryPage() {
     if (activeTab === "accounts") {
       return unifiedItems.filter((item) => item.type === "telegram_account");
     }
-    return unifiedItems; // Semua Order
+    return unifiedItems;
   }, [unifiedItems, activeTab]);
 
   // Search & Filters & Sorting
@@ -264,6 +373,7 @@ export default function OrderHistoryPage() {
         (item) =>
           item.orderIdDisplay.toLowerCase().includes(q) ||
           item.serviceName.toLowerCase().includes(q) ||
+          item.serviceSublabel.toLowerCase().includes(q) ||
           item.detail.toLowerCase().includes(q)
       );
     }
@@ -291,13 +401,15 @@ export default function OrderHistoryPage() {
         const timeA = a.dateRaw.getTime();
         const timeB = b.dateRaw.getTime();
         return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
-      } else {
-        const statusA = a.status.toLowerCase();
-        const statusB = b.status.toLowerCase();
-        if (statusA < statusB) return sortOrder === "desc" ? 1 : -1;
-        if (statusA > statusB) return sortOrder === "desc" ? -1 : 1;
-        return 0;
       }
+      if (sortBy === "price") {
+        return sortOrder === "desc" ? b.priceRaw - a.priceRaw : a.priceRaw - b.priceRaw;
+      }
+      const statusA = a.status.toLowerCase();
+      const statusB = b.status.toLowerCase();
+      if (statusA < statusB) return sortOrder === "desc" ? 1 : -1;
+      if (statusA > statusB) return sortOrder === "desc" ? -1 : 1;
+      return 0;
     });
 
     return result;
@@ -309,45 +421,77 @@ export default function OrderHistoryPage() {
     return filteredItems.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   }, [filteredItems, page]);
 
-  // Reset page when filters change
   const handleTabChange = (newTab: HistoryTab) => {
     setActiveTab(newTab);
     setPage(1);
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      variant: "success",
-      title: locale === "id" ? "Disalin!" : "Copied!",
-      description: `${text} ${locale === "id" ? "berhasil disalin ke papan klip." : "copied to clipboard."}`,
-    });
-  };
+  const handleCopy = useCallback(
+    (text: string, id: string) => {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1800);
+      toast({
+        variant: "success",
+        title: locale === "id" ? "Disalin ke Clipboard" : "Copied to Clipboard",
+        description: text,
+      });
+    },
+    [locale, toast]
+  );
 
   const handleExport = () => {
-    const headers = ["Order ID", "Tipe Order", "Layanan", "Detail", "Jumlah", "Harga", "Status", "Progress", "Waktu"];
+    const headers = [
+      "Order ID",
+      "Tipe Order",
+      "Layanan",
+      "Kategori",
+      "Detail Target",
+      "Jumlah",
+      "Total Biaya",
+      "Status",
+      "Progress (%)",
+      "Tanggal",
+      "Waktu (WIB)",
+    ];
     const rows = filteredItems.map((item) => [
       item.orderIdDisplay,
       item.typeName,
-      item.serviceName,
-      item.detail.replace(/\n/g, " | "),
+      `"${item.serviceName.replace(/"/g, '""')}"`,
+      `"${item.serviceSublabel.replace(/"/g, '""')}"`,
+      `"${item.detail.replace(/"/g, '""')}"`,
       item.quantityDisplay,
-      item.priceDisplay,
+      item.priceRaw,
       item.status,
-      `${item.progressPercent}%`,
-      `${item.dateStr} ${item.timeStr}`,
+      item.progressPercent,
+      item.dateStr,
+      item.timeStr,
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.map(val => `"${val}"`).join(","))].join("\n");
+    const csvContent =
+      "data:text/csv;charset=utf-8,\uFEFF" +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `telebos_history_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `telebos_order_history_${new Date().toISOString().slice(0, 10)}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    toast({
+      variant: "success",
+      title: locale === "id" ? "Export Berhasil" : "Export Completed",
+      description:
+        locale === "id"
+          ? `${filteredItems.length} baris riwayat telah diunduh.`
+          : `${filteredItems.length} order history rows downloaded.`,
+    });
   };
 
-  const toggleSort = (field: "date" | "status") => {
+  const toggleSort = (field: "date" | "status" | "price") => {
     if (sortBy === field) {
       setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     } else {
@@ -356,83 +500,310 @@ export default function OrderHistoryPage() {
     }
   };
 
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    statusFilter !== "all" ||
+    dateRange?.from !== undefined ||
+    activeTab !== "all";
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setDateRange(undefined);
+    setActiveTab("all");
+    setPage(1);
+  };
+
   const isLoading = isSmmLoading || isLogsLoading;
   const isError = smmError || logsError;
+  const balance = user?.balance ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header + Balance */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-slate-800 pb-5">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">{_("orders.history") || "Order History"}</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1 text-sm">
-            {locale === "id" ? "Riwayat semua pesanan yang pernah kamu buat." : "History of all orders you have made."}
-          </p>
-        </div>
-        {user && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl self-start sm:self-auto shadow-sm">
-            <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 whitespace-nowrap">
-              {_("orders.yourBalance")}: <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 ml-1">Rp {user.balance?.toLocaleString() || 0}</span>
+    <div className="space-y-6 pb-12">
+      {/* ── 1. Executive Terminal Header ────────────────────────── */}
+      <div className="flex flex-col gap-4 border-b border-border/80 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              {_("orders.history") || (locale === "id" ? "Riwayat Pesanan" : "Order History")}
+            </h1>
+            <span className="hidden sm:inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+              {metrics.totalOrders} {locale === "id" ? "Total Entri" : "Total Entries"}
             </span>
           </div>
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            {locale === "id"
+              ? "Pantau status, progres pengerjaan, dan catatan transaksi seluruh layanan Anda secara real-time."
+              : "Monitor status, fulfillment progress, and transaction records for all your services in real-time."}
+          </p>
+        </div>
+
+        {/* Right Header Toolbar: Balance Card & Sync Action */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start sm:self-auto">
+          {/* Wallet Balance Chip */}
+          <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-card/80 px-3.5 py-2 shadow-2xs backdrop-blur-xs">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Wallet className="h-4 w-4" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {_("orders.yourBalance") || (locale === "id" ? "Saldo Anda" : "Balance")}
+              </p>
+              <p className="text-sm font-bold tabular-nums text-foreground tracking-tight">
+                Rp {balance.toLocaleString()}
+              </p>
+            </div>
+            <Link href="/wallet" className="ml-1">
+              <Button
+                variant="outline"
+                size="xs"
+                className="h-7 rounded-lg text-[11px] font-semibold gap-1 px-2 border-border/80 hover:bg-muted"
+              >
+                <Plus className="h-3 w-3" />
+                Top Up
+              </Button>
+            </Link>
+          </div>
+
+          {/* Quick Export Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={filteredItems.length === 0}
+            className="h-9 rounded-xl border-border/80 bg-card text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted"
+            title="Export CSV"
+          >
+            <Download className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+
+          {/* Refresh All Orders */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refreshAll.mutate()}
+            disabled={refreshAll.isPending}
+            className="h-9 w-9 p-0 rounded-xl border-border/80 bg-card shadow-2xs hover:bg-muted"
+            title={locale === "id" ? "Perbarui Status Semua Pesanan" : "Refresh All Orders"}
+          >
+            <RefreshCw
+              className={cn(
+                "h-3.5 w-3.5 text-muted-foreground",
+                refreshAll.isPending && "animate-spin text-primary"
+              )}
+            />
+          </Button>
+        </div>
+      </div>
+
+      {/* ── 2. Executive KPI Bento Deck (4 Precision Cards) ──────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricReadout
+          label={locale === "id" ? "Total Pesanan" : "Total Orders"}
+          value={metrics.totalOrders.toLocaleString()}
+          subtext={`${metrics.totalSmm} SMM • ${metrics.totalAccounts} ${locale === "id" ? "Akun" : "Accounts"}`}
+          icon={<ClipboardList className="h-4 w-4 text-primary" />}
+        />
+        <MetricReadout
+          label={locale === "id" ? "Total Transaksi" : "Total Spend"}
+          value={<PriceTag value={metrics.totalSpend} size="lg" />}
+          subtext={locale === "id" ? "Volume transaksi tercatat" : "Cumulative order volume"}
+          icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+        />
+        <MetricReadout
+          label={locale === "id" ? "Sedang Diproses" : "In Progress"}
+          value={`${metrics.inProgressCount} ${locale === "id" ? "Pesanan" : "Orders"}`}
+          subtext={
+            metrics.inProgressCount > 0
+              ? locale === "id"
+                ? "Pengerjaan aktif & antrean"
+                : "Active execution queue"
+              : locale === "id"
+                ? "Semua antrean rampung"
+                : "Queue is all clear"
+          }
+          icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+          badge={
+            metrics.inProgressCount > 0 ? (
+              <Chip tone="accent" dot>
+                {metrics.inProgressCount} Aktif
+              </Chip>
+            ) : (
+              <Chip tone="positive">{locale === "id" ? "Lancar" : "Clear"}</Chip>
+            )
+          }
+        />
+        <MetricReadout
+          label={locale === "id" ? "Tingkat Selesai" : "Success Rate"}
+          value={`${metrics.successRate}%`}
+          subtext={`${metrics.completedCount} ${locale === "id" ? "dari" : "of"} ${metrics.totalOrders} ${locale === "id" ? "selesai" : "delivered"}`}
+          icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          badge={
+            <Chip tone="positive" dot>
+              {locale === "id" ? "Optimal" : "Healthy"}
+            </Chip>
+          }
+        />
+      </div>
+
+      {/* ── 3. Segmented Navigation Ribbon (Machined Hardware Tabs) ─ */}
+      <div className="flex items-center justify-between gap-3 border-b border-border/80 pb-3">
+        <div className="inline-flex rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => handleTabChange("all")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold select-none transition-all duration-200",
+              activeTab === "all"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
+            <span
+              className={cn(
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px]",
+                activeTab === "all"
+                  ? "bg-foreground/10 text-foreground"
+                  : "bg-background/80 text-muted-foreground"
+              )}
+            >
+              {metrics.totalOrders}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange("accounts")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold select-none transition-all duration-200",
+              activeTab === "accounts"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <User className="h-3.5 w-3.5" />
+            <span>{locale === "id" ? "Akun Telegram" : "Telegram Accounts"}</span>
+            <span
+              className={cn(
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px]",
+                activeTab === "accounts"
+                  ? "bg-foreground/10 text-foreground"
+                  : "bg-background/80 text-muted-foreground"
+              )}
+            >
+              {metrics.totalAccounts}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange("smm")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold select-none transition-all duration-200",
+              activeTab === "smm"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            <span>{locale === "id" ? "Layanan SMM" : "SMM Services"}</span>
+            <span
+              className={cn(
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px]",
+                activeTab === "smm"
+                  ? "bg-foreground/10 text-foreground"
+                  : "bg-background/80 text-muted-foreground"
+              )}
+            >
+              {metrics.totalSmm}
+            </span>
+          </button>
+        </div>
+
+        {/* Reset Filter Button if active */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={resetFilters}
+            className="h-8 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground gap-1"
+          >
+            <X className="h-3 w-3" />
+            {locale === "id" ? "Reset Filter" : "Clear Filters"}
+          </Button>
         )}
       </div>
 
-      {/* Tabs Menu (Underline style) */}
-      <div className="border-b border-gray-200 dark:border-slate-800 w-full">
-        <div className="flex gap-6 -mb-px overflow-x-auto no-scrollbar">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => handleTabChange(t.id)}
-              className={cn(
-                "flex items-center gap-2 pb-3.5 px-1 text-sm font-semibold transition-all border-b-2 whitespace-nowrap focus:outline-none",
-                activeTab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600"
-              )}
-            >
-              <t.icon className="h-4 w-4" />
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Filters Area */}
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        {/* Search */}
+      {/* ── 4. Precision Command Filter Engine ───────────────────── */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        {/* Search Input with Monospace Hint */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder={locale === "id" ? "Cari ID Order / Layanan / Username..." : "Search Order ID / Service / Username..."}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder={
+              locale === "id"
+                ? "Cari ID Order / Layanan / Target..."
+                : "Search Order ID / Service / Target..."
+            }
+            className="w-full pl-9 pr-8 py-2 border border-border/80 bg-card rounded-xl text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs transition-all"
           />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground rounded"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Filters Group */}
+        {/* Filter Controls Group */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5 items-center">
           {/* Status Dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="w-full min-w-0 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">{locale === "id" ? "Semua Status" : "All Status"}</option>
-            <option value="Selesai">{locale === "id" ? "Selesai" : "Completed"}</option>
-            <option value="Proses">{locale === "id" ? "Proses" : "Processing"}</option>
-            <option value="Menunggu">{locale === "id" ? "Menunggu" : "Pending"}</option>
-            <option value="Dibatalkan">{locale === "id" ? "Dibatalkan" : "Cancelled"}</option>
-          </select>
+          <div className="relative w-full sm:w-auto">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full sm:w-[150px] appearance-none border border-border/80 rounded-xl px-3 py-2 text-xs font-semibold bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs cursor-pointer"
+            >
+              <option value="all">
+                {locale === "id" ? "Semua Status" : "All Statuses"}
+              </option>
+              <option value="Selesai">
+                {locale === "id" ? "● Selesai" : "● Completed"}
+              </option>
+              <option value="Proses">
+                {locale === "id" ? "● Proses" : "● Processing"}
+              </option>
+              <option value="Menunggu">
+                {locale === "id" ? "● Menunggu" : "● Pending"}
+              </option>
+              <option value="Dibatalkan">
+                {locale === "id" ? "● Dibatalkan" : "● Cancelled"}
+              </option>
+            </select>
+          </div>
 
-          {/* Date Picker Range */}
+          {/* Date Picker Range with Presets */}
           <DatePickerWithRange
             id="orders-date-range"
             className="col-span-2 sm:col-span-1"
+            triggerClassName="h-9 rounded-xl border-border/80 bg-card text-xs font-medium shadow-2xs hover:bg-muted"
             presets={true}
             date={dateRange}
             setDate={(range) => {
@@ -441,341 +812,536 @@ export default function OrderHistoryPage() {
             }}
           />
 
-          {/* Export */}
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            className="w-full sm:w-auto rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3.5 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 flex items-center justify-center gap-1.5 shadow-sm"
+          {/* Sort Selector Button */}
+          <button
+            type="button"
+            onClick={() => toggleSort("date")}
+            className="col-span-1 sm:col-span-auto inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-border/80 bg-card text-xs font-semibold text-foreground hover:bg-muted shadow-2xs select-none transition-all"
+            title="Sort by Date"
           >
-            <Download className="h-4 w-4" /> Export
-          </Button>
-
-          {/* Refresh all */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refreshAll.mutate()}
-            disabled={refreshAll.isPending}
-            className="rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold h-9 px-3 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 justify-center"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", refreshAll.isPending && "animate-spin")} />
-          </Button>
+            <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+            <span className="hidden sm:inline">
+              {sortBy === "date"
+                ? sortOrder === "desc"
+                  ? locale === "id"
+                    ? "Terbaru"
+                    : "Newest"
+                  : locale === "id"
+                    ? "Terlama"
+                    : "Oldest"
+                : locale === "id"
+                  ? "Urutkan"
+                  : "Sort"}
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* ── 5. Main Content Area (Desktop Grid & Mobile Deck) ───── */}
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-16 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl animate-pulse" />
+            <div
+              key={i}
+              className="h-16 rounded-xl border border-border/60 bg-card/60 animate-pulse shadow-2xs"
+            />
           ))}
         </div>
       ) : isError ? (
-        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-800/60 rounded-xl text-red-800 dark:text-red-300">
-          <AlertCircle className="h-5 w-5" />
-          <p className="text-sm font-medium">Failed to load order history</p>
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="text-xs font-semibold">
+              {locale === "id"
+                ? "Gagal memuat riwayat pesanan"
+                : "Failed to load order history"}
+            </p>
+            <p className="text-[11px] opacity-80">
+              {locale === "id"
+                ? "Silakan periksa koneksi backend atau coba refresh kembali."
+                : "Please verify backend connectivity or trigger a fresh reload."}
+            </p>
+          </div>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl">
-          <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-300 dark:text-slate-500" />
-          <h3 className="font-semibold text-gray-900 dark:text-slate-100 text-sm mb-1">{locale === "id" ? "Tidak ada pesanan ditemukan" : "No orders found"}</h3>
-          <p className="text-xs text-gray-500 dark:text-slate-400">{locale === "id" ? "Coba ganti kata kunci pencarian atau filter Anda." : "Try changing your search query or filters."}</p>
-        </div>
+        <DoubleBezelShell className="text-center py-12 sm:py-16">
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-foreground/[0.04] border border-border/60 mx-auto text-muted-foreground">
+              <ShoppingCart className="h-6 w-6 stroke-[1.5]" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-bold text-base text-foreground">
+                {hasActiveFilters
+                  ? locale === "id"
+                    ? "Tidak ada pesanan yang cocok"
+                    : "No matching orders found"
+                  : locale === "id"
+                    ? "Belum ada riwayat pesanan"
+                    : "No order history yet"}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {hasActiveFilters
+                  ? locale === "id"
+                    ? "Coba sesuaikan kata kunci pencarian, status, atau rentang tanggal yang dipilih."
+                    : "Try adjusting your search terms, status filters, or selected date range."
+                  : locale === "id"
+                    ? "Mulai eksplorasi katalog akun Telegram siap pakai atau pesan layanan optimasi SMM."
+                    : "Explore ready-stock Telegram accounts or place your first SMM service order."}
+              </p>
+            </div>
+            {hasActiveFilters ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetFilters}
+                className="rounded-xl text-xs font-semibold"
+              >
+                {locale === "id" ? "Reset Semua Filter" : "Reset All Filters"}
+              </Button>
+            ) : (
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                <Link href="/orders/buy-accounts">
+                  <Button size="sm" className="rounded-xl text-xs font-semibold gap-1.5">
+                    <User className="h-3.5 w-3.5" />
+                    {locale === "id" ? "Beli Akun" : "Buy Accounts"}
+                  </Button>
+                </Link>
+                <Link href="/orders-services">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs font-semibold gap-1.5"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {locale === "id" ? "Layanan SMM" : "SMM Services"}
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </DoubleBezelShell>
       ) : (
         <div className="space-y-4">
-          {/* Desktop View Table */}
-          <div className="hidden lg:block overflow-hidden bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm">
+          {/* Desktop Precision Table */}
+          <div className="hidden lg:block overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
             <Table className="text-xs">
               <TableHeader>
-                <TableRow className="border-b border-gray-200 dark:border-slate-700 bg-gray-50/75 dark:bg-slate-900/60 hover:bg-gray-50/75 dark:hover:bg-slate-900/60 text-gray-500 dark:text-slate-300">
-                  <TableHead className="py-3.5 px-4 font-bold uppercase tracking-wider">Order</TableHead>
-                  <TableHead className="py-3.5 px-4 text-center font-bold uppercase tracking-wider">Tipe Order</TableHead>
-                  <TableHead className="py-3.5 px-4 font-bold uppercase tracking-wider">Layanan</TableHead>
-                  <TableHead className="py-3.5 px-4 font-bold uppercase tracking-wider">Detail</TableHead>
-                  <TableHead className="py-3.5 px-4 text-right font-bold uppercase tracking-wider">Jumlah</TableHead>
-                  <TableHead className="py-3.5 px-4 text-right font-bold uppercase tracking-wider">Harga</TableHead>
-                  <TableHead className="py-3.5 px-4 text-center cursor-pointer select-none hover:bg-gray-100 transition-colors font-bold uppercase tracking-wider" onClick={() => toggleSort("status")}>
+                <TableRow className="border-b border-border/80 bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[120px]">
+                    Order ID
+                  </TableHead>
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground w-[130px]">
+                    {locale === "id" ? "Tipe" : "Type"}
+                  </TableHead>
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground">
+                    {locale === "id" ? "Layanan" : "Service"}
+                  </TableHead>
+                  <TableHead className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground max-w-[200px]">
+                    Target / Detail
+                  </TableHead>
+                  <TableHead className="py-3 px-4 text-right font-bold uppercase tracking-wider text-muted-foreground w-[100px]">
+                    {locale === "id" ? "Jumlah" : "Qty"}
+                  </TableHead>
+                  <TableHead
+                    className="py-3 px-4 text-right font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[130px]"
+                    onClick={() => toggleSort("price")}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>{locale === "id" ? "Nominal" : "Price"}</span>
+                      <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[110px]"
+                    onClick={() => toggleSort("status")}
+                  >
                     <div className="flex items-center justify-center gap-1">
-                      Status
-                      <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                      <span>Status</span>
+                      <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="py-3.5 px-4 text-center font-bold uppercase tracking-wider">Progress</TableHead>
-                  <TableHead className="py-3.5 px-4 cursor-pointer select-none hover:bg-gray-100 transition-colors font-bold uppercase tracking-wider" onClick={() => toggleSort("date")}>
+                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[120px]">
+                    {locale === "id" ? "Progres" : "Progress"}
+                  </TableHead>
+                  <TableHead
+                    className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[130px]"
+                    onClick={() => toggleSort("date")}
+                  >
                     <div className="flex items-center gap-1">
-                      Tanggal
-                      <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                      <span>{locale === "id" ? "Waktu" : "Timestamp"}</span>
+                      <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="py-3.5 px-4 text-center font-bold uppercase tracking-wider">Aksi</TableHead>
+                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[90px]">
+                    {locale === "id" ? "Aksi" : "Action"}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-150 dark:divide-slate-700/60">
-                {paginatedItems.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/40 transition-colors bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200">
-                    {/* Order ID */}
-                    <TableCell className="py-4 px-4 whitespace-nowrap font-mono text-gray-900 dark:text-slate-100">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="font-bold">{item.orderIdDisplay}</span>
-                        <button
-                          onClick={() => handleCopy(item.orderIdDisplay)}
-                          className="text-gray-400 dark:text-slate-400 hover:text-gray-650 dark:hover:text-slate-200 transition-colors p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
-                          title="Copy Order ID"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </TableCell>
 
-                    {/* Tipe Order */}
-                    <TableCell className="py-4 px-4 text-center whitespace-nowrap">
-                      {item.type === "telegram_account" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-150 rounded-xl">
-                          <User className="h-3 w-3" />
-                          Akun Telegram
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-150 rounded-xl">
-                          <ShoppingCart className="h-3 w-3" />
-                          SMM Order
-                        </span>
-                      )}
-                    </TableCell>
+              <TableBody className="divide-y divide-border/60">
+                {paginatedItems.map((item) => {
+                  const statusConf = STATUS_CONFIG[item.status] || STATUS_CONFIG.Menunggu;
+                  const isCopied = copiedId === item.id;
 
-                    {/* Layanan */}
-                    <TableCell className="py-4 px-4 max-w-[200px]">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="truncate font-bold text-gray-900 dark:text-slate-100" title={item.serviceName}>
-                          {item.serviceName}
-                        </span>
-                        <span className="text-[10px] text-gray-400 dark:text-slate-400 truncate" title={item.serviceSublabel}>
-                          {item.serviceSublabel}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    {/* Detail */}
-                    <TableCell className="py-4 px-4 max-w-[180px]">
-                      <p className="text-[11px] text-gray-600 dark:text-slate-300 leading-relaxed font-mono whitespace-pre-line truncate" title={item.detail}>
-                        {item.detail}
-                      </p>
-                    </TableCell>
-
-                    {/* Jumlah */}
-                    <TableCell className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-slate-100 whitespace-nowrap">
-                      {item.quantityDisplay}
-                    </TableCell>
-
-                    {/* Harga */}
-                    <TableCell className="py-4 px-4 text-right font-extrabold text-gray-900 dark:text-slate-100 whitespace-nowrap">
-                      {item.priceDisplay}
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell className="py-4 px-4 text-center whitespace-nowrap">
-                      {item.status === "Selesai" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          Selesai
-                        </span>
-                      )}
-                      {item.status === "Proses" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                          Proses
-                        </span>
-                      )}
-                      {item.status === "Menunggu" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          Menunggu
-                        </span>
-                      )}
-                      {item.status === "Dibatalkan" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                          Dibatalkan
-                        </span>
-                      )}
-                    </TableCell>
-
-                    {/* Progress */}
-                    <TableCell className="py-4 px-4">
-                      <div className="flex flex-col items-center justify-center min-w-[70px]">
-                        <span className="font-bold text-[10px] text-gray-800 dark:text-slate-200 mb-1">{item.progressPercent}%</span>
-                        <div className="w-full bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-1.5 rounded-full transition-all duration-500",
-                              item.status === "Selesai" ? "bg-emerald-500" :
-                              item.status === "Proses" ? "bg-blue-500" :
-                              item.status === "Menunggu" ? "bg-amber-400" : "bg-rose-500"
-                            )}
-                            style={{ width: `${item.progressPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* Date Time */}
-                    <TableCell className="py-4 px-4 whitespace-nowrap text-gray-650 dark:text-slate-300 font-medium">
-                      <div className="flex flex-col">
-                        <span>{item.dateStr}</span>
-                        <span className="text-[10px] text-gray-400 dark:text-slate-400 mt-0.5">{item.timeStr}</span>
-                      </div>
-                    </TableCell>
-
-                    {/* Action */}
-                    <TableCell className="py-4 px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedDetail(item)}
-                          className="h-8 px-2.5 rounded-lg border-gray-200 dark:border-slate-700 text-[11px] font-bold text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
-                        >
-                          Detail
-                        </Button>
-                        {item.type === "smm" && item.originalItem.smm_order_id && (
+                  return (
+                    <TableRow
+                      key={item.id}
+                      className="hover:bg-muted/40 transition-colors group"
+                    >
+                      {/* Order ID */}
+                      <TableCell className="py-3.5 px-4 font-mono whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-foreground tracking-tight">
+                            {item.orderIdDisplay}
+                          </span>
                           <button
-                            onClick={() => refreshOrder.mutate(item.id)}
-                            disabled={refreshOrder.isPending}
-                            className="p-1 text-gray-400 hover:text-primary hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg transition-colors shadow-sm"
-                            title={_("orders.refreshStatus")}
+                            type="button"
+                            onClick={() => handleCopy(item.orderIdDisplay, item.id)}
+                            className="text-muted-foreground/60 hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors"
+                            title="Copy Order ID"
                           >
-                            <RefreshCw className={cn("h-3.5 w-3.5", refreshOrder.isPending && "animate-spin")} />
+                            {isCopied ? (
+                              <Check className="h-3 w-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
                           </button>
+                        </div>
+                      </TableCell>
+
+                      {/* Tipe Order Badge */}
+                      <TableCell className="py-3.5 px-4 whitespace-nowrap">
+                        {item.type === "telegram_account" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                            <User className="h-3 w-3" />
+                            <span>{locale === "id" ? "Akun TG" : "TG Account"}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+                            <ShoppingCart className="h-3 w-3" />
+                            <span>SMM</span>
+                          </span>
                         )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+
+                      {/* Layanan & Kategori */}
+                      <TableCell className="py-3.5 px-4 max-w-[220px]">
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className="font-bold text-foreground truncate leading-snug"
+                            title={item.serviceName}
+                          >
+                            {item.serviceName}
+                          </span>
+                          <span
+                            className="text-[10px] text-muted-foreground truncate"
+                            title={item.serviceSublabel}
+                          >
+                            {item.serviceSublabel}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {/* Detail Target */}
+                      <TableCell className="py-3.5 px-4 max-w-[200px]">
+                        <div className="flex items-center gap-1.5">
+                          <p
+                            className="text-[11px] font-mono text-muted-foreground truncate select-all"
+                            title={item.detail}
+                          >
+                            {item.detail}
+                          </p>
+                          {item.detail !== "-" && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(item.detail, `target-${item.id}`)}
+                              className="text-muted-foreground/50 hover:text-foreground p-0.5 shrink-0"
+                              title="Copy Target"
+                            >
+                              {copiedId === `target-${item.id}` ? (
+                                <Check className="h-3 w-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Jumlah */}
+                      <TableCell className="py-3.5 px-4 text-right font-medium text-foreground whitespace-nowrap tabular-nums">
+                        {item.quantityDisplay}
+                      </TableCell>
+
+                      {/* Nominal / Harga */}
+                      <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border",
+                            statusConf.bgBadge
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full shrink-0",
+                              statusConf.dotColor
+                            )}
+                          />
+                          <span>
+                            {locale === "id" ? statusConf.labelId : statusConf.labelEn}
+                          </span>
+                        </span>
+                      </TableCell>
+
+                      {/* Progres */}
+                      <TableCell className="py-3.5 px-4">
+                        <div className="flex flex-col items-center justify-center gap-1 min-w-[80px]">
+                          <span className="font-mono text-[10px] font-bold text-foreground">
+                            {item.progressPercent}%
+                          </span>
+                          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden border border-border/40">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500 ease-out",
+                                statusConf.progressColor
+                              )}
+                              style={{ width: `${item.progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Waktu WIB */}
+                      <TableCell className="py-3.5 px-4 whitespace-nowrap text-muted-foreground">
+                        <div className="flex flex-col leading-tight">
+                          <span className="font-medium text-foreground text-[11px]">
+                            {item.dateStr}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                            {item.timeStr}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {/* Aksi */}
+                      <TableCell className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => setSelectedDetail(item)}
+                            className="h-7 px-2.5 rounded-lg border-border/80 text-[11px] font-semibold hover:bg-muted"
+                          >
+                            Detail
+                          </Button>
+                          {item.type === "smm" && item.originalItem.smm_order_id && (
+                            <button
+                              type="button"
+                              onClick={() => refreshOrder.mutate(item.id)}
+                              disabled={refreshOrder.isPending}
+                              className="p-1.5 text-muted-foreground hover:text-primary border border-border/80 rounded-lg hover:bg-muted transition-colors shadow-2xs"
+                              title={_("orders.refreshStatus") || "Refresh"}
+                            >
+                              <RefreshCw
+                                className={cn(
+                                  "h-3 w-3",
+                                  refreshOrder.isPending && "animate-spin text-primary"
+                                )}
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
 
-          {/* Mobile View Card List */}
+          {/* Mobile Card Deck (Doppelrand Architecture) */}
           <div className="lg:hidden space-y-3">
-            {paginatedItems.map((item) => (
-              <div key={item.id} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 space-y-4 shadow-sm text-gray-900 dark:text-slate-100">
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-3 gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-gray-900 dark:text-slate-100 text-sm">{item.orderIdDisplay}</span>
-                    <button
-                      onClick={() => handleCopy(item.orderIdDisplay)}
-                      className="text-gray-400 hover:text-gray-650 dark:hover:text-slate-200 transition-colors p-0.5 rounded"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  {item.type === "telegram_account" ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-150 rounded-xl">
-                      <User className="h-3 w-3" />
-                      Akun Telegram
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-150 rounded-xl">
-                      <ShoppingCart className="h-3 w-3" />
-                      SMM Order
-                    </span>
-                  )}
-                </div>
+            {paginatedItems.map((item) => {
+              const statusConf = STATUS_CONFIG[item.status] || STATUS_CONFIG.Menunggu;
+              const isCopied = copiedId === item.id;
 
-                <div className="space-y-1">
-                  <p className="font-bold text-sm text-gray-900 dark:text-slate-100 leading-snug">{item.serviceName}</p>
-                  <p className="text-[10px] text-gray-500 dark:text-slate-400">{item.serviceSublabel}</p>
-                </div>
+              return (
+                <DoubleBezelShell key={item.id} className="p-1">
+                  <div className="space-y-3">
+                    {/* Header Row: ID + Type + Status */}
+                    <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-foreground text-xs">
+                          {item.orderIdDisplay}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(item.orderIdDisplay, item.id)}
+                          className="text-muted-foreground/60 hover:text-foreground p-0.5 rounded"
+                        >
+                          {isCopied ? (
+                            <Check className="h-3 w-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-1.5 border-t border-gray-100 dark:border-slate-700">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400">Detail:</span>
-                  <span className="text-gray-800 dark:text-slate-200 font-mono text-[11px] text-right truncate" title={item.detail}>{item.detail.replace(/\n/g, " | ")}</span>
-
-                  <span className="font-semibold text-gray-500 dark:text-slate-400">Jumlah:</span>
-                  <span className="text-gray-900 dark:text-slate-100 font-bold text-right">{item.quantityDisplay}</span>
-
-                  <span className="font-semibold text-gray-500 dark:text-slate-400">Harga:</span>
-                  <span className="text-primary-600 dark:text-primary-400 font-bold text-right">{item.priceDisplay}</span>
-
-                  <span className="font-semibold text-gray-500 dark:text-slate-400">Status:</span>
-                  <span className="text-right">
-                    {item.status === "Selesai" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-150 rounded-full">
-                        Selesai
-                      </span>
-                    )}
-                    {item.status === "Proses" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.2 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-150 rounded-full">
-                        Proses
-                      </span>
-                    )}
-                    {item.status === "Menunggu" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-150 rounded-full">
-                        Menunggu
-                      </span>
-                    )}
-                    {item.status === "Dibatalkan" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.2 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-150 rounded-full">
-                        Dibatalkan
-                      </span>
-                    )}
-                  </span>
-
-                  <span className="font-semibold text-gray-500 dark:text-slate-400">Progress:</span>
-                  <div className="flex items-center justify-end gap-2">
-                    <span className="font-bold text-[10px] text-gray-800 dark:text-slate-200">{item.progressPercent}%</span>
-                    <div className="w-16 bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-1.5 rounded-full transition-all duration-500",
-                          item.status === "Selesai" ? "bg-emerald-500" :
-                          item.status === "Proses" ? "bg-blue-500" :
-                          item.status === "Menunggu" ? "bg-amber-400" : "bg-rose-500"
+                      <div className="flex items-center gap-2">
+                        {item.type === "telegram_account" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                            <User className="h-2.5 w-2.5" />
+                            <span>Akun</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+                            <ShoppingCart className="h-2.5 w-2.5" />
+                            <span>SMM</span>
+                          </span>
                         )}
-                        style={{ width: `${item.progressPercent}%` }}
-                      />
+
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border",
+                            statusConf.bgBadge
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full shrink-0",
+                              statusConf.dotColor
+                            )}
+                          />
+                          <span>
+                            {locale === "id" ? statusConf.labelId : statusConf.labelEn}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Service & Category */}
+                    <div className="space-y-0.5">
+                      <h4 className="font-bold text-sm text-foreground leading-snug">
+                        {item.serviceName}
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground">
+                        {item.serviceSublabel}
+                      </p>
+                    </div>
+
+                    {/* Key-Value Spec Sheet */}
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/40">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                          Target / Detail
+                        </p>
+                        <p className="font-mono text-[11px] text-foreground truncate">
+                          {item.detail}
+                        </p>
+                      </div>
+
+                      <div className="space-y-0.5 text-right">
+                        <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                          {locale === "id" ? "Total Biaya" : "Total Price"}
+                        </p>
+                        <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                          {locale === "id" ? "Jumlah" : "Quantity"}
+                        </p>
+                        <p className="font-medium text-[11px] text-foreground tabular-nums">
+                          {item.quantityDisplay}
+                        </p>
+                      </div>
+
+                      <div className="space-y-0.5 text-right">
+                        <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                          {locale === "id" ? "Waktu (WIB)" : "Time (WIB)"}
+                        </p>
+                        <p className="font-mono text-[10px] text-muted-foreground">
+                          {item.dateStr} • {item.timeStr}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div className="space-y-1 pt-1 border-t border-border/40">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>{locale === "id" ? "Progres Pengiriman" : "Fulfillment Progress"}</span>
+                        <span className="font-mono font-bold text-foreground">
+                          {item.progressPercent}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden border border-border/40">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500 ease-out",
+                            statusConf.progressColor
+                          )}
+                          style={{ width: `${item.progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+                      {item.type === "smm" && item.originalItem.smm_order_id && (
+                        <button
+                          type="button"
+                          onClick={() => refreshOrder.mutate(item.id)}
+                          disabled={refreshOrder.isPending}
+                          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-border/80 bg-card text-xs font-semibold text-foreground hover:bg-muted"
+                        >
+                          <RefreshCw
+                            className={cn(
+                              "h-3 w-3",
+                              refreshOrder.isPending && "animate-spin text-primary"
+                            )}
+                          />
+                          <span>Refresh</span>
+                        </button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setSelectedDetail(item)}
+                        className="h-8 px-3 rounded-lg text-xs font-semibold"
+                      >
+                        {locale === "id" ? "Lihat Detail" : "View Details"}
+                      </Button>
                     </div>
                   </div>
-
-                  <span className="font-semibold text-gray-500 dark:text-slate-400">Waktu (WIB):</span>
-                  <span className="text-gray-700 dark:text-slate-300 font-medium text-right">{item.dateStr} {item.timeStr}</span>
-                </div>
-
-                <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-slate-700 justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedDetail(item)}
-                    className="h-8 px-3 rounded-xl border-gray-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600"
-                  >
-                    Detail
-                  </Button>
-                  {item.type === "smm" && item.originalItem.smm_order_id && (
-                    <button
-                      onClick={() => refreshOrder.mutate(item.id)}
-                      disabled={refreshOrder.isPending}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm bg-white dark:bg-slate-700"
-                    >
-                      <RefreshCw className={cn("h-3 w-3", refreshOrder.isPending && "animate-spin")} />
-                      Refresh
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+                </DoubleBezelShell>
+              );
+            })}
           </div>
 
-          {/* Pagination Component */}
+          {/* ── 6. Pagination Bar ───────────────────────────────── */}
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl sm:px-6 shadow-sm">
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card p-3 sm:px-6 shadow-2xs">
+              <p className="text-xs text-muted-foreground">
                 {locale === "id" ? "Menampilkan" : "Showing"}{" "}
-                <span className="font-bold text-gray-900 dark:text-slate-100">{((page - 1) * ITEMS_PER_PAGE) + 1}</span>{" "}
-                {locale === "id" ? "sampai" : "to"}{" "}
-                <span className="font-bold text-gray-900 dark:text-slate-100">{Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}</span>{" "}
+                <span className="font-bold text-foreground tabular-nums">
+                  {(page - 1) * ITEMS_PER_PAGE + 1}
+                </span>{" "}
+                –{" "}
+                <span className="font-bold text-foreground tabular-nums">
+                  {Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}
+                </span>{" "}
                 {locale === "id" ? "dari" : "of"}{" "}
-                <span className="font-bold text-gray-900 dark:text-slate-100">{filteredItems.length}</span>{" "}
-                {locale === "id" ? "order" : "orders"}
+                <span className="font-bold text-foreground tabular-nums">
+                  {filteredItems.length}
+                </span>{" "}
+                {locale === "id" ? "pesanan" : "orders"}
               </p>
+
               <DataPagination
                 page={page}
                 totalPages={totalPages}
@@ -791,82 +1357,231 @@ export default function OrderHistoryPage() {
         </div>
       )}
 
-      {/* Order Detail Modal */}
+      {/* ── 7. Order Detail Dialog (Doppelrand Modal Architecture) ─ */}
       {selectedDetail &&
         createPortal(
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
             onClick={() => setSelectedDetail(null)}
           >
             <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-xs"
-              style={{ animation: "fadeIn 0.2s ease-out" }}
-            />
-            <div
-              className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 w-full max-w-lg p-6 z-10"
-              style={{ animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)" }}
+              className="relative w-full max-w-lg rounded-2xl border border-border/80 bg-gradient-to-b from-foreground/[0.04] via-foreground/[0.01] to-transparent p-1 shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-3.5 mb-4">
-                <div>
-                  <span className="font-mono text-sm font-bold text-gray-900 dark:text-slate-100">{selectedDetail.orderIdDisplay}</span>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mt-1">{selectedDetail.serviceName}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDetail(null)}
-                  className="p-1.5 text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <div className="rounded-[calc(1rem-2px)] sm:rounded-[calc(1rem)] bg-card text-card-foreground p-5 sm:p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)] space-y-5">
+                {/* Modal Header */}
+                <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-foreground">
+                        {selectedDetail.orderIdDisplay}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopy(
+                            selectedDetail.orderIdDisplay,
+                            `modal-${selectedDetail.id}`
+                          )
+                        }
+                        className="text-muted-foreground/60 hover:text-foreground p-1 rounded hover:bg-muted"
+                        title="Copy Order ID"
+                      >
+                        {copiedId === `modal-${selectedDetail.id}` ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {locale === "id" ? "Detail Spesifikasi Pesanan" : "Order Specification Details"}
+                    </p>
+                  </div>
 
-              <div className="space-y-3.5 text-xs text-gray-700 dark:text-slate-300">
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Tipe Order</span>
-                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.typeName}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDetail(null)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Kategori</span>
-                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.serviceSublabel}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Detail Target</span>
-                  <span className="font-mono text-gray-900 dark:text-slate-100 col-span-2 whitespace-pre-line leading-relaxed">{selectedDetail.detail}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Jumlah</span>
-                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.quantityDisplay}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Harga</span>
-                  <span className="font-extrabold text-primary-600 dark:text-primary-400 col-span-2">{selectedDetail.priceDisplay}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Status</span>
-                  <span className="col-span-2">
-                    <Badge variant="outline" className={cn("px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-white dark:bg-slate-700", STATUS_COLORS[selectedDetail.status] || "bg-gray-50 text-gray-700 border-gray-200")}>
-                      {selectedDetail.status}
-                    </Badge>
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-50 dark:border-slate-700/60">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Progress</span>
-                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.progressPercent}%</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 py-2">
-                  <span className="font-semibold text-gray-500 dark:text-slate-400 col-span-1">Waktu Transaksi</span>
-                  <span className="font-bold text-gray-900 dark:text-slate-100 col-span-2">{selectedDetail.dateStr} pukul {selectedDetail.timeStr}</span>
-                </div>
-              </div>
 
-              <div className="mt-6 flex justify-end">
-                <Button
-                  onClick={() => setSelectedDetail(null)}
-                  className="rounded-xl px-5 font-bold"
-                >
-                  Tutup
-                </Button>
+                {/* Hero Banner inside Modal */}
+                <div className="rounded-xl border border-border/70 bg-muted/30 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <h3 className="font-bold text-base text-foreground leading-snug">
+                        {selectedDetail.serviceName}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedDetail.serviceSublabel}
+                      </p>
+                    </div>
+                    <PriceTag
+                      value={selectedDetail.priceRaw}
+                      size="lg"
+                      className="font-bold shrink-0"
+                    />
+                  </div>
+
+                  {/* Progress Bar inside Hero */}
+                  <div className="space-y-1.5 pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-medium">
+                        {locale === "id" ? "Status Progres" : "Progress Status"}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-foreground">
+                          {selectedDetail.progressPercent}%
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border",
+                            STATUS_CONFIG[selectedDetail.status]?.bgBadge
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              STATUS_CONFIG[selectedDetail.status]?.dotColor
+                            )}
+                          />
+                          <span>
+                            {locale === "id"
+                              ? STATUS_CONFIG[selectedDetail.status]?.labelId
+                              : STATUS_CONFIG[selectedDetail.status]?.labelEn}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500 ease-out",
+                          STATUS_CONFIG[selectedDetail.status]?.progressColor
+                        )}
+                        style={{ width: `${selectedDetail.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed Spec Grid */}
+                <div className="space-y-2.5 text-xs">
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                    <span className="font-semibold text-muted-foreground">
+                      {locale === "id" ? "Tipe Transaksi" : "Transaction Type"}
+                    </span>
+                    <span className="font-bold text-foreground col-span-2">
+                      {selectedDetail.typeName}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                    <span className="font-semibold text-muted-foreground">
+                      {locale === "id" ? "Target / Akun" : "Target / Account"}
+                    </span>
+                    <div className="col-span-2 flex items-center justify-between gap-2">
+                      <span className="font-mono text-foreground break-all select-all">
+                        {selectedDetail.detail}
+                      </span>
+                      {selectedDetail.detail !== "-" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopy(selectedDetail.detail, "modal-target")
+                          }
+                          className="p-1 text-muted-foreground hover:text-foreground shrink-0 rounded hover:bg-muted"
+                          title="Copy Target"
+                        >
+                          {copiedId === "modal-target" ? (
+                            <Check className="h-3 w-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                    <span className="font-semibold text-muted-foreground">
+                      {locale === "id" ? "Kuantitas" : "Quantity"}
+                    </span>
+                    <span className="font-bold text-foreground col-span-2 tabular-nums">
+                      {selectedDetail.quantityDisplay}
+                    </span>
+                  </div>
+
+                  {selectedDetail.smmOrderId && (
+                    <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                      <span className="font-semibold text-muted-foreground">
+                        Provider Order ID
+                      </span>
+                      <span className="font-mono text-foreground col-span-2">
+                        #{selectedDetail.smmOrderId}
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedDetail.remains !== undefined &&
+                    selectedDetail.remains !== null && (
+                      <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                        <span className="font-semibold text-muted-foreground">
+                          {locale === "id" ? "Sisa Antrean" : "Remains"}
+                        </span>
+                        <span className="font-mono text-foreground col-span-2">
+                          {selectedDetail.remains.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                    <span className="font-semibold text-muted-foreground">
+                      {locale === "id" ? "Waktu Dibuat" : "Created At"}
+                    </span>
+                    <span className="font-medium text-foreground col-span-2">
+                      {selectedDetail.dateStr} • {selectedDetail.timeStr}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/60">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const summary = [
+                        `Order ID: ${selectedDetail.orderIdDisplay}`,
+                        `Layanan: ${selectedDetail.serviceName}`,
+                        `Target: ${selectedDetail.detail}`,
+                        `Jumlah: ${selectedDetail.quantityDisplay}`,
+                        `Total: ${selectedDetail.priceDisplay}`,
+                        `Status: ${selectedDetail.status}`,
+                        `Waktu: ${selectedDetail.dateStr} ${selectedDetail.timeStr}`,
+                      ].join("\n");
+                      handleCopy(summary, "modal-summary");
+                    }}
+                    className="h-9 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
+                  >
+                    {copiedId === "modal-summary" ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                    <span>{locale === "id" ? "Salin Ringkasan" : "Copy Summary"}</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => setSelectedDetail(null)}
+                    className="h-9 rounded-xl px-5 text-xs font-semibold"
+                  >
+                    {locale === "id" ? "Tutup" : "Close"}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>,
