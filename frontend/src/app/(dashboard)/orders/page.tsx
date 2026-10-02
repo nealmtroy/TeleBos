@@ -503,14 +503,12 @@ export default function OrderHistoryPage() {
   const hasActiveFilters =
     search.trim() !== "" ||
     statusFilter !== "all" ||
-    dateRange?.from !== undefined ||
-    activeTab !== "all";
+    dateRange?.from !== undefined;
 
   const resetFilters = () => {
     setSearch("");
     setStatusFilter("all");
     setDateRange(undefined);
-    setActiveTab("all");
     setPage(1);
   };
 
@@ -649,25 +647,25 @@ export default function OrderHistoryPage() {
 
       {/* ── 3. Segmented Navigation Ribbon (Machined Hardware Tabs) ─ */}
       <div className="flex items-center justify-between gap-3 border-b border-border/80 pb-3">
-        <div className="inline-flex rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
+        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-950/80 p-1 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
           <button
             type="button"
             onClick={() => handleTabChange("all")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold select-none transition-all duration-200",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none transition-all duration-200 font-semibold",
               activeTab === "all"
-                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border border-primary"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
             )}
           >
-            <ClipboardList className="h-3.5 w-3.5" />
+            <ClipboardList className={cn("h-3.5 w-3.5", activeTab === "all" ? "text-primary-foreground" : "text-slate-400")} />
             <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
             <span
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px]",
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-colors",
                 activeTab === "all"
-                  ? "bg-foreground/10 text-foreground"
-                  : "bg-background/80 text-muted-foreground"
+                  ? "bg-white/20 text-white font-bold"
+                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/60"
               )}
             >
               {metrics.totalOrders}
@@ -678,20 +676,20 @@ export default function OrderHistoryPage() {
             type="button"
             onClick={() => handleTabChange("accounts")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold select-none transition-all duration-200",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none transition-all duration-200 font-semibold",
               activeTab === "accounts"
-                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border border-primary"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
             )}
           >
-            <User className="h-3.5 w-3.5" />
+            <User className={cn("h-3.5 w-3.5", activeTab === "accounts" ? "text-primary-foreground" : "text-slate-400")} />
             <span>{locale === "id" ? "Akun Telegram" : "Telegram Accounts"}</span>
             <span
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px]",
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-colors",
                 activeTab === "accounts"
-                  ? "bg-foreground/10 text-foreground"
-                  : "bg-background/80 text-muted-foreground"
+                  ? "bg-white/20 text-white font-bold"
+                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/60"
               )}
             >
               {metrics.totalAccounts}
@@ -702,20 +700,20 @@ export default function OrderHistoryPage() {
             type="button"
             onClick={() => handleTabChange("smm")}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold select-none transition-all duration-200",
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none transition-all duration-200 font-semibold",
               activeTab === "smm"
-                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border border-primary"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
             )}
           >
-            <ShoppingCart className="h-3.5 w-3.5" />
+            <ShoppingCart className={cn("h-3.5 w-3.5", activeTab === "smm" ? "text-primary-foreground" : "text-slate-400")} />
             <span>{locale === "id" ? "Layanan SMM" : "SMM Services"}</span>
             <span
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px]",
+                "rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-colors",
                 activeTab === "smm"
-                  ? "bg-foreground/10 text-foreground"
-                  : "bg-background/80 text-muted-foreground"
+                  ? "bg-white/20 text-white font-bold"
+                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/60"
               )}
             >
               {metrics.totalSmm}

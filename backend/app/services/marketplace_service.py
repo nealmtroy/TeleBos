@@ -523,7 +523,13 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     account.sold_at = datetime.now(timezone.utc)
     account.buy_price = None
     account.sell_price = None
-    # Set purchased account to active upon purchase
+    # seller_id records who *listed* the account. Leaving it pointing at the
+    # previous seller made the new owner look like they were still selling it:
+    # cancel_sell_account checks `account.seller_id != user.id and
+    # account.user_id != user.id`, and a stale seller_id kept that path open on
+    # an account that had already changed hands.
+    account.seller_id = None
+# Set purchased account to active upon purchase
     account.is_active = True
     account.auto_reply_enabled = False
     account.auto_reply_text = None

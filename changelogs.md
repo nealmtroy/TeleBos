@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[7a745e55](https://github.com/nealmtroy/TeleBos/commit/7a745e55)**: feat(orders): redesign order history with high-end visual design and impeccable standards
 - **[75218984](https://github.com/nealmtroy/TeleBos/commit/75218984)**: feat(captcha): self-hosted Camoufox Turnstile solver to replace 2captcha
 - **[fff55ce1](https://github.com/nealmtroy/TeleBos/commit/fff55ce1)**: fix(backend): stop masking endpoint errors and handle FLOOD on read receipts
 - **[cec6c26c](https://github.com/nealmtroy/TeleBos/commit/cec6c26c)**: fix(telethon): reap transport tasks so half-open clients stop leaking
