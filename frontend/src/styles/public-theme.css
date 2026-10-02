@@ -6,28 +6,30 @@
    =================================================================== */
 
 .public-theme {
-  /* Editorial Luxury — warm paper, espresso ink, muted sage.
-     Replaces the previous near-black/cyan developer-console palette. */
-  --public-canvas: #fdfbf7;
-  --public-border: #e4ded2;
-  --public-text: #1a1714;
-  --public-body: #3d372f;
-  --public-muted: #6b6255;
-  --public-subtle: #9a9084;
-  --public-accent: #6b7f6a;
-  --public-accent-strong: #4a5f4a;
-  --public-success: #4a7c59;
-  --public-warning: #b07d2b;
-  --public-danger: #a4503f;
-  /* Paper grain sits over the canvas, not inside it. */
-  --public-canvas-warm: #f5f0e6;
+  /* Deep navy + electric blue. The reference direction is a technical,
+     product-led dark surface: near-black navy canvas, blue as the only accent,
+     white type on top. Two layer values carry the depth (canvas vs panel). */
+  --public-canvas: #070b14;
+  --public-border: #1b2740;
+  --public-text: #ffffff;
+  --public-body: #e8edf7;
+  --public-muted: #8b9bb4;
+  --public-subtle: #55637a;
+  --public-accent: #2d8fff;
+  --public-accent-strong: #1a6fe0;
+  --public-success: #22c55e;
+  --public-warning: #f0b429;
+  --public-danger: #f87171;
+  /* Panel surface: one step up from the canvas so cards separate without a
+     heavy border. */
+  --public-canvas-warm: #0c1320;
   --public-radius-control: 999px;
-  --public-radius-card: 2rem;
+  --public-radius-card: 1.25rem;
   --public-max-width: 1240px;
   min-height: 100vh;
   background: var(--public-canvas);
   color: var(--public-body);
-  color-scheme: light;
+  color-scheme: dark;
   font-family: var(--font-public-sans), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 

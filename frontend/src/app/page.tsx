@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { CommandSlabs } from "@/components/landing/command-slabs";
 import { EditorialStory } from "@/components/landing/editorial-story";
 import { LandingReveal, LandingRevealGroup, landingRevealVariants } from "@/components/landing/landing-motion";
+import { InfrastructureSection } from "@/components/landing/infrastructure-section";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { OperationalFlow } from "@/components/landing/operational-flow";
 import { PublicFooter } from "@/components/public/public-footer";
@@ -66,6 +67,7 @@ export default function LandingPage() {
       </section>
 
       <EditorialStory />
+      <InfrastructureSection />
       <OperationalFlow />
       <CommandSlabs />
 
@@ -167,9 +169,9 @@ export default function LandingPage() {
                   "transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]",
                 )}
               >
-                <span className="public-focus inline-flex min-h-11 items-center gap-1 rounded-full bg-[#1a1714] px-6 text-sm font-medium text-[#fdfbf7] transition-colors duration-500 hover:bg-[#3d372f]">
+                <span className="public-focus inline-flex min-h-11 items-center gap-1 rounded-full bg-[var(--public-accent)] px-6 text-sm font-medium text-white transition-colors duration-500 hover:bg-[var(--public-accent-strong)]">
                   {_("landing.ctaButton")}
-                  <span aria-hidden="true" className="ml-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#fdfbf7]/15 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px">
+                  <span aria-hidden="true" className="ml-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px">
                     <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M2.5 9.5 9.5 2.5M4 2.5h5.5V8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>

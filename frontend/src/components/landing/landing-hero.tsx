@@ -47,7 +47,7 @@ function ArrowInset() {
       aria-hidden="true"
       className={cn(
         "ml-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-        "bg-[#1a1714]/[0.07] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+        "bg-[var(--public-accent)]/[0.07] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "group-hover:translate-x-0.5 group-hover:-translate-y-px",
       )}
     >
@@ -91,7 +91,7 @@ export function LandingHero() {
         <div className="min-w-0">
           <motion.div
             variants={rise}
-            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#e4ded2] bg-white/60 px-3 py-1.5"
+            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--public-border)] bg-[var(--public-canvas-warm)] px-3 py-1.5"
           >
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6b7f6a]" aria-hidden="true" />
             <span className="public-mono text-[9px] uppercase tracking-[0.2em] text-[#6b6255] sm:text-[10px]">
@@ -101,7 +101,7 @@ export function LandingHero() {
 
           <motion.h1
             variants={rise}
-            className="public-display mt-7 text-[clamp(2.375rem,10.5vw,5.5rem)] leading-[0.96] text-[#1a1714]"
+            className="public-display mt-7 text-[clamp(2.375rem,10.5vw,5.5rem)] leading-[0.96] text-[var(--public-text)]"
           >
             {_("landing.heroTitle")}
           </motion.h1>
@@ -126,13 +126,13 @@ export function LandingHero() {
 
           <motion.dl
             variants={rise}
-            className="mt-12 grid grid-cols-3 gap-px overflow-hidden rounded-[1.5rem] border border-[#e4ded2] bg-[#e4ded2]"
+            className="mt-12 grid grid-cols-3 gap-px overflow-hidden rounded-[1.5rem] border border-[var(--public-border)] bg-[var(--public-border)]"
           >
             {stats.map((stat) => (
               <div key={stat.label} className="min-w-0 bg-[var(--public-canvas)] px-3 py-4 sm:px-5 sm:py-5">
                 <dt className="sr-only">{stat.label}</dt>
                 <dd className="min-w-0">
-                  <span className="public-display block text-[1.375rem] leading-none text-[#1a1714] sm:text-2xl">
+                  <span className="public-display block text-[1.375rem] leading-none text-[var(--public-text)] sm:text-2xl">
                     {stat.value}
                   </span>
                   <span className="public-mono mt-2 block text-[9px] uppercase leading-[1.45] tracking-[0.12em] text-[#9a9084] sm:text-[10px] sm:tracking-[0.16em]">
@@ -147,8 +147,8 @@ export function LandingHero() {
         {/* Double-bezel: outer shell plus inner core with an inset highlight,
             so the frame reads as a printed plate rather than a flat panel. */}
         <motion.div variants={rise} className="min-w-0 lg:pl-4">
-          <div className="rounded-[1.75rem] border border-[#e4ded2] bg-[#efe8db] p-1.5 shadow-[0_30px_80px_-30px_rgba(58,48,32,0.28)] sm:rounded-[2rem]">
-            <div className="overflow-hidden rounded-[calc(1.75rem-0.375rem)] border border-[#e4ded2] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] sm:rounded-[calc(2rem-0.375rem)]">
+          <div className="rounded-[1.75rem] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-1.5 shadow-[0_30px_80px_-30px_rgba(45,143,255,0.35)] sm:rounded-[2rem]">
+            <div className="overflow-hidden rounded-[calc(1.75rem-0.375rem)] border border-[var(--public-border)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] sm:rounded-[calc(2rem-0.375rem)]">
               <HeroSculpture />
             </div>
           </div>
@@ -172,7 +172,7 @@ function Cta({
       className={cn(
         "group inline-flex w-full rounded-full p-1 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "active:scale-[0.98] sm:w-auto",
-        primary ? "border border-[#e4ded2] bg-white/70" : "border border-[#e4ded2]/60",
+        primary ? "border border-[var(--public-border)] bg-[var(--public-canvas-warm)]" : "border border-[var(--public-border)]/60",
       )}
     >
       <Link
@@ -181,8 +181,8 @@ function Cta({
           "public-focus inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full px-5 text-sm font-medium",
           "transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] sm:px-6",
           primary
-            ? "bg-[#1a1714] text-[#fdfbf7] hover:bg-[#3d372f]"
-            : "bg-white/60 text-[#1a1714] hover:bg-white",
+            ? "bg-[var(--public-accent)] text-white hover:bg-[var(--public-accent-strong)]"
+            : "bg-[var(--public-canvas-warm)] text-[var(--public-text)] hover:bg-[var(--public-accent-strong)]",
         )}
       >
         {children}

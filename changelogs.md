@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[e04a7a7a](https://github.com/nealmtroy/TeleBos/commit/e04a7a7a)**: style(public): set display headings in Plus Jakarta Sans too
 - **[f03142f0](https://github.com/nealmtroy/TeleBos/commit/f03142f0)**: fix(fonts): load the public sans variable that the theme already referenced
 - **[a0c7aaa4](https://github.com/nealmtroy/TeleBos/commit/a0c7aaa4)**: fix(public): stop mixing the old dark hex into the re-themed public pages
 

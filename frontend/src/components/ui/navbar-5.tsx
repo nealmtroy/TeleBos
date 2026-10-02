@@ -63,7 +63,7 @@ export const Navbar5 = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[#efe8db]"
+                className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[var(--public-canvas-warm)]"
                 aria-label="Open navigation"
               />
             }
@@ -83,7 +83,7 @@ export const Navbar5 = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[#efe8db]"
+                    className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[var(--public-canvas-warm)]"
                     aria-label="Close navigation"
                   />
                 }

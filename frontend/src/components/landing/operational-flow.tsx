@@ -105,7 +105,7 @@ export function OperationalFlow() {
               >
                 {/* Double-bezel: outer shell holds the shadow, inner core the
                     surface, so the card reads as inset into the page. */}
-                <div className={cn("rounded-[1.5rem] border border-[var(--public-border)] bg-[#efe8db] p-1.5 sm:rounded-[2rem]", CASCADE[index].lift)}>
+                <div className={cn("rounded-[1.5rem] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-1.5 sm:rounded-[2rem]", CASCADE[index].lift)}>
                   <div className="overflow-hidden rounded-[calc(1.5rem-0.375rem)] border border-[var(--public-border)] bg-white sm:rounded-[calc(2rem-0.375rem)]">
                     <div className={cn("grid gap-0", flip ? "lg:grid-cols-[1.05fr_1fr]" : "lg:grid-cols-[1fr_1.05fr]")}>
                       <div className="flex min-w-0 flex-col justify-between gap-6 p-6 sm:p-8 lg:p-10">
