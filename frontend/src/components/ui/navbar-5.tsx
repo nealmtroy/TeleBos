@@ -29,7 +29,7 @@ export const Navbar5 = () => {
   ] as const;
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-[#292d30] bg-black">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--public-border)] bg-[var(--public-canvas)]/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home">
           <BrandLogo size="md" priority />
@@ -40,7 +40,7 @@ export const Navbar5 = () => {
             <Link
               key={href}
               href={href}
-              className="public-focus rounded-[6px] text-sm text-[#a1a4a5] transition-colors duration-150 hover:text-white"
+              className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] transition-colors duration-150 hover:text-[var(--public-text)]"
             >
               {label}
             </Link>
@@ -48,7 +48,7 @@ export const Navbar5 = () => {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/login" className="public-focus rounded-[6px] px-2 py-2 text-sm text-[#f0f0f0] hover:text-white">
+          <Link href="/login" className="public-focus rounded-full px-3 py-2 text-sm text-[var(--public-body)] hover:text-[var(--public-text)]">
             {_("landing.signIn")}
           </Link>
           <Link href="/register" className={publicButtonClass}>
@@ -63,7 +63,7 @@ export const Navbar5 = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="border-[#292d30] bg-black text-white hover:border-white hover:bg-[#0b0e14]"
+                className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[#efe8db]"
                 aria-label="Open navigation"
               />
             }
@@ -72,9 +72,9 @@ export const Navbar5 = () => {
           </SheetTrigger>
           <SheetContent
             side="right"
-            className="public-theme w-full border-[#292d30] bg-black px-5 text-white sm:max-w-sm [&>button]:hidden"
+            className="public-theme w-full border-[var(--public-border)] bg-[var(--public-canvas)] px-5 text-[var(--public-text)] sm:max-w-sm [&>button]:hidden"
           >
-            <SheetHeader className="flex flex-row items-center justify-between border-b border-[#292d30] pb-5">
+            <SheetHeader className="flex flex-row items-center justify-between border-b border-[var(--public-border)] pb-5">
               <SheetTitle render={<Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home" />}>
                 <BrandLogo size="md" />
               </SheetTitle>
@@ -83,7 +83,7 @@ export const Navbar5 = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="border-[#292d30] bg-black text-white hover:border-white hover:bg-[#0b0e14]"
+                    className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[#efe8db]"
                     aria-label="Close navigation"
                   />
                 }
@@ -97,7 +97,7 @@ export const Navbar5 = () => {
                   key={href}
                   href={href}
                   onClick={() => setOpen(false)}
-                  className="public-focus border-b border-[#292d30] py-4 text-base text-[#f0f0f0] hover:text-white"
+                  className="public-focus border-b border-[var(--public-border)] py-4 text-base text-[var(--public-body)] hover:text-[var(--public-text)]"
                 >
                   {label}
                 </Link>

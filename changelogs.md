@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[7528df7b](https://github.com/nealmtroy/TeleBos/commit/7528df7b)**: feat(landing): rebuild the page as an editorial layout on warm paper
 - **[9f2a9e27](https://github.com/nealmtroy/TeleBos/commit/9f2a9e27)**: feat(landing): rebuild hero with editorial split layout and sharper copy
 - **[02530b22](https://github.com/nealmtroy/TeleBos/commit/02530b22)**: fix(orders): stop SMM quantity field trapping itself at 1
 - **[e401d53b](https://github.com/nealmtroy/TeleBos/commit/e401d53b)**: docs(help): document Auto Join and SMM orders
