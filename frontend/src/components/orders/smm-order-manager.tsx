@@ -1,5 +1,6 @@
 "use client";
 
+import { clampQuantity, parseQuantityInput } from "./smm-quantity";
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -745,8 +746,24 @@ function OrderModal({
   const placeOrder = usePlaceOrder();
 
   const [dataTarget, setDataTarget] = useState("");
-  const [quantity, setQuantity] = useState(service.min);
-  const [comments, setComments] = useState("");
+  // Edited as a free-form string so a partially typed number is not rewritten
+    // mid-keystroke. Clamping happens on blur and on submit, not on every change:
+    // clamping on change meant clearing the field snapped straight back to 1, and
+    // the number input then held a value below its min, discarding whatever was
+    // typed next.
+    const [quantityInput, setQuantityInput] = useState(String(service.min));
+    const [comments, setComments] = useState("");
+
+    const commitQuantity = (raw: string) => {
+      setQuantityInput(String(clampQuantity(raw, service.min, service.max)));
+    };
+
+    // Preset and +/- buttons work on the numeric value, then mirror it back.
+    const setQuantity = (next: number) => {
+      setQuantityInput(String(Math.min(service.max, Math.max(service.min, next))));
+    };
+
+    const quantity = parseQuantityInput(quantityInput) ?? service.min;
 
   const speedInfo = parseSmmSpeed(service.speed);
 
@@ -757,9 +774,9 @@ function OrderModal({
   const balanceRemaining = userBalance - estimatedPrice;
 
   // Preset increments
-  const handleQuickAdd = (amount: number) => {
-    setQuantity((prev) => Math.min(service.max, Math.max(service.min, prev + amount)));
-  };
+    const handleQuickAdd = (amount: number) => {
+      setQuantity(quantity + amount);
+    };
 
   const handleSetMax = () => {
     setQuantity(service.max);
@@ -772,6 +789,28 @@ function OrderModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dataTarget.trim()) return;
+
+    // The field stays free-form while the user types, so the value on screen is
+        // not necessarily inside the service's range yet — clamp before submitting.
+        const parsed = parseQuantityInput(quantityInput);
+        if (parsed === null || parsed < service.min) {
+          toast({
+            variant: "error",
+            title: _("orders.orderFailed") || "Gagal Membuat Pesanan",
+            description: `Jumlah pemesanan minimal adalah ${service.min.toLocaleString("id-ID")}.`,
+          });
+          commitQuantity(quantityInput);
+          return;
+        }
+        if (parsed > service.max) {
+          toast({
+            variant: "error",
+            title: _("orders.orderFailed") || "Gagal Membuat Pesanan",
+            description: `Jumlah pemesanan maksimal adalah ${service.max.toLocaleString("id-ID")}.`,
+          });
+          commitQuantity(quantityInput);
+          return;
+        }
 
     try {
       await placeOrder.mutateAsync({
@@ -953,14 +992,13 @@ function OrderModal({
                 </button>
                 <input
                   type="number"
-                  value={quantity}
-                  onChange={(e) =>
-                    setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-                  }
+                  value={quantityInput}
+                  onChange={(e) => setQuantityInput(e.target.value)}
+                  onBlur={(e) => commitQuantity(e.target.value)}
                   min={service.min}
                   max={service.max}
                   className="w-full text-center py-2.5 rounded-xl text-base font-bold bg-background border border-input text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums"
-                />
+                  />
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.min(service.max, quantity + 100))}

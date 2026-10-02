@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[e401d53b](https://github.com/nealmtroy/TeleBos/commit/e401d53b)**: docs(help): document Auto Join and SMM orders
 - **[855f3309](https://github.com/nealmtroy/TeleBos/commit/855f3309)**: docs(help): cover marketplace, SpamBot appeals, and billing
 - **[257ef701](https://github.com/nealmtroy/TeleBos/commit/257ef701)**: fix(orders): hide provider identity, fix speed sorting duration parser, remove mass order tabs
 - **[72bdc838](https://github.com/nealmtroy/TeleBos/commit/72bdc838)**: feat(orders): redesign SMM pages with double-bezel architecture, speed parsing, and zero-glitch controls
