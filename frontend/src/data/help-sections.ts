@@ -96,8 +96,46 @@ export const helpSections: HelpSection[] = [
       "help.tipsContent4",
       "help.tipsContent5",
     ],
+    },
+    {
+    key: "marketplace",
+    slug: "marketplace",
+    titleKey: "help.marketplace",
+    descKey: "help.marketplaceDesc",
+    contentKeys: [
+      "help.marketplaceContent1",
+      "help.marketplaceContent2",
+      "help.marketplaceContent3",
+      "help.marketplaceContent4",
+      "help.marketplaceContent5",
+    ],
+    },
+    {
+    key: "spam-appeal",
+    slug: "spam-appeal",
+    titleKey: "help.spamAppeal",
+    descKey: "help.spamAppealDesc",
+    contentKeys: [
+      "help.spamAppealContent1",
+      "help.spamAppealContent2",
+      "help.spamAppealContent3",
+      "help.spamAppealContent4",
+    ],
+    },
+    {
+    key: "billing",
+    slug: "billing",
+    titleKey: "help.billing",
+    descKey: "help.billingDesc",
+    contentKeys: [
+      "help.billingContent1",
+      "help.billingContent2",
+      "help.billingContent3",
+      "help.billingContent4",
+      "help.billingContent5",
+    ],
   },
-];
+  ];
 
 export function getHelpSectionBySlug(slug: string): HelpSection | undefined {
   return helpSections.find((s) => s.slug === slug);

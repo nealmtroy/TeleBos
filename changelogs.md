@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[257ef701](https://github.com/nealmtroy/TeleBos/commit/257ef701)**: fix(orders): hide provider identity, fix speed sorting duration parser, remove mass order tabs
 - **[72bdc838](https://github.com/nealmtroy/TeleBos/commit/72bdc838)**: feat(orders): redesign SMM pages with double-bezel architecture, speed parsing, and zero-glitch controls
 - **[7a414066](https://github.com/nealmtroy/TeleBos/commit/7a414066)**: fix(inputs): eliminate white-to-blue focus ring glitch on search inputs
 - **[2cc1e128](https://github.com/nealmtroy/TeleBos/commit/2cc1e128)**: fix(orders): stabilize table column layout and eliminate tab switch jitter
