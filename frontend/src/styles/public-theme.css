@@ -6,25 +6,29 @@
    =================================================================== */
 
 .public-theme {
-  --public-canvas: #000000;
-  --public-border: #292d30;
-  --public-text: #ffffff;
-  --public-body: #f0f0f0;
-  --public-muted: #a1a4a5;
-  --public-subtle: #6e727a;
-  --public-accent: #2AABEE;
-  --public-accent-strong: #2AABEE;
-  --public-success: #3ad389;
-  --public-warning: #ffca16;
-  --public-danger: #ff9592;
-  --public-radius-control: 6px;
-  --public-radius-card: 16px;
-  --public-max-width: 1200px;
+  /* Editorial Luxury — warm paper, espresso ink, muted sage.
+     Replaces the previous near-black/cyan developer-console palette. */
+  --public-canvas: #fdfbf7;
+  --public-border: #e4ded2;
+  --public-text: #1a1714;
+  --public-body: #3d372f;
+  --public-muted: #6b6255;
+  --public-subtle: #9a9084;
+  --public-accent: #6b7f6a;
+  --public-accent-strong: #4a5f4a;
+  --public-success: #4a7c59;
+  --public-warning: #b07d2b;
+  --public-danger: #a4503f;
+  /* Paper grain sits over the canvas, not inside it. */
+  --public-canvas-warm: #f5f0e6;
+  --public-radius-control: 999px;
+  --public-radius-card: 2rem;
+  --public-max-width: 1240px;
   min-height: 100vh;
   background: var(--public-canvas);
   color: var(--public-body);
-  color-scheme: dark;
-  font-family: var(--font-public-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  color-scheme: light;
+  font-family: var(--font-public-sans), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 .public-theme h1,
@@ -40,7 +44,55 @@
 .public-display {
   font-family: var(--font-public-display), Georgia, "Times New Roman", serif;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  /* Optical tracking: display sizes need tighter spacing than body copy, and
+     the tracking has to ease off as the size drops on small screens or the
+     lines collide on a phone. */
+  letter-spacing: -0.028em;
+  font-feature-settings: "liga" 1, "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* Below the largest breakpoint a 6rem serif at -0.028em starts to clip its own
+   descenders against the next line, so tracking relaxes on small screens. */
+@media (max-width: 640px) {
+  .public-display {
+    letter-spacing: -0.015em;
+  }
+}
+
+@media (min-width: 1024px) {
+  .public-display {
+    letter-spacing: -0.035em;
+  }
+}
+
+/* Film grain. Fixed and pointer-events-none so it never repaints on scroll,
+   per the performance rules for noise overlays. */
+.public-grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Section rhythm is fluid rather than snapping between two fixed jumps. */
+.public-section {
+  padding-block: clamp(4rem, 9vw, 10rem);
+}
+
+/* Hairline that reads as a printed rule rather than a UI border. */
+.public-rule {
+  border-top: 1px solid var(--public-border);
+}
+
+.public-shell-width {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 78rem;
+  padding-inline: clamp(1.25rem, 5vw, 2rem);
 }
 
 .public-mono {

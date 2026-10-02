@@ -1187,6 +1187,8 @@ const en: Dict = {
     flowStatusUnified: "Unified control",
     flowStatusRunning: "Automation running",
     flowStatusComplete: "Action visible",
+    flowExpandLabel: "Show detail",
+    flowCollapseLabel: "Hide detail",
     slabKicker: "Command surfaces",
     slabTitle: "Every capability has a place in the flow.",
     slabSubtitle: "Open a surface to see how it supports the work instead of adding another isolated tool.",

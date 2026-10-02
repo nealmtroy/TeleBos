@@ -15,7 +15,7 @@ export const PublicCheckbox = forwardRef<HTMLInputElement, InputHTMLAttributes<H
         />
         <span
           aria-hidden="true"
-          className="flex h-5 w-5 items-center justify-center rounded-[5px] border border-[#464a4d] bg-black text-transparent transition-[background-color,border-color,color,box-shadow] duration-150 peer-hover:border-[#a1a4a5] peer-checked:border-[#2AABEE] peer-checked:bg-[#2AABEE] peer-checked:text-black peer-focus-visible:shadow-[0_0_0_2px_#000000,0_0_0_4px_#2AABEE] peer-disabled:opacity-50 peer-aria-[invalid=true]:border-[#ff9592]"
+          className="flex h-5 w-5 items-center justify-center rounded-[5px] border border-[var(--public-subtle)] bg-[var(--public-canvas)] text-transparent transition-[background-color,border-color,color,box-shadow] duration-150 peer-hover:border-[var(--public-muted)] peer-checked:border-[var(--public-accent)] peer-checked:bg-[var(--public-accent)] peer-checked:text-[var(--public-canvas)] peer-focus-visible:shadow-[0_0_0_2px_var(--public-canvas),0_0_0_4px_var(--public-accent-strong)] peer-disabled:opacity-50 peer-aria-[invalid=true]:border-[var(--public-danger)]"
         >
           <Check className="h-3.5 w-3.5 stroke-[3]" />
         </span>

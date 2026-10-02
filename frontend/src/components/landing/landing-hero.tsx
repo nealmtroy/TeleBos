@@ -1,12 +1,20 @@
-// Landing hero — "Editorial Split" archetype, Ethereal Glass texture.
+// Landing hero — "Editorial Split" archetype, Editorial Luxury texture.
 //
-// The design system already ships a public palette (near-black, #292d30
-// hairlines, Playfair for display, JetBrains Mono for labels), so this keeps
-// that vocabulary rather than inventing a second one. What changes is depth:
-// every surface here is a nested shell, motion uses a spring curve instead of
-// the default ease, and the layout splits asymmetrically below the fold.
+// Palette is warm paper (--public-canvas) with espresso ink, not a dark
+// console: the display serif is the point, so the surface has to be quiet
+// enough to let it read. Every colour below comes from the theme tokens rather
+// than being written inline, so the palette can move in one place.
+//
+// Sizing is fluid via clamp() rather than breakpoint jumps — a 5rem headline at
+// 375px either overflows or shrinks in ugly steps, and clamp avoids both.
+//
+// Layout: the pitch sits in a left column and the product frame in a right
+// column on desktop. Below lg the two stack, and the pitch stays first in the
+// DOM so a phone user reads the headline before the screenshot.
 
 "use client";
+
+import Link from "next/link";
 
 import { motion, useReducedMotion } from "framer-motion";
 
@@ -18,32 +26,32 @@ const SPRING = [0.32, 0.72, 0, 1] as const;
 
 const container = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
 };
 
 const rise = {
-  hidden: { opacity: 0, y: 28, filter: "blur(10px)" },
+  hidden: { opacity: 0, y: 24, filter: "blur(8px)" },
   show: {
     opacity: 1,
     y: 0,
     filter: "blur(0px)",
-    transition: { duration: 0.85, ease: SPRING },
+    transition: { duration: 0.8, ease: SPRING },
   },
 };
 
-// The button-in-button pattern: the arrow lives in its own circular inset so it
-// reads as machined hardware rather than a glyph dropped after the label.
+// The arrow lives in its own circular inset so it reads as a machined part
+// rather than a glyph dropped after the label.
 function ArrowInset() {
   return (
     <span
       aria-hidden="true"
       className={cn(
-        "ml-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-        "bg-white/10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+        "ml-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+        "bg-[#1a1714]/[0.07] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "group-hover:translate-x-0.5 group-hover:-translate-y-px",
       )}
     >
-      <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M2.5 9.5 9.5 2.5M4 2.5h5.5V8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
@@ -61,15 +69,16 @@ export function LandingHero() {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-[#050505]">
-      {/* Ambient mesh glow — fixed, pointer-events-none, no scroll repaint. */}
+    <section className="relative isolate overflow-hidden bg-[var(--public-canvas)]">
+      {/* Warm daylight wash — fixed and pointer-events-none so scrolling never
+          repaints it. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(58rem 34rem at 78% -8%, rgba(42,171,238,0.16), transparent 62%)," +
-            "radial-gradient(44rem 30rem at 6% 8%, rgba(58,211,137,0.10), transparent 58%)",
+            "radial-gradient(46rem 28rem at 82% -10%, rgba(107,127,106,0.16), transparent 62%)," +
+            "radial-gradient(34rem 24rem at 2% 6%, rgba(176,125,43,0.10), transparent 58%)",
         }}
       />
 
@@ -77,60 +86,56 @@ export function LandingHero() {
         variants={container}
         initial={reducedMotion ? false : "hidden"}
         animate={reducedMotion ? undefined : "show"}
-        className={cn(
-          "mx-auto grid max-w-[1240px] items-center gap-14 px-4 py-24 sm:px-6 sm:py-32",
-          "lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:gap-20 lg:px-8 lg:py-40",
-        )}
+        className="public-shell-width grid items-center gap-14 py-20 sm:py-24 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:gap-16 lg:py-36"
       >
-        {/* ── Left: the pitch ─────────────────────────────────────────── */}
         <div className="min-w-0">
           <motion.div
             variants={rise}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04]",
-              "px-3 py-1.5 backdrop-blur-sm",
-            )}
+            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#e4ded2] bg-white/60 px-3 py-1.5"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-[#3ad389]" aria-hidden="true" />
-            <span className="public-mono text-[10px] uppercase tracking-[0.22em] text-[#a1a4a5]">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6b7f6a]" aria-hidden="true" />
+            <span className="public-mono text-[9px] uppercase tracking-[0.2em] text-[#6b6255] sm:text-[10px]">
               {_("landing.heroOverline")}
             </span>
           </motion.div>
 
           <motion.h1
             variants={rise}
-            className={cn(
-              "public-display mt-8 text-[clamp(2.75rem,6.6vw,5.75rem)] font-normal leading-[0.98]",
-              "tracking-[-0.02em] text-white",
-            )}
+            className="public-display mt-7 text-[clamp(2.375rem,10.5vw,5.5rem)] leading-[0.96] text-[#1a1714]"
           >
             {_("landing.heroTitle")}
           </motion.h1>
 
           <motion.p
             variants={rise}
-            className="mt-7 max-w-xl text-[1.0625rem] leading-[1.75] text-[#a1a4a5]"
+            className="mt-6 max-w-xl text-[0.9375rem] leading-[1.7] text-[#6b6255] sm:text-base sm:leading-[1.75]"
           >
             {_("landing.heroSubtitle")}
           </motion.p>
 
-          <motion.div variants={rise} className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Double-bezel: p-1.5 shell, inner core carries the fill. */}
-            <LinkShell href="#workflow" primary>
+          <motion.div
+            variants={rise}
+            className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+          >
+            <Cta href="#workflow" primary>
               {_("landing.heroCta")}
               <ArrowInset />
-            </LinkShell>
-            <LinkShell href="/register">{_("landing.heroSecondary")}</LinkShell>
+            </Cta>
+            <Cta href="/register">{_("landing.heroSecondary")}</Cta>
           </motion.div>
 
-          {/* Proof rail — hairline separators, mono numerals. */}
-          <motion.dl variants={rise} className="mt-14 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+          <motion.dl
+            variants={rise}
+            className="mt-12 grid grid-cols-3 gap-px overflow-hidden rounded-[1.5rem] border border-[#e4ded2] bg-[#e4ded2]"
+          >
             {stats.map((stat) => (
-              <div key={stat.label} className="bg-[#050505] px-4 py-5">
+              <div key={stat.label} className="min-w-0 bg-[var(--public-canvas)] px-3 py-4 sm:px-5 sm:py-5">
                 <dt className="sr-only">{stat.label}</dt>
-                <dd>
-                  <span className="public-display block text-2xl text-white">{stat.value}</span>
-                  <span className="public-mono mt-2 block text-[10px] uppercase leading-4 tracking-[0.16em] text-[#6e727a]">
+                <dd className="min-w-0">
+                  <span className="public-display block text-[1.375rem] leading-none text-[#1a1714] sm:text-2xl">
+                    {stat.value}
+                  </span>
+                  <span className="public-mono mt-2 block text-[9px] uppercase leading-[1.45] tracking-[0.12em] text-[#9a9084] sm:text-[10px] sm:tracking-[0.16em]">
                     {stat.label}
                   </span>
                 </dd>
@@ -139,15 +144,11 @@ export function LandingHero() {
           </motion.dl>
         </div>
 
-        {/* ── Right: the product, framed ─────────────────────────────── */}
-        <motion.div variants={rise} className="min-w-0">
-          <div
-            className={cn(
-              "rounded-[2rem] border border-white/10 bg-white/[0.03] p-1.5",
-              "shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]",
-            )}
-          >
-            <div className="overflow-hidden rounded-[calc(2rem-0.375rem)] border border-white/[0.06] bg-[#0b0e14] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
+        {/* Double-bezel: outer shell plus inner core with an inset highlight,
+            so the frame reads as a printed plate rather than a flat panel. */}
+        <motion.div variants={rise} className="min-w-0 lg:pl-4">
+          <div className="rounded-[1.75rem] border border-[#e4ded2] bg-[#efe8db] p-1.5 shadow-[0_30px_80px_-30px_rgba(58,48,32,0.28)] sm:rounded-[2rem]">
+            <div className="overflow-hidden rounded-[calc(1.75rem-0.375rem)] border border-[#e4ded2] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] sm:rounded-[calc(2rem-0.375rem)]">
               <HeroSculpture />
             </div>
           </div>
@@ -157,7 +158,7 @@ export function LandingHero() {
   );
 }
 
-function LinkShell({
+function Cta({
   href,
   children,
   primary = false,
@@ -169,23 +170,23 @@ function LinkShell({
   return (
     <span
       className={cn(
-        "group inline-flex rounded-full p-1 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
-        "active:scale-[0.98]",
-        primary ? "border border-white/10 bg-white/[0.05]" : "border border-white/[0.06] bg-transparent",
+        "group inline-flex w-full rounded-full p-1 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+        "active:scale-[0.98] sm:w-auto",
+        primary ? "border border-[#e4ded2] bg-white/70" : "border border-[#e4ded2]/60",
       )}
     >
-      <a
+      <Link
         href={href}
         className={cn(
-          "public-focus inline-flex min-h-11 items-center gap-1 rounded-full px-6 text-sm font-medium",
-          "transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "public-focus inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full px-5 text-sm font-medium",
+          "transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] sm:px-6",
           primary
-            ? "bg-white text-[#050505] hover:bg-[#e8e8e8]"
-            : "bg-white/[0.04] text-white hover:bg-white/[0.09]",
+            ? "bg-[#1a1714] text-[#fdfbf7] hover:bg-[#3d372f]"
+            : "bg-white/60 text-[#1a1714] hover:bg-white",
         )}
       >
         {children}
-      </a>
+      </Link>
     </span>
   );
 }

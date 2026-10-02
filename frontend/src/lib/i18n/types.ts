@@ -1134,6 +1134,8 @@ export interface Dict {
     flowStatusUnified: string;
     flowStatusRunning: string;
     flowStatusComplete: string;
+    flowExpandLabel: string;
+    flowCollapseLabel: string;
     slabKicker: string;
     slabTitle: string;
     slabSubtitle: string;

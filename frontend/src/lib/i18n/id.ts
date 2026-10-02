@@ -1187,6 +1187,8 @@ const id: Dict = {
     flowStatusUnified: "Kendali terpadu",
     flowStatusRunning: "Otomatisasi berjalan",
     flowStatusComplete: "Tindakan terlihat",
+    flowExpandLabel: "Lihat detail",
+    flowCollapseLabel: "Sembunyikan detail",
     slabKicker: "Permukaan kendali",
     slabTitle: "Setiap kapabilitas punya tempat dalam alur kerja.",
     slabSubtitle: "Buka sebuah permukaan untuk melihat cara kapabilitas tersebut mendukung pekerjaan, bukan menambah tool terpisah.",

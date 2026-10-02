@@ -86,23 +86,23 @@ export function ProductSurface({
       <div className={cn("grid", compact ? "gap-4 p-4" : "gap-6 p-5 sm:p-7")}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-[#292d30] text-[#2AABEE]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-[var(--public-border)] text-[var(--public-accent)]">
               <Icon className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{surface.title}</p>
-              <p className="public-mono mt-1 text-[10px] text-[#6e727a]">TELEBOS / CONTROL</p>
+              <p className="truncate text-sm font-medium text-[var(--public-text)]">{surface.title}</p>
+              <p className="public-mono mt-1 text-[10px] text-[var(--public-subtle)]">TELEBOS / CONTROL</p>
             </div>
           </div>
-          <Radio className="h-4 w-4 shrink-0 text-[#3ad389]" aria-hidden="true" />
+          <Radio className="h-4 w-4 shrink-0 text-[var(--public-success)]" aria-hidden="true" />
         </div>
         <div>{surface.rows.map((row) => <PublicStatusRow key={row.label} {...row} />)}</div>
         {!compact && (
-          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[6px] border border-[#292d30] bg-[#292d30]">
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[6px] border border-[var(--public-border)] bg-[var(--public-border)]">
             {surface.rows.map((row, index) => (
-              <div key={`${row.label}-metric`} className="bg-black px-3 py-4">
-                <p className="public-mono text-[9px] uppercase text-[#6e727a]">0{index + 1}</p>
-                <p className="mt-2 truncate text-xs text-[#f0f0f0]">{row.value}</p>
+              <div key={`${row.label}-metric`} className="bg-[var(--public-canvas)] px-3 py-4">
+                <p className="public-mono text-[9px] uppercase text-[var(--public-subtle)]">0{index + 1}</p>
+                <p className="mt-2 truncate text-xs text-[var(--public-body)]">{row.value}</p>
               </div>
             ))}
           </div>

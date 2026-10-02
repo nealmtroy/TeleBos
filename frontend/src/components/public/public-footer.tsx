@@ -15,7 +15,7 @@ export function PublicFooter({ compact = false }: { compact?: boolean }) {
   ] as const;
 
   return (
-    <footer className="border-t border-[#292d30] bg-black">
+    <footer className="border-t border-[var(--public-border)] bg-[var(--public-canvas)]">
       <div
         className={`mx-auto flex max-w-[1200px] flex-col gap-6 px-4 sm:px-6 lg:px-8 ${
           compact ? "py-8" : "py-12"
@@ -28,20 +28,20 @@ export function PublicFooter({ compact = false }: { compact?: boolean }) {
               href="https://t.me/telebos_official"
               target="_blank"
               rel="noopener noreferrer"
-              className="public-focus public-mono rounded-[6px] text-xs text-[#a1a4a5] transition-colors duration-150 hover:text-white"
+              className="public-focus public-mono rounded-[6px] text-xs text-[var(--public-muted)] transition-colors duration-150 hover:text-[var(--public-text)]"
             >
               {_("landing.footerTelegram")}
             </a>
           </div>
         )}
-        <div className="flex flex-col gap-5 border-t border-[#292d30] pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-[#6e727a]">{_("landing.footerCopyright")}</p>
+        <div className="flex flex-col gap-5 border-t border-[var(--public-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-[var(--public-subtle)]">{_("landing.footerCopyright")}</p>
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-3">
             {links.map(([label, href]) => (
               <Link
                 key={href}
                 href={href}
-                className="public-focus rounded-[6px] text-sm text-[#a1a4a5] transition-colors duration-150 hover:text-white"
+                className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] transition-colors duration-150 hover:text-[var(--public-text)]"
               >
                 {label}
               </Link>
