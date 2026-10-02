@@ -127,17 +127,19 @@ export function HeroDashboardMockup() {
       </div>
 
       {/* Mobile: the same accounts inside a tilted phone. */}
-      <div className="relative mx-auto w-[15.5rem] sm:w-[17rem] lg:hidden">
-        <FloatingCards />
-        {/* Body. A 3px titanium rail on a near-black screen: the rail's own
-            gradient is the bezel, so the device reads as metal rather than a
-            rounded box. rotate happens on an inner wrapper so the rail stays
-            uniform instead of shading differently per corner. */}
-        <div
-          className="relative origin-[50%_45%] rotate-[6deg]"
-          style={{
-            background: "linear-gradient(148deg,#9aa4b2 0%,#39424f 12%,#1a212c 46%,#4a5666 84%,#8a94a3 100%)",
-            borderRadius: "3.2rem",
+            {/* Width stays fixed but the height follows the device's real 19.5:9 ratio,
+                so the phone reads tall like a handset instead of squat. The accounts
+                fill the remaining screen height rather than leaving dead space below. */}
+            <div className="relative mx-auto w-[15.5rem] sm:w-[16.5rem] lg:hidden">
+              <FloatingCards />
+              {/* Body. A 3px titanium rail on a (nonsensical) near-black screen: the
+                  rail's own gradient is the bezel, so the device reads as metal rather
+                  than a rounded box. */}
+              <div
+                className="relative origin-[50%_45%] rotate-[6deg] aspect-[9/19.5]"
+                style={{
+                  background: "linear-gradient(148deg,#9aa4b2 0%,#39424f 12%,#1a212c 46%,#4a5666 84%,#8a94a3 100%)",
+                  borderRadius: "3.2rem",
             padding: "3px",
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.07), 0 40px 90px -30px rgba(45,143,255,0.55), 0 10px 26px -12px rgba(0,0,0,0.8)",
@@ -176,12 +178,55 @@ export function HeroDashboardMockup() {
                 <Radio className="ml-auto h-3.5 w-3.5 text-[var(--public-success)]" aria-hidden="true" />
               </div>
 
-              <div className="px-2 py-2">
+              {/* Compact stat row. A real handset dashboard opens with numbers,
+                  and it also fills the tall screen so the device does not end
+                  with dead space above the home indicator. */}
+              <div className="grid grid-cols-3 gap-1.5 px-3 py-2.5">
+                {STATS.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="min-w-0 rounded-[0.5rem] border border-[var(--public-border)] bg-[var(--public-canvas)] px-2 py-1.5"
+                  >
+                    <p className="truncate text-[8px] leading-tight text-[var(--public-subtle)]">
+                      {stat.label}
+                    </p>
+                    <p className="public-mono mt-1 truncate text-[11px] font-medium leading-none text-[var(--public-text)]">
+                      {stat.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Account list */}
+              <div className="px-2 pb-1">
                 <AccountList bare />
               </div>
 
+              {/* Activity preview — fills the lower screen the way a phone
+                  dashboard actually uses the space. */}
+              <div className="px-3 pt-1.5 pb-1">
+                <p className="mb-1.5 text-[9px] font-medium text-[var(--public-muted)]">
+                  Aktivitas Terbaru
+                </p>
+                <ul className="space-y-1.5">
+                  {ACTIVITY.slice(0, 3).map((item) => (
+                    <li key={item.label} className="flex items-center gap-2">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[0.25rem] border border-[var(--public-border)] text-[var(--public-accent)]">
+                        <item.icon className="h-2 w-2" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[9px] text-[var(--public-body)]">
+                        {item.label}
+                      </span>
+                      <span className="shrink-0 text-[8px] text-[var(--public-subtle)]">
+                        {item.meta}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
               {/* Home indicator */}
-              <div className="flex justify-center pb-2 pt-1" aria-hidden="true">
+              <div className="flex justify-center pb-2 pt-2" aria-hidden="true">
                 <span className="h-[3px] w-24 rounded-full bg-[var(--public-border)]" />
               </div>
             </div>
