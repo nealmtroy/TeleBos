@@ -30,15 +30,18 @@ export function CommandSlabs() {
       <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <LandingReveal>
-            <p className="public-mono text-xs text-[var(--public-accent)]">{_("landing.slabKicker")}</p>
-            <h2 className="public-display mt-5 text-[clamp(2.75rem,6vw,5rem)] leading-[1.02] text-[var(--public-text)]">{_("landing.slabTitle")}</h2>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+              {_("landing.slabKicker")}
+            </div>
+            <h2 className="public-display mt-5 text-[clamp(2.5rem,5.5vw,4.25rem)] leading-[1.05] text-[var(--public-text)]">{_("landing.slabTitle")}</h2>
           </LandingReveal>
           <LandingReveal delay={0.05}>
-            <p className="max-w-2xl text-lg leading-8 text-[var(--public-muted)] lg:justify-self-end">{_("landing.slabSubtitle")}</p>
+            <p className="max-w-2xl text-base sm:text-lg leading-7 sm:leading-8 text-[var(--public-muted)] lg:justify-self-end">{_("landing.slabSubtitle")}</p>
           </LandingReveal>
         </div>
 
-        <LandingReveal className="mt-14 border-y border-[var(--public-border)]" delay={0.08}>
+        <LandingReveal className="mt-12 border-y border-[var(--public-border)]" delay={0.08}>
           {slabs.map((slab, index) => {
             const Icon = slab.icon;
             const expanded = active === index;
@@ -46,7 +49,7 @@ export function CommandSlabs() {
             const panelId = `command-panel-${slab.mode}`;
             return (
               <article key={slab.mode} className="border-b border-[var(--public-border)] last:border-b-0">
-                <h3>
+                <div role="heading" aria-level={3}>
                   <button
                     id={triggerId}
                     type="button"
@@ -54,30 +57,30 @@ export function CommandSlabs() {
                     aria-controls={panelId}
                     onClick={() => setActive(index)}
                     className={cn(
-                      "public-focus grid w-full grid-cols-[2rem_auto_1fr_auto] items-center gap-4 rounded-[6px] px-1 py-6 text-left transition-colors duration-150 sm:grid-cols-[3rem_auto_1fr_auto]",
+                      "public-focus grid w-full grid-cols-[2.5rem_auto_1fr_auto] items-center gap-4 rounded-md px-1 py-5 text-left transition-colors duration-150 sm:grid-cols-[3rem_auto_1fr_auto]",
                       expanded ? "text-[var(--public-text)]" : "text-[var(--public-muted)] hover:text-[var(--public-body)]"
                     )}
                   >
-                    <span className="public-mono text-[10px] text-[var(--public-subtle)]">0{index + 1}</span>
+                    <span className="public-mono text-xs font-bold text-[var(--public-subtle)]">0{index + 1}</span>
                     <Icon className={cn("h-5 w-5", expanded ? "text-[var(--public-accent)]" : "text-[var(--public-subtle)]")} aria-hidden="true" />
-                    <span className="font-medium">{slab.title}</span>
-                    <span className="public-mono text-lg text-[var(--public-subtle)]" aria-hidden="true">{expanded ? "−" : "+"}</span>
+                    <span className="font-semibold text-sm sm:text-base">{slab.title}</span>
+                    <span className="public-mono text-base font-bold text-[var(--public-subtle)]" aria-hidden="true">{expanded ? "−" : "+"}</span>
                   </button>
-                </h3>
+                </div>
                 {expanded && (
                   <div
                     id={panelId}
                     role="region"
                     aria-labelledby={triggerId}
-                    className="grid gap-8 border-t border-[var(--public-border)] px-1 py-8 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]"
+                    className="grid gap-6 border-t border-[var(--public-border)] px-1 py-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]"
                   >
                     <div>
-                      <p className="max-w-lg text-sm leading-7 text-[var(--public-body)]">{slab.description}</p>
-                      <PublicCode className="mt-6 rounded-[6px] p-4 text-xs leading-6">
+                      <p className="max-w-lg text-sm leading-relaxed text-[var(--public-body)]">{slab.description}</p>
+                      <PublicCode className="mt-5 rounded-md p-3.5 text-xs leading-6">
                         <span className="text-[var(--public-subtle)]">$ telebos </span>
-                        <span className="text-[var(--public-accent)]">{slab.mode}</span>{"\n"}
+                        <span className="text-[var(--public-accent)] font-semibold">{slab.mode}</span>{"\n"}
                         <span className="text-[var(--public-muted)]">{_("landing.surfaceProgress")}: </span>
-                        <span className="text-[var(--public-success)]">{_("landing.surfaceReady")}</span>
+                        <span className="text-[var(--public-success)] font-semibold">{_("landing.surfaceReady")}</span>
                       </PublicCode>
                     </div>
                     <ProductSurface variant={slab.mode} compact />

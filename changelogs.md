@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[66433570](https://github.com/nealmtroy/TeleBos/commit/66433570)**: fix(hero): give the hero phone a real handset ratio and fill its screen
 - **[07c7b20b](https://github.com/nealmtroy/TeleBos/commit/07c7b20b)**: fix(hero): make the mobile phone mockup read as an iPhone
 - **[70f8b777](https://github.com/nealmtroy/TeleBos/commit/70f8b777)**: feat(hero): show the real dashboard on desktop and a phone on mobile
 - **[a18a7b79](https://github.com/nealmtroy/TeleBos/commit/a18a7b79)**: fix(nav): make the landing mobile menu slide smoothly
