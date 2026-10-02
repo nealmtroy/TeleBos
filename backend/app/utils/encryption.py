@@ -34,6 +34,16 @@ def _get_cipher() -> Fernet:
 
 
 
+class DecryptionError(RuntimeError):
+    """Raised when a stored ciphertext cannot be decrypted with the active key.
+
+    This almost always means ENCRYPTION_KEY was rotated or the ciphertext is
+    corrupt. It must never be swallowed: returning an empty string makes the
+    caller hand a blank session to Telethon, which fails later with a
+    misleading "auth key must be provided" style error.
+    """
+
+
 def encrypt(plaintext: str) -> str:
     """Encrypt a string and return a base64-encoded ciphertext."""
     if not plaintext:
@@ -42,14 +52,38 @@ def encrypt(plaintext: str) -> str:
 
 
 def decrypt(ciphertext: str) -> str:
-    """Decrypt a base64-encoded ciphertext back to the original string."""
+    """Decrypt a base64-encoded ciphertext back to the original string.
+
+    Raises:
+        DecryptionError: when the ciphertext is non-empty but cannot be
+            decrypted (wrong/rotated ENCRYPTION_KEY, or corrupt data).
+    """
     if not ciphertext:
         return ""
     try:
         return _get_cipher().decrypt(ciphertext.encode()).decode()
     except Exception as exc:
         logger.error("Decryption failed (possibly invalid ENCRYPTION_KEY): %s", exc)
-        return ""
+        raise DecryptionError(
+            "Stored secret could not be decrypted; the ENCRYPTION_KEY may have "
+            "changed or the stored value is corrupt"
+        ) from exc
+
+
+def decrypt_or_none(ciphertext: str) -> str | None:
+    """Best-effort decrypt that returns None instead of raising.
+
+    For call sites that genuinely treat "undecryptable" and "absent" the same
+    way (e.g. optional 2FA secrets) and must not blow up a whole request.
+    Prefer :func:`decrypt` everywhere the value is required.
+    """
+    if not ciphertext:
+        return None
+    try:
+        return _get_cipher().decrypt(ciphertext.encode()).decode()
+    except Exception as exc:
+        logger.error("Decryption failed (possibly invalid ENCRYPTION_KEY): %s", exc)
+        return None
 
 
 def get_current_key() -> str:

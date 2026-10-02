@@ -25,6 +25,9 @@ def _jpeg_bytes(size=(64, 64), color=(200, 30, 30)) -> bytes:
 def _account():
     account = MagicMock()
     account.id = uuid4()
+    # decrypt() now raises DecryptionError on undecryptable input (it used to
+    # silently return ""), so a literal placeholder like "encrypted" would blow
+    # up these tests. Patch decrypt at the call site instead.
     account.session_string = "encrypted"
     account.profile_photo_path = None
     account.profile_photo_id = None
@@ -67,6 +70,7 @@ async def test_upload_caches_local_bytes_without_downloading(cached_dir):
     pool.get = AsyncMock(return_value=client)
 
     with patch.object(account_service, "client_pool", pool), \
+         patch.object(account_service, "decrypt", lambda _: "session"), \
          patch.object(account_service, "_ensure_photo_dir", lambda: None), \
          patch.object(account_service, "_photo_path", lambda aid: str(cached_dir / f"{aid}.jpg")):
         await account_service.upload_photo(db, account, photo_bytes)
@@ -91,6 +95,7 @@ async def test_upload_normalizes_dimensions(cached_dir):
     pool.get = AsyncMock(return_value=client)
 
     with patch.object(account_service, "client_pool", pool), \
+         patch.object(account_service, "decrypt", lambda _: "session"), \
          patch.object(account_service, "_ensure_photo_dir", lambda: None), \
          patch.object(account_service, "_photo_path", lambda aid: str(cached_dir / f"{aid}.jpg")):
         # Non-square input, so a resize/crop must have happened.
@@ -135,6 +140,7 @@ async def test_upload_removes_temp_file(cached_dir):
     pool.get = _get
 
     with patch.object(account_service, "client_pool", pool), \
+         patch.object(account_service, "decrypt", lambda _: "session"), \
          patch.object(account_service, "_ensure_photo_dir", lambda: None), \
          patch.object(account_service, "_photo_path", lambda aid: str(cached_dir / f"{aid}.jpg")):
         await account_service.upload_photo(db, account, _jpeg_bytes())

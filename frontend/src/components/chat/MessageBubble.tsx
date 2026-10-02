@@ -224,11 +224,11 @@ export const MessageBubble = memo(({
             )}
             {msg.media_type === "animation" && (
               <div
-                onClick={() => setLightboxMedia({ url: `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`, type: "video" })}
+                onClick={() => setLightboxMedia({ url: `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam(accountId)}`, type: "video" })}
                 className="rounded-xl overflow-hidden max-w-[240px] relative bg-slate-100 dark:bg-slate-800 cursor-pointer hover:opacity-95"
               >
                 <video
-                  src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`}
+                  src={`${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam(accountId)}`}
                   className="w-full h-auto object-cover max-h-60"
                   autoPlay
                   loop

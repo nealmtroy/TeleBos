@@ -36,7 +36,7 @@ interface ChatRightColumnProps {
   photoVersion?: number | null;
   isAuthenticated: boolean;
   getApiUrl: () => string;
-  getAuthParam: () => string;
+  getAuthParam: (accountId?: string) => string;
   sharedMediaTab: "media" | "docs";
   setSharedMediaTab: (tab: "media" | "docs") => void;
   allMessages: MessageItem[];
@@ -351,7 +351,7 @@ export function ChatRightColumn({
                   {allMessages
                     .filter((m) => m.media_type === "photo" || m.media_type === "video")
                     .map((msg) => {
-                      const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`;
+                      const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam(accountId)}`;
                       return (
                         <div
                           key={msg.id}
@@ -387,7 +387,7 @@ export function ChatRightColumn({
                   {allMessages
                     .filter((m) => m.media_type === "document")
                     .map((msg) => {
-                      const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam()}`;
+                      const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${msg.id}/media${getAuthParam(accountId)}`;
                       return (
                         <a
                           key={msg.id}

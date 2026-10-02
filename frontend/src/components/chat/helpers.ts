@@ -37,7 +37,6 @@ export const MEDIA_ICONS: Record<string, any> = {
 import React from "react";
 import Icons from "./Icons";
 import { cn } from "@/lib/utils";
-import { getSessionToken } from "@/lib/api";
 
 export function TgIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const hex = (Icons as Record<string, string>)[name];
@@ -47,11 +46,16 @@ export function TgIcon({ name, className, style }: { name: string; className?: s
 }
 
 /**
- * Returns a query string `?token=xxx` with the current session token,
- * so that `<img src>` / `<video src>` / `<audio src>` can authenticate
- * against backend endpoints that require auth.
+ * Media URLs for <img>/<video>/<audio> need their credential in the query string,
+ * because those tags cannot send an Authorization header.
+ *
+ * This used to be the full Better Auth session token as `?token=...`, which
+ * leaks it into access logs, browser history and Referer headers. It is now a
+ * short-lived HMAC media token scoped to one account, minted by the backend and
+ * cached client-side. See `@/lib/media-token`.
+ *
+ * `prefetchMediaTokens` should be called while rendering a list so the tokens
+ * are cached by the time the URLs are built; `getAuthParam` is a synchronous
+ * cache read.
  */
-export function getAuthParam(): string {
-  const t = getSessionToken();
-  return t ? `?token=${encodeURIComponent(t)}` : "";
-}
+export { getAuthParam, prefetchMediaTokens } from "@/lib/media-token";

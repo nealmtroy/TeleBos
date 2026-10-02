@@ -73,7 +73,7 @@ interface MessagePaneProps {
   chatType: string;
   photoVersion?: number | null;
   getApiUrl: () => string;
-  getAuthParam: () => string;
+  getAuthParam: (accountId?: string) => string;
   onBack: () => void;
   isArchived?: boolean;
   onArchive?: () => void;
@@ -622,8 +622,8 @@ export function MessagePane({
     return mediaList.findIndex((m) => {
       const isPhoto = m.media_type === "photo";
       const mediaUrl = isPhoto
-        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/media${getAuthParam()}`
-        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/media${getAuthParam()}`;
+        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/media${getAuthParam(accountId)}`
+        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${m.id}/media${getAuthParam(accountId)}`;
       return mediaUrl === lightboxMedia.url || (m.media_filename && lightboxMedia.url.includes(m.id.toString()));
     });
   }, [lightboxMedia, mediaList, accountId, chatId, getApiUrl, getAuthParam]);
@@ -635,8 +635,8 @@ export function MessagePane({
       const targetMsg = mediaList[targetIdx];
       const isPhoto = targetMsg.media_type === "photo";
       const targetUrl = isPhoto
-        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/media${getAuthParam()}`
-        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/media${getAuthParam()}`;
+        ? `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/media${getAuthParam(accountId)}`
+        : `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${targetMsg.id}/media${getAuthParam(accountId)}`;
       setLightboxMedia({ url: targetUrl, type: isPhoto ? "photo" : "video" });
     }
   };

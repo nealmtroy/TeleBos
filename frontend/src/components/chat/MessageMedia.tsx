@@ -20,7 +20,7 @@ export function MessagePhoto({
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam(accountId)}`;
 
   if (error) {
     return (
@@ -75,7 +75,7 @@ export function MessageVideo({
   getApiUrl: () => string;
 }) {
   const [error, setError] = useState(false);
-  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam()}`;
+  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam(accountId)}`;
 
   if (error) {
     return (
@@ -115,7 +115,7 @@ export function MessageVideoNote({
   getApiUrl: () => string;
 }) {
   const [error, setError] = useState(false);
-  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam()}`;
+  const streamUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/video/stream${getAuthParam(accountId)}`;
 
   if (error) {
     return (
@@ -160,7 +160,7 @@ export function MessageVoice({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam(accountId)}`;
 
   const bars = useMemo(() => {
     if (waveform && waveform.length > 0) return waveform;
@@ -278,7 +278,7 @@ export function MessageSticker({
   getApiUrl: () => string;
 }) {
   const [error, setError] = useState(false);
-  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
+  const mediaUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam(accountId)}`;
 
   if (error) {
     return (
@@ -318,7 +318,7 @@ export function MessageDocument({
   getApiUrl: () => string;
   isOut: boolean;
 }) {
-  const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam()}`;
+  const downloadUrl = `${getApiUrl()}/accounts/${accountId}/chats/${chatId}/messages/${messageId}/media${getAuthParam(accountId)}`;
   
   const sizeText = useMemo(() => {
     if (!fileSize) return "";

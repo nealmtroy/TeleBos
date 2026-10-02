@@ -145,13 +145,25 @@ async def sell_accounts(
     buy_prices: dict[UUID, int] = {}
     photos_to_delete: list[str] = []
 
-    # Batch resolve prices (N1Q-02), falling back to resolve_telegram_id_price if patched/mocked
+    # Batch resolve prices (N1Q-02), falling back to resolve_telegram_id_price if patched/mocked.
+    #
+    # NOTE: is_mocked must only ever be set from actual mock detection. An earlier
+    # version set it to True inside the `except` branch, which meant a production
+    # DB error or a bug in resolve_prices_for_accounts silently downgraded the
+    # pricing path AND forced buy_price == sell_price (zero platform margin).
     is_mocked = hasattr(price_service.resolve_telegram_id_price, "assert_called") or hasattr(price_service.resolve_telegram_id_price, "mock")
     if not is_mocked:
         try:
             await price_service.resolve_prices_for_accounts(db, accounts)
         except Exception:
-            is_mocked = True
+            # Fall back to the per-account resolver, but keep is_mocked False so
+            # buy_price is still computed independently and margin is preserved.
+            logger.warning(
+                "resolve_prices_for_accounts failed for %d account(s); "
+                "falling back to per-account price resolution",
+                len(accounts),
+                exc_info=True,
+            )
 
     for account in accounts:
         if is_mocked or account.sell_price is None:

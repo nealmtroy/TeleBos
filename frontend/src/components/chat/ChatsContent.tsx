@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import api, { getSessionToken } from "@/lib/api";
+import api from "@/lib/api";
+import {
+  getAuthParam as getAuthParamForAccount,
+  prefetchMediaTokens,
+} from "./helpers";
 import { useAuthStore } from "@/store/auth-store";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
@@ -53,11 +57,21 @@ export function ChatsContent() {
     return apiUrl;
   }, []);
 
-  // Returns "?token=xxx" for use in <img src> / <video src> URLs
-  const getAuthParam = useCallback(() => {
-    const t = getSessionToken();
-    return t ? `?token=${encodeURIComponent(t)}` : "";
-  }, []);
+  // Returns "?t=xxx" (short-lived media token) for <img>/<video> URLs.
+  // The full session token is never placed in a URL — it would leak into
+  // access logs, browser history and Referer headers.
+  const getAuthParam = useCallback(
+    (accountId?: string) => getAuthParamForAccount(accountId),
+    []
+  );
+
+  // Warm the media-token cache for every account we might display media for.
+  // Media URLs are built synchronously from that cache, so without this the
+  // first paint would emit tokenless URLs (backend then falls back to cookie).
+  useEffect(() => {
+    if (!Array.isArray(accounts)) return;
+    prefetchMediaTokens(accounts.map((acc) => acc.id));
+  }, [accounts]);
 
   // Auto-select first account
   useEffect(() => {

@@ -12,7 +12,7 @@ interface EmojiPickerProps {
   isOpen: boolean;
   onClose: () => void;
   getApiUrl: () => string;
-  getAuthParam: () => string;
+  getAuthParam: (accountId?: string) => string;
   setMessageText: React.Dispatch<React.SetStateAction<string>>;
   inputRef: React.RefObject<HTMLTextAreaElement>;
 }
@@ -253,7 +253,7 @@ export function EmojiPicker({
                         </span>
                         <div className="grid grid-cols-4 gap-2.5">
                           {searchedStickersData.stickers.map((sticker: any) => {
-                            const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam()}${sticker.file_reference ? `&file_reference=${sticker.file_reference}` : ""}`;
+                            const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam(accountId)}${sticker.file_reference ? `&file_reference=${sticker.file_reference}` : ""}`;
                             return (
                               <button
                                 key={sticker.id}
@@ -290,7 +290,7 @@ export function EmojiPicker({
                             >
                               {set.stickers && set.stickers.length > 0 ? (
                                 <img
-                                  src={`${getApiUrl()}/accounts/${accountId}/stickers/documents/${set.stickers[0].id}/${set.stickers[0].access_hash}/download${getAuthParam()}&file_reference=${set.stickers[0].file_reference}`}
+                                  src={`${getApiUrl()}/accounts/${accountId}/stickers/documents/${set.stickers[0].id}/${set.stickers[0].access_hash}/download${getAuthParam(accountId)}&file_reference=${set.stickers[0].file_reference}`}
                                   className="w-10 h-10 object-contain"
                                   alt=""
                                 />
@@ -343,7 +343,7 @@ export function EmojiPicker({
                       ) : stickerSetDetails && stickerSetDetails.length > 0 ? (
                         <div className="grid grid-cols-4 gap-2.5">
                           {stickerSetDetails.map((sticker: any) => {
-                            const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam()}${sticker.file_reference ? `&file_reference=${sticker.file_reference}` : ""}`;
+                            const stickerUrl = `${getApiUrl()}/accounts/${accountId}/stickers/documents/${sticker.id}/${sticker.access_hash}/download${getAuthParam(accountId)}${sticker.file_reference ? `&file_reference=${sticker.file_reference}` : ""}`;
                             return (
                               <button
                                 key={sticker.id}
@@ -402,7 +402,7 @@ export function EmojiPicker({
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {(gifSearch ? searchedGifsData : savedGifsData)?.map((gif: any) => {
-                    const gifUrl = `${getApiUrl()}/accounts/${accountId}/gifs/documents/${gif.id}/${gif.access_hash}/download${getAuthParam()}${gif.file_reference ? `&file_reference=${gif.file_reference}` : ""}`;
+                    const gifUrl = `${getApiUrl()}/accounts/${accountId}/gifs/documents/${gif.id}/${gif.access_hash}/download${getAuthParam(accountId)}${gif.file_reference ? `&file_reference=${gif.file_reference}` : ""}`;
                     const isSaved = savedGifsData?.some((sg: any) => sg.id === gif.id);
                     return (
                       <div

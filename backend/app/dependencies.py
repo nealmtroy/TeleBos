@@ -1,9 +1,12 @@
 """FastAPI dependency injection helpers."""
 
+import logging
+
 from fastapi import Depends, HTTPException, status, Query, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
 from datetime import datetime, timezone
+from uuid import UUID as PyUUID
 
 from app.models.api_key import ApiKey
 from app.utils.api_keys import hash_api_key
@@ -15,6 +18,7 @@ from app.models.user import User
 from app.utils.session_token import hash_session_token
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 async def get_current_user(
@@ -112,11 +116,31 @@ async def get_current_user_from_token_or_header(
     token: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Validate Better Auth session from header or query param, returning authenticated user."""
-    auth_token = token or request.headers.get("x-better-auth-token")
+    """Validate Better Auth session from header or query param, returning authenticated user.
+
+    SECURITY: the ``?token=`` query parameter leaks the long-lived session into
+    access logs, browser history and ``Referer`` headers. It now only accepts a
+    *media* token -- a short-lived HMAC scoped to one account -- via ``?t=``.
+    A full session token in the query string is rejected; use the header or the
+    cookie instead.
+
+    See :mod:`app.utils.signed_url` for the media token format, and
+    :func:`get_current_user_for_media` for the <img>/<video> case where a
+    URL-borne credential is unavoidable.
+    """
+    auth_token = request.headers.get("x-better-auth-token")
     if not auth_token:
         # Fallback to Better Auth cookies
         auth_token = request.cookies.get("better-auth.session_token") or request.cookies.get("__Secure-better-auth.session_token")
+    if not auth_token and token:
+        logger.warning(
+            "Rejected a full session token passed as a query parameter; "
+            "use the x-better-auth-token header, a cookie, or ?t=<media-token>"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session token must not be passed in the URL",
+        )
     if not auth_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -172,6 +196,110 @@ async def get_current_user_from_token_or_header(
             detail="User not found or inactive",
         )
     return user
+
+
+async def get_current_user_for_media(
+    request: Request,
+    account_id: str,
+    t: str | None = Query(None, description="Short-lived media token"),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Authenticate a media request coming from an <img>/<video>/<audio> tag.
+
+    Browsers cannot attach an Authorization header to those tags, so the
+    credential has to travel in the URL. A full session token in a URL leaks
+    into access logs, browser history and ``Referer`` headers, so this
+    dependency accepts *only* the short-lived HMAC media token from
+    :mod:`app.utils.signed_url`, scoped to this exact ``account_id``.
+
+    A session header or cookie is still accepted (same-origin fetches and
+    downloads get that for free); it just is not the only option any more.
+    """
+    session_user = await _try_session_from_header_or_cookie(request, db)
+    if session_user is not None:
+        return session_user
+
+    if not t:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+
+    from app.utils.signed_url import parse_photo_token
+
+    token_user_id = parse_photo_token(t, account_id)
+    if not token_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired media token",
+        )
+
+    try:
+        user_uuid = PyUUID(token_user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid media token",
+        )
+
+    user_result = await db.execute(select(User).where(User.id == user_uuid))
+    user = user_result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+    return user
+
+
+async def _try_session_from_header_or_cookie(
+    request: Request, db: AsyncSession
+) -> User | None:
+    """Resolve the Better Auth session from the header or cookie, if present."""
+    auth_token = request.headers.get("x-better-auth-token")
+    if not auth_token:
+        auth_token = request.cookies.get("better-auth.session_token") or request.cookies.get(
+            "__Secure-better-auth.session_token"
+        )
+    if not auth_token:
+        return None
+
+    hashed_token = hash_session_token(auth_token)
+    result = await db.execute(
+        text("""
+            SELECT s."userId" AS user_id, s."expiresAt" AS expires_at, u.email
+            FROM session s
+            JOIN "user" u ON u.id = s."userId"
+            WHERE s.token_hash = :hashed_token
+               OR (s.token_hash IS NULL AND s.token = :token)
+            LIMIT 1
+        """),
+        {"hashed_token": hashed_token, "token": auth_token},
+    )
+    row = result.one_or_none()
+    if row is None:
+        return None
+
+    from datetime import datetime, timezone
+    from app.utils.timezone import ensure_utc
+
+    expires_at = ensure_utc(row.expires_at)
+    if expires_at < datetime.now(timezone.utc):
+        return None
+
+    try:
+        user_uuid = PyUUID(row.user_id)
+    except (ValueError, TypeError):
+        return None
+
+    user_result = await db.execute(select(User).where(User.id == user_uuid))
+    user = user_result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        return None
+
+    # Auto-downgrade expired subscriptions, same as get_current_user.
+    from app.services.redeem_service import auto_downgrade_if_expired
+    return await auto_downgrade_if_expired(db, user)
 
 
 api_key_scheme = HTTPBearer(auto_error=False, description="TeleBos integration API key")

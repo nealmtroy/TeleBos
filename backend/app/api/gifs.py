@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 import io
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_current_user_from_token_or_header
+from app.dependencies import get_current_user, get_current_user_for_media
 from app.models.user import User
 from app.schemas.chat import (
     GifItem,
@@ -76,7 +76,7 @@ async def download_gif_endpoint(
     access_hash: str,
     file_reference: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user_from_token_or_header),
+    user: User = Depends(get_current_user_for_media),
 ):
     account = await account_service.get_account(db, account_id, str(user.id))
     if account is None:

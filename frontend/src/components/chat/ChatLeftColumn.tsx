@@ -79,7 +79,7 @@ interface ChatLeftColumnProps {
   setShowLeftMenu: (show: boolean) => void;
   isAuthenticated: boolean;
   getApiUrl: () => string;
-  getAuthParam: () => string;
+  getAuthParam: (accountId?: string) => string;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   chatsData: { chats: ChatItem[]; total: number } | undefined;

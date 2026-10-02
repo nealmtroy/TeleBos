@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 
@@ -6,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_current_user_from_token_or_header
+from app.dependencies import get_current_user, get_current_user_for_media
 from app.models.user import User
 from app.schemas.chat import (
     ChatListResponse,
@@ -50,18 +51,49 @@ from app.utils.sanitize import sanitize_exception
 
 router = APIRouter(tags=["media"])
 
+logger = logging.getLogger(__name__)
+
+@router.get("/accounts/{account_id}/media-token")
+async def issue_media_token(
+    account_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Mint a short-lived media token for this account.
+
+    <img>/<video>/<audio> tags cannot send an Authorization header, so their URL
+    must carry a credential. A full session token in a URL leaks into access
+    logs, browser history and Referer headers, so the frontend asks for this
+    instead: a 5-minute HMAC token scoped to a single (account, user) pair.
+    """
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    from app.utils.signed_url import TOKEN_TTL, generate_photo_token
+
+    token = generate_photo_token(str(account.id), str(user.id))
+    return {"token": token, "expires_in": TOKEN_TTL}
+
+
 @router.get("/accounts/{account_id}/chats/{chat_id}/photo")
 async def get_chat_photo(
     account_id: str,
     chat_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user_for_media),
 ):
     """Serve a versioned chat photo from an account-scoped local cache.
 
     Chat sync persists Telegram's photo ID as ``photo_version``. A missing
     version is a known no-photo state, so the endpoint can return a fallback
     response without opening a Telethon connection or writing sentinel files.
+
+    Security: this endpoint requires authentication AND verifies that the
+    caller owns ``account_id``. It also decrypts the stored session string and
+    opens a real MTProto connection, so leaving it anonymous would let anyone
+    enumerate accounts and use the backend as a Telegram proxy.
     """
     import os
 
@@ -77,6 +109,7 @@ async def get_chat_photo(
     account_result = await db.execute(
         select(TelegramAccount).where(
             TelegramAccount.id == account_id,
+            TelegramAccount.user_id == user.id,
             TelegramAccount.for_sale.is_(False),
         )
     )
@@ -92,15 +125,24 @@ async def get_chat_photo(
         )
     )
     chat = chat_result.scalar_one_or_none()
-    
-    photo_version = str(chat.photo_version) if chat and chat.photo_version is not None else request.query_params.get("v")
+    if chat is None:
+        raise HTTPException(status_code=404, detail="Chat not found in this account")
+
+    photo_version = chat.photo_version
     if not photo_version or photo_version in ("0", "None", ""):
+        raise HTTPException(status_code=404, detail="No profile photo")
+    # The version comes from our own DB, but it is used to build a filesystem
+    # path, so it must be a plain integer. Never accept it from the query string:
+    # that allowed a path traversal (../../.env) via ?v=.
+    photo_version = str(photo_version)
+    if not photo_version.isdigit() or int(photo_version) <= 0:
         raise HTTPException(status_code=404, detail="No profile photo")
 
     etag = f'W/"{account.id}-{chat_id}-{photo_version}"'
     headers = {
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "private, max-age=3600",
         "ETag": etag,
+        "X-Content-Type-Options": "nosniff",
     }
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)
@@ -115,6 +157,13 @@ async def get_chat_photo(
     os.makedirs(chat_photos_dir, exist_ok=True)
     cached_path = os.path.join(chat_photos_dir, f"{photo_version}.jpg")
 
+    # Defence in depth: even though photo_version is now validated as digits,
+    # confirm the resolved path really lives inside the account-scoped cache.
+    real_dir = os.path.realpath(chat_photos_dir)
+    real_path = os.path.realpath(cached_path)
+    if real_path != os.path.join(real_dir, f"{photo_version}.jpg"):
+        raise HTTPException(status_code=404, detail="No profile photo")
+
     if os.path.exists(cached_path) and os.path.getsize(cached_path) > 0:
         return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
 
@@ -126,7 +175,18 @@ async def get_chat_photo(
     try:
         try:
             entity = await resolve_chat_entity(client, account.id, chat_id)
-        except Exception:
+        except Exception as resolve_exc:
+            # resolve_chat_entity already tries cache, then the local DB, then
+            # the network. Reaching here means all three failed, so this
+            # get_entity is a genuine last resort — log it so a flood of
+            # download attempts is visible rather than silent.
+            logger.warning(
+                "resolve_chat_entity failed for account %s chat %s; "
+                "falling back to get_entity: %s",
+                account.id,
+                chat_id,
+                resolve_exc,
+            )
             entity = await client.get_entity(chat_id)
 
         photo_result = await client.download_profile_photo(
@@ -195,11 +255,13 @@ async def get_message_media_endpoint(
     chat_id: int,
     message_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user_from_token_or_header),
+    user: User = Depends(get_current_user_for_media),
 ):
     """Download and cache a message's media (photo, document, voice note, etc.) and return it."""
     import os
     from fastapi.responses import FileResponse
+    from sqlalchemy import select
+    from app.models.telegram_chat import TelegramChat
     from app.services import account_service
     from app.services.telegram_client import client_pool
     from app.utils.encryption import decrypt
@@ -207,7 +269,24 @@ async def get_message_media_endpoint(
 
     # Define a local cache folder for message media files
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(chat_id))
+
+    # Ownership must be verified BEFORE the cache is consulted: the cache is
+    # shared across accounts, so serving it first would let any authenticated
+    # user read another user's media by guessing chat_id/message_id.
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    chat_owner = await db.execute(
+        select(TelegramChat.id).where(
+            TelegramChat.account_id == account.id,
+            TelegramChat.chat_id == chat_id,
+        )
+    )
+    if chat_owner.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Chat not found in this account")
+
+    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(account_id), str(chat_id))
     os.makedirs(media_cache_dir, exist_ok=True)
 
     # Check if we already have it cached.
@@ -220,11 +299,6 @@ async def get_message_media_endpoint(
 
     if cached_file and os.path.exists(cached_file):
         return create_safe_file_response(cached_file)
-
-    # If not cached, download using Telethon client
-    account = await account_service.get_account(db, account_id, str(user.id))
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
 
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -281,18 +355,36 @@ async def stream_message_video_endpoint(
     chat_id: int,
     message_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user_from_token_or_header),
+    user: User = Depends(get_current_user_for_media),
 ):
     """Stream video progressive notes/files using HTTP 206 Partial Content range requests."""
     import os
     from fastapi.responses import StreamingResponse
+    from sqlalchemy import select
+    from app.models.telegram_chat import TelegramChat
     from app.services import account_service
     from app.services.telegram_client import client_pool
     from app.utils.encryption import decrypt
     from app.services.chat_service import resolve_chat_entity
 
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(chat_id))
+
+    # Same ordering rule as get_message_media_endpoint: ownership first, cache
+    # second. The cache dir is shared per chat_id, so it must never be the gate.
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    chat_owner = await db.execute(
+        select(TelegramChat.id).where(
+            TelegramChat.account_id == account.id,
+            TelegramChat.chat_id == chat_id,
+        )
+    )
+    if chat_owner.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Chat not found in this account")
+
+    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(account_id), str(chat_id))
     os.makedirs(media_cache_dir, exist_ok=True)
 
     video_path = None
@@ -303,14 +395,10 @@ async def stream_message_video_endpoint(
                 break
 
     if not video_path or not os.path.exists(video_path):
-        account = await account_service.get_account(db, account_id, str(user.id))
-        if account is None:
-            raise HTTPException(status_code=404, detail="Account not found")
-
         session_str = decrypt(account.session_string)
         client = await client_pool.get(str(account.id), session_str)
         if client is None:
-            raise HTTPException(status_code=400, detail="Account is disconnected")
+                raise HTTPException(status_code=400, detail="Account is disconnected")
 
         try:
             entity = await resolve_chat_entity(client, account.id, chat_id)

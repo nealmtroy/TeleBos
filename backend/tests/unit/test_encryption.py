@@ -1,5 +1,6 @@
 """Regression coverage for encrypted Telegram-sensitive values."""
 
+import pytest
 from cryptography.fernet import Fernet
 
 from app.config import get_settings
@@ -26,9 +27,31 @@ def test_empty_encryption_inputs_are_preserved():
 
 
 def test_invalid_ciphertext_fails_closed(monkeypatch):
+    """Invalid ciphertext must raise, not silently return an empty string.
+
+    Returning "" used to hand a blank session string to Telethon, which then
+    failed far away with a misleading "auth key" error. Raising DecryptionError
+    keeps the failure at the point of the actual corruption.
+    """
     reset_cipher(monkeypatch)
 
-    assert encryption.decrypt("not-a-valid-fernet-token") == ""
+    with pytest.raises(encryption.DecryptionError):
+        encryption.decrypt("not-a-valid-fernet-token")
+
+    # The tolerant variant still returns None for callers that cannot raise.
+    assert encryption.decrypt_or_none("not-a-valid-fernet-token") is None
+
+
+def test_ciphertext_from_another_key_raises(monkeypatch):
+    """A rotated ENCRYPTION_KEY surfaces as DecryptionError, not as empty data."""
+    reset_cipher(monkeypatch)
+    ciphertext = encryption.encrypt("session-data")
+
+    other_key = Fernet(Fernet.generate_key())
+    monkeypatch.setattr(encryption, "_cipher", other_key)
+
+    with pytest.raises(encryption.DecryptionError):
+        encryption.decrypt(ciphertext)
 
 
 def test_password_hash_verification():
