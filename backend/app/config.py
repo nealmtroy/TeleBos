@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/telebos"
-    DATABASE_URL_SYNC: str = "postgresql://postgres:postgres@localhost:5432/telebos"
+    DATABASE_URL_SYNC: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/telebos"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -136,5 +136,15 @@ def get_settings() -> Settings:
                 "DATABASE_URL is still set to the default dev value. "
                 "Set the DATABASE_URL env var for production."
             )
+
+    # Pin the sync driver explicitly. A bare "postgresql://" leaves the driver
+    # to SQLAlchemy's default, which is psycopg3 (package `psycopg`); that
+    # package is not installed here, so alembic died with
+    # "ModuleNotFoundError: No module named 'psycopg'". psycopg2 IS installed,
+    # so normalise the legacy scheme instead of adding a dependency.
+    if s.DATABASE_URL_SYNC.startswith("postgresql://"):
+        s.DATABASE_URL_SYNC = (
+            "postgresql+psycopg2://" + s.DATABASE_URL_SYNC[len("postgresql://"):]
+        )
 
     return s
