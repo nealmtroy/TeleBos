@@ -123,6 +123,32 @@ export const helpSections: HelpSection[] = [
     ],
     },
     {
+    key: "auto-join",
+    slug: "auto-join",
+    titleKey: "help.autoJoin",
+    descKey: "help.autoJoinDesc",
+    contentKeys: [
+      "help.autoJoinContent1",
+      "help.autoJoinContent2",
+      "help.autoJoinContent3",
+      "help.autoJoinContent4",
+      "help.autoJoinContent5",
+    ],
+  },
+  {
+    key: "smm-orders",
+    slug: "smm-orders",
+    titleKey: "help.smmOrders",
+    descKey: "help.smmOrdersDesc",
+    contentKeys: [
+      "help.smmOrdersContent1",
+      "help.smmOrdersContent2",
+      "help.smmOrdersContent3",
+      "help.smmOrdersContent4",
+      "help.smmOrdersContent5",
+    ],
+  },
+  {
     key: "billing",
     slug: "billing",
     titleKey: "help.billing",
