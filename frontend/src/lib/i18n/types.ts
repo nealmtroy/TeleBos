@@ -1067,6 +1067,9 @@ export interface Dict {
     heroSubtitle: string;
     heroCta: string;
     heroSecondary: string;
+    statAccounts: string;
+    statServices: string;
+    statPillars: string;
     heroProof: string;
     proofAccounts: string;
     proofBroadcast: string;

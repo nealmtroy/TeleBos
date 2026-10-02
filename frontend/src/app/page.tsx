@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { CommandSlabs } from "@/components/landing/command-slabs";
 import { EditorialStory } from "@/components/landing/editorial-story";
 import { LandingReveal, LandingRevealGroup, landingRevealVariants } from "@/components/landing/landing-motion";
-import { HeroSculpture } from "@/components/landing/hero-sculpture";
+import { LandingHero } from "@/components/landing/landing-hero";
 import { OperationalFlow } from "@/components/landing/operational-flow";
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
@@ -52,31 +52,8 @@ export default function LandingPage() {
 
   return (
     <PublicShell header={<Navbar5 />} footer={<PublicFooter />} mainClassName="pt-16">
-      <section className="border-b border-[#292d30] bg-black">
-        <div className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-[1200px] items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[minmax(0,0.92fr)_minmax(24rem,1.08fr)] lg:gap-14 lg:px-8">
-          <LandingRevealGroup className="relative z-10" immediate>
-            <motion.p variants={landingRevealVariants} className="public-mono text-xs text-[#2AABEE]">{_("landing.heroOverline")}</motion.p>
-            <motion.h1 variants={landingRevealVariants} className="public-display mt-7 max-w-3xl text-[clamp(3.5rem,8vw,6.5rem)] leading-[0.94] text-white">
-              {_("landing.heroTitle")}
-            </motion.h1>
-            <motion.p variants={landingRevealVariants} className="mt-7 max-w-xl text-lg leading-8 text-[#a1a4a5]">{_("landing.heroSubtitle")}</motion.p>
-            <motion.div variants={landingRevealVariants} className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <Link href="#workflow" className={cn(publicButtonClass, "border-white")}>
-                {_("landing.heroCta")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link href="/register" className={publicButtonClass}>
-                {_("landing.heroSecondary")}
-              </Link>
-            </motion.div>
-            <motion.p variants={landingRevealVariants} className="public-mono mt-8 max-w-lg border-l border-[#292d30] pl-4 text-xs leading-5 text-[#6e727a]">
-              {_("landing.heroProof")}
-            </motion.p>
-          </LandingRevealGroup>
-          <LandingReveal immediate delay={0.14}>
-            <HeroSculpture />
-          </LandingReveal>
-        </div>
-      </section>
+      {/* Hero lives in its own component so the page keeps only section order. */}
+      <LandingHero />
 
       <section className="border-b border-[#292d30] bg-black" aria-label={_("landing.heroProof")}>
         <LandingRevealGroup className="no-scrollbar mx-auto flex max-w-[1200px] overflow-x-auto px-4 sm:px-6 lg:px-8">
