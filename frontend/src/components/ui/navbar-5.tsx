@@ -71,47 +71,55 @@ export const Navbar5 = () => {
             <MenuIcon className="h-4 w-4" aria-hidden="true" />
           </SheetTrigger>
           <SheetContent
-            side="right"
-            className="public-theme w-full border-[var(--public-border)] bg-[var(--public-canvas)] px-5 text-[var(--public-text)] sm:max-w-sm [&>button]:hidden"
-          >
-            <SheetHeader className="flex flex-row items-center justify-between border-b border-[var(--public-border)] pb-5">
-              <SheetTitle render={<Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home" />}>
-                <BrandLogo size="md" />
-              </SheetTitle>
-              <SheetClose
-                render={
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[var(--public-canvas-warm)]"
-                    aria-label="Close navigation"
-                  />
-                }
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </SheetClose>
-            </SheetHeader>
-            <nav className="mt-8 flex flex-col" aria-label="Mobile navigation">
-              {links.map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className="public-focus border-b border-[var(--public-border)] py-4 text-base text-[var(--public-body)] hover:text-[var(--public-text)]"
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-            <div className="mt-8 flex flex-col gap-3">
-              <Link href="/login" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full")}>
-                {_("landing.signIn")}
-              </Link>
-              <Link href="/register" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full border-white")}>
-                {_("landing.getStarted")}
-              </Link>
-            </div>
-          </SheetContent>
+                      side="right"
+                      // The header already renders its own close button, so the primitive's
+                      // own absolutely-positioned one is hidden rather than left to
+                      // overlap it. Slightly narrower than the primitive default so the
+                      // page stays visible behind the panel on a phone.
+                      className="public-theme w-[86%] max-w-sm border-[var(--public-border)] bg-[var(--public-canvas)] px-5 text-[var(--public-text)] shadow-[0_0_80px_rgba(45,143,255,0.12)] sm:w-3/4 [&>button]:hidden"
+                    >
+                      <SheetHeader className="flex flex-row items-center justify-between border-b border-[var(--public-border)] p-0 pb-5">
+                        <SheetTitle render={<Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home" />}>
+                          <BrandLogo size="md" />
+                        </SheetTitle>
+                        <SheetClose
+                          render={
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="border-[var(--public-border)] bg-[var(--public-canvas-warm)] text-[var(--public-text)] hover:border-[var(--public-accent)] hover:bg-[var(--public-accent)] hover:text-white"
+                              aria-label="Close navigation"
+                            />
+                          }
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </SheetClose>
+                      </SheetHeader>
+                      {/* Links fade up in sequence rather than all landing at once, which
+                          is what made the panel feel abrupt. Delays are short so the menu
+                          still feels instant to tap. */}
+                      <nav className="mt-8 flex flex-col" aria-label="Mobile navigation">
+                        {links.map(([label, href], index) => (
+                          <Link
+                            key={href}
+                            href={href}
+                            onClick={() => setOpen(false)}
+                            className="public-focus border-b border-[var(--public-border)] py-4 text-base text-[var(--public-body)] transition-colors duration-200 hover:text-[var(--public-text)] public-nav-in"
+                            style={{ animationDelay: `${index * 45}ms`, animationFillMode: "both" }}
+                          >
+                            {label}
+                          </Link>
+                        ))}
+                      </nav>
+                      <div className="mt-8 flex flex-col gap-3 public-nav-in" style={{ animationDelay: `${links.length * 45}ms`, animationFillMode: "both" }}>
+                        <Link href="/login" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full")}>
+                          {_("landing.signIn")}
+                        </Link>
+                        <Link href="/register" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full border-white bg-[var(--public-accent)] text-white hover:bg-[var(--public-accent-strong)]")}>
+                          {_("landing.getStarted")}
+                        </Link>
+                      </div>
+                    </SheetContent>
         </Sheet>
       </div>
     </header>
