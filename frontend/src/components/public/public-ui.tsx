@@ -61,18 +61,27 @@ export function PublicStatusRow({
 }
 
 export function PublicTerminal({
+  borderless = false,
   children,
   className,
   label,
 }: {
+  borderless?: boolean;
   children: ReactNode;
   className?: string;
   label: ReactNode;
 }) {
   return (
-    <div className={cn("overflow-hidden rounded-[16px] border border-[var(--public-border)] bg-[var(--public-canvas)]", className)}>
+    <div
+      className={cn(
+        borderless
+          ? "w-full"
+          : "overflow-hidden rounded-[16px] border border-[var(--public-border)] bg-[var(--public-canvas)]",
+        className
+      )}
+    >
       <div className="flex items-center justify-between border-b border-[var(--public-border)] px-4 py-3">
-        <span className="public-mono text-[11px] text-[var(--public-muted)]">{label}</span>
+        <span className="public-mono text-xs font-semibold text-[var(--public-muted)]">{label}</span>
         <span className="flex gap-1.5" aria-hidden="true">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--public-subtle)]" />
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--public-subtle)]" />

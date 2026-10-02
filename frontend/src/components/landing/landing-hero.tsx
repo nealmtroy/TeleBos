@@ -123,13 +123,8 @@ export function LandingHero() {
           </motion.dl>
         </div>
 
-        {/* Double-bezel: clean outer shell without wide glowing blur */}
         <motion.div variants={rise} className="min-w-0 lg:pl-4">
-          <div className="rounded-[1.75rem] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-1.5 sm:rounded-[2rem]">
-            <div className="overflow-hidden rounded-[calc(1.75rem-0.375rem)] border border-[var(--public-border)] bg-[var(--public-canvas)] sm:rounded-[calc(2rem-0.375rem)]">
-              <HeroDashboardMockup />
-            </div>
-          </div>
+          <HeroDashboardMockup />
         </motion.div>
       </motion.div>
     </section>

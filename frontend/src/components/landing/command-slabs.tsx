@@ -83,7 +83,7 @@ export function CommandSlabs() {
                         <span className="text-[var(--public-success)] font-semibold">{_("landing.surfaceReady")}</span>
                       </PublicCode>
                     </div>
-                    <ProductSurface variant={slab.mode} compact />
+                    <ProductSurface variant={slab.mode} compact borderless />
                   </div>
                 )}
               </article>

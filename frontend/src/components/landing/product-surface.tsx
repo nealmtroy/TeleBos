@@ -22,10 +22,12 @@ type SurfaceDefinition = {
 };
 
 export function ProductSurface({
+  borderless = false,
   className,
   compact = false,
   variant,
 }: {
+  borderless?: boolean;
   className?: string;
   compact?: boolean;
   variant: ProductSurfaceVariant;
@@ -82,7 +84,11 @@ export function ProductSurface({
   const Icon = surface.icon;
 
   return (
-    <PublicTerminal className={cn("relative", className)} label={_("landing.surfaceIllustrative")}>
+    <PublicTerminal
+      borderless={borderless}
+      className={cn("relative", className)}
+      label={_("landing.surfaceIllustrative")}
+    >
       <div className={cn("grid", compact ? "gap-3 p-4" : "gap-5 p-5 sm:p-6")}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">

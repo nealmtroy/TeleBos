@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[2172b257](https://github.com/nealmtroy/TeleBos/commit/2172b257)**: fix(hero): stop the titanium rail showing as a grey bar under the screen
 - **[ce9b44d6](https://github.com/nealmtroy/TeleBos/commit/ce9b44d6)**: fix(landing): resolve Impeccable audit findings (contrast, typography scales, kickers, shadows, and nested cards)
 - **[66433570](https://github.com/nealmtroy/TeleBos/commit/66433570)**: fix(hero): give the hero phone a real handset ratio and fill its screen
 - **[07c7b20b](https://github.com/nealmtroy/TeleBos/commit/07c7b20b)**: fix(hero): make the mobile phone mockup read as an iPhone

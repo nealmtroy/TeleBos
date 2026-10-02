@@ -90,52 +90,50 @@ export function OperationalFlow() {
                 transition={reducedMotion ? undefined : { duration: 0.6, ease: SPRING, delay: index * 0.04 }}
                 className={cn("min-w-0", CASCADE_INSETS[index] || "lg:ml-0")}
               >
-                <div className="rounded-2xl border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-1.5 shadow-xs">
-                  <div className="overflow-hidden rounded-xl border border-[var(--public-border)]/80 bg-[var(--public-canvas)]">
-                    <div className={cn("grid gap-0", flip ? "lg:grid-cols-[1.05fr_1fr]" : "lg:grid-cols-[1fr_1.05fr]")}>
-                      <div className="flex min-w-0 flex-col justify-between gap-6 p-6 sm:p-8">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-3">
-                            <span className="public-display text-2xl font-bold leading-none text-[var(--public-subtle)] sm:text-3xl">
-                              {String(index + 1).padStart(2, "0")}
-                            </span>
-                            <span className="public-mono inline-flex items-center gap-1.5 rounded-full border border-[var(--public-border)] bg-[var(--public-canvas-warm)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--public-accent)]">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[var(--public-accent)]" aria-hidden="true" />
-                              {step.status}
-                            </span>
-                          </div>
-                          <h3 className="public-display mt-4 text-xl font-bold leading-tight text-[var(--public-text)] sm:text-2xl">
-                            {step.title}
-                          </h3>
-                          <p className="mt-3 text-sm leading-[1.7] text-[var(--public-muted)] sm:text-base">
-                            {step.description}
-                          </p>
-                        </div>
-                        <button
-                          id={triggerId}
-                          type="button"
-                          aria-expanded={expanded}
-                          aria-controls={panelId}
-                          onClick={() => setActiveStep(expanded ? -1 : index)}
-                          onKeyDown={(event) => handleKeyDown(event, index)}
-                          className={cn(
-                            "public-focus group inline-flex w-fit items-center gap-2 rounded-full border border-[var(--public-border)]",
-                            "px-4 py-2 text-xs font-semibold text-[var(--public-body)]",
-                            "transition-colors duration-200 hover:bg-[var(--public-canvas-warm)]",
-                          )}
-                        >
-                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--public-canvas-warm)] text-[var(--public-subtle)] transition-transform duration-200 group-hover:text-[var(--public-accent)]">
-                            <svg viewBox="0 0 10 10" className={cn("h-2.5 w-2.5 transition-transform duration-200", expanded && "rotate-45")} fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-                              <path d="M5 1.5v7M1.5 5h7" strokeLinecap="round" />
-                            </svg>
+                <div className="overflow-hidden rounded-2xl border border-[var(--public-border)] bg-[var(--public-canvas)] shadow-xs">
+                  <div className={cn("grid gap-0", flip ? "lg:grid-cols-[1.05fr_1fr]" : "lg:grid-cols-[1fr_1.05fr]")}>
+                    <div className="flex min-w-0 flex-col justify-between gap-6 p-6 sm:p-8">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-3">
+                          <span className="public-display text-2xl font-bold leading-none text-[var(--public-subtle)] sm:text-3xl">
+                            {String(index + 1).padStart(2, "0")}
                           </span>
-                          {expanded ? _("landing.flowCollapseLabel") : _("landing.flowExpandLabel")}
-                        </button>
+                          <span className="public-mono inline-flex items-center gap-1.5 rounded-full border border-[var(--public-border)] bg-[var(--public-canvas-warm)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--public-accent)]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[var(--public-accent)]" aria-hidden="true" />
+                            {step.status}
+                          </span>
+                        </div>
+                        <h3 className="public-display mt-4 text-xl font-bold leading-tight text-[var(--public-text)] sm:text-2xl">
+                          {step.title}
+                        </h3>
+                        <p className="mt-3 text-sm leading-[1.7] text-[var(--public-muted)] sm:text-base">
+                          {step.description}
+                        </p>
                       </div>
+                      <button
+                        id={triggerId}
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-controls={panelId}
+                        onClick={() => setActiveStep(expanded ? -1 : index)}
+                        onKeyDown={(event) => handleKeyDown(event, index)}
+                        className={cn(
+                          "public-focus group inline-flex w-fit items-center gap-2 rounded-full border border-[var(--public-border)]",
+                          "px-4 py-2 text-xs font-semibold text-[var(--public-body)]",
+                          "transition-colors duration-200 hover:bg-[var(--public-canvas-warm)]",
+                        )}
+                      >
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--public-canvas-warm)] text-[var(--public-subtle)] transition-transform duration-200 group-hover:text-[var(--public-accent)]">
+                          <svg viewBox="0 0 10 10" className={cn("h-2.5 w-2.5 transition-transform duration-200", expanded && "rotate-45")} fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                            <path d="M5 1.5v7M1.5 5h7" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                        {expanded ? _("landing.flowCollapseLabel") : _("landing.flowExpandLabel")}
+                      </button>
+                    </div>
 
-                      <div id={panelId} role="region" aria-labelledby={triggerId} hidden={!expanded} className="min-w-0 border-t border-[var(--public-border)] bg-[var(--public-canvas-warm)] lg:border-l lg:border-t-0">
-                        <ProductSurface variant={step.surface} />
-                      </div>
+                    <div id={panelId} role="region" aria-labelledby={triggerId} hidden={!expanded} className="min-w-0 border-t border-[var(--public-border)] bg-[var(--public-canvas-warm)] lg:border-l lg:border-t-0">
+                      <ProductSurface variant={step.surface} borderless />
                     </div>
                   </div>
                 </div>

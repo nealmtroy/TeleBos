@@ -6,6 +6,8 @@
 
 import { Bot, MessageSquare, Send, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 const STATS = [
   { label: "Total Akun", value: "18", delta: "+2" },
   { label: "Pesan Terkirim", value: "4,892", delta: "+15%" },
@@ -84,12 +86,12 @@ export function HeroDashboardMockup() {
               </span>
             </header>
 
-            {/* Flat Stat Tiles */}
-            <div className="grid grid-cols-3 gap-2.5">
-              {STATS.map((stat) => (
+            {/* Flat Stat Metrics Bar */}
+            <div className="grid grid-cols-3 divide-x divide-[var(--public-border)] border-y border-[var(--public-border)]/60 py-3">
+              {STATS.map((stat, i) => (
                 <div
                   key={stat.label}
-                  className="min-w-0 rounded-lg border border-[var(--public-border)]/80 bg-[var(--public-canvas)] p-3"
+                  className={cn("min-w-0", i === 0 ? "pr-4" : i === 2 ? "pl-4" : "px-4")}
                 >
                   <p className="truncate text-xs font-medium text-[var(--public-subtle)]">
                     {stat.label}
@@ -106,7 +108,7 @@ export function HeroDashboardMockup() {
             </div>
 
             {/* Split Data View */}
-            <div className="grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+            <div className="grid gap-6 pt-1 lg:grid-cols-[1.3fr_1fr]">
               <AccountList />
               <ActivityFeed />
             </div>
@@ -223,7 +225,7 @@ function Sidebar() {
               key={item.label}
               className={
                 item.active
-                  ? "flex items-center gap-2 rounded-md bg-[var(--public-accent)]/15 px-2.5 py-1.5 text-xs font-semibold text-[var(--public-accent)]"
+                  ? "flex items-center gap-2 rounded-md bg-blue-500/15 px-2.5 py-1.5 text-xs font-semibold text-blue-400"
                   : "flex items-center gap-2 px-2.5 py-1.5 text-xs text-[var(--public-muted)]"
               }
             >
@@ -239,13 +241,13 @@ function Sidebar() {
 
 function AccountList({ bare = false }: { bare?: boolean }) {
   return (
-    <div className={bare ? undefined : "rounded-lg border border-[var(--public-border)]/80 bg-[var(--public-canvas)] p-3"}>
+    <div className="min-w-0">
       {!bare && (
-        <p className="mb-2 text-xs font-semibold text-[var(--public-text)]">Akun Telegram</p>
+        <p className="mb-2.5 text-xs font-semibold text-[var(--public-text)]">Akun Telegram</p>
       )}
       <ul className="divide-y divide-[var(--public-border)]/60">
         {ACCOUNTS.map((account) => (
-          <li key={account.handle} className="flex items-center gap-2 py-1.5 first:pt-0 last:pb-0">
+          <li key={account.handle} className="flex items-center gap-2 py-2 first:pt-0 last:pb-0">
             <span className={`h-5 w-5 shrink-0 rounded-full ${AVATAR_TONE[account.tone]}`} />
             <span className="min-w-0 flex-1 truncate text-xs text-[var(--public-body)]">
               {account.handle}
@@ -260,12 +262,12 @@ function AccountList({ bare = false }: { bare?: boolean }) {
 
 function ActivityFeed() {
   return (
-    <div className="rounded-lg border border-[var(--public-border)]/80 bg-[var(--public-canvas)] p-3">
-      <p className="mb-2 text-xs font-semibold text-[var(--public-text)]">Aktivitas Terbaru</p>
-      <ul className="space-y-2">
+    <div className="min-w-0 border-l border-[var(--public-border)]/60 pl-6">
+      <p className="mb-2.5 text-xs font-semibold text-[var(--public-text)]">Aktivitas Terbaru</p>
+      <ul className="space-y-2.5">
         {ACTIVITY.map((item) => (
           <li key={item.label} className="flex items-start gap-2">
-            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border border-[var(--public-border)] text-[var(--public-accent)]">
+            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border border-[var(--public-border)] text-blue-400">
               <item.icon className="h-2.5 w-2.5" />
             </span>
             <div className="min-w-0 flex-1">
