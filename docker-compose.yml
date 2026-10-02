@@ -52,6 +52,10 @@ services:
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
       CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:3000"]}'
+      # Set CAMOUFOX_SOLVER_ENABLED=true in .env to prefer the local solver.
+      # The URL default already matches the compose service name.
+      CAMOUFOX_SOLVER_ENABLED: ${CAMOUFOX_SOLVER_ENABLED:-false}
+      CAMOUFOX_SOLVER_URL: ${CAMOUFOX_SOLVER_URL:-http://camoufox-solver:8000}
     ports:
       - "8000:8000"
     volumes:
@@ -124,6 +128,31 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+
+  # ── Camoufox Turnstile solver ─────────────────────────────────────────────
+  # Local replacement for 2captcha: solves Telegram's Cloudflare Turnstile in a
+  # real browser, no per-solve fee. Only reached when CAMOUFOX_SOLVER_ENABLED is
+  # true; 2captcha stays wired as the fallback.
+  #
+  # No published port — it is only ever called by the backend over the compose
+  # network, and it has no auth of its own.
+  camoufox-solver:
+    build: ./backend/camoufox_solver
+    restart: unless-stopped
+    # The browser's content sandbox needs user namespaces, which the container
+    # runtime denies. The Dockerfile disables it inside Firefox instead, so no
+    # blanket --security-opt is required here.
+    environment:
+      SOLVER_POLL_SECONDS: ${SOLVER_POLL_SECONDS:-40}
+      SOLVER_NAV_TIMEOUT_MS: ${SOLVER_NAV_TIMEOUT_MS:-45000}
+    depends_on:
+      - backend
+    # One worker only: the browser is launched at startup and shared, and
+    # Turnstile dislikes a burst of parallel challenges from one address.
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
 volumes:
   postgres_data:

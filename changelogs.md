@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[fff55ce1](https://github.com/nealmtroy/TeleBos/commit/fff55ce1)**: fix(backend): stop masking endpoint errors and handle FLOOD on read receipts
 - **[cec6c26c](https://github.com/nealmtroy/TeleBos/commit/cec6c26c)**: fix(telethon): reap transport tasks so half-open clients stop leaking
 - **[779fad67](https://github.com/nealmtroy/TeleBos/commit/779fad67)**: fix(alembic): pin the sync Postgres driver so migrations can run
 - **[6a48aa95](https://github.com/nealmtroy/TeleBos/commit/6a48aa95)**: refactor: drop unused get_current_user_from_token_or_header imports

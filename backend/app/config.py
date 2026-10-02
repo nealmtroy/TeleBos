@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     # 2Captcha (automated Turnstile solver)
     TWOCAPTCHA_API_KEY: str = ""
 
+    # Local Camoufox Turnstile solver (own container, no per-solve fee).
+    # Off by default so a backend that upgrades before the solver container
+    # exists does not start calling a service that is not deployed yet; 2captcha
+    # remains the fallback either way.
+    CAMOUFOX_SOLVER_ENABLED: bool = False
+    CAMOUFOX_SOLVER_URL: str = "http://camoufox-solver:8000"
+
     # Groq AI
     GROQ_API_KEY_1: str = ""
     GROQ_API_KEY_2: str = ""
