@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_current_user_from_token_or_header, require_role
+from app.dependencies import get_current_user, require_role
 from app.models.user import User
 from app.schemas.chat import (
     ChatListResponse,

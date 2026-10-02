@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-02
+- **[342d0ed0](https://github.com/nealmtroy/TeleBos/commit/342d0ed0)**: fix(security): close path traversal, IDOR and session-token leak in media endpoints
 - **[7e3faaed](https://github.com/nealmtroy/TeleBos/commit/7e3faaed)**: docs: add TeleBos audit reports (dead code, vuln/logic, concurrency, graphify)
 - **[1509b2e5](https://github.com/nealmtroy/TeleBos/commit/1509b2e5)**: fix: harden error handling, lock admin balance writes, widen balance to BIGINT
 - **[ae3da63d](https://github.com/nealmtroy/TeleBos/commit/ae3da63d)**: fix(accounts): make phone placeholder dynamic based on selected country pattern
