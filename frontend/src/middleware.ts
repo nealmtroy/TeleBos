@@ -18,14 +18,57 @@ const PUBLIC_PATHS = [
   "/monitoring",
 ];
 
-// ── Middleware ──────────────────────────────────────────────────────────────
+// ── Locale negotiation ──────────────────────────────────────────────────────
+//
+// The page has no navigator on the server, so it cannot detect a visitor's
+// language and every SSR response rendered English. That produced two visible
+// problems: crawlers and chat previews only ever saw the English copy, and
+// first paint flashed English before LanguageSync hydrated the stored or
+// detected locale.
+//
+// This reads Accept-Language and forwards the result as a request header, so
+// server-rendered markup already matches what the client will settle on.
+//
+// Indonesian is checked as a language prefix rather than an exact match:
+// "id-ID", "id", and "in-ID" (the legacy ISO code some Android browsers still
+// send) all resolve to Indonesian. The user's explicit choice, when they have
+// made one, lives in telebo_locale and takes priority over this.
+
+function negotiateLocale(acceptLanguage: string | null): "en" | "id" {
+  if (!acceptLanguage) return "en";
+
+  // Ranked list, honouring q-values: "fr;q=0.8, id-ID;q=0.9" -> id wins.
+  const ranked = acceptLanguage
+    .split(",")
+    .map((part) => {
+      const [tag, ...params] = part.trim().split(";");
+      const q = params
+        .map((p) => p.trim())
+        .find((p) => p.startsWith("q="))
+        ?.slice(2);
+      return { tag: tag.trim().toLowerCase(), q: q ? Number(q) : 1 };
+    })
+    .filter((r) => r.tag && !Number.isNaN(r.q))
+    .sort((a, b) => b.q - a.q);
+
+  for (const { tag } of ranked) {
+      const lang = tag.split("-")[0];
+      // "in" is the deprecated ISO 639-1 code for Indonesian.
+      if (lang === "id" || lang === "in") return "id";
+    }
+
+    // English is the only other locale, so anything else falls through to it.
+    return "en";
+  }
+
+  // ── Middleware ──────────────────────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
   if (pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
+    return withLocale(request);
   }
 
   // Allow static assets and Next.js internals
@@ -55,7 +98,22 @@ export async function middleware(request: NextRequest) {
 
   // Cookie exists — let the request through.
   // The backend API validates the actual session on every request.
-  return NextResponse.next();
+  return withLocale(request);
+}
+
+function withLocale(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  const stored = request.cookies.get("telebo_locale")?.value;
+
+  // An explicit choice beats the browser header, and "system" means the
+  // browser decides - which is what Accept-Language already describes.
+  const locale =
+    stored === "id" || stored === "en"
+      ? stored
+      : negotiateLocale(request.headers.get("accept-language"));
+
+  requestHeaders.set("x-telebos-locale", locale);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 // ── Matcher ─────────────────────────────────────────────────────────────────

@@ -11,8 +11,42 @@ const dictionaries: Record<Locale, Dict> = { en, id };
 
 export function getSystemLocale(): Locale {
   if (typeof navigator === "undefined") return "en";
-  const browserLang = (navigator.language || "").slice(0, 2).toLowerCase();
-  return browserLang === "id" ? "id" : "en";
+  // navigator.languages is the full preference list; navigator.language is only
+  // the first entry, which reports English on an Indonesian phone when the app
+  // language and the browser UI language differ. Scanning the list makes the
+  // detection match what the visitor actually chose.
+  const candidates =
+    typeof navigator.languages?.length === "number" && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language || ""];
+  for (const tag of candidates) {
+    const lang = (tag || "").slice(0, 2).toLowerCase();
+    // "in" is the deprecated ISO 639-1 code for Indonesian, still sent by some
+    // Android browsers.
+    if (lang === "id" || lang === "in") return "id";
+  }
+  return "en";
+}
+
+/**
+ * Read the locale middleware negotiated from Accept-Language.
+ *
+ * Available only during server rendering; returns null on the client, where
+ * getSystemLocale() and the stored preference are the source of truth.
+ */
+export function getRequestLocale(): Locale | null {
+  if (typeof window === "undefined") {
+    try {
+      // Read by the Next.js headers() API in a server component; imported
+      // lazily so this module stays importable from client components.
+      const { headers } = require("next/headers") as typeof import("next/headers");
+      const v = headers().get("x-telebos-locale");
+      return v === "id" || v === "en" ? v : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 interface I18nState {
@@ -23,10 +57,12 @@ interface I18nState {
 }
 
 function getInitialLocale(): Locale {
-  // Always return "en" during SSR so hydration can match.
-  // The actual persisted preference is read from localStorage in LanguageSync
-  // inside Providers, which updates the store after first client paint.
-  return "en";
+  // During SSR there is no navigator, so fall back to what middleware
+  // negotiated from Accept-Language. Without this every server-rendered
+  // response was English regardless of the visitor's browser, which meant
+  // crawlers and chat previews only ever saw the English copy and first paint
+  // flashed English before hydration.
+  return getRequestLocale() ?? "en";
 }
 
 export const useI18nStore = create<I18nState>((set) => ({

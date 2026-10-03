@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { getRequestLocale } from "@/lib/i18n";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -100,7 +101,7 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang={getRequestLocale() ?? "en"}
       suppressHydrationWarning
       className={`${inter.variable} ${publicSans.variable} ${publicMono.variable}`}
     >
