@@ -1593,6 +1593,93 @@ const en: Dict = {
   },
 
   // ── Subscription ────────────────────────────────────────────────────────
+    // ── Public pricing page ──────────────────────────────────────────────────
+    pricing: {
+      kicker: "Plans & pricing",
+      title: "Start free. Upgrade when you actually need to.",
+      subtitle:
+        "Every plan is paid with a voucher code, so you are not handing over a card before you have seen it work. Switch tiers whenever the work grows.",
+      perMonth: "/mo",
+      cta: {
+        basic: "Start free",
+        pro: "Get Pro",
+        premium: "Get Premium",
+      },
+      currentPlan: "Your current plan",
+      popular: "Most chosen",
+      headers: {
+        basic: "Start with the basics",
+        pro: "Move to predictable",
+        premium: "Run it all",
+      },
+      desc: {
+        basic:
+          "Try it first. Run one account, answer chats, and see what it saves you before committing to anything.",
+        pro:
+          "For anyone already broadcasting daily and needs auto-reply running without anyone watching it.",
+        premium:
+          "For agencies and teams selling Telegram accounts. Unlimited, member scraping, and the fastest server queue.",
+      },
+      footnote: {
+        basic: "No card. Nothing gets charged until you decide to.",
+        pro: "The sensible pick for channels and groups that are live every day.",
+        premium: "Used by digital marketers and agencies already past the volume wall.",
+      },
+      compare: {
+        title: "What actually differs",
+        subtitle: "Only the limits that matter between tiers.",
+        limits: "Main limits",
+        rows: {
+          accounts: "Connected Telegram accounts",
+          broadcast: "Mass broadcast",
+          autoReply: "Auto-reply",
+          scheduling: "Scheduled sends",
+          scrape: "Group member scraping",
+          autoJoin: "Auto-join & auto-invite",
+          proxy: "Proxy rotation & multi-session",
+          appeals: "Automatic SpamBot appeals",
+          queue: "Server queue priority",
+          support: "Support",
+        },
+        values: {
+          free: "1 account",
+          upTo10: "up to 10 accounts",
+          unlimited: "Unlimited",
+          no: "—",
+          yes: "✓",
+          included: "✓",
+          standard: "Standard",
+          best: "Best",
+          hours: "24/7",
+        },
+      },
+      faq: {
+        title: "Questions people ask first",
+        items: {
+          payment: {
+            q: "How do I pay?",
+            a: "With a voucher code. Redeem it on the subscription page and the plan activates immediately - no card involved.",
+          },
+          upgrade: {
+            q: "Can I change plans mid-cycle?",
+            a: "Yes. The unused part of your period converts to balance, so you never pay twice for the same days.",
+          },
+          cancel: {
+            q: "If I stop, do I lose my data?",
+            a: "No. Connected Telegram accounts stay connected; only the paid features switch off.",
+          },
+          spam: {
+            q: "Why does proxy rotation matter?",
+            a: "One IP sending hundreds of messages hits the limit fast. Rotation makes the traffic look like it comes from many different people.",
+          },
+        },
+      },
+      ctaBand: {
+        title: "Start on the free plan",
+        body: "Nothing to decide yet. Open the dashboard and see the difference first.",
+        action: "Open the dashboard",
+      },
+    },
   subscription: {
     title: "Subscription",
     desc: "Manage your subscription plan",

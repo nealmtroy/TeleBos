@@ -22,11 +22,12 @@ export const Navbar5 = () => {
   const _ = useT();
   const [open, setOpen] = useState(false);
   const links = [
-    [_("landing.navFeatures"), "/#features"],
-    [_("landing.navWorkflow"), "/#workflow"],
-    [_("nav.help"), "/help"],
-    [_("landing.navPrivacy"), "/privacy"],
-  ] as const;
+      [_("pricing.kicker"), "/pricing"],
+      [_("landing.navFeatures"), "/#features"],
+      [_("landing.navWorkflow"), "/#workflow"],
+      [_(`nav.help`), "/help"],
+      [_("landing.navPrivacy"), "/privacy"],
+    ] as const;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--public-border)] bg-[var(--public-canvas)]/85 backdrop-blur-md">

@@ -1631,6 +1631,76 @@ export interface Dict {
       rejected: string;
     };
   };
+  pricing: {
+    kicker: string;
+    title: string;
+    subtitle: string;
+    perMonth: string;
+    cta: {
+      basic: string;
+      pro: string;
+      premium: string;
+    };
+    currentPlan: string;
+    popular: string;
+    headers: {
+      basic: string;
+      pro: string;
+      premium: string;
+    };
+    desc: {
+      basic: string;
+      pro: string;
+      premium: string;
+    };
+    footnote: {
+      basic: string;
+      pro: string;
+      premium: string;
+    };
+    compare: {
+      title: string;
+      subtitle: string;
+      limits: string;
+      rows: {
+        accounts: string;
+        broadcast: string;
+        autoReply: string;
+        scheduling: string;
+        scrape: string;
+        autoJoin: string;
+        proxy: string;
+        appeals: string;
+        queue: string;
+        support: string;
+      };
+      values: {
+        free: string;
+        upTo10: string;
+        unlimited: string;
+        no: string;
+        yes: string;
+        included: string;
+        standard: string;
+        best: string;
+        hours: string;
+      };
+    };
+    faq: {
+      title: string;
+      items: {
+        payment: { q: string; a: string };
+        upgrade: { q: string; a: string };
+        cancel: { q: string; a: string };
+        spam: { q: string; a: string };
+      };
+    };
+    ctaBand: {
+      title: string;
+      body: string;
+      action: string;
+    };
+  };
   subscription: {
     title: string;
     desc: string;

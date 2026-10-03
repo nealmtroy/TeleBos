@@ -1593,6 +1593,93 @@ const id: Dict = {
   },
 
   // ── Subscription ────────────────────────────────────────────────────────
+    // ── Public pricing page ──────────────────────────────────────────────────
+    pricing: {
+      kicker: "Paket & harga",
+      title: "Mulai gratis. Naik kelas kalau memang perlu.",
+      subtitle:
+        "Semua paket dibayar lewat voucher, jadi lo nggak perlu nyantumin kartu kredit dulu. Pindah paket kapan saja saat bisnis lo tumbuh.",
+      perMonth: "/bln",
+      cta: {
+        basic: "Mulai gratis",
+        pro: "Ambil Pro",
+        premium: "Ambil Premium",
+      },
+      currentPlan: "Paket lo sekarang",
+      popular: "Paling banyak dipilih",
+      headers: {
+        basic: "Mulai dari dasar",
+        pro: "Naik ke pasti",
+        premium: "Jalanin semuanya",
+      },
+      desc: {
+        basic:
+          "Cobain dulu. Kelola satu akun, balas chat, dan lihat berapa yang bisa dihemat sebelum commit apa pun.",
+        pro:
+          "Untuk yang sudah broadcast tiap hari dan butuh auto-reply jalan tanpa lo supervise.",
+        premium:
+          "Untuk agensi dan tim yang jual akun Telegram. Unlimited, scrape member, dan antrean server paling cepat.",
+      },
+      footnote: {
+        basic: "Tanpa kartu kredit. Tidak ada yang bisa lo tagih sebelum loVpairssan.",
+        pro: "Pilihan paling masuk akal buat channel & grup yang aktif tiap hari.",
+        premium: "Dipakai digital marketer & agensi yang volumenya sudah tinggi.",
+      },
+      compare: {
+        title: "Bedanya apa?",
+        subtitle: "Yang berubah antar paket, tanpa basa-basi.",
+        limits: "Batas utama",
+        rows: {
+          accounts: "Akun Telegram terhubung",
+          broadcast: "Broadcast massal",
+          autoReply: "Auto-reply",
+          scheduling: "Jadwal terjadwal",
+          scrape: "Scrape member grup",
+          autoJoin: "Auto-join & auto-invite",
+          proxy: "Rotasi proxy & multi-sesi",
+          appeals: "Banding SpamBot otomatis",
+          queue: "Prioritas antrean server",
+          support: "Support",
+        },
+        values: {
+          free: "1 akun",
+          upTo10: "sampai 10 akun",
+          unlimited: "Unlimited",
+          no: "—",
+          yes: "✓",
+          included: "✓",
+          standard: "Standar",
+          best: "Terbaik",
+          hours: "24/7",
+        },
+      },
+      faq: {
+        title: "Yang sering ditanyain",
+        items: {
+          payment: {
+            q: "Bayarnya gimana?",
+            a: "Pakai voucher kode. redeem di halaman subscription, langsung aktif — nggak perlu kartu kredit.",
+          },
+          upgrade: {
+            q: "Bisa ganti paket di tengah jalan?",
+            a: "Bisa. Sisa periode ikut dikonversi ke saldo, jadi lo nggak bayar dobel.",
+          },
+          cancel: {
+            q: "Kalau berhenti, data aku hilang?",
+            a: "Nggak. Akun Telegram yang udah terhubung tetap nyimpen, cuma fitur berbayarnya yang mati.",
+          },
+          spam: {
+            q: "Kenapa perlu rotasi proxy?",
+            a: "Satu IP ngirim ratusan pesan itu cepat kena limit. Rotasi bikin Telegram regards itu datang dari banyak 'orang'.",
+          },
+        },
+      },
+      ctaBand: {
+        title: "Mulai dari paket gratis dulu",
+        body: "Nggak ada yang perlu lo outsync sebelum lihat hasilnya sendiri.",
+        action: "Buka dashboard",
+      },
+    },
   subscription: {
     title: "Langganan",
     desc: "Kelola paket langganan Anda",

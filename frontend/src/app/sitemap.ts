@@ -17,11 +17,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/help`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
+          url: `${baseUrl}/help`,
+          lastModified: new Date(),
+          changeFrequency: "weekly",
+          priority: 0.8,
+        },
+        {
+          // Pricing is a primary commercial page and outranks help in priority.
+          url: `${baseUrl}/pricing`,
+          lastModified: new Date(),
+          changeFrequency: "weekly",
+          priority: 0.9,
+        },
     {
       url: `${baseUrl}/help/api`,
       lastModified: new Date(),
