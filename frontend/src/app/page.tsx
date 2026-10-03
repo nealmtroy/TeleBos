@@ -7,7 +7,7 @@ import { Check, ShieldCheck, Zap, Radio, Bot, ShoppingCart } from "lucide-react"
 
 import { motion } from "framer-motion";
 
-import { CommandSlabs } from "@/components/landing/command-slabs";
+import { FeatureOutcomes } from "@/components/landing/feature-outcomes";
 import { LandingReveal, LandingRevealGroup, landingRevealVariants } from "@/components/landing/landing-motion";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { PublicFooter } from "@/components/public/public-footer";
@@ -155,7 +155,7 @@ export default function LandingPage() {
       </section>
 
       {/* Interactive Feature Showcase */}
-      <CommandSlabs />
+      <FeatureOutcomes />
 
       {/* How It Works (3 Steps) */}
       <section id="workflow" className="bg-[var(--public-canvas-warm)]">
