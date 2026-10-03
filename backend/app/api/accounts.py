@@ -766,7 +766,12 @@ async def upload_profile_photo(
     ip = request.client.host if request.client else "unknown"
     if not await rate_limiter.check(f"photo_upload:ip:{ip}", max_requests=10, window_seconds=60):
         raise HTTPException(status_code=429, detail="Too many photo requests. Try later.")
-    account = await account_service.get_account(db, account_id, str(user.id))
+    try:
+        from app.utils.path_security import validate_safe_id
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     if file.content_type is None or not file.content_type.startswith("image/"):
@@ -802,6 +807,12 @@ async def get_profile_photo(
     caching (Cache-Control: 1 hour, ETag based on photo_version)
     to prevent abuse.
     """
+    try:
+        from app.utils.path_security import validate_safe_id, is_path_contained
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+
     # Per-IP rate limiting
     from app.config import get_settings
     s = get_settings()
@@ -817,7 +828,7 @@ async def get_profile_photo(
     from sqlalchemy import select
     result = await db.execute(
         select(TelegramAccount).where(
-            TelegramAccount.id == account_id,
+            TelegramAccount.id == clean_account_id,
         )
     )
     account = result.scalar_one_or_none()
@@ -835,6 +846,9 @@ async def get_profile_photo(
     # Check local cache
     cached = await account_service.get_cached_photo_path(str(account.id))
     if cached:
+        from app.utils.photo_helper import _PHOTO_DIR
+        if not is_path_contained(_PHOTO_DIR, cached):
+            raise HTTPException(status_code=403, detail="Access denied")
         with open(cached, "rb") as f:
             return Response(
                 content=f.read(),
@@ -873,7 +887,12 @@ async def delete_profile_photo(
     user: User = Depends(get_current_user),
 ):
     """Delete the account's profile photo from Telegram and remove local cache."""
-    account = await account_service.get_account(db, account_id, str(user.id))
+    try:
+        from app.utils.path_security import validate_safe_id
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 

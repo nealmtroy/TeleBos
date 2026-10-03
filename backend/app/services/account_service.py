@@ -973,9 +973,12 @@ async def delete_photo(db: AsyncSession, account: TelegramAccount) -> None:
         await client(DeletePhotosRequest(id=result.photos))
 
     # Delete local cache
-    photo_path = _photo_path(str(account.id))
-    if os.path.exists(photo_path):
-        os.remove(photo_path)
+    try:
+        photo_path = _photo_path(str(account.id))
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
+    except (ValueError, TypeError) as exc:
+        logger.warning("Invalid photo path for account %s: %s", account.id, exc)
 
     account.profile_photo_path = None
     account.profile_photo_id = None
@@ -985,9 +988,12 @@ async def delete_photo(db: AsyncSession, account: TelegramAccount) -> None:
 
 async def get_cached_photo_path(account_id: str) -> str | None:
     """Return the local cached photo path if it exists."""
-    path = _photo_path(account_id)
-    if os.path.exists(path):
-        return path
+    try:
+        path = _photo_path(account_id)
+        if os.path.exists(path):
+            return path
+    except (ValueError, TypeError):
+        return None
     return None
 
 
@@ -1044,9 +1050,12 @@ async def remove_account(db: AsyncSession, account: TelegramAccount, logout_sess
     flood_controller.reset(str(account.id))
 
     # Clean up cached profile photo
-    photo_path = _photo_path(str(account.id))
-    if os.path.exists(photo_path):
-        os.remove(photo_path)
+    try:
+        photo_path = _photo_path(str(account.id))
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
+    except (ValueError, TypeError):
+        pass
 
     await db.delete(account)
 

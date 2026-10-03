@@ -575,12 +575,13 @@ async def delete_user(
                 user_id,
                 pool_exc,
             )
-        photo_path = os.path.join(settings.UPLOAD_DIR, "profile_photos", f"{acc.id}.jpg")
-        if os.path.exists(photo_path):
-            try:
+        try:
+            from app.utils.photo_helper import get_photo_path
+            photo_path = get_photo_path(str(acc.id))
+            if os.path.exists(photo_path):
                 os.remove(photo_path)
-            except OSError:
-                pass
+        except (OSError, ValueError):
+            pass
 
     await db.delete(user)
     await db.flush()

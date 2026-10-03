@@ -48,6 +48,13 @@ from app.schemas.chat import (
 from app.services import account_service, message_service as chat_service
 from app.utils.rate_limiter import rate_limiter
 from app.utils.sanitize import sanitize_exception
+from app.utils.path_security import (
+    validate_safe_id,
+    sanitize_filename,
+    safe_join,
+    is_path_contained,
+    get_base_uploads_dir,
+)
 
 router = APIRouter(tags=["media"])
 
@@ -106,9 +113,14 @@ async def get_chat_photo(
     from app.services.chat_service import resolve_chat_entity
     from app.utils.encryption import decrypt
 
+    try:
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+
     account_result = await db.execute(
         select(TelegramAccount).where(
-            TelegramAccount.id == account_id,
+            TelegramAccount.id == clean_account_id,
             TelegramAccount.user_id == user.id,
             TelegramAccount.for_sale.is_(False),
         )
@@ -147,15 +159,14 @@ async def get_chat_photo(
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)
 
-    chat_photos_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        "uploads",
-        "chat_photos",
-        str(account.id),
-        str(chat_id),
-    )
-    os.makedirs(chat_photos_dir, exist_ok=True)
-    cached_path = os.path.join(chat_photos_dir, f"{photo_version}.jpg")
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    try:
+        chat_photos_root = os.path.join(base_dir, "uploads", "chat_photos")
+        chat_photos_dir = safe_join(chat_photos_root, str(account.id), str(chat_id))
+        os.makedirs(chat_photos_dir, exist_ok=True)
+        cached_path = safe_join(chat_photos_dir, f"{photo_version}.jpg")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="No profile photo")
 
     # Defence in depth: even though photo_version is now validated as digits,
     # confirm the resolved path really lives inside the account-scoped cache.
@@ -220,14 +231,22 @@ SAFE_INLINE_MEDIA_TYPES = {
 }
 
 
-def create_safe_file_response(file_path: str, filename: str | None = None) -> FileResponse:
-    """Return a FileResponse with strict headers to prevent Stored XSS via uploaded attachments."""
+def create_safe_file_response(
+    file_path: str,
+    filename: str | None = None,
+    allowed_root: str | None = None,
+) -> FileResponse:
+    """Return a FileResponse with strict headers to prevent Stored XSS and verify path containment."""
     import mimetypes
     from fastapi.responses import FileResponse
 
+    if allowed_root is not None:
+        if not is_path_contained(allowed_root, file_path):
+            raise HTTPException(status_code=403, detail="Access denied")
+
     mime, _ = mimetypes.guess_type(file_path)
-    clean_name = filename or os.path.basename(file_path)
-    # Sanitize header to prevent CRLF injection
+    clean_name = sanitize_filename(filename or os.path.basename(file_path))
+    # Sanitize header to prevent CRLF injection and quotes
     safe_filename = clean_name.replace('"', '').replace('\r', '').replace('\n', '')
 
     if mime in SAFE_INLINE_MEDIA_TYPES:
@@ -258,7 +277,7 @@ async def get_message_media_endpoint(
     user: User = Depends(get_current_user_for_media),
 ):
     """Download and cache a message's media (photo, document, voice note, etc.) and return it."""
-    import os
+    import re
     from fastapi.responses import FileResponse
     from sqlalchemy import select
     from app.models.telegram_chat import TelegramChat
@@ -267,13 +286,18 @@ async def get_message_media_endpoint(
     from app.utils.encryption import decrypt
     from app.services.chat_service import resolve_chat_entity
 
+    try:
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+
     # Define a local cache folder for message media files
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     # Ownership must be verified BEFORE the cache is consulted: the cache is
     # shared across accounts, so serving it first would let any authenticated
     # user read another user's media by guessing chat_id/message_id.
-    account = await account_service.get_account(db, account_id, str(user.id))
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 
@@ -286,19 +310,28 @@ async def get_message_media_endpoint(
     if chat_owner.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Chat not found in this account")
 
-    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(account_id), str(chat_id))
-    os.makedirs(media_cache_dir, exist_ok=True)
+    media_root = os.path.join(base_dir, "uploads", "message_media")
+    try:
+        media_cache_dir = safe_join(media_root, str(account.id), str(chat_id))
+        os.makedirs(media_cache_dir, exist_ok=True)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid cache path")
 
     # Check if we already have it cached.
     cached_file = None
     if os.path.exists(media_cache_dir):
         for f in os.listdir(media_cache_dir):
             if f.startswith(f"{message_id}."):
-                cached_file = os.path.join(media_cache_dir, f)
-                break
+                try:
+                    candidate = safe_join(media_cache_dir, f)
+                    if os.path.exists(candidate) and os.path.isfile(candidate):
+                        cached_file = candidate
+                        break
+                except ValueError:
+                    continue
 
     if cached_file and os.path.exists(cached_file):
-        return create_safe_file_response(cached_file)
+        return create_safe_file_response(cached_file, allowed_root=media_cache_dir)
 
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
@@ -324,8 +357,9 @@ async def get_message_media_endpoint(
         if hasattr(msg.media, "document") and msg.media.document:
             for attr in getattr(msg.media.document, "attributes", []):
                 if hasattr(attr, "file_name") and attr.file_name:
-                    filename = os.path.splitext(attr.file_name)[0]
-                    ext = os.path.splitext(attr.file_name)[1]
+                    clean_tg_name = sanitize_filename(attr.file_name)
+                    filename = os.path.splitext(clean_tg_name)[0]
+                    ext = os.path.splitext(clean_tg_name)[1]
                     break
             if not ext:
                 import mimetypes
@@ -333,12 +367,18 @@ async def get_message_media_endpoint(
         if not ext:
             ext = ".jpg"
 
-        dest_path = os.path.join(media_cache_dir, f"{message_id}{ext}")
+        # Sanitize extension against traversal and abnormal characters
+        if not re.match(r"^\.[a-zA-Z0-9]{1,10}$", ext):
+            ext = ".jpg"
+
+        dest_name = f"{message_id}{ext}"
+        dest_path = safe_join(media_cache_dir, dest_name)
         result_path = await client.download_media(msg, file=dest_path)
         if not result_path or not os.path.exists(dest_path):
             raise HTTPException(status_code=500, detail="Failed to download media from Telegram")
 
-        return create_safe_file_response(dest_path, filename=f"{filename}{ext}")
+        clean_display_name = sanitize_filename(f"{filename}{ext}")
+        return create_safe_file_response(dest_path, filename=clean_display_name, allowed_root=media_cache_dir)
 
     except HTTPException as http_exc:
         raise http_exc
@@ -367,11 +407,16 @@ async def stream_message_video_endpoint(
     from app.utils.encryption import decrypt
     from app.services.chat_service import resolve_chat_entity
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    try:
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     # Same ordering rule as get_message_media_endpoint: ownership first, cache
     # second. The cache dir is shared per chat_id, so it must never be the gate.
-    account = await account_service.get_account(db, account_id, str(user.id))
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 
@@ -384,15 +429,24 @@ async def stream_message_video_endpoint(
     if chat_owner.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Chat not found in this account")
 
-    media_cache_dir = os.path.join(base_dir, "uploads", "message_media", str(account_id), str(chat_id))
-    os.makedirs(media_cache_dir, exist_ok=True)
+    media_root = os.path.join(base_dir, "uploads", "message_media")
+    try:
+        media_cache_dir = safe_join(media_root, str(account.id), str(chat_id))
+        os.makedirs(media_cache_dir, exist_ok=True)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid cache path")
 
     video_path = None
     if os.path.exists(media_cache_dir):
         for f in os.listdir(media_cache_dir):
             if f.startswith(f"{message_id}."):
-                video_path = os.path.join(media_cache_dir, f)
-                break
+                try:
+                    candidate = safe_join(media_cache_dir, f)
+                    if os.path.exists(candidate) and os.path.isfile(candidate):
+                        video_path = candidate
+                        break
+                except ValueError:
+                    continue
 
     if not video_path or not os.path.exists(video_path):
         session_str = decrypt(account.session_string)
@@ -497,6 +551,8 @@ async def stream_message_video_endpoint(
             logging.getLogger(__name__).error("Failed to stream video: %s", exc)
             raise HTTPException(status_code=400, detail=str(exc))
     else:
+        if not is_path_contained(media_cache_dir, video_path):
+            raise HTTPException(status_code=403, detail="Access denied")
         file_size = os.path.getsize(video_path)
         range_header = request.headers.get("range")
         
@@ -556,10 +612,14 @@ async def send_media(
     user: User = Depends(get_current_user),
 ):
     """Send a media file to a chat."""
-    ip = request.client.host
+    ip = request.client.host if request.client else "unknown"
     if not await rate_limiter.check(f"chat_send:ip:{ip}"):
         raise HTTPException(status_code=429, detail="Too many messages. Try later.")
-    account = await account_service.get_account(db, account_id, str(user.id))
+    try:
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 
@@ -571,7 +631,7 @@ async def send_media(
     file_bytes = await read_file_chunked(file, max_size=MAX_FILE_SIZE, detail="File too large (max 20MB)")
 
     # 2. Sanitize filename & validate dangerous extensions
-    filename = os.path.basename(file.filename or "file")
+    filename = sanitize_filename(file.filename or "file")
     _, ext = os.path.splitext(filename.lower())
     BLOCKED_EXTENSIONS = {'.exe', '.dll', '.bat', '.cmd', '.sh', '.msi', '.com', '.vbs', '.scr', '.pif'}
     if ext in BLOCKED_EXTENSIONS:
@@ -602,7 +662,11 @@ async def get_chat_shared_media(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    account = await account_service.get_account(db, account_id, str(user.id))
+    try:
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
@@ -624,12 +688,18 @@ async def upload_and_send_voice(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    account = await account_service.get_account(db, account_id, str(user.id))
+    try:
+        clean_account_id = validate_safe_id(account_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid account ID")
+    account = await account_service.get_account(db, clean_account_id, str(user.id))
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     try:
-        content = await file.read()
-        suffix = os.path.splitext(file.filename or "")[1] or ".ogg"
+        from app.utils.file_upload import read_file_chunked
+        content = await read_file_chunked(file, max_size=20 * 1024 * 1024, detail="Voice file too large (max 20MB)")
+        raw_suffix = os.path.splitext(sanitize_filename(file.filename or ""))[1].lower()
+        suffix = raw_suffix if raw_suffix in {".ogg", ".oga", ".wav", ".mp3", ".m4a"} else ".ogg"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
@@ -639,6 +709,8 @@ async def upload_and_send_voice(
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 

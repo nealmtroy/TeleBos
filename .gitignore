@@ -59,6 +59,7 @@ testing/
 .kiro/
 .qoder/
 .claude/
+.hermes/
 .impeccable/
 # Local AI-skill installation state; never version-controlled
 skills-lock.json

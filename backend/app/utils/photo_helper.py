@@ -8,6 +8,7 @@ is always recomputed from ``_PHOTO_DIR`` at read time.
 """
 
 import os
+from app.utils.path_security import safe_join, validate_safe_id
 
 _PHOTO_DIR = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "uploads", "profile_photos"
@@ -21,12 +22,17 @@ def ensure_photo_dir() -> None:
 
 def get_photo_filename(account_id: str) -> str:
     """Return the portable, relative filename that the database stores."""
-    return f"{account_id}.jpg"
+    clean_id = validate_safe_id(str(account_id))
+    return f"{clean_id}.jpg"
 
 
 def get_photo_path(account_id: str) -> str:
-    """Get the local file path for an account's cached profile photo."""
-    return os.path.join(_PHOTO_DIR, get_photo_filename(account_id))
+    """Get the local file path for an account's cached profile photo.
+    
+    Guarantees strict containment within _PHOTO_DIR.
+    """
+    filename = get_photo_filename(account_id)
+    return safe_join(_PHOTO_DIR, filename)
 
 
 def is_valid_photo_path(account_id: str, stored_path: str | None) -> bool:
@@ -38,6 +44,15 @@ def is_valid_photo_path(account_id: str, stored_path: str | None) -> bool:
     """
     if not stored_path:
         return False
-    if os.path.basename(stored_path.replace("\\", "/")) != get_photo_filename(account_id):
+    try:
+        expected = get_photo_filename(account_id)
+    except ValueError:
         return False
-    return os.path.exists(get_photo_path(account_id))
+    if os.path.basename(stored_path.replace("\\", "/")) != expected:
+        return False
+    try:
+        photo_path = get_photo_path(account_id)
+        return os.path.exists(photo_path)
+    except ValueError:
+        return False
+
