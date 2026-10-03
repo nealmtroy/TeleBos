@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[ca55a573](https://github.com/nealmtroy/TeleBos/commit/ca55a573)**: feat(landing): revamp landing page copy to customer-centric selling points and compact layout
 - **[54426128](https://github.com/nealmtroy/TeleBos/commit/54426128)**: fix(nav): clear the sheet header's default top padding
 - **[940c9961](https://github.com/nealmtroy/TeleBos/commit/940c9961)**: fix(nav): keep the sheet header row horizontal
 - **[462ef27a](https://github.com/nealmtroy/TeleBos/commit/462ef27a)**: fix(nav): land the sheet close button exactly where the hamburger was

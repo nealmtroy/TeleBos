@@ -63,6 +63,17 @@ async def check_account_limit(db: AsyncSession, user: User) -> None:
 logger = logging.getLogger(__name__)
 
 
+class AccountDisconnectedError(RuntimeError):
+    """The account has no usable Telegram client and must be re-logged in.
+
+    Subclasses RuntimeError so the API handlers that already map RuntimeError to
+    HTTP 400 keep working unchanged. The dedicated type exists so callers can
+    tell "this account is dead, stop asking" apart from "something actually
+    broke" — the periodic spam sweep uses that distinction to record the attempt
+    and back off instead of logging an error every hour.
+    """
+
+
 def detect_2fa_hint_from_error(error_message: str) -> tuple[bool, str | None]:
     """
     Detect if error indicates 2FA is required and extract hint.
@@ -794,7 +805,7 @@ async def update_profile(
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
 
     from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
     from telethon.errors import (
@@ -903,7 +914,7 @@ async def upload_photo(db: AsyncSession, account: TelegramAccount, photo_bytes: 
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
 
     import tempfile
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
@@ -953,7 +964,7 @@ async def delete_photo(db: AsyncSession, account: TelegramAccount) -> None:
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
 
     # Get current profile photos and delete them
     from telethon.tl.functions.photos import GetUserPhotosRequest
@@ -1051,7 +1062,7 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
     client_pool.touch_client(str(account.id))
 
     try:
@@ -1164,7 +1175,7 @@ async def get_profile_colors(account: TelegramAccount) -> dict:
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
 
     from telethon.tl.functions.help import GetPeerProfileColorsRequest
     from telethon.tl.types.help import PeerColors
@@ -1197,7 +1208,7 @@ async def update_profile_color(
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
-        raise RuntimeError("Account is disconnected. Please re-login.")
+        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
 
     from telethon.tl.functions.account import UpdateColorRequest
     from telethon.tl.types import PeerColor

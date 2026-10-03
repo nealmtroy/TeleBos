@@ -272,7 +272,7 @@ class SessionManager:
         """Periodically check spam status for accounts that haven't been checked recently (e.g. 12 hours)."""
         from app.database import async_session_factory
         from datetime import datetime, timedelta, timezone
-        from app.services.account_service import check_spam_status
+        from app.services.account_service import AccountDisconnectedError, check_spam_status
         import uuid
 
         logger.info("Starting periodic spam status checks for active accounts...")
@@ -322,7 +322,26 @@ class SessionManager:
                     account = result.scalar_one_or_none()
                     if account and account.is_active and not account.for_sale:
                         logger.info("Auto checking spam status for account: %s", phone)
-                        await check_spam_status(db, account)
+                        try:
+                            await check_spam_status(db, account)
+                        except AccountDisconnectedError as disc_exc:
+                            # A dead session is an expected state, not a fault. It
+                            # still has to record that the attempt happened:
+                            # without spam_last_checked_at the account is selected
+                            # again on every sweep (once an hour) for the lifetime
+                            # of the deployment, and each pass raised an ERROR
+                            # that Sentry grouped as PYTHON-FASTAPI-19. The user
+                            # still sees the real reason in the UI, which reads
+                            # this column.
+                            account.spam_last_checked_at = datetime.now(timezone.utc)
+                            account.spam_status = "unknown"
+                            account.spam_detail = str(disc_exc)
+                            logger.info(
+                                "Auto checking spam: account %s is disconnected (%s); "
+                                "will re-check in 12h",
+                                phone,
+                                disc_exc,
+                            )
                         await db.commit()
 
                         # Broadcast WebSocket event so dashboard / accounts page updates in real-time
