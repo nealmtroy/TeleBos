@@ -18,6 +18,10 @@ from app.schemas.order import (
     MassOrderCreate,
     MassOrderItem as MassOrderItemSchema,
 )
+# Imported rather than redeclared: the allowlist lives in app/smm_service_ids.py
+# so this layer and app/services/order_service.py can never disagree about which
+# services are sellable.
+from app.smm_service_ids import ALLOWED_SMM_SERVICE_IDS  # noqa: F401
 from app.services import order_service, smm_service
 from app.utils.rate_limiter import rate_limiter
 from app.utils.sanitize import sanitize_exception
@@ -28,22 +32,6 @@ from sqlalchemy import select, func
 from app.services import admin_smm_service
 
 logger = logging.getLogger(__name__)
-
-ALLOWED_SMM_SERVICE_IDS = {
-    # Telegram Members/Subscribers
-    34794, 55678, 34795, 34519, 65572, 65497, 50131, 67394, 57127, 34134,
-    67393, 33857, 34048, 34291, 34329, 34213, 34214, 34327, 34328, 55679,
-    34049, 34050, 55680, 33689, 34216, 67392, 36222, 67391, 24568, 24569,
-    24570,
-    # Telegram Auto Reactions
-    48899, 48900, 48901, 48903, 48907,
-    # Telegram Reactions
-    36431, 36432, 36433, 36439, 36441, 36442, 36445, 36447, 36453, 36459,
-    47285, 47287, 47288, 47291, 47292, 47295, 47300, 47302, 47319, 47320,
-    47327, 47328, 47329, 47331, 32321, 35034,
-    # Telegram Post Views
-    7836, 7837, 7838, 7839, 7840, 7841, 7842
-}
 
 router = APIRouter(tags=["orders"])
 
