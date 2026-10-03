@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[a23e1aa6](https://github.com/nealmtroy/TeleBos/commit/a23e1aa6)**: feat(smm): add auto post views and extended post views to the allowlist
 - **[6283df05](https://github.com/nealmtroy/TeleBos/commit/6283df05)**: feat(pricing): add the public /pricing page
 - **[8dda5e7e](https://github.com/nealmtroy/TeleBos/commit/8dda5e7e)**: fix(i18n): negotiate locale on the server so crawlers get the right language
 - **[1cb67271](https://github.com/nealmtroy/TeleBos/commit/1cb67271)**: feat(landing): rewrite the features section as sales copy, not documentation
