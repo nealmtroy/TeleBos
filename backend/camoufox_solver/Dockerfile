@@ -30,7 +30,7 @@ ENV MOZ_DISABLE_CONTENT_SANDBOX=1 \
 # Bakes the browser (~1.5 GB) into the image so start-up is just a launch.
 RUN camoufox fetch
 
-COPY main.py .
+COPY main.py url_security.py ./
 
 EXPOSE 8000
 

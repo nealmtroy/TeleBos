@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[2e444e75](https://github.com/nealmtroy/TeleBos/commit/2e444e75)**: fix(security): patch SSRF in captcha solver, enforce SMM catalog price bounds, and harden business logic
 - **[81e2abf6](https://github.com/nealmtroy/TeleBos/commit/81e2abf6)**: fix(security): resolve path traversal vulnerabilities and enforce strict path containment
 - **[6ad58cfd](https://github.com/nealmtroy/TeleBos/commit/6ad58cfd)**: fix(spam-check): stop hourly retry loop on disconnected accounts
 - **[ca55a573](https://github.com/nealmtroy/TeleBos/commit/ca55a573)**: feat(landing): revamp landing page copy to customer-centric selling points and compact layout
