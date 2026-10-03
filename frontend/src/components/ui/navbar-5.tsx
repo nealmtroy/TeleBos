@@ -72,13 +72,16 @@ export const Navbar5 = () => {
           </SheetTrigger>
           <SheetContent
                       side="right"
-                      // The header already renders its own close button, so the primitive's
-                      // own absolutely-positioned one is hidden rather than left to
-                      // overlap it. Slightly narrower than the primitive default so the
-                      // page stays visible behind the panel on a phone.
-                      className="public-theme w-[86%] max-w-sm border-[var(--public-border)] bg-[var(--public-canvas)] px-5 text-[var(--public-text)] shadow-[0_0_80px_rgba(45,143,255,0.12)] sm:w-3/4 [&>button]:hidden"
+                      className="public-theme w-[86%] max-w-sm border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] shadow-[0_0_80px_rgba(45,143,255,0.12)] sm:w-3/4 [&>button]:hidden"
                     >
-                      <SheetHeader className="flex flex-row items-center justify-between border-b border-[var(--public-border)] p-0 pb-5">
+                      {/* The close button has to land exactly where the hamburger was,
+                          otherwise the control appears to jump the moment the sheet opens.
+                          The site header is h-16 with px-4 and centres its 32px control,
+                          so this row repeats that geometry verbatim: same height, same
+                          horizontal padding, same centre alignment. Padding moved off the
+                          panel and onto the content below, because a sheet-wide px-5
+                          would have pushed the button 4px further from the edge. */}
+                      <SheetHeader className="flex h-16 items-center justify-between border-b border-[var(--public-border)] px-4 pb-0">
                         <SheetTitle render={<Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home" />}>
                           <BrandLogo size="md" />
                         </SheetTitle>
@@ -87,7 +90,10 @@ export const Navbar5 = () => {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="border-[var(--public-border)] bg-[var(--public-canvas-warm)] text-[var(--public-text)] hover:border-[var(--public-accent)] hover:bg-[var(--public-accent)] hover:text-white"
+                              // Styled to match the hamburger trigger exactly. The two sit
+                              // in the same slot, so a filled close button next to an
+                              // outlined hamburger read as a different control.
+                              className="border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] hover:border-[var(--public-accent-strong)] hover:bg-[var(--public-canvas-warm)]"
                               aria-label="Close navigation"
                             />
                           }
@@ -98,7 +104,7 @@ export const Navbar5 = () => {
                       {/* Links fade up in sequence rather than all landing at once, which
                           is what made the panel feel abrupt. Delays are short so the menu
                           still feels instant to tap. */}
-                      <nav className="mt-8 flex flex-col" aria-label="Mobile navigation">
+                      <nav className="mt-8 flex flex-col px-5" aria-label="Mobile navigation">
                         {links.map(([label, href], index) => (
                           <Link
                             key={href}
@@ -111,7 +117,7 @@ export const Navbar5 = () => {
                           </Link>
                         ))}
                       </nav>
-                      <div className="mt-8 flex flex-col gap-3 public-nav-in" style={{ animationDelay: `${links.length * 45}ms`, animationFillMode: "both" }}>
+                      <div className="mt-8 flex flex-col gap-3 px-5 pb-2 public-nav-in" style={{ animationDelay: `${links.length * 45}ms`, animationFillMode: "both" }}>
                         <Link href="/login" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full")}>
                           {_("landing.signIn")}
                         </Link>
