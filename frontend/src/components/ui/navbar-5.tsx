@@ -75,13 +75,16 @@ export const Navbar5 = () => {
                       className="public-theme w-[86%] max-w-sm border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-text)] shadow-[0_0_80px_rgba(45,143,255,0.12)] sm:w-3/4 [&>button]:hidden"
                     >
                       {/* The close button has to land exactly where the hamburger was,
-                          otherwise the control appears to jump the moment the sheet opens.
-                          The site header is h-16 with px-4 and centres its 32px control,
-                          so this row repeats that geometry verbatim: same height, same
-                          horizontal padding, same centre alignment. Padding moved off the
-                          panel and onto the content below, because a sheet-wide px-5
-                          would have pushed the button 4px further from the edge. */}
-                      <SheetHeader className="flex h-16 items-center justify-between border-b border-[var(--public-border)] px-4 pb-0">
+                                      otherwise the control appears to jump the moment the sheet opens.
+                                      The site header is h-16 with px-4 and centres its 32px control,
+                                      so this row repeats that geometry verbatim.
+
+                                      flex-row is explicit because SheetHeader defaults to flex-col;
+                                      without it the two children stack and the row height collapses
+                                      in a way that throws the button down the panel. Padding moved off
+                                      the panel and onto the content below, because a sheet-wide px-5
+                                      would have pushed the button 4px further from the edge. */}
+                                  <SheetHeader className="flex h-16 flex-row items-center justify-between border-b border-[var(--public-border)] px-4 pb-0">
                         <SheetTitle render={<Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home" />}>
                           <BrandLogo size="md" />
                         </SheetTitle>

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[462ef27a](https://github.com/nealmtroy/TeleBos/commit/462ef27a)**: fix(nav): land the sheet close button exactly where the hamburger was
 - **[81f7caff](https://github.com/nealmtroy/TeleBos/commit/81f7caff)**: fix(landing): resolve Impeccable findings for nested cards, contrast, and font sizing
 - **[2172b257](https://github.com/nealmtroy/TeleBos/commit/2172b257)**: fix(hero): stop the titanium rail showing as a grey bar under the screen
 - **[ce9b44d6](https://github.com/nealmtroy/TeleBos/commit/ce9b44d6)**: fix(landing): resolve Impeccable audit findings (contrast, typography scales, kickers, shadows, and nested cards)
