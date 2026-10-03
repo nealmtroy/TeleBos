@@ -18,6 +18,22 @@ logger = logging.getLogger(__name__)
 
 SETTING_GLOBAL_MARKUP = "global_markup_percent"
 
+ALLOWED_SMM_SERVICE_IDS: set[int] = {
+    # Telegram Members/Subscribers
+    34794, 55678, 34795, 34519, 65572, 65497, 50131, 67394, 57127, 34134,
+    67393, 33857, 34048, 34291, 34329, 34213, 34214, 34327, 34328, 55679,
+    34049, 34050, 55680, 33689, 34216, 67392, 36222, 67391, 24568, 24569,
+    24570,
+    # Telegram Auto Reactions
+    48899, 48900, 48901, 48903, 48907,
+    # Telegram Reactions
+    36431, 36432, 36433, 36439, 36441, 36442, 36445, 36447, 36453, 36459,
+    47285, 47287, 47288, 47291, 47292, 47295, 47300, 47302, 47319, 47320,
+    47327, 47328, 47329, 47331, 32321, 35034,
+    # Telegram Post Views
+    7836, 7837, 7838, 7839, 7840, 7841, 7842,
+}
+
 
 def _parse_int_or_none(value: object, default: int | None = None) -> int | None:
     """Parse an SMM API value to int or return default, allowing None."""
@@ -53,25 +69,14 @@ async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, 
     Raises:
         ValueError: If service not found or inactive.
     """
+    if service_id not in ALLOWED_SMM_SERVICE_IDS:
+        raise ValueError(f"Service with ID {service_id} is not supported")
+
     svc = await db.get(SmmService, service_id)
     if not svc:
-        # Fallback: try fetching from SMM API directly
-        from app.services.smm_service import get_services
-        all_services = await get_services()
-        service_info = next((s for s in all_services if s["id"] == service_id), None)
-        if not service_info:
-            raise ValueError(f"Service with ID {service_id} not found")
-        return (
-            int(service_info["price"]),
-            service_info["name"],
-            service_info.get("category", "Telegram"),
-            int(service_info.get("min", 1)),
-            int(service_info.get("max", 999999)),
-            service_info.get("note"),
-            service_info.get("speed"),
-        )
+        raise ValueError(f"Service with ID {service_id} not found in catalog")
 
-    if not svc.is_active:
+    if not svc.is_active or not svc.is_visible:
         raise ValueError(f"Service '{svc.service_name}' is currently unavailable")
 
     # Get global markup
@@ -89,6 +94,9 @@ async def _get_effective_price(db: AsyncSession, service_id: int) -> tuple[int, 
             effective_price = max(1, (svc.original_price * (100 + markup)) // 100)
         else:
             effective_price = svc.original_price
+
+    if effective_price <= 0:
+        raise ValueError(f"Service '{svc.service_name}' has invalid price configuration")
 
     return (
         effective_price,
@@ -118,10 +126,16 @@ async def place_order(
     Raises:
         ValueError: If service not found/disabled, insufficient balance, or API error.
     """
+    # Validate service ID is allowed
+    if service_id not in ALLOWED_SMM_SERVICE_IDS:
+        raise ValueError(f"Service ID {service_id} is not available")
+
     # Get service info with effective price from local smm_services table
     price_per_unit, service_name, category, min_qty, max_qty, _, _ = await _get_effective_price(db, service_id)
 
     # Validate quantity
+    if quantity <= 0:
+        raise ValueError("Quantity must be greater than 0")
     if quantity < min_qty:
         raise ValueError(f"Minimum quantity is {min_qty}")
     if quantity > max_qty:
@@ -359,10 +373,16 @@ async def get_order_history(
 
 async def get_order_by_id(db: AsyncSession, order_id: str, user_id: str) -> Order | None:
     """Get a single order by ID, scoped to user."""
+    try:
+        ord_uuid = UUID(str(order_id))
+        usr_uuid = UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
     result = await db.execute(
         select(Order).where(
-            Order.id == UUID(order_id),
-            Order.user_id == UUID(user_id),
+            Order.id == ord_uuid,
+            Order.user_id == usr_uuid,
         )
     )
     return result.scalar_one_or_none()
@@ -430,7 +450,6 @@ def _calculate_price(price_per_unit: int, quantity: int) -> int:
 
     The SMM panel prices are typically per 1000 units.
     """
-    # If price is for 1k units
-    if price_per_unit > 0:
-        return max(1, (price_per_unit * quantity) // 1000)
-    return 0
+    if price_per_unit <= 0 or quantity <= 0:
+        raise ValueError("Price per unit and quantity must be positive")
+    return max(1, (price_per_unit * quantity) // 1000)

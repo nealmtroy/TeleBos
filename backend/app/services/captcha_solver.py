@@ -87,8 +87,15 @@ async def solve_captcha_via_camoufox(
         logger.debug("camoufox solver disabled by config")
         return None
 
+    from app.utils.url_security import validate_safe_captcha_url
+    try:
+        validated_url = validate_safe_captcha_url(captcha_url, check_dns=True)
+    except ValueError as val_err:
+        logger.warning("SSRF blocked in solve_captcha_via_camoufox: %s", val_err)
+        return None
+
     client = await _client()
-    payload: dict = {"url": captcha_url}
+    payload: dict = {"url": validated_url}
     if poll_seconds:
         payload["poll_seconds"] = poll_seconds
 

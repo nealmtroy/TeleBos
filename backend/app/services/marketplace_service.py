@@ -136,6 +136,10 @@ async def sell_accounts(
     for account in accounts:
         if account.for_sale:
             raise ValueError(f"Account is already listed for sale: {account.phone}")
+        if not getattr(account, "phone_verified", True):
+            raise ValueError(f"Account is not verified: {account.phone}")
+        if not getattr(account, "is_active", True):
+            raise ValueError(f"Inactive account cannot be listed for sale: {account.phone}")
 
     from app.services.marketplace_profile_service import prepare_account_for_sale
     import app.services.user_account_price_service as price_service

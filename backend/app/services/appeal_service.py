@@ -54,12 +54,20 @@ async def check_appeal_history(client: TelegramClient) -> bool:
 def _extract_turnstile_params_sync(captcha_url: str) -> dict[str, str | None] | None:
     """Synchronously extract Turnstile parameters from target captcha URL using cloudscraper."""
     import cloudscraper
-    logger.info("Extracting Turnstile parameters from %s", captcha_url)
+    from app.utils.url_security import validate_safe_captcha_url
+
+    try:
+        validated_url = validate_safe_captcha_url(captcha_url, check_dns=True)
+    except ValueError as val_err:
+        logger.warning("SSRF blocked in _extract_turnstile_params_sync: %s", val_err)
+        return None
+
+    logger.info("Extracting Turnstile parameters from %s", validated_url)
     try:
         scraper = cloudscraper.create_scraper(
             browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True, 'mobile': False}
         )
-        resp = scraper.get(captcha_url, timeout=30)
+        resp = scraper.get(validated_url, timeout=30)
         html = resp.text
 
         sitekey_match = re.search(r'data-sitekey=["\']([^"\']+)["\']', html)
@@ -99,9 +107,17 @@ def _extract_turnstile_params_sync(captcha_url: str) -> dict[str, str | None] | 
 async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> str | None:
     """Solve Turnstile captcha asynchronously via 2captcha without thread pool starvation (RES-04)."""
     import httpx
+    from app.utils.url_security import validate_safe_captcha_url
+
+    try:
+        validated_url = validate_safe_captcha_url(captcha_url, check_dns=True)
+    except ValueError as val_err:
+        logger.warning("SSRF blocked in solve_captcha_via_2captcha_async: %s", val_err)
+        return None
+
     try:
         loop = asyncio.get_running_loop()
-        params = await loop.run_in_executor(None, _extract_turnstile_params_sync, captcha_url)
+        params = await loop.run_in_executor(None, _extract_turnstile_params_sync, validated_url)
         if not params or not params.get("sitekey"):
             return None
 
@@ -163,12 +179,25 @@ async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> st
 def submit_turnstile_token_sync(captcha_url: str, token: str) -> bool:
     """Submit the Turnstile solution token to Telegram's checkcaptcha endpoint."""
     import cloudscraper
+    from app.utils.url_security import validate_safe_captcha_url
+
+    try:
+        validated_url = validate_safe_captcha_url(captcha_url, check_dns=True)
+    except ValueError as val_err:
+        logger.warning("SSRF blocked in submit_turnstile_token_sync: %s", val_err)
+        return False
+
     logger.info("Submitting Turnstile token to Telegram...")
     try:
-        parsed = urlparse(captcha_url)
+        parsed = urlparse(validated_url)
         params = parse_qs(parsed.query)
         scope = params.get('scope', [''])[0]
         actor = params.get('actor', [''])[0]
+
+        # Sanitize scope and actor to safe alphanumeric / underscore / hyphen tokens
+        if not re.match(r'^[a-zA-Z0-9_\-]+$', scope) or not re.match(r'^[a-zA-Z0-9_\-]+$', actor):
+            logger.warning("Invalid scope or actor format in captcha_url: scope=%r, actor=%r", scope, actor)
+            return False
 
         submit_url = "https://telegram.org/captcha/checkcaptcha"
         payload = {
@@ -380,10 +409,19 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
         response = await conv.get_response()
 
         # Step 5: Check for Cloudflare Turnstile Captcha
-        captcha_match = re.search(r'(https://telegram\.org/captcha\S+)', response.text)
+        captcha_url = None
+        captcha_match = re.search(r'(https://telegram\.org/captcha[^\s<>"\'\)]+)', response.text)
         if captcha_match:
-            captcha_url = captcha_match.group(1).rstrip(').')
-            logger.info("Captcha Turnstile detected: %s", captcha_url)
+            candidate_url = captcha_match.group(1).rstrip(').,;')
+            from app.utils.url_security import validate_safe_captcha_url
+            try:
+                captcha_url = validate_safe_captcha_url(candidate_url, check_dns=True)
+                logger.info("Captcha Turnstile detected and validated: %s", captcha_url)
+            except ValueError as val_err:
+                logger.warning("SSRF blocked or invalid candidate captcha URL '%s': %s", candidate_url, val_err)
+                captcha_url = None
+
+        if captcha_url:
 
             settings = get_settings()
             loop = asyncio.get_running_loop()
@@ -562,14 +600,22 @@ async def resume_spam_appeal(client: TelegramClient, reason: str) -> dict:
             resp_text = msgs[0].text if msgs else ""
 
         # Check if captcha is still required (meaning Turnstile solve was not registered or failed)
-        captcha_match = re.search(r'(https://telegram\.org/captcha\S+)', resp_text)
+        captcha_match = re.search(r'(https://telegram\.org/captcha[^\s<>"\'\)]+)', resp_text)
         if captcha_match:
-            captcha_url = captcha_match.group(1).rstrip(').')
-            return {
-                "status": "captcha_required",
-                "message": "Cloudflare Turnstile Captcha verification still required. Please solve it first.",
-                "captcha_url": captcha_url,
-            }
+            candidate_url = captcha_match.group(1).rstrip(').,;')
+            from app.utils.url_security import validate_safe_captcha_url
+            try:
+                safe_url = validate_safe_captcha_url(candidate_url, check_dns=True)
+            except ValueError as val_err:
+                logger.warning("SSRF blocked or invalid candidate captcha URL '%s': %s", candidate_url, val_err)
+                safe_url = None
+
+            if safe_url:
+                return {
+                    "status": "captcha_required",
+                    "message": "Cloudflare Turnstile Captcha verification still required. Please solve it first.",
+                    "captcha_url": safe_url,
+                }
 
         # Otherwise, send reason
         await conv.send_message(reason)

@@ -22,18 +22,18 @@ class ServiceListResponse(BaseModel):
 
 class OrderCreate(BaseModel):
     service_id: int
-    data_target: str = Field(..., min_length=1, description="URL or username target")
-    quantity: int = Field(default=1, ge=1)
-    comments: str | None = Field(None, description="Multiline comments for comment services")
-    usernames: str | None = Field(None, description="Multiline usernames for mention services")
+    data_target: str = Field(..., min_length=1, max_length=500, description="URL or username target")
+    quantity: int = Field(default=1, ge=1, le=1000000)
+    comments: str | None = Field(None, max_length=10000, description="Multiline comments for comment services")
+    usernames: str | None = Field(None, max_length=10000, description="Multiline usernames for mention services")
 
 
 class MassOrderItem(BaseModel):
     service_id: int
-    data_target: str = Field(..., min_length=1)
-    quantity: int = Field(default=1, ge=1)
-    comments: str | None = None
-    usernames: str | None = None
+    data_target: str = Field(..., min_length=1, max_length=500)
+    quantity: int = Field(default=1, ge=1, le=1000000)
+    comments: str | None = Field(None, max_length=10000)
+    usernames: str | None = Field(None, max_length=10000)
 
 
 class MassOrderCreate(BaseModel):

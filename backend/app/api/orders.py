@@ -2,6 +2,7 @@
 
 import logging
 
+from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -163,6 +164,13 @@ async def place_single_order(
             detail="Too many order requests for this user. Please wait.",
         )
 
+    # Enforce allowed Telegram service IDs
+    if payload.service_id not in ALLOWED_SMM_SERVICE_IDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Service ID {payload.service_id} is not supported or unavailable.",
+        )
+
     # Idempotency check
     from app.utils.redis import redis_client
     cache_key = None
@@ -212,6 +220,14 @@ async def place_mass_order(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many order requests for this user. Please wait.",
         )
+
+    # Enforce allowed Telegram service IDs for all items in mass order
+    for item in payload.orders:
+        if item.service_id not in ALLOWED_SMM_SERVICE_IDS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Service ID {item.service_id} is not supported or unavailable.",
+            )
 
     # Idempotency check for mass orders
     import json
@@ -273,6 +289,11 @@ async def get_order_detail(
     user: User = Depends(get_current_user),
 ):
     """Get a single order detail."""
+    try:
+        UUID(order_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Order not found")
+
     order = await order_service.get_order_by_id(db, order_id, str(user.id))
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -286,6 +307,11 @@ async def refresh_order_status(
     user: User = Depends(get_current_user),
 ):
     """Refresh order status from SMM panel."""
+    try:
+        UUID(order_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Order not found")
+
     order = await order_service.get_order_by_id(db, order_id, str(user.id))
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

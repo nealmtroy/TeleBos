@@ -1,6 +1,4 @@
-"""Contact schemas — list, detail, request/response models."""
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ContactItem(BaseModel):
@@ -40,13 +38,13 @@ class ContactDetail(BaseModel):
 
 
 class ContactImportItem(BaseModel):
-    phone: str
-    first_name: str | None = None
-    last_name: str | None = None
+    phone: str = Field(..., min_length=3, max_length=50)
+    first_name: str | None = Field(None, max_length=150)
+    last_name: str | None = Field(None, max_length=150)
 
 
 class ContactImportRequest(BaseModel):
-    contacts: list[ContactImportItem]
+    contacts: list[ContactImportItem] = Field(..., min_length=1, max_length=500)
 
 
 class ContactImportResponse(BaseModel):

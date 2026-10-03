@@ -22,7 +22,9 @@ from contextlib import asynccontextmanager
 import httpx
 from camoufox.async_api import AsyncCamoufox
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator
+
+from url_security import is_prohibited_target, validate_safe_captcha_url
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,6 +61,13 @@ class SolveRequest(BaseModel):
         le=90,
         description="Override the default token wait. Usually leave unset.",
     )
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: HttpUrl) -> HttpUrl:
+        # Strict validation: HTTPS only, telegram.org/t.me host, /captcha path, no private IPs
+        validate_safe_captcha_url(str(v), check_dns=True)
+        return v
 
 
 class SolveResponse(BaseModel):
@@ -106,6 +115,8 @@ async def selftest() -> dict:
     "Telegram handed us an expired URL", which look identical from the outside.
     """
     url = os.getenv("SOLVER_SELFTEST_URL", "https://telegram.org")
+    if is_prohibited_target(url):
+        raise HTTPException(status_code=400, detail="Prohibited selftest URL")
     async with _SOLVE_LOCK:
         page = await app.state.browser.new_page()
         try:
@@ -129,6 +140,12 @@ async def selftest() -> dict:
 @app.post("/solve", response_model=SolveResponse)
 async def solve(req: SolveRequest) -> SolveResponse:
     target = str(req.url)
+    # Re-validate target URL
+    try:
+        validate_safe_captcha_url(target, check_dns=True)
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+
     poll_seconds = req.poll_seconds or TOKEN_POLL_SECONDS
     started = asyncio.get_running_loop().time()
 
@@ -139,6 +156,17 @@ async def solve(req: SolveRequest) -> SolveResponse:
         # a single address harder than it rate-limits a single user.
         async with _SOLVE_LOCK:
             page = await app.state.browser.new_page()
+
+            # Intercept and block any request attempting to access internal/private resources
+            async def intercept_route(route):
+                req_url = route.request.url
+                if is_prohibited_target(req_url):
+                    logger.warning("SSRF blocked by browser route interception: %s", req_url)
+                    await route.abort("blockedbyclient")
+                else:
+                    await route.continue_()
+
+            await page.route("**/*", intercept_route)
 
             cloudflare_calls = 0
 
