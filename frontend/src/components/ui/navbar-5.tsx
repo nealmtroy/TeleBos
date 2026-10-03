@@ -84,7 +84,7 @@ export const Navbar5 = () => {
                                       in a way that throws the button down the panel. Padding moved off
                                       the panel and onto the content below, because a sheet-wide px-5
                                       would have pushed the button 4px further from the edge. */}
-                                  <SheetHeader className="flex h-16 flex-row items-center justify-between border-b border-[var(--public-border)] px-4 pb-0">
+                                  <SheetHeader className="flex h-16 flex-row items-center justify-between border-b border-[var(--public-border)] p-0 px-4">
                         <SheetTitle render={<Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home" />}>
                           <BrandLogo size="md" />
                         </SheetTitle>
