@@ -35,26 +35,7 @@ const STORAGE_KEY_ACCOUNTS = "telebos_user_bank_accounts";
 const STORAGE_KEY_DEPOSIT_SETTINGS = "telebos_deposit_settings";
 const STORAGE_KEY_TRANSACTIONS = "telebos_wallet_transactions";
 
-const DEFAULT_ACCOUNTS: UserBankAccount[] = [
-  {
-    id: "acc_mandiri_1",
-    type: "bank",
-    provider: "Mandiri",
-    accountNumber: "1400 0192 8331 1",
-    accountHolder: "Ahmad Yudha",
-    isDefault: true,
-    createdAt: "2026-09-01T10:00:00Z",
-  },
-  {
-    id: "acc_dana_2",
-    type: "ewallet",
-    provider: "DANA",
-    accountNumber: "0812 3456 7890",
-    accountHolder: "Ahmad Yudha",
-    isDefault: false,
-    createdAt: "2026-09-10T14:30:00Z",
-  },
-];
+const DEFAULT_ACCOUNTS: UserBankAccount[] = [];
 
 const DEFAULT_DEPOSIT_SETTINGS: DepositSettings = {
   merchantName: "TELEBOS",
@@ -157,7 +138,18 @@ export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
       const storedAcc = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
       if (storedAcc) {
         const parsed = JSON.parse(storedAcc);
-        if (Array.isArray(parsed) && parsed.length > 0) accounts = parsed;
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(
+            (a) =>
+              a.id !== "acc_mandiri_1" &&
+              a.id !== "acc_dana_2" &&
+              a.id !== "acc_bca_1" &&
+              !a.accountHolder?.toLowerCase().includes("ahmad") &&
+              !a.accountHolder?.toLowerCase().includes("yudha")
+          );
+          accounts = cleaned;
+          localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(cleaned));
+        }
       }
 
       const storedDep = localStorage.getItem(STORAGE_KEY_DEPOSIT_SETTINGS);
