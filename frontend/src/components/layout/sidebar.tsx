@@ -93,9 +93,11 @@ const servicesSubItems: SubItem[] = [
 const administrationsSubItems: SubItem[] = [
   { href: "/admin", exact: true, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
+  { href: "/admin/transactions", exact: false, labelKey: "admin.transactions", icon: Wallet },
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
   { href: "/admin/auto-replies", exact: false, labelKey: "admin.manageAutoReplies", icon: Bot },
   { href: "/admin/account-prices", exact: false, labelKey: "admin.accountPrices", icon: Tag },
+  { href: "/admin/settings", exact: false, labelKey: "admin.systemConfig", icon: Settings },
 ];
 
 const adminRedeemSubItems: SubItem[] = [
@@ -106,7 +108,6 @@ const adminRedeemSubItems: SubItem[] = [
 const adminSmmSubItems: SubItem[] = [
   { href: "/admin/smm/services", exact: false, labelKey: "adminSmm.services", icon: Package },
   { href: "/admin/smm/orders", exact: false, labelKey: "adminSmm.allOrders", icon: ShoppingCart },
-  { href: "/admin/smm/settings", exact: true, labelKey: "adminSmm.settings", icon: Settings },
 ];
 
 // role hierarchy: basic < pro < premium < owner

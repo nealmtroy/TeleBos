@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
+import { useBankAccountStore } from "@/store/bank-account-store";
 import { useRedeemCode } from "@/hooks/use-subscriptions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +44,20 @@ export default function RedeemPage() {
     try {
       const res = await redeemMutation.mutateAsync(code.trim());
       setResult({ type: "success", message: res.message, data: res });
+
+      // Record in ledger so it shows up in Order & Balance History
+      try {
+        useBankAccountStore.getState().addTransaction({
+          type: "redeem",
+          amount: res.amount || 0,
+          method: "Voucher / Redeem",
+          note: `Kupon: ${code.trim().toUpperCase()} (${res.plan ? `Paket ${res.plan.toUpperCase()}` : `${res.amount || 0} Saldo`})`,
+          status: "approved",
+          userId: user?.id,
+          userEmail: user?.email,
+        });
+      } catch {}
+
       setCode("");
       // Refresh user data to reflect new balance/role
       await fetchMe();

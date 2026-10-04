@@ -31,6 +31,9 @@ import {
   Plus,
   Layers,
   Info,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -54,14 +57,15 @@ import {
   Chip,
   Eyebrow,
 } from "@/components/layout/trade-surface";
+import { useBankAccountStore } from "@/store/bank-account-store";
 
-type HistoryTab = "all" | "accounts" | "smm";
+type HistoryTab = "all" | "smm" | "accounts" | "deposits" | "withdrawals" | "balance";
 type StatusType = "Selesai" | "Proses" | "Menunggu" | "Dibatalkan";
 
 interface UnifiedOrder {
   id: string;
   orderIdDisplay: string;
-  type: "telegram_account" | "smm";
+  type: "telegram_account" | "smm" | "deposit" | "withdraw" | "redeem" | "admin_adjustment";
   typeName: string;
   serviceName: string;
   serviceSublabel: string;
@@ -80,6 +84,8 @@ interface UnifiedOrder {
   remains?: number | null;
   startCount?: number | null;
   targetUrl?: string;
+  paymentMethod?: string;
+  adminNote?: string;
   originalItem: any;
 }
 
@@ -193,13 +199,21 @@ export default function OrderHistoryPage() {
     };
   }, [selectedDetail]);
 
+  // Wallet store for deposits, withdrawals, redeems, and admin adjustments
+  const walletTransactions = useBankAccountStore((s) => s.transactions);
+  const hydrateWallet = useBankAccountStore((s) => s.hydrate);
+
+  useEffect(() => {
+    hydrateWallet();
+  }, [hydrateWallet]);
+
   // Fetch data from real backend endpoints
   const { data: orders, isLoading: isSmmLoading, error: smmError } = useOrderHistory();
   const { data: logs, isLoading: isLogsLoading, error: logsError } = useMarketplaceHistory();
   const refreshOrder = useRefreshOrderStatus();
   const refreshAll = useRefreshAllOrders();
 
-  // Map and unify SMM orders and account audit transactions
+  // Map and unify SMM orders, account audit transactions, and wallet transactions
   const unifiedItems = useMemo(() => {
     const items: UnifiedOrder[] = [];
 
@@ -281,13 +295,6 @@ export default function OrderHistoryPage() {
 
     // Map Account Transactions
     if (logs) {
-      // A single account produces several audit rows over its life: listed, then
-      // sold (or cancelled). Each row used to be rendered on its own, so a
-      // listing that had since been sold stayed on screen as "Proses" forever —
-      // the log is append-only and nothing supersedes it.
-      //
-      // Collapse to the newest row per account so the status shown is the one
-      // that actually reflects where the account ended up.
       const latestByAccount = new Map<string, (typeof logs)[number]>();
       for (const log of logs) {
         if (!log.account_id) continue;
@@ -348,14 +355,163 @@ export default function OrderHistoryPage() {
       }
     }
 
+    // Map Wallet Transactions (Deposit, Withdraw, Redeem, Admin Adjustment)
+    if (walletTransactions && walletTransactions.length > 0) {
+      for (const tx of walletTransactions) {
+        if (tx.userId && user?.id && tx.userId !== user.id) {
+          continue;
+        }
+
+        const displayId = `#TRX-${tx.id.replace("wrn_", "").toUpperCase()}`;
+        const txDate = tx.createdAt ? new Date(tx.createdAt) : new Date();
+
+        if (tx.type === "topup") {
+          const isDone = tx.status === "approved";
+          const isPending = tx.status === "pending";
+          const statusLabel: StatusType = isDone
+            ? "Selesai"
+            : isPending
+            ? "Menunggu"
+            : "Dibatalkan";
+
+          items.push({
+            id: tx.id,
+            orderIdDisplay: displayId,
+            type: "deposit",
+            typeName: locale === "id" ? "Deposit Saldo" : "Deposit",
+            serviceName:
+              locale === "id"
+                ? `Isi Saldo via ${tx.method || "QRIS"}`
+                : `Top Up via ${tx.method || "QRIS"}`,
+            serviceSublabel:
+              tx.note || (locale === "id" ? "Deposit Saldo Dompet" : "Wallet Balance Deposit"),
+            detail: tx.method ? `${tx.method}${tx.note ? ` • ${tx.note}` : ""}` : "QRIS",
+            quantityDisplay: "1 Trx",
+            quantityRaw: 1,
+            priceDisplay: `+Rp ${tx.amount.toLocaleString()}`,
+            priceRaw: tx.amount,
+            status: statusLabel,
+            statusRaw: tx.status,
+            progressPercent: isDone ? 100 : isPending ? 50 : 0,
+            dateRaw: txDate,
+            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
+            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            paymentMethod: tx.method,
+            adminNote: tx.adminNote,
+            originalItem: tx,
+          });
+        } else if (tx.type === "withdraw") {
+          const isDone = tx.status === "approved";
+          const isPending = tx.status === "pending";
+          const statusLabel: StatusType = isDone
+            ? "Selesai"
+            : isPending
+            ? "Menunggu"
+            : "Dibatalkan";
+
+          items.push({
+            id: tx.id,
+            orderIdDisplay: displayId,
+            type: "withdraw",
+            typeName: locale === "id" ? "Penarikan Saldo" : "Withdrawal",
+            serviceName:
+              locale === "id"
+                ? `Penarikan (${tx.method || "Bank/E-Wallet"})`
+                : `Withdrawal (${tx.method || "Bank/E-Wallet"})`,
+            serviceSublabel:
+              tx.note || (locale === "id" ? "Rekening Penarikan" : "Payout Destination"),
+            detail: tx.note || tx.method || "-",
+            quantityDisplay: "1 Trx",
+            quantityRaw: 1,
+            priceDisplay: `-Rp ${tx.amount.toLocaleString()}`,
+            priceRaw: tx.amount,
+            status: statusLabel,
+            statusRaw: tx.status,
+            progressPercent: isDone ? 100 : isPending ? 50 : 0,
+            dateRaw: txDate,
+            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
+            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            paymentMethod: tx.method,
+            adminNote: tx.adminNote,
+            originalItem: tx,
+          });
+        } else if (tx.type === "redeem") {
+          items.push({
+            id: tx.id,
+            orderIdDisplay: displayId,
+            type: "redeem",
+            typeName: locale === "id" ? "Redeem Voucher" : "Voucher Redeem",
+            serviceName: locale === "id" ? "Klaim Voucher Promo" : "Promo Voucher Claim",
+            serviceSublabel: tx.note
+              ? `Kode: ${tx.note}`
+              : locale === "id"
+              ? "Kupon Hadiah TeleBos"
+              : "TeleBos Gift Voucher",
+            detail: tx.note || "Voucher Redeem",
+            quantityDisplay: "1 Kupon",
+            quantityRaw: 1,
+            priceDisplay: `+Rp ${tx.amount.toLocaleString()}`,
+            priceRaw: tx.amount,
+            status: "Selesai",
+            statusRaw: "approved",
+            progressPercent: 100,
+            dateRaw: txDate,
+            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
+            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            paymentMethod: tx.method || "Voucher",
+            adminNote: tx.adminNote,
+            originalItem: tx,
+          });
+        } else if (tx.type === "admin_adjustment") {
+          const isCredit = tx.amount >= 0;
+          items.push({
+            id: tx.id,
+            orderIdDisplay: displayId,
+            type: "admin_adjustment",
+            typeName: locale === "id" ? "Penyesuaian Saldo" : "Balance Adjustment",
+            serviceName:
+              locale === "id"
+                ? isCredit
+                  ? "Penambahan Saldo oleh Admin"
+                  : "Pengurangan Saldo oleh Admin"
+                : isCredit
+                ? "Balance Credit by Admin"
+                : "Balance Debit by Admin",
+            serviceSublabel:
+              tx.note ||
+              (locale === "id" ? "Penyesuaian oleh Administrator" : "Administrator Adjustment"),
+            detail: tx.adminNote || tx.note || "Admin Adjustment",
+            quantityDisplay: "1 Trx",
+            quantityRaw: 1,
+            priceDisplay: `${isCredit ? "+" : "-"}Rp ${Math.abs(tx.amount).toLocaleString()}`,
+            priceRaw: tx.amount,
+            status: "Selesai",
+            statusRaw: "approved",
+            progressPercent: 100,
+            dateRaw: txDate,
+            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
+            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            paymentMethod: "Admin System",
+            adminNote: tx.adminNote,
+            originalItem: tx,
+          });
+        }
+      }
+    }
+
     return items;
-  }, [orders, logs, locale]);
+  }, [orders, logs, walletTransactions, user?.id, locale]);
 
   // Executive metrics calculations
   const metrics = useMemo(() => {
     const totalOrders = unifiedItems.length;
     const totalAccounts = unifiedItems.filter((i) => i.type === "telegram_account").length;
     const totalSmm = unifiedItems.filter((i) => i.type === "smm").length;
+    const totalDeposits = unifiedItems.filter((i) => i.type === "deposit").length;
+    const totalWithdrawals = unifiedItems.filter((i) => i.type === "withdraw").length;
+    const totalBalanceAdj = unifiedItems.filter(
+      (i) => i.type === "redeem" || i.type === "admin_adjustment"
+    ).length;
     const totalSpend = unifiedItems.reduce((acc, i) => acc + (i.priceRaw || 0), 0);
     const inProgressCount = unifiedItems.filter(
       (i) => i.status === "Proses" || i.status === "Menunggu"
@@ -368,6 +524,9 @@ export default function OrderHistoryPage() {
       totalOrders,
       totalAccounts,
       totalSmm,
+      totalDeposits,
+      totalWithdrawals,
+      totalBalanceAdj,
       totalSpend,
       inProgressCount,
       completedCount,
@@ -382,6 +541,17 @@ export default function OrderHistoryPage() {
     }
     if (activeTab === "accounts") {
       return unifiedItems.filter((item) => item.type === "telegram_account");
+    }
+    if (activeTab === "deposits") {
+      return unifiedItems.filter((item) => item.type === "deposit");
+    }
+    if (activeTab === "withdrawals") {
+      return unifiedItems.filter((item) => item.type === "withdraw");
+    }
+    if (activeTab === "balance") {
+      return unifiedItems.filter(
+        (item) => item.type === "redeem" || item.type === "admin_adjustment"
+      );
     }
     return unifiedItems;
   }, [unifiedItems, activeTab]);
@@ -671,78 +841,152 @@ export default function OrderHistoryPage() {
 
       {/* ── 3. Segmented Navigation Ribbon (Machined Hardware Tabs) ─ */}
       <div className="flex items-center justify-between gap-3 border-b border-border/80 pb-3">
-        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-950/80 p-1 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => handleTabChange("all")}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-              activeTab === "all"
-                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-            )}
-          >
-            <ClipboardList className={cn("h-3.5 w-3.5", activeTab === "all" ? "text-primary-foreground" : "text-slate-400")} />
-            <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
-            <span
+        <div className="overflow-x-auto no-scrollbar py-0.5 max-w-full">
+          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-950/80 p-1 border border-slate-200/90 dark:border-slate-800 shadow-2xs shrink-0 whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => handleTabChange("all")}
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
                 activeTab === "all"
-                  ? "bg-white/20 text-white font-bold border-white/20"
-                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
               )}
             >
-              {metrics.totalOrders}
-            </span>
-          </button>
+              <ClipboardList className={cn("h-3.5 w-3.5", activeTab === "all" ? "text-primary-foreground" : "text-slate-400")} />
+              <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                  activeTab === "all"
+                    ? "bg-white/20 text-white font-bold border-white/20"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                )}
+              >
+                {metrics.totalOrders}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleTabChange("accounts")}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-              activeTab === "accounts"
-                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-            )}
-          >
-            <User className={cn("h-3.5 w-3.5", activeTab === "accounts" ? "text-primary-foreground" : "text-slate-400")} />
-            <span>{locale === "id" ? "Akun Telegram" : "Telegram Accounts"}</span>
-            <span
+            <button
+              type="button"
+              onClick={() => handleTabChange("smm")}
               className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                activeTab === "accounts"
-                  ? "bg-white/20 text-white font-bold border-white/20"
-                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-              )}
-            >
-              {metrics.totalAccounts}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabChange("smm")}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-              activeTab === "smm"
-                ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-            )}
-          >
-            <ShoppingCart className={cn("h-3.5 w-3.5", activeTab === "smm" ? "text-primary-foreground" : "text-slate-400")} />
-            <span>{locale === "id" ? "Layanan SMM" : "SMM Services"}</span>
-            <span
-              className={cn(
-                "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
                 activeTab === "smm"
-                  ? "bg-white/20 text-white font-bold border-white/20"
-                  : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
               )}
             >
-              {metrics.totalSmm}
-            </span>
-          </button>
+              <ShoppingCart className={cn("h-3.5 w-3.5", activeTab === "smm" ? "text-primary-foreground" : "text-slate-400")} />
+              <span>{locale === "id" ? "Layanan SMM" : "SMM"}</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                  activeTab === "smm"
+                    ? "bg-white/20 text-white font-bold border-white/20"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                )}
+              >
+                {metrics.totalSmm}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("accounts")}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
+                activeTab === "accounts"
+                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+              )}
+            >
+              <User className={cn("h-3.5 w-3.5", activeTab === "accounts" ? "text-primary-foreground" : "text-slate-400")} />
+              <span>{locale === "id" ? "Akun TG" : "TG Accounts"}</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                  activeTab === "accounts"
+                    ? "bg-white/20 text-white font-bold border-white/20"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                )}
+              >
+                {metrics.totalAccounts}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("deposits")}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
+                activeTab === "deposits"
+                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+              )}
+            >
+              <ArrowDownLeft className={cn("h-3.5 w-3.5", activeTab === "deposits" ? "text-primary-foreground" : "text-slate-400")} />
+              <span>Deposit</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                  activeTab === "deposits"
+                    ? "bg-white/20 text-white font-bold border-white/20"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                )}
+              >
+                {metrics.totalDeposits}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("withdrawals")}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
+                activeTab === "withdrawals"
+                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+              )}
+            >
+              <ArrowUpRight className={cn("h-3.5 w-3.5", activeTab === "withdrawals" ? "text-primary-foreground" : "text-slate-400")} />
+              <span>{locale === "id" ? "Penarikan" : "Withdrawal"}</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                  activeTab === "withdrawals"
+                    ? "bg-white/20 text-white font-bold border-white/20"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                )}
+              >
+                {metrics.totalWithdrawals}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("balance")}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
+                activeTab === "balance"
+                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+              )}
+            >
+              <Gift className={cn("h-3.5 w-3.5", activeTab === "balance" ? "text-primary-foreground" : "text-slate-400")} />
+              <span>{locale === "id" ? "Voucher & Saldo" : "Voucher & Adjust"}</span>
+              <span
+                className={cn(
+                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
+                  activeTab === "balance"
+                    ? "bg-white/20 text-white font-bold border-white/20"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
+                )}
+              >
+                {metrics.totalBalanceAdj}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Reset Filter Button if active */}
@@ -1038,10 +1282,30 @@ export default function OrderHistoryPage() {
                             <User className="h-3 w-3" />
                             <span>{locale === "id" ? "Akun TG" : "TG Account"}</span>
                           </span>
-                        ) : (
+                        ) : item.type === "smm" ? (
                           <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
                             <ShoppingCart className="h-3 w-3" />
                             <span>SMM</span>
+                          </span>
+                        ) : item.type === "deposit" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                            <ArrowDownLeft className="h-3 w-3" />
+                            <span>Deposit</span>
+                          </span>
+                        ) : item.type === "withdraw" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                            <ArrowUpRight className="h-3 w-3" />
+                            <span>{locale === "id" ? "Penarikan" : "Withdraw"}</span>
+                          </span>
+                        ) : item.type === "redeem" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20">
+                            <Gift className="h-3 w-3" />
+                            <span>Redeem</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+                            <Sparkles className="h-3 w-3" />
+                            <span>{locale === "id" ? "Saldo" : "Adjust"}</span>
                           </span>
                         )}
                       </TableCell>
@@ -1097,7 +1361,28 @@ export default function OrderHistoryPage() {
 
                       {/* Nominal / Harga */}
                       <TableCell className="py-3.5 px-4 text-right whitespace-nowrap w-[120px]">
-                        <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
+                        {item.type === "deposit" || item.type === "redeem" ? (
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            +{item.priceDisplay.replace(/^\+/, "")}
+                          </span>
+                        ) : item.type === "withdraw" ? (
+                          <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                            -{item.priceDisplay.replace(/^-/, "")}
+                          </span>
+                        ) : item.type === "admin_adjustment" ? (
+                          <span
+                            className={cn(
+                              "font-bold tabular-nums",
+                              item.priceRaw >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            )}
+                          >
+                            {item.priceDisplay}
+                          </span>
+                        ) : (
+                          <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
+                        )}
                       </TableCell>
 
                       {/* Status */}
@@ -1220,10 +1505,30 @@ export default function OrderHistoryPage() {
                             <User className="h-2.5 w-2.5" />
                             <span>Akun</span>
                           </span>
-                        ) : (
+                        ) : item.type === "smm" ? (
                           <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
                             <ShoppingCart className="h-2.5 w-2.5" />
                             <span>SMM</span>
+                          </span>
+                        ) : item.type === "deposit" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                            <ArrowDownLeft className="h-2.5 w-2.5" />
+                            <span>Deposit</span>
+                          </span>
+                        ) : item.type === "withdraw" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                            <ArrowUpRight className="h-2.5 w-2.5" />
+                            <span>Tarik</span>
+                          </span>
+                        ) : item.type === "redeem" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20">
+                            <Gift className="h-2.5 w-2.5" />
+                            <span>Redeem</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            <span>Saldo</span>
                           </span>
                         )}
 
@@ -1271,7 +1576,28 @@ export default function OrderHistoryPage() {
                         <p className="text-[10px] uppercase font-semibold text-muted-foreground">
                           {locale === "id" ? "Total Biaya" : "Total Price"}
                         </p>
-                        <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
+                        {item.type === "deposit" || item.type === "redeem" ? (
+                          <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            +{item.priceDisplay.replace(/^\+/, "")}
+                          </span>
+                        ) : item.type === "withdraw" ? (
+                          <span className="font-bold text-xs text-rose-600 dark:text-rose-400 tabular-nums">
+                            -{item.priceDisplay.replace(/^-/, "")}
+                          </span>
+                        ) : item.type === "admin_adjustment" ? (
+                          <span
+                            className={cn(
+                              "font-bold text-xs tabular-nums",
+                              item.priceRaw >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            )}
+                          >
+                            {item.priceDisplay}
+                          </span>
+                        ) : (
+                          <PriceTag value={item.priceRaw} size="sm" className="font-bold" />
+                        )}
                       </div>
 
                       <div className="space-y-0.5">
@@ -1441,11 +1767,32 @@ export default function OrderHistoryPage() {
                         {selectedDetail.serviceSublabel}
                       </p>
                     </div>
-                    <PriceTag
-                      value={selectedDetail.priceRaw}
-                      size="lg"
-                      className="font-bold shrink-0"
-                    />
+                    {selectedDetail.type === "deposit" || selectedDetail.type === "redeem" ? (
+                      <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">
+                        +{selectedDetail.priceDisplay.replace(/^\+/, "")}
+                      </span>
+                    ) : selectedDetail.type === "withdraw" ? (
+                      <span className="font-bold text-lg text-rose-600 dark:text-rose-400 tabular-nums shrink-0">
+                        -{selectedDetail.priceDisplay.replace(/^-/, "")}
+                      </span>
+                    ) : selectedDetail.type === "admin_adjustment" ? (
+                      <span
+                        className={cn(
+                          "font-bold text-lg tabular-nums shrink-0",
+                          selectedDetail.priceRaw >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-rose-600 dark:text-rose-400"
+                        )}
+                      >
+                        {selectedDetail.priceDisplay}
+                      </span>
+                    ) : (
+                      <PriceTag
+                        value={selectedDetail.priceRaw}
+                        size="lg"
+                        className="font-bold shrink-0"
+                      />
+                    )}
                   </div>
 
                   {/* Progress Bar inside Hero */}
@@ -1536,6 +1883,28 @@ export default function OrderHistoryPage() {
                       {selectedDetail.quantityDisplay}
                     </span>
                   </div>
+
+                  {selectedDetail.paymentMethod && (
+                    <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                      <span className="font-semibold text-muted-foreground">
+                        {locale === "id" ? "Metode / Kanal" : "Method / Channel"}
+                      </span>
+                      <span className="font-medium text-foreground col-span-2">
+                        {selectedDetail.paymentMethod}
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedDetail.adminNote && (
+                    <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                      <span className="font-semibold text-muted-foreground">
+                        {locale === "id" ? "Catatan Admin" : "Admin Note"}
+                      </span>
+                      <span className="font-medium text-primary col-span-2">
+                        {selectedDetail.adminNote}
+                      </span>
+                    </div>
+                  )}
 
                   {selectedDetail.smmOrderId && (
                     <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">

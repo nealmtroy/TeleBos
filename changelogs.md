@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-04
+- **[a5f4f574](https://github.com/nealmtroy/TeleBos/commit/a5f4f574)**: fix(wallet): remove dummy default accounts and clean up localStorage seeds
 - **[9ca91466](https://github.com/nealmtroy/TeleBos/commit/9ca91466)**: feat(wallet,settings): add deposit/withdrawal history and bank account settings
 - **[258a5191](https://github.com/nealmtroy/TeleBos/commit/258a5191)**: feat(wallet): implement QRIS payment flow with QR code generation and download
 - **[7ba086b4](https://github.com/nealmtroy/TeleBos/commit/7ba086b4)**: fix(sidebar): prevent auto-expanding broadcast and groups on list routes

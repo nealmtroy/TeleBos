@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
+import { useBankAccountStore } from "@/store/bank-account-store";
 import {
   useAdminUsers,
   useAdminStats,
@@ -136,6 +137,20 @@ function UsersContent() {
         userId: balanceModal.user.id,
         amount: balanceModal.type === "add" ? amount : -amount,
       });
+
+      // Record in ledger so it shows up in Order & Balance History
+      try {
+        useBankAccountStore.getState().addTransaction({
+          type: "admin_adjustment",
+          amount: Math.abs(amount),
+          method: "Admin System",
+          note: `${balanceModal.type === "add" ? "Penambahan saldo oleh Admin" : "Pengurangan saldo oleh Admin"} (${balanceModal.user.email})`,
+          status: "approved",
+          userId: balanceModal.user.id,
+          userEmail: balanceModal.user.email,
+        });
+      } catch {}
+
       setActionMsg({ type: "success", text: _("admin.balanceUpdated") || "Balance updated successfully" });
       setBalanceModal(null);
       setBalanceAmount("");

@@ -1609,6 +1609,8 @@ const en: Dict = {
     accountHealth: "Telegram Account Health",
     broadcastStats: "Broadcast Statistics",
     accountPrices: "Account Prices",
+    transactions: "Deposit & Withdrawal Flow",
+    systemConfig: "System Configuration",
   },
 
   // ── Subscription ────────────────────────────────────────────────────────

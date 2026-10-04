@@ -19,16 +19,21 @@ export interface DepositSettings {
   bankAccountHolder: string;
 }
 
+export type TransactionType = "topup" | "withdraw" | "redeem" | "admin_adjustment";
 export type TransactionStatus = "pending" | "approved" | "rejected";
 
 export interface WalletTransaction {
   id: string;
-  type: "topup" | "withdraw";
+  type: TransactionType;
   amount: number;
   method: string;
   note: string;
   createdAt: string;
   status: TransactionStatus;
+  userId?: string;
+  userEmail?: string;
+  adminNote?: string;
+  processedAt?: string;
 }
 
 const STORAGE_KEY_ACCOUNTS = "telebos_user_bank_accounts";
@@ -93,12 +98,30 @@ const SEED_TRANSACTIONS: WalletTransaction[] = [
     status: "approved",
   },
   {
+    id: "wrn_rd102a",
+    type: "redeem",
+    amount: 50_000,
+    method: "Voucher Redeem",
+    note: "TELEBOS-WELCOME50K",
+    createdAt: "2026-09-12T10:00:00Z",
+    status: "approved",
+  },
+  {
     id: "wrn_2b8c94",
     type: "topup",
     amount: 100_000,
     method: "QRIS",
     note: "Isi Saldo QRIS",
     createdAt: "2026-09-10T08:30:00Z",
+    status: "approved",
+  },
+  {
+    id: "wrn_ad441b",
+    type: "admin_adjustment",
+    amount: 100_000,
+    method: "Admin System",
+    note: "Penyesuaian saldo bonus oleh Administrator",
+    createdAt: "2026-09-08T09:15:00Z",
     status: "approved",
   },
 ];
@@ -117,8 +140,8 @@ interface BankAccountStore {
 
   updateDepositSettings: (settings: Partial<DepositSettings>) => void;
 
-  addTransaction: (tx: Omit<WalletTransaction, "id" | "createdAt">) => WalletTransaction;
-  updateTransactionStatus: (id: string, status: TransactionStatus) => void;
+  addTransaction: (tx: Omit<WalletTransaction, "id" | "createdAt"> & { id?: string; createdAt?: string }) => WalletTransaction;
+  updateTransactionStatus: (id: string, status: TransactionStatus, adminNote?: string) => void;
 }
 
 export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
@@ -261,12 +284,12 @@ export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
   addTransaction: (tx) => {
     const newTx: WalletTransaction = {
       ...tx,
-      id: `wrn_${Math.random().toString(16).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
+      id: (tx as any).id || `wrn_${Math.random().toString(16).slice(2, 8)}`,
+      createdAt: (tx as any).createdAt || new Date().toISOString(),
     };
 
     set((state) => {
-      const next = [newTx, ...state.transactions];
+      const next = [newTx, ...state.transactions.filter((t) => t.id !== newTx.id)];
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
@@ -278,9 +301,18 @@ export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
     return newTx;
   },
 
-  updateTransactionStatus: (id, status) => {
+  updateTransactionStatus: (id, status, adminNote) => {
     set((state) => {
-      const next = state.transactions.map((t) => (t.id === id ? { ...t, status } : t));
+      const next = state.transactions.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status,
+              ...(adminNote !== undefined ? { adminNote } : {}),
+              processedAt: new Date().toISOString(),
+            }
+          : t
+      );
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));

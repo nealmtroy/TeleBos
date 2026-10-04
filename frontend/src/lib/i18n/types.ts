@@ -1607,6 +1607,8 @@ export interface Dict {
     accountHealth: string;
     broadcastStats: string;
     accountPrices: string;
+    transactions: string;
+    systemConfig: string;
   };
 
   // Subscription

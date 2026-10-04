@@ -1609,6 +1609,8 @@ const id: Dict = {
     accountHealth: "Kesehatan Akun Telegram",
     broadcastStats: "Statistik Broadcast",
     accountPrices: "Harga Akun",
+    transactions: "Transaksi Deposit & Penarikan",
+    systemConfig: "Konfigurasi Sistem",
   },
 
   // ── Subscription ────────────────────────────────────────────────────────
