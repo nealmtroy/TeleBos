@@ -99,28 +99,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Resolved once here so the <html lang> attribute and the inline script
-  // below can never disagree about what the server rendered.
-  const requestLocale = getRequestLocale();
-
   return (
     <html
-      lang={requestLocale ?? "en"}
+      lang={getRequestLocale() ?? "en"}
       suppressHydrationWarning
       className={`${inter.variable} ${publicSans.variable} ${publicMono.variable}`}
     >
       <head>
-        {/* Hydration parity (PYTHON-FASTAPI-1K): publish the negotiated locale
-            so the i18n store's module-evaluation-time initial state matches
-            the markup React is about to hydrate. Without this the client
-            always started at "en" while the server had rendered "id", which
-            React reports as a hydration mismatch. Runs before the bundle
-            because it is a blocking inline script in <head>. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.__TELEBOS_LOCALE__=${JSON.stringify(requestLocale ?? "en")};`,
-          }}
-        />
         {/* Anti-FOUC: resolve dark/light theme before paint */}
         <script
           dangerouslySetInnerHTML={{
