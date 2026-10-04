@@ -40,6 +40,11 @@ import {
   type WalletTransaction,
   type TransactionStatus,
 } from "@/store/bank-account-store";
+import {
+  useWalletTransactions,
+  useRequestTopup,
+  useRequestWithdraw,
+} from "@/hooks/use-wallet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -112,41 +117,17 @@ function generateQrisString(invoiceId: string, amount: number): string {
   return `00020101021226610014ID.LINKAJA.WWW0118936009110022304930020300051440014ID.DANA.WWW01189360091100223049300203000520458125303360540${pad(amountStr.length, 2)}${amountStr}5802ID5911TELEBOS PAY6007JAKARTA61051294062${pad(invoiceId.length + 4, 2)}01${pad(invoiceId.length, 2)}${invoiceId}6304A1B2`;
 }
 
-/** Initial requests shown until the wallet API/store is wired. */
-const SEED_REQUESTS: WalletTransaction[] = [
-  {
-    id: "wrn_8fd21a",
-    type: "topup",
-    amount: 250_000,
-    method: "QRIS",
-    note: "TRX 4471 2209",
-    createdAt: "2026-09-28T14:22:00Z",
-    status: "approved",
-  },
-  {
-    id: "wrn_3c07be",
-    type: "withdraw",
-    amount: 150_000,
-    method: "ewallet",
-    note: "0812 3456 7890",
-    createdAt: "2026-09-26T09:05:00Z",
-    status: "pending",
-  },
-  {
-    id: "wrn_9b41c7",
-    type: "withdraw",
-    amount: 75_000,
-    method: "bank",
-    note: "Mandiri 1122 0098 7712",
-    createdAt: "2026-09-21T18:40:00Z",
-    status: "rejected",
-  },
-];
+const SEED_REQUESTS: WalletTransaction[] = [];
 
 export default function WalletPage() {
   const _ = useT();
   const user = useAuthStore((s) => s.user);
   const balance = user?.balance ?? 0;
+
+  // Real backend wallet hooks
+  const { data: walletData, isLoading: isTxLoading, refetch: refetchTxs } = useWalletTransactions({ limit: 100 });
+  const requestTopup = useRequestTopup();
+  const requestWithdraw = useRequestWithdraw();
 
   // Bank account store integration
   const accounts = useBankAccountStore((s) => s.accounts);
@@ -157,7 +138,7 @@ export default function WalletPage() {
   const [method, setMethod] = useState<string>("bank");
   const [note, setNote] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<string>("manual");
-  const [requests, setRequests] = useState<WalletTransaction[]>(SEED_REQUESTS);
+  const [requests, setRequests] = useState<WalletTransaction[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -174,16 +155,30 @@ export default function WalletPage() {
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [copiedInvoice, setCopiedInvoice] = useState(false);
 
-  // Hydrate store on mount & load transactions
+  // Hydrate store on mount & load real backend transactions
   useEffect(() => {
     useBankAccountStore.getState().hydrate();
-    if (process.env.NODE_ENV !== "test") {
-      const storedTxs = useBankAccountStore.getState().transactions;
-      if (storedTxs && storedTxs.length > 0) {
-        setRequests(storedTxs);
-      }
-    }
   }, []);
+
+  useEffect(() => {
+    if (walletData?.transactions) {
+      setRequests(
+        walletData.transactions.map((t) => ({
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          method: t.method,
+          note: t.note || "",
+          createdAt: t.created_at,
+          status: t.status,
+          adminNote: t.admin_note || undefined,
+          userId: t.user_id,
+          userEmail: t.user_email || undefined,
+          processedAt: t.processed_at || undefined,
+        }))
+      );
+    }
+  }, [walletData?.transactions]);
 
   // Countdown timer when payment is active
   useEffect(() => {
@@ -378,58 +373,35 @@ export default function WalletPage() {
     setVerifying(true);
 
     window.setTimeout(() => {
-      // Update store
-      useBankAccountStore.getState().updateTransactionStatus(activePayment.id, "approved");
-
-      // Update local state
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === activePayment.id ? { ...r, status: "approved" as TransactionStatus } : r
-        )
-      );
-
-      // Optimistically credit the balance in AuthStore
-      useAuthStore.setState((s) => ({
-        user: s.user ? { ...s.user, balance: (s.user.balance || 0) + activePayment.amount } : null,
-      }));
-
-      toast.success(_("wallet.paymentConfirmed"));
+      refetchTxs();
+      toast.success("Invoice pembayaran telah dicatat. Mohon tunggu verifikasi otomatis/admin.");
       setActivePayment(null);
       setVerifying(false);
-    }, 1000);
+    }, 800);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!canSubmit || parsedAmount === null) return;
     setSubmitting(true);
     setNotice(null);
 
     if (tab === "topup") {
-      const invoiceId = `wrn_${Math.random().toString(16).slice(2, 8)}`;
-      const qrData = generateQrisString(invoiceId, parsedAmount);
+      try {
+        const res = await requestTopup.mutateAsync({
+          amount: parsedAmount,
+          method: "QRIS",
+          note: note.trim() || "QRIS TeleBos",
+        });
 
-      const newPayment: ActivePayment = {
-        id: invoiceId,
-        amount: parsedAmount,
-        note: note.trim() || "QRIS",
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        qrString: qrData,
-      };
+        const newPayment: ActivePayment = {
+          id: res.id,
+          amount: res.amount,
+          note: res.note || "QRIS",
+          createdAt: res.created_at || new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          qrString: res.qr_string,
+        };
 
-      const request: WalletTransaction = {
-        id: invoiceId,
-        type: "topup",
-        amount: parsedAmount,
-        method: "QRIS",
-        note: note.trim() || "QRIS TeleBos",
-        createdAt: new Date().toISOString(),
-        status: "pending",
-      };
-
-      window.setTimeout(() => {
-        useBankAccountStore.getState().addTransaction(request);
-        setRequests((prev) => [request, ...prev]);
         setActivePayment(newPayment);
         setTimeLeft(15 * 60);
         setAmount("");
@@ -439,25 +411,23 @@ export default function WalletPage() {
           type: "success",
           text: _("wallet.topupSubmitted"),
         });
-      }, 400);
+        refetchTxs();
+      } catch (err: any) {
+        setSubmitting(false);
+        toast.error(err?.response?.data?.detail || "Gagal membuat invoice top up");
+      }
     } else {
       const chosenAcc = selectedAccountId !== "manual" ? accounts.find((a) => a.id === selectedAccountId) : null;
       const finalMethod = chosenAcc ? chosenAcc.provider : method;
       const finalNote = note.trim() || (chosenAcc ? `${chosenAcc.provider} • ${chosenAcc.accountNumber}` : method.toUpperCase());
 
-      const request: WalletTransaction = {
-        id: `wrn_${Math.random().toString(16).slice(2, 8)}`,
-        type: "withdraw",
-        amount: parsedAmount,
-        method: finalMethod,
-        note: finalNote,
-        createdAt: new Date().toISOString(),
-        status: "pending",
-      };
+      try {
+        await requestWithdraw.mutateAsync({
+          amount: parsedAmount,
+          method: finalMethod,
+          note: finalNote,
+        });
 
-      window.setTimeout(() => {
-        useBankAccountStore.getState().addTransaction(request);
-        setRequests((prev) => [request, ...prev]);
         setAmount("");
         setNote("");
         setSelectedAccountId("manual");
@@ -466,7 +436,11 @@ export default function WalletPage() {
           type: "success",
           text: _("wallet.withdrawSubmitted"),
         });
-      }, 500);
+        refetchTxs();
+      } catch (err: any) {
+        setSubmitting(false);
+        toast.error(err?.response?.data?.detail || "Gagal mengajukan penarikan");
+      }
     }
   }
 

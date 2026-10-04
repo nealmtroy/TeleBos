@@ -58,6 +58,7 @@ import {
   Eyebrow,
 } from "@/components/layout/trade-surface";
 import { useBankAccountStore } from "@/store/bank-account-store";
+import { useWalletTransactions } from "@/hooks/use-wallet";
 
 type HistoryTab = "all" | "smm" | "accounts" | "deposits" | "withdrawals" | "balance";
 type StatusType = "Selesai" | "Proses" | "Menunggu" | "Dibatalkan";
@@ -199,13 +200,31 @@ export default function OrderHistoryPage() {
     };
   }, [selectedDetail]);
 
-  // Wallet store for deposits, withdrawals, redeems, and admin adjustments
+  // Real backend wallet transactions & local fallback
+  const { data: walletData, isLoading: isWalletLoading, refetch: refetchWallet } = useWalletTransactions({ limit: 100 });
   const walletTransactions = useBankAccountStore((s) => s.transactions);
   const hydrateWallet = useBankAccountStore((s) => s.hydrate);
 
   useEffect(() => {
     hydrateWallet();
   }, [hydrateWallet]);
+
+  const allWalletTxs = useMemo(() => {
+    const list: any[] = [];
+    if (walletData?.transactions && walletData.transactions.length > 0) {
+      list.push(...walletData.transactions);
+    }
+    const existingIds = new Set(list.map((t) => t.id));
+    if (walletTransactions) {
+      for (const t of walletTransactions) {
+        if (!existingIds.has(t.id)) {
+          if (t.userId && user?.id && t.userId !== user.id) continue;
+          list.push(t);
+        }
+      }
+    }
+    return list;
+  }, [walletData?.transactions, walletTransactions, user?.id]);
 
   // Fetch data from real backend endpoints
   const { data: orders, isLoading: isSmmLoading, error: smmError } = useOrderHistory();
@@ -356,14 +375,19 @@ export default function OrderHistoryPage() {
     }
 
     // Map Wallet Transactions (Deposit, Withdraw, Redeem, Admin Adjustment)
-    if (walletTransactions && walletTransactions.length > 0) {
-      for (const tx of walletTransactions) {
-        if (tx.userId && user?.id && tx.userId !== user.id) {
+    if (allWalletTxs && allWalletTxs.length > 0) {
+      for (const tx of allWalletTxs) {
+        const txUserId = (tx as any).user_id || (tx as any).userId;
+        if (txUserId && user?.id && txUserId !== user.id) {
           continue;
         }
 
         const displayId = `#TRX-${tx.id.replace("wrn_", "").toUpperCase()}`;
-        const txDate = tx.createdAt ? new Date(tx.createdAt) : new Date();
+        const rawCreatedAt = (tx as any).created_at || (tx as any).createdAt;
+        const txDate = rawCreatedAt ? new Date(rawCreatedAt) : new Date();
+        const dateStr = formatWIBDate(rawCreatedAt || txDate.toISOString(), locale);
+        const timeStr = formatWIBTime(rawCreatedAt || txDate.toISOString());
+        const adminNote = (tx as any).admin_note || (tx as any).adminNote;
 
         if (tx.type === "topup") {
           const isDone = tx.status === "approved";
@@ -394,10 +418,10 @@ export default function OrderHistoryPage() {
             statusRaw: tx.status,
             progressPercent: isDone ? 100 : isPending ? 50 : 0,
             dateRaw: txDate,
-            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
-            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            dateStr,
+            timeStr,
             paymentMethod: tx.method,
-            adminNote: tx.adminNote,
+            adminNote,
             originalItem: tx,
           });
         } else if (tx.type === "withdraw") {
@@ -429,10 +453,10 @@ export default function OrderHistoryPage() {
             statusRaw: tx.status,
             progressPercent: isDone ? 100 : isPending ? 50 : 0,
             dateRaw: txDate,
-            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
-            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            dateStr,
+            timeStr,
             paymentMethod: tx.method,
-            adminNote: tx.adminNote,
+            adminNote,
             originalItem: tx,
           });
         } else if (tx.type === "redeem") {
@@ -456,10 +480,10 @@ export default function OrderHistoryPage() {
             statusRaw: "approved",
             progressPercent: 100,
             dateRaw: txDate,
-            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
-            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            dateStr,
+            timeStr,
             paymentMethod: tx.method || "Voucher",
-            adminNote: tx.adminNote,
+            adminNote,
             originalItem: tx,
           });
         } else if (tx.type === "admin_adjustment") {
@@ -480,7 +504,7 @@ export default function OrderHistoryPage() {
             serviceSublabel:
               tx.note ||
               (locale === "id" ? "Penyesuaian oleh Administrator" : "Administrator Adjustment"),
-            detail: tx.adminNote || tx.note || "Admin Adjustment",
+            detail: adminNote || tx.note || "Admin Adjustment",
             quantityDisplay: "1 Trx",
             quantityRaw: 1,
             priceDisplay: `${isCredit ? "+" : "-"}Rp ${Math.abs(tx.amount).toLocaleString()}`,
@@ -489,10 +513,10 @@ export default function OrderHistoryPage() {
             statusRaw: "approved",
             progressPercent: 100,
             dateRaw: txDate,
-            dateStr: formatWIBDate(tx.createdAt || txDate.toISOString(), locale),
-            timeStr: formatWIBTime(tx.createdAt || txDate.toISOString()),
+            dateStr,
+            timeStr,
             paymentMethod: "Admin System",
-            adminNote: tx.adminNote,
+            adminNote,
             originalItem: tx,
           });
         }
@@ -500,7 +524,7 @@ export default function OrderHistoryPage() {
     }
 
     return items;
-  }, [orders, logs, walletTransactions, user?.id, locale]);
+  }, [orders, logs, allWalletTxs, user?.id, locale]);
 
   // Executive metrics calculations
   const metrics = useMemo(() => {

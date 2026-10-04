@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.models.redeem_code import RedeemCode
 from app.models.redeem_log import RedeemLog
+from app.models.wallet_transaction import WalletTransaction
 from app.schemas.redeem import RedeemCodeCreate
 
 
@@ -164,6 +165,19 @@ async def redeem_code(
         detail=json.dumps(detail_parts),
     )
     db.add(log_entry)
+
+    if redeem.code_type == "balance" and redeem.amount:
+        tx = WalletTransaction(
+            user_id=user.id,
+            type="redeem",
+            amount=redeem.amount,
+            method="Voucher Redeem",
+            note=f"Redeem Voucher: {redeem.code}",
+            status="approved",
+            admin_note=f"Voucher {redeem.code}",
+            processed_at=now,
+        )
+        db.add(tx)
 
     # Increment usage
     redeem.used_count += 1

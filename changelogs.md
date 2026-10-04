@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-04
+- **[0baac4bc](https://github.com/nealmtroy/TeleBos/commit/0baac4bc)**: feat(orders,admin): integrate deposit/withdraw/redeem in orders and add admin system config & transactions
 - **[a5f4f574](https://github.com/nealmtroy/TeleBos/commit/a5f4f574)**: fix(wallet): remove dummy default accounts and clean up localStorage seeds
 - **[9ca91466](https://github.com/nealmtroy/TeleBos/commit/9ca91466)**: feat(wallet,settings): add deposit/withdrawal history and bank account settings
 - **[258a5191](https://github.com/nealmtroy/TeleBos/commit/258a5191)**: feat(wallet): implement QRIS payment flow with QR code generation and download

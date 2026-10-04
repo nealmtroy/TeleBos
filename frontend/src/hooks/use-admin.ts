@@ -98,6 +98,8 @@ export function useUpdateBalance() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "wallet-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
     },
   });
 }

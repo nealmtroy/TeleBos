@@ -20,6 +20,7 @@ from app.models.telegram_account import TelegramAccount
 from app.models.redeem_code import RedeemCode
 from app.models.redeem_log import RedeemLog
 from app.models.auto_reply_log import AutoReplyLog
+from app.models.wallet_transaction import WalletTransaction
 from app.schemas.redeem import (
     RedeemCodeCreate as RedeemCodeCreateSchema,
     RedeemCodeResponse,
@@ -505,6 +506,20 @@ async def update_user_balance(
         user.balance = 0  # Don't allow negative balance
 
     action = "added to" if payload.amount >= 0 else "deducted from"
+
+    # Persist wallet transaction in ledger
+    tx = WalletTransaction(
+        user_id=user.id,
+        type="admin_adjustment",
+        amount=payload.amount,  # can be positive or negative
+        method="Admin System",
+        note=f"{'Penambahan' if payload.amount >= 0 else 'Pengurangan'} saldo oleh Admin ({user.email})",
+        status="approved",
+        admin_note=f"Adjusted by {current_user.email}",
+        processed_at=datetime.now(),
+    )
+    db.add(tx)
+
     await db.flush()
     return BalanceHistoryResponse(
         user_id=user.id,

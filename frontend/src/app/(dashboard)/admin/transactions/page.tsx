@@ -11,6 +11,10 @@ import {
   type TransactionType,
 } from "@/store/bank-account-store";
 import {
+  useAdminWalletTransactions,
+  useAdminUpdateTransactionStatus,
+} from "@/hooks/use-wallet";
+import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Clock,
@@ -73,8 +77,6 @@ export default function AdminTransactionsPage() {
   const currentUser = useAuthStore((s) => s.user);
   const _ = useT();
 
-  const { transactions, updateTransactionStatus, hydrate } = useBankAccountStore();
-
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionType>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | TransactionStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,9 +84,32 @@ export default function AdminTransactionsPage() {
   const [rejectingTx, setRejectingTx] = useState<WalletTransaction | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+  const { data: adminTxData, isLoading: isTxLoading, refetch: refetchAdminTxs } = useAdminWalletTransactions({
+    type: typeFilter !== "all" ? typeFilter : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    search: searchQuery.trim() || undefined,
+    limit: 100,
+  });
+  const updateStatusMutation = useAdminUpdateTransactionStatus();
+
+  const transactions: WalletTransaction[] = useMemo(() => {
+    if (adminTxData?.transactions) {
+      return adminTxData.transactions.map((t) => ({
+        id: t.id,
+        type: t.type,
+        amount: t.amount,
+        method: t.method,
+        note: t.note || "",
+        createdAt: t.created_at,
+        status: t.status,
+        adminNote: t.admin_note || undefined,
+        userId: t.user_id,
+        userEmail: t.user_email || undefined,
+        processedAt: t.processed_at || undefined,
+      }));
+    }
+    return [];
+  }, [adminTxData?.transactions]);
 
   // Statistics
   const metrics = useMemo(() => {
@@ -138,29 +163,43 @@ export default function AdminTransactionsPage() {
     );
   }
 
-  function handleApprove(tx: WalletTransaction) {
-    updateTransactionStatus(tx.id, "approved", "Disetujui oleh Administrator");
-    toast.success(`Transaksi ${tx.id} berhasil disetujui`);
-    if (selectedTx?.id === tx.id) {
-      setSelectedTx((prev) => (prev ? { ...prev, status: "approved" } : null));
+  async function handleApprove(tx: WalletTransaction) {
+    try {
+      await updateStatusMutation.mutateAsync({
+        txId: tx.id,
+        status: "approved",
+        adminNote: "Disetujui oleh Administrator",
+      });
+      toast.success(`Transaksi ${tx.id} berhasil disetujui`);
+      if (selectedTx?.id === tx.id) {
+        setSelectedTx((prev) => (prev ? { ...prev, status: "approved" } : null));
+      }
+      refetchAdminTxs();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Gagal menyetujui transaksi");
     }
   }
 
-  function handleRejectSubmit(e: React.FormEvent) {
+  async function handleRejectSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!rejectingTx) return;
 
-    updateTransactionStatus(
-      rejectingTx.id,
-      "rejected",
-      rejectReason.trim() || "Ditolak oleh Administrator"
-    );
-    toast.success(`Transaksi ${rejectingTx.id} telah ditolak`);
-    if (selectedTx?.id === rejectingTx.id) {
-      setSelectedTx((prev) => (prev ? { ...prev, status: "rejected" } : null));
+    try {
+      await updateStatusMutation.mutateAsync({
+        txId: rejectingTx.id,
+        status: "rejected",
+        adminNote: rejectReason.trim() || "Ditolak oleh Administrator",
+      });
+      toast.success(`Transaksi ${rejectingTx.id} telah ditolak`);
+      if (selectedTx?.id === rejectingTx.id) {
+        setSelectedTx((prev) => (prev ? { ...prev, status: "rejected" } : null));
+      }
+      setRejectingTx(null);
+      setRejectReason("");
+      refetchAdminTxs();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Gagal menolak transaksi");
     }
-    setRejectingTx(null);
-    setRejectReason("");
   }
 
   return (

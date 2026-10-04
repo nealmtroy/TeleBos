@@ -81,6 +81,7 @@ from app.api import (
     api_keys,
     notifications,
     telegram_reg_date,
+    wallet,
 )
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
@@ -641,6 +642,7 @@ app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_smm.router, prefix="/api/v1")
 app.include_router(admin_account_prices.router, prefix="/api/v1")
 app.include_router(account_folders.router, prefix="/api/v1")
+app.include_router(wallet.router, prefix="/api/v1")
 app.include_router(ws.router)
 app.include_router(system.router)
 app.include_router(public.router)
