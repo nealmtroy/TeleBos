@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-03
+- **[da9b2470](https://github.com/nealmtroy/TeleBos/commit/da9b2470)**: docs: remove nine obsolete audit reports whose findings are all fixed
 - **[c2c13282](https://github.com/nealmtroy/TeleBos/commit/c2c13282)**: docs: add BUSSINESS_LOGIC.md, a source-verified deep dive
 - **[a23e1aa6](https://github.com/nealmtroy/TeleBos/commit/a23e1aa6)**: feat(smm): add auto post views and extended post views to the allowlist
 - **[6283df05](https://github.com/nealmtroy/TeleBos/commit/6283df05)**: feat(pricing): add the public /pricing page

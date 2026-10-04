@@ -660,6 +660,15 @@ async def _flush_cycle_logs(
     """Save or update the single cycle-level BroadcastLog row in PostgreSQL with JSONB details.
 
     Also updates sent_count, fail_count, and progress on the BroadcastJob record.
+
+    The parent job may already be gone by the time a late flush lands -- an owner
+    can delete a job from the admin panel (or a terminal job can be swept) while
+    the worker task is still unwinding and holding buffered cycle details. Since
+    broadcast_logs has ON DELETE CASCADE, the insert would then fail with a
+    ForeignKeyViolationError (PYTHON-FASTAPI-1M). Losing buffered delivery
+    details for a job the owner already deleted is the intended outcome, so the
+    flush is skipped instead of raised. The job row is read FOR UPDATE so a
+    concurrent DELETE cannot slip between that read and the log INSERT.
     """
     if not details and sent is None and failed is None and progress is None:
         return
@@ -675,18 +684,27 @@ async def _flush_cycle_logs(
     details.clear()
 
     async with async_session_factory() as db:
-        if sent is not None or failed is not None or progress is not None:
-            job_res = await db.execute(
-                select(BroadcastJob).where(BroadcastJob.id == job_uuid_obj)
+        # Always resolve the job, even with no counters to write: its absence is
+        # what decides whether the log INSERT below is legal.
+        job_res = await db.execute(
+            select(BroadcastJob).where(BroadcastJob.id == job_uuid_obj).with_for_update()
+        )
+        db_job = job_res.scalar_one_or_none()
+
+        if db_job is None:
+            logger.info(
+                "Skipping cycle %d log flush for job %s: job row no longer exists",
+                cycle_number,
+                job_uuid_obj,
             )
-            db_job = job_res.scalar_one_or_none()
-            if db_job:
-                if sent is not None:
-                    db_job.sent_count = sent
-                if failed is not None:
-                    db_job.fail_count = failed
-                if progress is not None:
-                    db_job.progress = progress
+            return
+
+        if sent is not None:
+            db_job.sent_count = sent
+        if failed is not None:
+            db_job.fail_count = failed
+        if progress is not None:
+            db_job.progress = progress
 
         if cycle_details_copy:
             # Check if this cycle log row already exists
