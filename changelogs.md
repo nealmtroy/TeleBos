@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-04
+- **[d96ab6c7](https://github.com/nealmtroy/TeleBos/commit/d96ab6c7)**: fix(migration): drop uq_telegram_account_phone as constraint
 - **[ed0fb8bf](https://github.com/nealmtroy/TeleBos/commit/ed0fb8bf)**: feat(admin): fix db schema integrity issues and implement user suspension system
 - **[9ea649f8](https://github.com/nealmtroy/TeleBos/commit/9ea649f8)**: feat(wallet): persist wallet transactions in database and sync with orders & admin
 - **[0baac4bc](https://github.com/nealmtroy/TeleBos/commit/0baac4bc)**: feat(orders,admin): integrate deposit/withdraw/redeem in orders and add admin system config & transactions

@@ -200,8 +200,6 @@ export const auth = betterAuth({
       issuer: "TeleBos",
     }),
     admin({
-      adminRoles: ["owner", "admin"],
-      defaultRole: "basic",
       bannedUserMessage: "Akun Anda telah disuspend oleh administrator. Silakan hubungi admin jika ini merupakan kesalahan.",
     }),
     nextCookies(),
