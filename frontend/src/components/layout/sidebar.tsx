@@ -146,8 +146,13 @@ export function Sidebar() {
 
   const isAccountsPage = pathname.startsWith("/accounts");
   const isInvitePage = pathname.startsWith("/invite");
-  const isBroadcastPage = pathname.startsWith("/broadcast");
-  const isGroupsChannelsPage = pathname.startsWith("/groups-channels");
+  const isBroadcastPage =
+    pathname.startsWith("/broadcast") &&
+    !pathname.startsWith("/broadcast/group-lists") &&
+    !pathname.startsWith("/broadcast/text-lists");
+  const isGroupsChannelsPage =
+    pathname.startsWith("/groups-channels") &&
+    !pathname.startsWith("/groups-channels/auto-join");
   const isServicesOpen = servicesSubItems.some((sub) =>
     sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
   );
@@ -180,8 +185,19 @@ export function Sidebar() {
   useEffect(() => {
     if (isAccountsPage) setAccountsOpen(true);
     if (isInvitePage) setInviteOpen(true);
-    if (isBroadcastPage) setBroadcastOpen(true);
-    if (isGroupsChannelsPage) setGroupsChannelsOpen(true);
+    if (isBroadcastPage) {
+      setBroadcastOpen(true);
+    } else if (
+      pathname.startsWith("/broadcast/group-lists") ||
+      pathname.startsWith("/broadcast/text-lists")
+    ) {
+      setBroadcastOpen(false);
+    }
+    if (isGroupsChannelsPage) {
+      setGroupsChannelsOpen(true);
+    } else if (pathname.startsWith("/groups-channels/auto-join")) {
+      setGroupsChannelsOpen(false);
+    }
     if (isServicesOpen) setServicesOpen(true);
     if (isAdministrationsOpen) setAdministrationsOpen(true);
     if (isAdminRedeemOpen) setAdminRedeemOpen(true);
@@ -475,6 +491,19 @@ export function Sidebar() {
                     }
                     if (item.matchPrefixes) {
                       return item.matchPrefixes.some((pref) => pathname.startsWith(pref)) || (item.exact ? pathname === item.href : pathname.startsWith(item.href));
+                    }
+                    if (item.href === "/broadcast") {
+                      if (
+                        pathname.startsWith("/broadcast/group-lists") ||
+                        pathname.startsWith("/broadcast/text-lists")
+                      ) {
+                        return false;
+                      }
+                    }
+                    if (item.href === "/groups-channels") {
+                      if (pathname.startsWith("/groups-channels/auto-join")) {
+                        return false;
+                      }
                     }
                     return item.exact ? pathname === item.href : pathname.startsWith(item.href);
                   })();

@@ -1,17 +1,9 @@
 /**
  * Regression tests for sidebar section auto-expand.
  *
- * Reported: opening Group Lists, Text Lists, or Auto Join left the sidebar
- * section collapsed, so the page looked un-navigable. Each page must auto-expand
- * the section that owns it.
- *
- * The nav layout encodes which section owns which page twice, and the two must
- * agree:
- *   - `getSubmenuState(href)` maps a section href to its open/setter state
- *   - `navGroups` declares the section's sub-items
- * A page that falls outside its section's sub-items still satisfies
- * `pathname.startsWith(item.href)` for the isActive check, which is what let the
- * real bug hide: the item highlighted as active but nothing expanded.
+ * Group Lists, Text Lists, and Auto Join are standalone navigation items in the
+ * sidebar and must NOT expand the Broadcast or Groups & Channels accordion
+ * sections when opened.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -120,39 +112,61 @@ describe("sidebar section auto-expand", () => {
     cleanup();
   });
 
-  // ── In-app navigation (the load-bearing case) ───────────────────────────
+  // ── In-app navigation ──────────────────────────────────────────────────
 
-  it("expands the Broadcast section when navigating to the group lists page", () => {
+  it("does not expand the Broadcast section when navigating to the group lists page", () => {
     renderThenNavigateTo("/dashboard", "/broadcast/group-lists");
 
-    expect(submenuLabels()).toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
+    expect(submenuLabels()).not.toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
   });
 
-  it("expands the Broadcast section when navigating to the text lists page", () => {
+  it("does not expand the Broadcast section when navigating to the text lists page", () => {
     renderThenNavigateTo("/dashboard", "/broadcast/text-lists");
 
+    expect(submenuLabels()).not.toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
+  });
+
+  it("does not expand the Groups & Channels section when navigating to auto join", () => {
+    renderThenNavigateTo("/dashboard", "/groups-channels/auto-join");
+
+    expect(submenuLabels()).not.toEqual(expect.arrayContaining(GROUPS_SUBITEMS));
+  });
+
+  it("expands the Broadcast section when navigating to a broadcast page", () => {
+    renderThenNavigateTo("/dashboard", "/broadcast/new");
+
     expect(submenuLabels()).toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
   });
 
-  it("expands the Groups & Channels section when navigating to auto join", () => {
-    renderThenNavigateTo("/dashboard", "/groups-channels/auto-join");
+  it("expands the Groups & Channels section when navigating to my chats", () => {
+    renderThenNavigateTo("/dashboard", "/groups-channels");
 
     expect(submenuLabels()).toEqual(expect.arrayContaining(GROUPS_SUBITEMS));
   });
 
   it("keeps an expanded section open while navigating within it", () => {
-    renderThenNavigateTo("/broadcast/group-lists", "/broadcast/text-lists");
+    renderThenNavigateTo("/broadcast/new", "/broadcast/history");
 
     expect(submenuLabels()).toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
   });
 
+  it("collapses the Broadcast section when navigating from broadcast to group lists", async () => {
+    renderThenNavigateTo("/broadcast/new", "/broadcast/group-lists");
+
+    await waitFor(() => expect(submenuLabels()).not.toContain("nav.newBroadcast"));
+  });
+
+  it("collapses the Groups & Channels section when navigating from my chats to auto join", async () => {
+    renderThenNavigateTo("/groups-channels", "/groups-channels/auto-join");
+
+    await waitFor(() => expect(submenuLabels()).not.toContain("groupsChannels.myChats"));
+  });
+
   it("expands a section reached from a collapsed sidebar after a manual collapse", async () => {
-    // Navigate in, collapse the section by hand, then navigate to a sibling
-    // page: the section must re-expand because the user is still inside it.
     mockPathname.mockReturnValue("/dashboard");
     const view = render(<Sidebar />);
 
-    mockPathname.mockReturnValue("/broadcast/group-lists");
+    mockPathname.mockReturnValue("/broadcast/new");
     view.rerender(<Sidebar />);
     expect(submenuLabels()).toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
 
@@ -163,21 +177,26 @@ describe("sidebar section auto-expand", () => {
     await waitFor(() => expect(submenuLabels()).not.toContain("nav.newBroadcast"));
 
     // A sibling page inside the same section must bring it back.
-    mockPathname.mockReturnValue("/broadcast/text-lists");
+    mockPathname.mockReturnValue("/broadcast/history");
     view.rerender(<Sidebar />);
     expect(submenuLabels()).toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
   });
 
   // ── Direct load / remount ───────────────────────────────────────────────
 
-  it("expands the Broadcast section on a direct load of the group lists page", () => {
+  it("leaves the Broadcast section collapsed on a direct load of the group lists page", () => {
     renderSidebarAt("/broadcast/group-lists");
-    expect(submenuLabels()).toEqual(expect.arrayContaining(BROADCAST_SUBITEMS));
+    expect(submenuLabels()).not.toContain("nav.newBroadcast");
   });
 
-  it("expands the Groups & Channels section on a direct load of auto join", () => {
+  it("leaves the Broadcast section collapsed on a direct load of the text lists page", () => {
+    renderSidebarAt("/broadcast/text-lists");
+    expect(submenuLabels()).not.toContain("nav.newBroadcast");
+  });
+
+  it("leaves the Groups & Channels section collapsed on a direct load of auto join", () => {
     renderSidebarAt("/groups-channels/auto-join");
-    expect(submenuLabels()).toEqual(expect.arrayContaining(GROUPS_SUBITEMS));
+    expect(submenuLabels()).not.toContain("groupsChannels.myChats");
   });
 
   // ── Negative case ───────────────────────────────────────────────────────
