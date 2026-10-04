@@ -1630,6 +1630,23 @@ export interface Dict {
       approved: string;
       rejected: string;
     };
+    createPayment: string;
+    downloadQr: string;
+    downloadQrSuccess: string;
+    qrisNotice: string;
+    qrisBadge: string;
+    expiresIn: string;
+    iHavePaid: string;
+    verifyingPayment: string;
+    cancelPayment: string;
+    invoiceId: string;
+    paymentStepsTitle: string;
+    paymentStep1: string;
+    paymentStep2: string;
+    paymentStep3: string;
+    changeAmount: string;
+    qrisSupported: string;
+    paymentConfirmed: string;
   };
   pricing: {
     kicker: string;

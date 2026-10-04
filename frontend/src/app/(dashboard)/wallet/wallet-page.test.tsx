@@ -32,10 +32,10 @@ function renderWallet(balance = 500_000) {
   };
 }
 
-/** The submit button is the last primary button in the form card. */
+/** The submit button in the form card (Create Payment or Submit Withdraw). */
 function submitButton(container: HTMLElement): HTMLButtonElement {
   const button = within(container).getByRole("button", {
-    name: /Submit Top Up Request|Submit Withdraw Request|Kirim Permintaan/,
+    name: /Submit Top Up Request|Submit Withdraw Request|Kirim Permintaan|Buat Pembayaran|Create Payment/,
   });
   return button as HTMLButtonElement;
 }
@@ -89,7 +89,7 @@ describe("WalletPage — amount validation", () => {
 
 describe("WalletPage — withdraw guardrails", () => {
   it("rejects a withdrawal above the available balance", () => {
-    const { container, byRole, amount } = renderWallet(500_000);
+    const { container, amount } = renderWallet(500_000);
     fireEvent.click(within(container).getByRole("tab", { name: /Withdraw/ }));
     fireEvent.change(amount(), { target: { value: "600000" } });
 
@@ -98,7 +98,7 @@ describe("WalletPage — withdraw guardrails", () => {
   });
 
   it("allows a withdrawal equal to the full balance", () => {
-    const { container, byRole, amount } = renderWallet(500_000);
+    const { container, amount } = renderWallet(500_000);
     fireEvent.click(within(container).getByRole("tab", { name: /Withdraw/ }));
     fireEvent.change(amount(), { target: { value: "500000" } });
 
@@ -114,33 +114,36 @@ describe("WalletPage — withdraw guardrails", () => {
   });
 });
 
-describe("WalletPage — top-up flow", () => {
+describe("WalletPage — top-up flow with QRIS", () => {
   it("fills the amount from a preset button", () => {
     const { amount, container } = renderWallet();
     fireEvent.click(within(container).getByRole("button", { name: "Rp 250.000" }));
     expect(amount().value).toBe("250000");
   });
 
-  it("shows the deposit destination only for a top-up", () => {
+  it("shows the deposit destination channels only for a top-up", () => {
     const { container } = renderWallet();
-    // Assert on the bank code, which identifies the deposit block without
-    // depending on the (placeholder) account-holder name.
     expect(container.textContent).toContain("BCA");
 
     fireEvent.click(within(container).getByRole("tab", { name: /Withdraw/ }));
     expect(container.textContent).not.toContain("BCA");
   });
 
-  it("warns that the payout details are placeholders", () => {
-    // Guards against shipping the fixture bank details to real users.
-    const { container } = renderWallet();
-    expect(container.textContent).toContain(
-      "Deposit details are not configured yet"
-    );
+  it("generates a QRIS code and shows the download QR button after submitting", async () => {
+    const { container, amount } = renderWallet();
+    fireEvent.change(amount(), { target: { value: "100000" } });
+    fireEvent.click(submitButton(container));
+
+    await vi.waitFor(() => {
+      // The QR code SVG is rendered
+      expect(container.querySelector("#qris-qr-code")).toBeInTheDocument();
+      // Download QR button is displayed
+      expect(container.textContent).toContain("Download QR Code");
+    });
   });
 
   it("adds a pending request to the history after submitting", async () => {
-    const { container, amount, byText } = renderWallet();
+    const { container, amount } = renderWallet();
     fireEvent.change(amount(), { target: { value: "100000" } });
     fireEvent.click(submitButton(container));
 
@@ -148,22 +151,23 @@ describe("WalletPage — top-up flow", () => {
     await vi.waitFor(() => {
       expect(container.textContent).toContain("Rp 100.000");
     });
-    // "Pending" also appears in the header badge, so check the status pill
-    // inside the history list rather than the page as a whole.
-    const pills = container.querySelectorAll(
-      "li span.rounded-full"
-    );
+    const pills = container.querySelectorAll("li span.rounded-full");
     expect([...pills].some((el) => el.textContent === "Pending")).toBe(true);
   });
 
-  it("clears the amount after a successful submit", async () => {
+  it("allows returning to amount selection via Change Amount button", async () => {
     const { container, amount } = renderWallet();
     fireEvent.change(amount(), { target: { value: "75000" } });
     fireEvent.click(submitButton(container));
 
     await vi.waitFor(() => {
-      expect(amount().value).toBe("");
+      expect(container.textContent).toContain("Download QR Code");
     });
+
+    const changeBtn = within(container).getByRole("button", { name: /^Change Amount$/i });
+    fireEvent.click(changeBtn);
+
+    expect(container.querySelector("#wallet-amount")).toBeInTheDocument();
   });
 });
 

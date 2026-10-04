@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-04
+- **[7ba086b4](https://github.com/nealmtroy/TeleBos/commit/7ba086b4)**: fix(sidebar): prevent auto-expanding broadcast and groups on list routes
 - **[dec7b844](https://github.com/nealmtroy/TeleBos/commit/dec7b844)**: fix(admin): stop the worker task before deleting an active broadcast job
 - **[60495a44](https://github.com/nealmtroy/TeleBos/commit/60495a44)**: fix(sidebar): let the nav list scroll and cover section auto-expand
 - **[7ecf5acd](https://github.com/nealmtroy/TeleBos/commit/7ecf5acd)**: fix(broadcast): skip cycle log flush when the parent job row is gone
