@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-04
+- **[7ecf5acd](https://github.com/nealmtroy/TeleBos/commit/7ecf5acd)**: fix(broadcast): skip cycle log flush when the parent job row is gone
+
 ## 2026-10-03
 - **[da9b2470](https://github.com/nealmtroy/TeleBos/commit/da9b2470)**: docs: remove nine obsolete audit reports whose findings are all fixed
 - **[c2c13282](https://github.com/nealmtroy/TeleBos/commit/c2c13282)**: docs: add BUSSINESS_LOGIC.md, a source-verified deep dive

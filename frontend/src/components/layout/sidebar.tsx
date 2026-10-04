@@ -431,9 +431,20 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 p-3 space-y-4 overflow-y-auto no-scrollbar">
-          {navGroups.map((group, groupIdx) => {
+        {/* Nav
+
+                    min-h-0 is load-bearing: this nav is the flex child allowed to shrink
+                    inside the aside's flex column. Without it a flex item defaults to
+                    min-height:auto, so the nav grows to its content height instead of
+                    being capped at the viewport, overflow-y-auto never engages, and the
+                    lower groups become unreachable on short desktop viewports.
+
+                    The no-scrollbar utility was removed here on purpose. A hidden
+                    scrollbar gives no hint that the list continues below the fold, which
+                    is exactly what made this read as "there is no way to scroll".
+                    sidebar-scrollbar keeps it visible but out of the way. */}
+                <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-4">
+                  {navGroups.map((group, groupIdx) => {
             // Filter items in the group by user role
             const visibleItems = group.items.filter((item) => {
               const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
