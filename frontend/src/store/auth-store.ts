@@ -10,6 +10,8 @@ export interface User {
   role: string;
   is_active: boolean;
   balance: number;
+  /** Account creation timestamp. Optional because older API responses omit it. */
+  created_at?: string | null;
 }
 
 interface AuthState {

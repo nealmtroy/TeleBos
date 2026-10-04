@@ -416,6 +416,9 @@ class TelegramEventRelay:
                     chat, reply_text, reply_to=msg.id, parse_mode="html"
                 )
             except Exception as parse_err:
+                err_str = str(parse_err)
+                if any(term in err_str.lower() for term in ("limited", "spam-reported", "peerflood", "forbidden", "banned", "deactivated")):
+                    raise
                 logger.warning(
                     "Auto-reply HTML parse failed for account %s, falling back to plain text: %s",
                     account_id,
@@ -435,7 +438,11 @@ class TelegramEventRelay:
             await record_auto_reply_sent(account_id, sender_id)
 
         except Exception as exc:
-            logger.error("Auto-reply error for account %s: %s", account_id, exc)
+            err_msg = str(exc)
+            if any(term in err_msg.lower() for term in ("limited", "spam-reported", "peerflood", "forbidden", "banned", "deactivated")):
+                logger.warning("Auto-reply skipped for account %s (account restricted by Telegram): %s", account_id, exc)
+            else:
+                logger.error("Auto-reply error for account %s: %s", account_id, exc)
 
     async def _on_outgoing_message(self, account_id: str, event) -> None:
         """Fire when we send a message."""

@@ -19,6 +19,9 @@ from app.services.captcha_solver import (
 logger = logging.getLogger(__name__)
 
 
+_TWOCAPTCHA_COOLDOWN_UNTIL: float = 0.0
+
+
 def find_button(msg: Message, keywords: list[str]) -> Any | None:
     """Find a button on a message containing any of the keywords (case-insensitive)."""
     if not msg.buttons:
@@ -100,12 +103,17 @@ def _extract_turnstile_params_sync(captcha_url: str) -> dict[str, str | None] | 
             "chl_pagedata": chl_pagedata,
         }
     except Exception as exc:
-        logger.exception("Error extracting Turnstile parameters: %s", exc)
+        logger.warning("Transient error extracting Turnstile parameters: %s", exc)
         return None
 
 
 async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> str | None:
     """Solve Turnstile captcha asynchronously via 2captcha without thread pool starvation (RES-04)."""
+    global _TWOCAPTCHA_COOLDOWN_UNTIL
+    if time.time() < _TWOCAPTCHA_COOLDOWN_UNTIL:
+        logger.debug("Skipping 2captcha: balance or auth cooldown active")
+        return None
+
     import httpx
     from app.utils.url_security import validate_safe_captcha_url
 
@@ -144,7 +152,16 @@ async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> st
             resp = await http_client.post(f"{api_url}/createTask", json=create_payload)
             data = resp.json()
             if data.get("errorId") != 0:
-                logger.error("2captcha createTask error: %s", data.get("errorDescription"))
+                err_code = str(data.get("errorCode", ""))
+                err_desc = str(data.get("errorDescription", ""))
+                if "zero or negative" in err_desc.lower() or err_code == "ERROR_ZERO_BALANCE":
+                    _TWOCAPTCHA_COOLDOWN_UNTIL = time.time() + 3600  # 1 hour cooldown
+                    logger.warning("2captcha balance is zero or negative. Pausing 2captcha fallback for 1h: %s", err_desc)
+                elif "key" in err_desc.lower() or "auth" in err_desc.lower():
+                    _TWOCAPTCHA_COOLDOWN_UNTIL = time.time() + 3600
+                    logger.warning("2captcha auth or key error: %s", err_desc)
+                else:
+                    logger.warning("2captcha createTask failed: %s (code: %s)", err_desc, err_code)
                 return None
 
             task_id = data.get("taskId")
@@ -160,7 +177,7 @@ async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> st
                 result = poll.json()
 
                 if result.get("errorId") != 0:
-                    logger.error("2captcha getTaskResult error: %s", result.get("errorDescription"))
+                    logger.warning("2captcha getTaskResult error: %s", result.get("errorDescription"))
                     return None
 
                 if result.get("status") == "ready":
@@ -172,7 +189,7 @@ async def solve_captcha_via_2captcha_async(captcha_url: str, api_key: str) -> st
         logger.warning("2captcha timeout waiting for token")
         return None
     except Exception as e:
-        logger.exception("Error solving captcha via 2captcha: %s", e)
+        logger.warning("Error solving captcha via 2captcha: %s", e)
         return None
 
 
@@ -350,191 +367,206 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
                 "generated_reason": generated
             }
 
-    async with client.conversation("spambot") as conv:
-        # Step 1: Send /start
-        from app.utils.spambot_helper import is_clean_status, start_spambot_conversation
-        await start_spambot_conversation(client, conv, "appeal")
-        response = await conv.get_response()
-
-        # Check if already free / no limits
-        from app.utils.spambot_helper import is_clean_status
-        if is_clean_status(response.text):
-            return {
-                "status": "completed",
-                "message": response.text,
-                "generated_reason": generated
-            }
-
-        # Step 2: Click "This is a mistake" button
-        btn = find_button(response, ["mistake", "kesalahan"])
-        if not btn:
-            return {
-                "status": "failed",
-                "message": "Tombol 'kesalahan/mistake' tidak ditemukan pada respon pertama.",
-                "generated_reason": generated
-            }
-
-        await btn.click()
-        response = await conv.get_response()
-
-        # Step 2b: Bot might switch to English and show buttons again
-        if find_button(response, ["ok", "what is spam", "i was wrong"]):
-            btn_mistake = find_button(response, ["mistake"])
-            if btn_mistake:
-                await btn_mistake.click()
-                response = await conv.get_response()
-
-        # Step 3: Click "Yes" / "Ya"
-        btn_yes = find_button(response, ["yes", "ya"])
-        if not btn_yes:
-            return {
-                "status": "failed",
-                "message": "Tombol 'Ya/Yes' tidak ditemukan.",
-                "generated_reason": generated
-            }
-
-        await btn_yes.click()
-        response = await conv.get_response()
-
-        # Step 4: Click "No! Never did that!" / "Tidak pernah"
-        btn_no = find_button(response, ["never", "tidak pernah", "no!", "tidak!"])
-        if not btn_no:
-            return {
-                "status": "failed",
-                "message": "Tombol konfirmasi tidak pernah melakukan spam tidak ditemukan.",
-                "generated_reason": generated
-            }
-
-        await btn_no.click()
-        response = await conv.get_response()
-
-        # Step 5: Check for Cloudflare Turnstile Captcha
-        captcha_url = None
-        captcha_match = re.search(r'(https://telegram\.org/captcha[^\s<>"\'\)]+)', response.text)
-        if captcha_match:
-            candidate_url = captcha_match.group(1).rstrip(').,;')
-            from app.utils.url_security import validate_safe_captcha_url
-            try:
-                captcha_url = validate_safe_captcha_url(candidate_url, check_dns=True)
-                logger.info("Captcha Turnstile detected and validated: %s", captcha_url)
-            except ValueError as val_err:
-                logger.warning("SSRF blocked or invalid candidate captcha URL '%s': %s", candidate_url, val_err)
-                captcha_url = None
-
-        if captcha_url:
-
-            settings = get_settings()
-            loop = asyncio.get_running_loop()
-
-            def submit(token: str) -> bool:
-                """Hand the solved token back to Cloudflare, off the event loop.
-
-                This is a blocking HTTPS round-trip to telegram.org, so it must
-                not run inline on the loop.
-                """
-                return loop.run_in_executor(
-                    None, submit_turnstile_token_sync, captcha_url, token
-                )
-
-            # Prefer the local Camoufox solver: no per-solve fee. It is tried
-            # first precisely because it is free; 2captcha is only paid for
-            # when the local one cannot deliver.
-            token = None
-            solver_used = None
-            if solver_enabled():
-                token = await solve_captcha_via_camoufox(captcha_url)
-                if token:
-                    solver_used = "camoufox"
-                else:
-                    logger.warning(
-                        "Local camoufox solver produced no token; falling back "
-                        "to 2captcha if a key is configured."
-                    )
-
-            # Fallback: 2captcha, only when a key exists and camoufox did not
-            # already deliver.
-            if not token:
-                twocaptcha_key = getattr(settings, "TWOCAPTCHA_API_KEY", "")
-                if twocaptcha_key:
-                    logger.info(
-                        "Using TWOCAPTCHA_API_KEY for captcha solve..."
-                    )
-                    try:
-                        token = await solve_captcha_via_2captcha_async(
-                            captcha_url, twocaptcha_key
-                        )
-                        if token:
-                            solver_used = "2captcha"
-                    except Exception as ex:
-                        logger.error(
-                            "Exception in 2captcha automated solve block: %s", ex
-                        )
-
-            if token:
-                try:
-                    submit_ok = await submit(token)
-                except Exception as ex:
-                    logger.error("Failed submitting turnstile token: %s", ex)
-                    submit_ok = False
-
-                if submit_ok:
-                    # Resume appeal flow by clicking Done
-                    btn_done = find_button(response, ["done", "selesai"])
-                    if btn_done:
-                        await btn_done.click()
-                        response = await conv.get_response()
-
-                    # Send appeal reason
-                    await conv.send_message(reason)
-                    final_resp = await conv.get_response()
-                    logger.info(
-                        "Appeal submitted with solver=%s", solver_used
-                    )
-                    return {
-                        "status": "completed",
-                        "message": final_resp.text,
-                        "generated_reason": generated,
-                        "captcha_solver": solver_used,
-                    }
-
-                # The token was obtained but Cloudflare rejected it — almost
-                # always because the URL was spent or the address is
-                # downgraded. Either way, retrying with a second solver would
-                # fail the same way, so report rather than burn more money.
-                logger.warning(
-                    "Token from %s was rejected by cloudflare", solver_used
-                )
-                return {
-                    "status": "captcha_failed",
-                    "message": (
-                        "Captcha solved but the token was rejected. The captcha "
-                        "URL is single-use; run the appeal again for a fresh one."
-                    ),
-                    "captcha_url": captcha_url,
-                    "captcha_solver": solver_used,
-                    "generated_reason": generated,
-                }
-
-            return {
-                "status": "captcha_required",
-                "message": "Cloudflare Turnstile Captcha verification required.",
-                "captcha_url": captcha_url,
-                "generated_reason": generated
-            }
-
-    # Step 6: Click "Done" / "Selesai" (just in case captcha was skipped)
-        btn_done = find_button(response, ["done", "selesai"])
-        if btn_done:
-            await btn_done.click()
+    try:
+        async with client.conversation("spambot", timeout=60) as conv:
+            # Step 1: Send /start
+            from app.utils.spambot_helper import is_clean_status, start_spambot_conversation
+            await start_spambot_conversation(client, conv, "appeal")
             response = await conv.get_response()
 
-        # Step 7: Send reason
-        await conv.send_message(reason)
-        final_resp = await conv.get_response()
+            # Check if already free / no limits
+            from app.utils.spambot_helper import is_clean_status
+            if is_clean_status(response.text):
+                return {
+                    "status": "completed",
+                    "message": response.text,
+                    "generated_reason": generated
+                }
+
+            # Step 2: Click "This is a mistake" button
+            btn = find_button(response, ["mistake", "kesalahan"])
+            if not btn:
+                return {
+                    "status": "failed",
+                    "message": "Tombol 'kesalahan/mistake' tidak ditemukan pada respon pertama.",
+                    "generated_reason": generated
+                }
+
+            await btn.click()
+            response = await conv.get_response()
+
+            # Step 2b: Bot might switch to English and show buttons again
+            if find_button(response, ["ok", "what is spam", "i was wrong"]):
+                btn_mistake = find_button(response, ["mistake"])
+                if btn_mistake:
+                    await btn_mistake.click()
+                    response = await conv.get_response()
+
+            # Step 3: Click "Yes" / "Ya"
+            btn_yes = find_button(response, ["yes", "ya"])
+            if not btn_yes:
+                return {
+                    "status": "failed",
+                    "message": "Tombol 'Ya/Yes' tidak ditemukan.",
+                    "generated_reason": generated
+                }
+
+            await btn_yes.click()
+            response = await conv.get_response()
+
+            # Step 4: Click "No! Never did that!" / "Tidak pernah"
+            btn_no = find_button(response, ["never", "tidak pernah", "no!", "tidak!"])
+            if not btn_no:
+                return {
+                    "status": "failed",
+                    "message": "Tombol konfirmasi tidak pernah melakukan spam tidak ditemukan.",
+                    "generated_reason": generated
+                }
+
+            await btn_no.click()
+            response = await conv.get_response()
+
+            # Step 5: Check for Cloudflare Turnstile Captcha
+            captcha_url = None
+            captcha_match = re.search(r'(https://telegram\.org/captcha[^\s<>"\'\)]+)', response.text)
+            if captcha_match:
+                candidate_url = captcha_match.group(1).rstrip(').,;')
+                from app.utils.url_security import validate_safe_captcha_url
+                try:
+                    captcha_url = validate_safe_captcha_url(candidate_url, check_dns=True)
+                    logger.info("Captcha Turnstile detected and validated: %s", captcha_url)
+                except ValueError as val_err:
+                    logger.warning("SSRF blocked or invalid candidate captcha URL '%s': %s", candidate_url, val_err)
+                    captcha_url = None
+
+            if captcha_url:
+
+                settings = get_settings()
+                loop = asyncio.get_running_loop()
+
+                def submit(token: str) -> bool:
+                    """Hand the solved token back to Cloudflare, off the event loop.
+
+                    This is a blocking HTTPS round-trip to telegram.org, so it must
+                    not run inline on the loop.
+                    """
+                    return loop.run_in_executor(
+                        None, submit_turnstile_token_sync, captcha_url, token
+                    )
+
+                # Prefer the local Camoufox solver: no per-solve fee. It is tried
+                # first precisely because it is free; 2captcha is only paid for
+                # when the local one cannot deliver.
+                token = None
+                solver_used = None
+                if solver_enabled():
+                    token = await solve_captcha_via_camoufox(captcha_url)
+                    if token:
+                        solver_used = "camoufox"
+                    else:
+                        logger.warning(
+                            "Local camoufox solver produced no token; falling back "
+                            "to 2captcha if a key is configured."
+                        )
+
+                # Fallback: 2captcha, only when a key exists and camoufox did not
+                # already deliver.
+                if not token:
+                    twocaptcha_key = getattr(settings, "TWOCAPTCHA_API_KEY", "")
+                    if twocaptcha_key:
+                        logger.info(
+                            "Using TWOCAPTCHA_API_KEY for captcha solve..."
+                        )
+                        try:
+                            token = await solve_captcha_via_2captcha_async(
+                                captcha_url, twocaptcha_key
+                            )
+                            if token:
+                                solver_used = "2captcha"
+                        except Exception as ex:
+                            logger.warning(
+                                "Exception in 2captcha automated solve block: %s", ex
+                            )
+
+                if token:
+                    try:
+                        submit_ok = await submit(token)
+                    except Exception as ex:
+                        logger.warning("Failed submitting turnstile token: %s", ex)
+                        submit_ok = False
+
+                    if submit_ok:
+                        # Resume appeal flow by clicking Done
+                        btn_done = find_button(response, ["done", "selesai"])
+                        if btn_done:
+                            await btn_done.click()
+                            response = await conv.get_response()
+
+                        # Send appeal reason
+                        await conv.send_message(reason)
+                        final_resp = await conv.get_response()
+                        logger.info(
+                            "Appeal submitted with solver=%s", solver_used
+                        )
+                        return {
+                            "status": "completed",
+                            "message": final_resp.text,
+                            "generated_reason": generated,
+                            "captcha_solver": solver_used,
+                        }
+
+                    # The token was obtained but Cloudflare rejected it — almost
+                    # always because the URL was spent or the address is
+                    # downgraded. Either way, retrying with a second solver would
+                    # fail the same way, so report rather than burn more money.
+                    logger.warning(
+                        "Token from %s was rejected by cloudflare", solver_used
+                    )
+                    return {
+                        "status": "captcha_failed",
+                        "message": (
+                            "Captcha solved but the token was rejected. The captcha "
+                            "URL is single-use; run the appeal again for a fresh one."
+                        ),
+                        "captcha_url": captcha_url,
+                        "captcha_solver": solver_used,
+                        "generated_reason": generated,
+                    }
+
+                return {
+                    "status": "captcha_required",
+                    "message": "Cloudflare Turnstile Captcha verification required.",
+                    "captcha_url": captcha_url,
+                    "generated_reason": generated
+                }
+
+            # Step 6: Click "Done" / "Selesai" (just in case captcha was skipped)
+            btn_done = find_button(response, ["done", "selesai"])
+            if btn_done:
+                await btn_done.click()
+                response = await conv.get_response()
+
+            # Step 7: Send reason
+            await conv.send_message(reason)
+            final_resp = await conv.get_response()
+            return {
+                "status": "completed",
+                "message": final_resp.text,
+                "generated_reason": generated
+            }
+    except asyncio.TimeoutError:
+        logger.warning("SpamBot appeal conversation timed out")
         return {
-            "status": "completed",
-            "message": final_resp.text,
-            "generated_reason": generated
+            "status": "failed",
+            "message": "Batas waktu komunikasi @SpamBot habis (timeout).",
+            "generated_reason": generated,
+        }
+    except Exception as conv_err:
+        logger.warning("Spam appeal conversation failed: %s", conv_err)
+        return {
+            "status": "failed",
+            "message": f"Gagal berkomunikasi dengan @SpamBot: {conv_err}",
+            "generated_reason": generated,
         }
 
 

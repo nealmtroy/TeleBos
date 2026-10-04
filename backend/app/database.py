@@ -42,5 +42,9 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
             yield session
             await session.commit()
         except Exception:
-            await session.rollback()
+            try:
+                await session.rollback()
+            except Exception:
+                # Connection may already be closed/dead during server restart or network drop
+                pass
             raise

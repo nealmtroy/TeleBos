@@ -1074,6 +1074,17 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
         raise AccountDisconnectedError("Account is disconnected. Please re-login.")
     client_pool.touch_client(str(account.id))
 
+    if not client.is_connected():
+        try:
+            await client.connect()
+        except Exception as conn_err:
+            logger.warning("Account %s client is disconnected and reconnect failed: %s", account.phone, conn_err)
+            account.spam_status = "unknown"
+            account.spam_detail = "Cannot send requests while disconnected"
+            account.spam_last_checked_at = datetime.now(timezone.utc)
+            await db.flush()
+            return account
+
     try:
         # 1. Send /start to @SpamBot using conversation API
         response_msg = None
@@ -1083,7 +1094,8 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
                 await start_spambot_conversation(client, conv, account.phone)
                 response_msg = await conv.get_response(timeout=10)
         except Exception as conv_exc:
-            logger.error("Conversation with SpamBot failed for account %s: %s", account.phone, conv_exc)
+            conv_err = str(conv_exc) or type(conv_exc).__name__
+            logger.warning("Conversation with SpamBot ended for account %s: %s, falling back to message log", account.phone, conv_err)
             
         # Fallback to the latest incoming message if conversation fails or returns no response
         if not response_msg:
@@ -1124,15 +1136,20 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
                         else:
                             logger.info("An appeal was already submitted in the last 24h for %s. Skipping auto-appeal.", account.phone)
                     except Exception as appeal_exc:
-                        logger.error("Failed to execute auto-appeal for %s: %s", account.phone, appeal_exc)
+                        appeal_err = str(appeal_exc) or type(appeal_exc).__name__
+                        logger.warning("Failed to execute auto-appeal for %s: %s", account.phone, appeal_err)
         else:
             account.spam_status = "unknown"
             account.spam_detail = "Failed to receive response from @SpamBot"
 
     except Exception as exc:
-        logger.error("Error checking spam status for account %s: %s", account.id, exc)
+        err_msg = str(exc) or type(exc).__name__
+        if any(term in err_msg.lower() for term in ("disconnected", "connection", "closed")):
+            logger.warning("Account disconnected while checking spam status for %s: %s", account.phone, err_msg)
+        else:
+            logger.warning("Error checking spam status for account %s: %s", account.id, err_msg)
         account.spam_status = "unknown"
-        account.spam_detail = f"Error: {str(exc)}"
+        account.spam_detail = f"Error: {err_msg}"
 
     account.spam_last_checked_at = datetime.now(timezone.utc)
     await db.flush()

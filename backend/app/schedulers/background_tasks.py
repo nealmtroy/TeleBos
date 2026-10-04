@@ -150,7 +150,11 @@ async def adaptive_sequential_sync_loop() -> None:
                         await client_pool.remove(account_id, save_state=True)
 
             except Exception as sync_err:
-                logger.error("Adaptive Sync: Error syncing account %s: %s", account_id, sync_err)
+                err_msg = str(sync_err) or type(sync_err).__name__
+                if any(k in err_msg.lower() for k in ("connection is closed", "temporary failure in name resolution", "closed in the middle", "cannot call transaction.rollback")):
+                    logger.warning("Adaptive Sync: Transient connection error syncing account %s: %s", account_id, err_msg)
+                else:
+                    logger.error("Adaptive Sync: Error syncing account %s: %s", account_id, sync_err)
 
             # INF-03: If sync failed, ensure last_sync_at is advanced in an isolated transaction
             # so this failing account doesn't starve all other accounts.
@@ -169,11 +173,19 @@ async def adaptive_sequential_sync_loop() -> None:
                                 account_id,
                             )
                 except Exception as rec_err:
-                    logger.error(
-                        "Adaptive Sync: Failed recovery commit for account %s: %s",
-                        account_id,
-                        rec_err,
-                    )
+                    err_msg = str(rec_err) or type(rec_err).__name__
+                    if any(k in err_msg.lower() for k in ("connection is closed", "temporary failure in name resolution", "closed in the middle", "cannot call transaction.rollback")):
+                        logger.warning(
+                            "Adaptive Sync: Transient connection error during recovery commit for account %s: %s",
+                            account_id,
+                            err_msg,
+                        )
+                    else:
+                        logger.error(
+                            "Adaptive Sync: Failed recovery commit for account %s: %s",
+                            account_id,
+                            rec_err,
+                        )
 
         except Exception as exc:
             logger.warning("Adaptive Sync: Loop error: %s", exc)

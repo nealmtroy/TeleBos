@@ -642,9 +642,18 @@ async def _broadcast_entities_for_target(
 async def _get_broadcast_job_status(jid: uuid.UUID | str) -> str | None:
     """Helper to check and retrieve the current status of the job using a fresh session."""
     from app.database import async_session_factory
-    async with async_session_factory() as sdb:
-        res = await sdb.execute(select(BroadcastJob.status).where(BroadcastJob.id == jid))
-        return res.scalar_one_or_none()
+    from sqlalchemy.exc import DBAPIError
+    for attempt in range(3):
+        try:
+            async with async_session_factory() as sdb:
+                res = await sdb.execute(select(BroadcastJob.status).where(BroadcastJob.id == jid))
+                return res.scalar_one_or_none()
+        except (DBAPIError, OSError) as db_err:
+            if attempt < 2:
+                await asyncio.sleep(0.5 * (attempt + 1))
+                continue
+            logger.warning("Transient error retrieving broadcast job status for %s: %s", jid, db_err)
+            return None
 
 
 async def _flush_cycle_logs(

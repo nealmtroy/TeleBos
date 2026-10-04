@@ -102,6 +102,27 @@ export const auth = betterAuth({
       },
     },
     user: {
+      update: {
+        after: async (user) => {
+          // Keep the legacy "users" table in sync when the profile name changes
+          // via Better Auth (PATCH /api/auth/update-user).
+          //
+          // Without this hook, BA's "user".name is updated but
+          // GET /api/auth/me — which reads the SQLAlchemy User model — keeps
+          // returning the old full_name. The navbar, the Settings profile card,
+          // and the admin user list would then all show the stale name, so an
+          // "Edit Profile" save would look like it silently did nothing.
+          if (!user.name) return;
+          try {
+            await pool.query(
+              `UPDATE users SET full_name = $1 WHERE id = $2::uuid`,
+              [user.name, user.id]
+            );
+          } catch (err) {
+            console.error("[Better Auth] Failed to sync full_name on user update:", err);
+          }
+        },
+      },
       create: {
         before: async (user, ctx) => {
           // Prevent duplicate email registration by checking both the

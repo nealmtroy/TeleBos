@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ShieldCheck, Zap, Radio, Bot, ShoppingCart } from "lucide-react";
@@ -21,12 +21,14 @@ export default function LandingPage() {
   const { isAuthenticated, isLoading } = useAuthStore();
   const router = useRouter();
   const _ = useT();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (!isLoading && isAuthenticated) router.replace("/dashboard");
   }, [isAuthenticated, isLoading, router]);
 
-  if (isAuthenticated) return null;
+  if (mounted && isAuthenticated) return null;
 
   const proofItems = [
     _("landing.proofAccounts"),

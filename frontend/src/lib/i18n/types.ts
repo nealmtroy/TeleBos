@@ -620,6 +620,77 @@ export interface Dict {
 
   // Settings (App)
   settings: {
+    // Layout
+    profileAndSettings: string;
+    profileAndSettingsDesc: string;
+    // Local settings navigation
+    navProfile: string;
+    navProfileDesc: string;
+    navChangePassword: string;
+    navChangePasswordDesc: string;
+    navTwoFactor: string;
+    navTwoFactorDesc: string;
+    navApiKeys: string;
+    navApiKeysDesc: string;
+    navBankAccounts: string;
+    navBankAccountsDesc: string;
+    navAppearance: string;
+    navAppearanceDesc: string;
+    navLanguage: string;
+    navLanguageDesc: string;
+    // Profile card
+    active: string;
+    profile: string;
+    profileDesc: string;
+    editProfile: string;
+    username: string;
+    email: string;
+    role: string;
+    joinedSince: string;
+    // Dialogs
+    editProfileTitle: string;
+    fullName: string;
+    fullNamePlaceholder: string;
+    saveChanges: string;
+    profileSaved: string;
+    failedSaveProfile: string;
+    cancel: string;
+    saving: string;
+    unknown: string;
+    fullNameRequired: string;
+    // Change password card
+    changePasswordTitle: string;
+    changePasswordCardDesc: string;
+    passwordLastChanged: string;
+    passwordLastChangedUnknown: string;
+    // 2FA card
+    twoFactorCardDesc: string;
+    manageTwoFactor: string;
+    status: string;
+    statusOff: string;
+    twoFaRecommendation: string;
+    // API keys card
+    apiKeysTitle: string;
+    apiKeysCardDesc: string;
+    manageApiKeys: string;
+    totalApiKeys: string;
+    apiKeysCount: string;
+    lastUsed: string;
+    never: string;
+    // Bank accounts card
+    bankAccountsTitle: string;
+    bankAccountsCardDesc: string;
+    addAccount: string;
+    // Appearance card
+    appearance: string;
+    appearanceCardDesc: string;
+    theme: string;
+    themeDarkDefault: string;
+    // Language card
+    language: string;
+    languageCardDesc: string;
+    languageLabel: string;
+    // Existing tab content
     title: string;
     desc: string;
     back: string;
@@ -673,7 +744,6 @@ export interface Dict {
     twoFactorDesc: string;
     twoFactorEnabledStatus: string;
     twoFactorDisabledStatus: string;
-    active: string;
     off: string;
     enable2FA: string;
     disable2FA: string;
@@ -714,7 +784,6 @@ export interface Dict {
     languageSystem: string;
     languageSystemDesc: string;
     bankAccountsTab: string;
-    bankAccountsTitle: string;
     bankAccountsDesc: string;
     addBankAccount: string;
     bankName: string;

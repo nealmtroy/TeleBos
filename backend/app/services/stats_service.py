@@ -53,7 +53,7 @@ async def refresh_account_stats(db: AsyncSession, account) -> None:
     )
 
 
-async def refresh_all_accounts(db: AsyncSession) -> int:
+async def refresh_all_accounts(db: AsyncSession | None = None) -> int:
     """Refresh cached stats for every active Telegram account.
 
     Returns the number of accounts successfully refreshed.
@@ -61,11 +61,18 @@ async def refresh_all_accounts(db: AsyncSession) -> int:
     from app.models.telegram_account import TelegramAccount
     from app.database import async_session_factory
 
-    # Phase 1: Get all active account IDs with the caller's DB session
-    result = await db.execute(
-        select(TelegramAccount.id).where(TelegramAccount.is_active == True)
-    )
-    account_ids = [str(row[0]) for row in result.all()]
+    # Phase 1: Get all active account IDs with a short-lived DB session
+    if db is not None:
+        result = await db.execute(
+            select(TelegramAccount.id).where(TelegramAccount.is_active == True)
+        )
+        account_ids = [str(row[0]) for row in result.all()]
+    else:
+        async with async_session_factory() as fetch_db:
+            result = await fetch_db.execute(
+                select(TelegramAccount.id).where(TelegramAccount.is_active == True)
+            )
+            account_ids = [str(row[0]) for row in result.all()]
 
     refreshed = 0
     # Phase 2: Refresh each account with its own short-lived DB session
@@ -97,15 +104,12 @@ async def background_stats_updater() -> None:
     Runs every 24 hours.  On the very first iteration, also waits 60 seconds
     so the server has time to finish startup before hitting the Telegram API.
     """
-    from app.database import async_session_factory
-
     # Give the server time to finish reconnecting accounts on startup
     await asyncio.sleep(60)
 
     while True:
         try:
-            async with async_session_factory() as db:
-                await refresh_all_accounts(db)
+            await refresh_all_accounts()
         except asyncio.CancelledError:
             raise
         except Exception:

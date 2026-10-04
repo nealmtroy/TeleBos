@@ -2,7 +2,12 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-05
+- **[5de53523](https://github.com/nealmtroy/TeleBos/commit/5de53523)**: Revert "fix(i18n): seed client locale from server value to stop hydration mismatch"
+- **[8e78c364](https://github.com/nealmtroy/TeleBos/commit/8e78c364)**: fix(i18n): seed client locale from server value to stop hydration mismatch
+
 ## 2026-10-04
+- **[b6147c4c](https://github.com/nealmtroy/TeleBos/commit/b6147c4c)**: fix(settings): remove platform deposit settings from user settings page
 - **[8b658124](https://github.com/nealmtroy/TeleBos/commit/8b658124)**: fix(auth): update Better Auth admin plugin configuration
 - **[d96ab6c7](https://github.com/nealmtroy/TeleBos/commit/d96ab6c7)**: fix(migration): drop uq_telegram_account_phone as constraint
 - **[ed0fb8bf](https://github.com/nealmtroy/TeleBos/commit/ed0fb8bf)**: feat(admin): fix db schema integrity issues and implement user suspension system
