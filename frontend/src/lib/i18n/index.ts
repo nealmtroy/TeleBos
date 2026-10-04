@@ -57,11 +57,20 @@ interface I18nState {
 }
 
 function getInitialLocale(): Locale {
-  // During SSR there is no navigator, so fall back to what middleware
-  // negotiated from Accept-Language. Without this every server-rendered
-  // response was English regardless of the visitor's browser, which meant
-  // crawlers and chat previews only ever saw the English copy and first paint
-  // flashed English before hydration.
+  // This runs at module-evaluation time, which is exactly when hydration
+  // needs the answer — so both sides must agree, or React throws away the
+  // server HTML and re-renders (PYTHON-FASTAPI-1K).
+  //
+  // Server: middleware negotiated Accept-Language / the telebo_locale cookie
+  // into the x-telebos-locale header, and layout.tsx serialised that value
+  // into the document before this bundle executes. Reusing it here makes the
+  // first client render byte-identical to the server's.
+  if (typeof window !== "undefined") {
+    const fromServer = (window as any).__TELEBOS_LOCALE__;
+    if (fromServer === "id" || fromServer === "en") return fromServer;
+  }
+  // No server value (static render, or the script did not run): English is
+  // the documented default and matches what getRequestLocale() falls back to.
   return getRequestLocale() ?? "en";
 }
 
