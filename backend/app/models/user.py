@@ -29,6 +29,10 @@ class User(Base):
         DateTime(timezone=True), nullable=True, default=None
     )
     telegram_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True)
+    ban_reason: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    ban_expires: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

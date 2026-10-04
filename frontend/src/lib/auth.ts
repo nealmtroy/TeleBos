@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { Pool } from "pg";
-import { twoFactor } from "better-auth/plugins";
+import { admin, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import bcrypt from "bcryptjs";
 import { createHash } from "crypto";
@@ -198,6 +198,11 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: "TeleBos",
+    }),
+    admin({
+      adminRoles: ["owner", "admin"],
+      defaultRole: "basic",
+      bannedUserMessage: "Akun Anda telah disuspend oleh administrator. Silakan hubungi admin jika ini merupakan kesalahan.",
     }),
     nextCookies(),
   ],

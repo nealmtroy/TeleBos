@@ -98,11 +98,33 @@ async def get_current_user(
     )
     user = user_result.scalar_one_or_none()
 
-    if user is None or not user.is_active:
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
+            detail="User not found",
         )
+
+    if not user.is_active:
+        now_utc = datetime.now(timezone.utc)
+        ban_expires = ensure_utc(user.ban_expires) if user.ban_expires else None
+        if ban_expires and ban_expires <= now_utc:
+            # Temporary ban has expired — automatically restore account
+            user.is_active = True
+            user.ban_reason = None
+            user.ban_expires = None
+            await db.execute(
+                text('UPDATE "user" SET banned = false, "banReason" = null, "banExpires" = null WHERE id = :user_id'),
+                {"user_id": str(user.id)},
+            )
+            await db.commit()
+        else:
+            ban_detail = f"Akun Anda disuspend: {user.ban_reason or 'Pelanggaran ketentuan platform'}"
+            if ban_expires:
+                ban_detail += f" (berakhir {ban_expires.strftime('%d-%m-%Y %H:%M UTC')})"
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ban_detail,
+            )
 
     # Auto-downgrade expired subscriptions
     from app.services.redeem_service import auto_downgrade_if_expired

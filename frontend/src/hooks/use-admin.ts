@@ -41,6 +41,8 @@ export interface AdminUser {
   is_active: boolean;
   order_count: number;
   created_at: string | null;
+  ban_reason?: string | null;
+  ban_expires?: string | null;
 
   // Telegram Account metrics
   connected_accounts?: number;
@@ -128,6 +130,45 @@ export function useDeleteUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+}
+
+export function useSuspendUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      reason,
+      durationDays,
+    }: {
+      userId: string;
+      reason: string;
+      durationDays?: number | null;
+    }) => {
+      const { data } = await api.post(`/admin/users/${userId}/suspend`, {
+        reason,
+        duration_days: durationDays || null,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
+export function useUnsuspendUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { data } = await api.post(`/admin/users/${userId}/unsuspend`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
     },
   });
 }

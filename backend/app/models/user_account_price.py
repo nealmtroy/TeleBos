@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -27,7 +28,7 @@ class TelegramIdPrefixPrice(Base):
     __tablename__ = "telegram_id_prefix_prices"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     id_prefix: Mapped[str] = mapped_column(
         String(20), nullable=False, unique=True, index=True,

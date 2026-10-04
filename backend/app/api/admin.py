@@ -1,10 +1,10 @@
 """Admin endpoints — user management, balance management, role management, redeem codes."""
 
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -134,8 +134,16 @@ class UserAdminResponse(BaseModel):
     broadcast_failed: int = 0
     broadcast_total: int = 0
 
+    # Suspension details
+    ban_reason: str | None = None
+    ban_expires: datetime | None = None
+
     model_config = {"from_attributes": True}
 
+
+class SuspendUserRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500, description="Reason for suspension")
+    duration_days: int | None = Field(None, ge=1, le=365, description="Duration in days, or None for permanent suspension")
 
 
 class UserAdminListResponse(BaseModel):
@@ -549,6 +557,108 @@ async def update_user_role(
         raise HTTPException(status_code=404, detail="User not found")
 
     user.role = payload.role
+    await db.execute(
+        text('UPDATE "user" SET role = :role WHERE id = :user_id'),
+        {"role": payload.role, "user_id": str(user.id)},
+    )
+    await db.flush()
+    return user
+
+
+@router.post("/users/{user_id}/suspend", response_model=UserAdminResponse)
+async def suspend_user(
+    request: Request,
+    user_id: str,
+    payload: SuspendUserRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(["owner"])),
+):
+    """Suspend a user account, revoke active sessions, and disconnect Telegram clients. Owner only."""
+    ip = request.client.host
+    if not await rate_limiter.check(f"admin:ip:{ip}"):
+        raise HTTPException(status_code=429, detail="Too many requests. Try later.")
+
+    result = await db.execute(select(User).where(User.id == UUID(user_id)))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot suspend your own account")
+
+    if user.role == "owner":
+        raise HTTPException(status_code=400, detail="Cannot suspend an owner account")
+
+    expires_at = None
+    if payload.duration_days and payload.duration_days > 0:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=payload.duration_days)
+
+    user.is_active = False
+    user.ban_reason = payload.reason
+    user.ban_expires = expires_at
+
+    user_id_str = str(user.id)
+    # Sync suspension with Better Auth "user" table
+    await db.execute(
+        text("""
+            UPDATE "user"
+            SET banned = true, "banReason" = :reason, "banExpires" = :expires_at
+            WHERE id = :user_id
+        """),
+        {"reason": payload.reason, "expires_at": expires_at, "user_id": user_id_str},
+    )
+
+    # Immediately revoke all Better Auth sessions
+    await db.execute(
+        text('DELETE FROM session WHERE "userId" = :user_id'),
+        {"user_id": user_id_str},
+    )
+
+    # Remove active clients from Telethon client pool
+    from app.services.telegram_client import client_pool
+    acc_result = await db.execute(select(TelegramAccount).where(TelegramAccount.user_id == user.id))
+    for acc in acc_result.scalars().all():
+        try:
+            await client_pool.remove(str(acc.id), save_state=True)
+        except Exception:
+            pass
+
+    await db.flush()
+    return user
+
+
+@router.post("/users/{user_id}/unsuspend", response_model=UserAdminResponse)
+async def unsuspend_user(
+    request: Request,
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(["owner"])),
+):
+    """Restore and reactivate a suspended user account. Owner only."""
+    ip = request.client.host
+    if not await rate_limiter.check(f"admin:ip:{ip}"):
+        raise HTTPException(status_code=429, detail="Too many requests. Try later.")
+
+    result = await db.execute(select(User).where(User.id == UUID(user_id)))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = True
+    user.ban_reason = None
+    user.ban_expires = None
+
+    user_id_str = str(user.id)
+    # Sync reactivated status with Better Auth "user" table
+    await db.execute(
+        text("""
+            UPDATE "user"
+            SET banned = false, "banReason" = null, "banExpires" = null
+            WHERE id = :user_id
+        """),
+        {"user_id": user_id_str},
+    )
+
     await db.flush()
     return user
 
@@ -560,7 +670,7 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(["owner"])),
 ):
-    """Delete a user account. Owner only."""
+    """Delete a user account, cleaning up Telethon pool, files, and Better Auth tables. Owner only."""
     ip = request.client.host
     if not await rate_limiter.check(f"admin:ip:{ip}"):
         raise HTTPException(status_code=429, detail="Too many requests. Try later.")
@@ -597,6 +707,12 @@ async def delete_user(
                 os.remove(photo_path)
         except (OSError, ValueError):
             pass
+
+    # Synchronize deletion with Better Auth authentication tables to prevent drift
+    user_id_str = str(user.id)
+    await db.execute(text('DELETE FROM session WHERE "userId" = :user_id'), {"user_id": user_id_str})
+    await db.execute(text('DELETE FROM account WHERE "userId" = :user_id'), {"user_id": user_id_str})
+    await db.execute(text('DELETE FROM "user" WHERE id = :user_id'), {"user_id": user_id_str})
 
     await db.delete(user)
     await db.flush()

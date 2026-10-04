@@ -41,12 +41,14 @@ def test_user_admin_response_telemetry():
         broadcast_finished=5,
         broadcast_failed=1,
         broadcast_total=8,
+        ban_reason="Spam activity detected",
     )
     assert resp.connected_accounts == 5
     assert resp.active_accounts == 4
     assert resp.limited_accounts == 1
     assert resp.broadcast_running == 2
     assert resp.broadcast_finished == 5
+    assert resp.ban_reason == "Spam activity detected"
 
 
 def test_admin_stats_response_telemetry():

@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react";
-import { twoFactorClient } from "better-auth/client/plugins";
+import { adminClient, twoFactorClient } from "better-auth/client/plugins";
 
 // Use absolute URL for SSR (env) and dynamic origin for client-side
 const baseURL =
@@ -9,7 +9,7 @@ const baseURL =
 
 export const authClient = createAuthClient({
   baseURL,
-  plugins: [twoFactorClient()],
+  plugins: [twoFactorClient(), adminClient()],
 });
 
 export const {

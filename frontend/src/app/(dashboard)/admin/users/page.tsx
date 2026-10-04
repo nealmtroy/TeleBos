@@ -11,6 +11,8 @@ import {
   useUpdateBalance,
   useUpdateRole,
   useDeleteUser,
+  useSuspendUser,
+  useUnsuspendUser,
   type AdminUser,
 } from "@/hooks/use-admin";
 import {
@@ -19,6 +21,8 @@ import {
   Plus,
   Minus,
   Trash2,
+  Ban,
+  UserCheck,
   AlertCircle,
   Loader2,
   RefreshCw,
@@ -104,10 +108,16 @@ function UsersContent() {
   const updateBalance = useUpdateBalance();
   const updateRole = useUpdateRole();
   const deleteUser = useDeleteUser();
+  const suspendUser = useSuspendUser();
+  const unsuspendUser = useUnsuspendUser();
 
   const [balanceModal, setBalanceModal] = useState<{ user: AdminUser; type: "add" | "deduct" } | null>(null);
   const [balanceAmount, setBalanceAmount] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<AdminUser | null>(null);
+  const [suspendModal, setSuspendModal] = useState<AdminUser | null>(null);
+  const [suspendReason, setSuspendReason] = useState("");
+  const [suspendDuration, setSuspendDuration] = useState<string>("0");
+  const [unsuspendConfirm, setUnsuspendConfirm] = useState<AdminUser | null>(null);
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -188,6 +198,50 @@ function UsersContent() {
       }
     } catch (err: any) {
       setActionMsg({ type: "error", text: err?.response?.data?.detail || "Failed to delete user" });
+    }
+  }
+
+  async function handleSuspendUser() {
+    if (!suspendModal || !suspendReason.trim()) return;
+    try {
+      const days = parseInt(suspendDuration);
+      await suspendUser.mutateAsync({
+        userId: suspendModal.id,
+        reason: suspendReason.trim(),
+        durationDays: days > 0 ? days : null,
+      });
+      setActionMsg({ type: "success", text: `User ${suspendModal.email} berhasil disuspend.` });
+      if (detailUser?.id === suspendModal.id) {
+        setDetailUser({
+          ...detailUser,
+          is_active: false,
+          ban_reason: suspendReason.trim(),
+        });
+      }
+      setSuspendModal(null);
+      setSuspendReason("");
+      setSuspendDuration("0");
+    } catch (err: any) {
+      setActionMsg({ type: "error", text: err?.response?.data?.detail || "Gagal melakukan suspend user" });
+    }
+  }
+
+  async function handleUnsuspendUser() {
+    if (!unsuspendConfirm) return;
+    try {
+      await unsuspendUser.mutateAsync(unsuspendConfirm.id);
+      setActionMsg({ type: "success", text: `User ${unsuspendConfirm.email} berhasil diaktifkan kembali.` });
+      if (detailUser?.id === unsuspendConfirm.id) {
+        setDetailUser({
+          ...detailUser,
+          is_active: true,
+          ban_reason: null,
+          ban_expires: null,
+        });
+      }
+      setUnsuspendConfirm(null);
+    } catch (err: any) {
+      setActionMsg({ type: "error", text: err?.response?.data?.detail || "Gagal mengaktifkan user" });
     }
   }
 
@@ -414,7 +468,14 @@ function UsersContent() {
                             {u.email ? u.email[0].toUpperCase() : "U"}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-900 truncate max-w-[200px]">{u.email}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-semibold text-gray-900 truncate max-w-[180px]">{u.email}</p>
+                              {!u.is_active && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                                  Suspended
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500 truncate max-w-[200px]">
                               {u.full_name || "—"}
                             </p>
@@ -543,6 +604,31 @@ function UsersContent() {
                             <Minus className="h-4 w-4" />
                           </button>
 
+                          {/* Suspend / Unsuspend User */}
+                          {u.id !== currentUser?.id && u.role !== "owner" && (
+                            u.is_active ? (
+                              <button
+                                onClick={() => {
+                                  setSuspendModal(u);
+                                  setSuspendReason("");
+                                  setSuspendDuration("0");
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                                title="Suspend User"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setUnsuspendConfirm(u)}
+                                className="p-1.5 text-amber-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                title="Aktifkan Kembali Pengguna (Unsuspend)"
+                              >
+                                <UserCheck className="h-4 w-4" />
+                              </button>
+                            )
+                          )}
+
                           {/* Delete User */}
                           {u.id !== currentUser?.id && (
                             <button
@@ -616,6 +702,24 @@ function UsersContent() {
                 ✕
               </button>
             </div>
+
+            {/* Suspension Banner */}
+            {!detailUser.is_active && (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-rose-800">
+                  <Ban className="h-4 w-4" />
+                  <span>Status: Akun Ditangguhkan (Suspended)</span>
+                </div>
+                <p className="text-rose-700">
+                  <span className="font-semibold">Alasan:</span> {detailUser.ban_reason || "Pelanggaran ketentuan platform"}
+                </p>
+                {detailUser.ban_expires && (
+                  <p className="text-rose-600 text-[11px]">
+                    <span className="font-semibold">Berlaku hingga:</span> {formatDate(detailUser.ban_expires)}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Quick Metrics Grid */}
             <div className="grid grid-cols-2 gap-3">
@@ -787,6 +891,104 @@ function UsersContent() {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Suspend User Modal */}
+      {suspendModal && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSuspendModal(null)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 shrink-0">
+                <Ban className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Suspend Akun Pengguna</h3>
+                <p className="text-xs text-gray-500 mt-0.5 truncate">{suspendModal.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Durasi Penangguhan
+                </label>
+                <select
+                  value={suspendDuration}
+                  onChange={(e) => setSuspendDuration(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                >
+                  <option value="0">Permanen (Sampai di-unsuspend manual)</option>
+                  <option value="1">1 Hari</option>
+                  <option value="3">3 Hari</option>
+                  <option value="7">7 Hari (1 Minggu)</option>
+                  <option value="30">30 Hari (1 Bulan)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Alasan Penangguhan <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  placeholder="Contoh: Terdeteksi aktivitas spam berlebih / Melanggar TOS..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 resize-none"
+                  autoFocus
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-[11px] text-amber-800 space-y-1">
+                <p className="font-semibold">Perhatian:</p>
+                <p>
+                  Semua sesi aktif user ini akan langsung dicabut (force logout), akun Telegram akan dilepas dari antrean broadcast, dan user tidak dapat masuk kembali selama masa suspend.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSuspendModal(null)}
+                className="flex-1 text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSuspendUser}
+                disabled={suspendUser.isPending || !suspendReason.trim()}
+                className="flex-1 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {suspendUser.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Suspend Akun"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsuspend Confirm Dialog */}
+      <ConfirmDialog
+        open={!!unsuspendConfirm}
+        onOpenChange={(open) => !open && setUnsuspendConfirm(null)}
+        onConfirm={handleUnsuspendUser}
+        title="Aktifkan Kembali Akun (Unsuspend)"
+        message={unsuspendConfirm ? `Apakah Anda yakin ingin membatalkan status suspend dan mengaktifkan kembali akun ${unsuspendConfirm.email}?` : ""}
+        confirmText="Aktifkan Akun"
+        cancelText="Batal"
+        variant="info"
       />
     </div>
   );
