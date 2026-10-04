@@ -1086,6 +1086,12 @@ async def admin_delete_broadcast(
     if job.status in ("running", "paused", "pending"):
         await broadcast_service.update_job_status(db, job, "cancelled")
         await db.flush()
+        # Signal the worker before the row disappears. Without this the worker
+        # task keeps sending and later fails flushing its buffered cycle logs
+        # into a job that no longer exists (PYTHON-FASTAPI-1M).
+        from app.utils.redis_dispatcher import publish_job_control
+
+        await publish_job_control("broadcast", job.id, "stop")
 
     await db.delete(job)
     await db.commit()
@@ -1144,6 +1150,12 @@ async def admin_bulk_broadcast_action(
         for j in jobs:
             if j.status in ("running", "paused", "pending"):
                 await broadcast_service.update_job_status(db, j, "cancelled")
+                # Stop the worker task before the row goes away, same reason as
+                # admin_delete_broadcast: an orphaned task would keep sending and
+                # then fail to flush its buffered cycle logs (PYTHON-FASTAPI-1M).
+                from app.utils.redis_dispatcher import publish_job_control
+
+                await publish_job_control("broadcast", j.id, "stop")
             await db.delete(j)
         await db.commit()
         return {"message": f"Deleted {len(jobs)} selected jobs", "count": len(jobs)}
