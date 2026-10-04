@@ -713,6 +713,25 @@ export interface Dict {
     languageIdDesc: string;
     languageSystem: string;
     languageSystemDesc: string;
+    bankAccountsTab: string;
+    bankAccountsTitle: string;
+    bankAccountsDesc: string;
+    addBankAccount: string;
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    isDefaultAccount: string;
+    setAsDefault: string;
+    defaultBadge: string;
+    deleteAccountConfirm: string;
+    depositSettingsTitle: string;
+    depositSettingsDesc: string;
+    saveDepositSettings: string;
+    depositSettingsSaved: string;
+    noBankAccounts: string;
+    noBankAccountsDesc: string;
+    accountAdded: string;
+    accountDeleted: string;
   };
 
   // Account Settings (per-account)
@@ -1647,6 +1666,19 @@ export interface Dict {
     changeAmount: string;
     qrisSupported: string;
     paymentConfirmed: string;
+    allTransactions: string;
+    deposits: string;
+    withdrawals: string;
+    allStatus: string;
+    searchPlaceholder: string;
+    transactionDetails: string;
+    selectSavedAccount: string;
+    useManualAccount: string;
+    manageBankAccounts: string;
+    totalDeposits: string;
+    totalWithdrawals: string;
+    noMatchingTransactions: string;
+    close: string;
   };
   pricing: {
     kicker: string;

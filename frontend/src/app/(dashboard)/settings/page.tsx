@@ -31,6 +31,9 @@ import {
   Monitor,
   Globe,
   Laptop,
+  CreditCard,
+  Building2,
+  Wallet,
 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -39,9 +42,10 @@ import { cn } from "@/lib/utils";
 import QRCode from "react-qr-code";
 import { useAuthStore } from "@/store/auth-store";
 import { useThemeStore } from "@/store/theme-store";
+import { useBankAccountStore } from "@/store/bank-account-store";
 import { CountryFlag } from "@/components/layout/trade-surface";
 
-type TabKey = "security" | "2fa" | "api-keys" | "appearance" | "language";
+type TabKey = "security" | "2fa" | "api-keys" | "bank-accounts" | "appearance" | "language";
 
 type ApiKey = {
   id: string;
@@ -72,7 +76,8 @@ export default function SettingsPage() {
       tabParam === "language" ||
       tabParam === "security" ||
       tabParam === "2fa" ||
-      tabParam === "api-keys"
+      tabParam === "api-keys" ||
+      tabParam === "bank-accounts"
     ) {
       setActiveTab(tabParam as TabKey);
     }
@@ -115,6 +120,77 @@ export default function SettingsPage() {
   const [apiKeyScopes, setApiKeyScopes] = useState<string[]>(["profile:read"]);
   const [apiKeyCreating, setApiKeyCreating] = useState(false);
   const [newSecret, setNewSecret] = useState<string | null>(null);
+
+  // ── Bank Accounts Store & State ───────────────────────────────────────────
+  const {
+    accounts,
+    addAccount,
+    deleteAccount,
+    setDefaultAccount,
+    depositSettings,
+    updateDepositSettings,
+    hydrate: hydrateBankAccounts,
+  } = useBankAccountStore();
+
+  useEffect(() => {
+    hydrateBankAccounts();
+  }, [hydrateBankAccounts]);
+
+  const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [newAccountType, setNewAccountType] = useState<"bank" | "ewallet">("bank");
+  const [newAccountProvider, setNewAccountProvider] = useState("BCA");
+  const [newAccountNumber, setNewAccountNumber] = useState("");
+  const [newAccountHolder, setNewAccountHolder] = useState("");
+  const [newAccountDefault, setNewAccountDefault] = useState(false);
+
+  // Platform Deposit settings editing state
+  const [depositMerchant, setDepositMerchant] = useState(depositSettings.merchantName);
+  const [depositNmid, setDepositNmid] = useState(depositSettings.nmid);
+  const [depositBank, setDepositBank] = useState(depositSettings.bankName);
+  const [depositAccNum, setDepositAccNum] = useState(depositSettings.bankAccountNumber);
+  const [depositAccHolder, setDepositAccHolder] = useState(depositSettings.bankAccountHolder);
+
+  useEffect(() => {
+    setDepositMerchant(depositSettings.merchantName);
+    setDepositNmid(depositSettings.nmid);
+    setDepositBank(depositSettings.bankName);
+    setDepositAccNum(depositSettings.bankAccountNumber);
+    setDepositAccHolder(depositSettings.bankAccountHolder);
+  }, [depositSettings]);
+
+  function handleSaveAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newAccountNumber.trim() || !newAccountHolder.trim()) {
+      toast.error("Mohon lengkapi nomor rekening dan nama pemilik");
+      return;
+    }
+
+    addAccount({
+      type: newAccountType,
+      provider: newAccountProvider,
+      accountNumber: newAccountNumber.trim(),
+      accountHolder: newAccountHolder.trim(),
+      isDefault: newAccountDefault,
+    });
+
+    toast.success(_("settings.accountAdded"));
+    setIsAddingAccount(false);
+    setNewAccountNumber("");
+    setNewAccountHolder("");
+    setNewAccountDefault(false);
+  }
+
+  function handleSaveDepositSettings(e: React.FormEvent) {
+    e.preventDefault();
+    updateDepositSettings({
+      merchantName: depositMerchant.trim() || "TELEBOS",
+      nmid: depositNmid.trim() || "ID1020042918290",
+      bankName: depositBank.trim() || "BCA",
+      bankAccountNumber: depositAccNum.trim(),
+      bankAccountHolder: depositAccHolder.trim(),
+    });
+    toast.success(_("settings.depositSettingsSaved"));
+  }
 
   // Load API keys
   useEffect(() => {
@@ -472,6 +548,25 @@ export default function SettingsPage() {
           {apiKeys.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-600 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
               {apiKeys.filter((k) => !k.revoked_at).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("bank-accounts")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap cursor-pointer",
+            activeTab === "bank-accounts"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold"
+              : "text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:dark:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
+          )}
+        >
+          <CreditCard className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <span>{_("settings.bankAccountsTab")}</span>
+          {accounts.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-600 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+              {accounts.length}
             </span>
           )}
         </button>
@@ -1540,6 +1635,422 @@ export default function SettingsPage() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: BANK ACCOUNTS & PAYMENTS ────────────────────────────────────── */}
+      {activeTab === "bank-accounts" && (
+        <div className="space-y-6">
+          {/* Header Action Card */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-xs p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {_("settings.bankAccountsTitle")}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
+                  {_("settings.bankAccountsDesc")}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsAddingAccount(!isAddingAccount)}
+              className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition shadow-xs shrink-0 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>{isAddingAccount ? "Tutup Form" : _("settings.addBankAccount")}</span>
+            </button>
+          </div>
+
+          {/* Form to Add Account */}
+          {isAddingAccount && (
+            <form onSubmit={handleSaveAccount} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-xs p-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="border-b border-slate-100 dark:border-slate-700 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Tambah Rekening Bank atau E-Wallet Baru
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pastikan nama pemilik rekening sama dengan nama pada identitas Anda.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Tipe Akun
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewAccountType("bank");
+                        setNewAccountProvider("BCA");
+                      }}
+                      className={cn(
+                        "flex-1 py-2 text-xs font-semibold rounded-lg border transition cursor-pointer",
+                        newAccountType === "bank"
+                          ? "bg-primary-50 dark:bg-primary-950/40 border-primary-500 text-primary-700 dark:text-primary-300"
+                          : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                      )}
+                    >
+                      Bank Transfer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewAccountType("ewallet");
+                        setNewAccountProvider("DANA");
+                      }}
+                      className={cn(
+                        "flex-1 py-2 text-xs font-semibold rounded-lg border transition cursor-pointer",
+                        newAccountType === "ewallet"
+                          ? "bg-primary-50 dark:bg-primary-950/40 border-primary-500 text-primary-700 dark:text-primary-300"
+                          : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                      )}
+                    >
+                      E-Wallet
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    {_("settings.bankName")}
+                  </label>
+                  <select
+                    value={newAccountProvider}
+                    onChange={(e) => setNewAccountProvider(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  >
+                    {newAccountType === "bank" ? (
+                      <>
+                        <option value="BCA">BCA (Bank Central Asia)</option>
+                        <option value="Mandiri">Bank Mandiri</option>
+                        <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                        <option value="BNI">BNI (Bank Negara Indonesia)</option>
+                        <option value="CIMB Niaga">CIMB Niaga</option>
+                        <option value="Permata">Bank Permata</option>
+                        <option value="BSI">BSI (Bank Syariah Indonesia)</option>
+                        <option value="Danamon">Bank Danamon</option>
+                        <option value="Bank Jago">Bank Jago</option>
+                        <option value="SeaBank">SeaBank</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="DANA">DANA</option>
+                        <option value="GoPay">GoPay</option>
+                        <option value="OVO">OVO</option>
+                        <option value="ShopeePay">ShopeePay</option>
+                        <option value="LinkAja">LinkAja</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    {_("settings.accountNumber")}
+                  </label>
+                  <input
+                    type="text"
+                    value={newAccountNumber}
+                    onChange={(e) => setNewAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder={newAccountType === "bank" ? "Contoh: 8820192833" : "Contoh: 081234567890"}
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    {_("settings.accountHolder")}
+                  </label>
+                  <input
+                    type="text"
+                    value={newAccountHolder}
+                    onChange={(e) => setNewAccountHolder(e.target.value)}
+                    placeholder="Nama sesuai rekening / KTP"
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newAccountDefault}
+                    onChange={(e) => setNewAccountDefault(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+                    {_("settings.isDefaultAccount")}
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingAccount(false)}
+                  className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition cursor-pointer"
+                >
+                  {_("navbar.cancel") || "Batal"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newAccountNumber.trim() || !newAccountHolder.trim()}
+                  className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition shadow-xs disabled:cursor-not-allowed disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Simpan Rekening</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* List of Saved Bank Accounts */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Rekening Penarikan Tersimpan
+              </h3>
+              <span className="text-xs text-slate-500 font-medium">
+                {accounts.length} rekening terdaftar
+              </span>
+            </div>
+
+            {accounts.length === 0 ? (
+              <div className="text-center py-12 px-4 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                  <CreditCard className="h-6 w-6" />
+                </div>
+                <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  {_("settings.noBankAccounts")}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  {_("settings.noBankAccountsDesc")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingAccount(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-xs font-semibold hover:bg-primary-700 transition cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{_("settings.addBankAccount")}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
+                {accounts.map((acc) => (
+                  <div
+                    key={acc.id}
+                    className={cn(
+                      "p-4 rounded-xl border relative transition-all space-y-3",
+                      acc.isDefault
+                        ? "border-primary-400 dark:border-primary-700 bg-primary-50/20 dark:bg-primary-950/20"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-600"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "px-2.5 py-1 rounded-md text-xs font-bold tracking-wide",
+                            acc.provider === "BCA" && "bg-blue-600 text-white",
+                            acc.provider === "Mandiri" && "bg-amber-600 text-white",
+                            acc.provider === "BRI" && "bg-sky-600 text-white",
+                            acc.provider === "BNI" && "bg-teal-600 text-white",
+                            acc.provider === "GoPay" && "bg-sky-500 text-white",
+                            acc.provider === "DANA" && "bg-blue-500 text-white",
+                            acc.provider === "OVO" && "bg-purple-600 text-white",
+                            acc.provider === "ShopeePay" && "bg-orange-500 text-white",
+                            !["BCA", "Mandiri", "BRI", "BNI", "GoPay", "DANA", "OVO", "ShopeePay"].includes(acc.provider) && "bg-slate-700 text-white"
+                          )}
+                        >
+                          {acc.provider}
+                        </span>
+                        <span className="text-xs text-slate-500 capitalize">
+                          {acc.type === "bank" ? "Bank Transfer" : "E-Wallet"}
+                        </span>
+                      </div>
+
+                      {acc.isDefault && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-100 dark:bg-primary-900/60 text-primary-800 dark:text-primary-200 border border-primary-200 dark:border-primary-800">
+                          <Check className="h-3 w-3" />
+                          {_("settings.defaultBadge")}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100 tracking-wider">
+                          {acc.accountNumber}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(acc.accountNumber);
+                            toast.success(_("settings.copied"));
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
+                          title="Copy account number"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        A.N. {acc.accountHolder}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                      {!acc.isDefault ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDefaultAccount(acc.id);
+                            toast.success("Rekening utama berhasil diubah");
+                          }}
+                          className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                        >
+                          {_("settings.setAsDefault")}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">Digunakan otomatis untuk penarikan</span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(_("settings.deleteAccountConfirm"))) {
+                            deleteAccount(acc.id);
+                            toast.success(_("settings.accountDeleted"));
+                          }
+                        }}
+                        className="p-1.5 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                        title="Hapus rekening"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Platform Deposit Destination Settings */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-200 shrink-0">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    {_("settings.depositSettingsTitle")}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {_("settings.depositSettingsDesc")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveDepositSettings} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Nama Merchant QRIS
+                  </label>
+                  <input
+                    type="text"
+                    value={depositMerchant}
+                    onChange={(e) => setDepositMerchant(e.target.value)}
+                    placeholder="TELEBOS"
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    NMID QRIS
+                  </label>
+                  <input
+                    type="text"
+                    value={depositNmid}
+                    onChange={(e) => setDepositNmid(e.target.value)}
+                    placeholder="ID1020042918290"
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Bank Penampung Cadangan
+                  </label>
+                  <input
+                    type="text"
+                    value={depositBank}
+                    onChange={(e) => setDepositBank(e.target.value)}
+                    placeholder="BCA"
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Nomor Rekening Penampung
+                  </label>
+                  <input
+                    type="text"
+                    value={depositAccNum}
+                    onChange={(e) => setDepositAccNum(e.target.value)}
+                    placeholder="8820 0019 4488"
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Nama Pemilik Rekening Penampung
+                  </label>
+                  <input
+                    type="text"
+                    value={depositAccHolder}
+                    onChange={(e) => setDepositAccHolder(e.target.value)}
+                    placeholder="TeleBos Official"
+                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition shadow-xs cursor-pointer"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>{_("settings.saveDepositSettings")}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
