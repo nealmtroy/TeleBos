@@ -16,6 +16,7 @@ depends_on = None
 
 def upgrade():
     # 1. Clean up duplicate redundant indexes
+    op.execute("ALTER TABLE telegram_accounts DROP CONSTRAINT IF EXISTS uq_telegram_account_phone")
     op.execute("DROP INDEX IF EXISTS uq_telegram_account_phone")
     op.execute("DROP INDEX IF EXISTS ix_account_folder_members_account")
     op.execute("DROP INDEX IF EXISTS ix_account_folder_members_folder")
