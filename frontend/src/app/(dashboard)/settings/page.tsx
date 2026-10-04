@@ -127,8 +127,6 @@ export default function SettingsPage() {
     addAccount,
     deleteAccount,
     setDefaultAccount,
-    depositSettings,
-    updateDepositSettings,
     hydrate: hydrateBankAccounts,
   } = useBankAccountStore();
 
@@ -142,21 +140,6 @@ export default function SettingsPage() {
   const [newAccountNumber, setNewAccountNumber] = useState("");
   const [newAccountHolder, setNewAccountHolder] = useState("");
   const [newAccountDefault, setNewAccountDefault] = useState(false);
-
-  // Platform Deposit settings editing state
-  const [depositMerchant, setDepositMerchant] = useState(depositSettings.merchantName);
-  const [depositNmid, setDepositNmid] = useState(depositSettings.nmid);
-  const [depositBank, setDepositBank] = useState(depositSettings.bankName);
-  const [depositAccNum, setDepositAccNum] = useState(depositSettings.bankAccountNumber);
-  const [depositAccHolder, setDepositAccHolder] = useState(depositSettings.bankAccountHolder);
-
-  useEffect(() => {
-    setDepositMerchant(depositSettings.merchantName);
-    setDepositNmid(depositSettings.nmid);
-    setDepositBank(depositSettings.bankName);
-    setDepositAccNum(depositSettings.bankAccountNumber);
-    setDepositAccHolder(depositSettings.bankAccountHolder);
-  }, [depositSettings]);
 
   function handleSaveAccount(e: React.FormEvent) {
     e.preventDefault();
@@ -178,18 +161,6 @@ export default function SettingsPage() {
     setNewAccountNumber("");
     setNewAccountHolder("");
     setNewAccountDefault(false);
-  }
-
-  function handleSaveDepositSettings(e: React.FormEvent) {
-    e.preventDefault();
-    updateDepositSettings({
-      merchantName: depositMerchant.trim() || "TELEBOS",
-      nmid: depositNmid.trim() || "ID1020042918290",
-      bankName: depositBank.trim() || "BCA",
-      bankAccountNumber: depositAccNum.trim(),
-      bankAccountHolder: depositAccHolder.trim(),
-    });
-    toast.success(_("settings.depositSettingsSaved"));
   }
 
   // Load API keys
@@ -1948,109 +1919,6 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Section 2: Platform Deposit Destination Settings */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-200 shrink-0">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                    {_("settings.depositSettingsTitle")}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {_("settings.depositSettingsDesc")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveDepositSettings} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Nama Merchant QRIS
-                  </label>
-                  <input
-                    type="text"
-                    value={depositMerchant}
-                    onChange={(e) => setDepositMerchant(e.target.value)}
-                    placeholder="TELEBOS"
-                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    NMID QRIS
-                  </label>
-                  <input
-                    type="text"
-                    value={depositNmid}
-                    onChange={(e) => setDepositNmid(e.target.value)}
-                    placeholder="ID1020042918290"
-                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Bank Penampung Cadangan
-                  </label>
-                  <input
-                    type="text"
-                    value={depositBank}
-                    onChange={(e) => setDepositBank(e.target.value)}
-                    placeholder="BCA"
-                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Nomor Rekening Penampung
-                  </label>
-                  <input
-                    type="text"
-                    value={depositAccNum}
-                    onChange={(e) => setDepositAccNum(e.target.value)}
-                    placeholder="8820 0019 4488"
-                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Nama Pemilik Rekening Penampung
-                  </label>
-                  <input
-                    type="text"
-                    value={depositAccHolder}
-                    onChange={(e) => setDepositAccHolder(e.target.value)}
-                    placeholder="TeleBos Official"
-                    className="w-full h-10 px-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition shadow-xs cursor-pointer"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{_("settings.saveDepositSettings")}</span>
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
