@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-06
+- **[f8b6d888](https://github.com/nealmtroy/TeleBos/commit/f8b6d888)**: feat(ui): implement official Shadcn Radix sidebar and refactor layout sidebar
 - **[cbce68e0](https://github.com/nealmtroy/TeleBos/commit/cbce68e0)**: fix(middleware): whitelist error pages in PUBLIC_PATHS
 - **[05804ab5](https://github.com/nealmtroy/TeleBos/commit/05804ab5)**: fix(frontend): avoid Next.js static 500 build conflict via rewrite
 - **[e2a63bba](https://github.com/nealmtroy/TeleBos/commit/e2a63bba)**: feat(ui): complete Radix UI migration, dual-theme error pages & design tokens

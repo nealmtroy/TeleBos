@@ -4,15 +4,13 @@ import { cn } from "@/lib/utils";
 
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { size?: "default" | "sm" }
->(({ className, size = "default", ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
   <div
     ref={ref}
     data-slot="card"
-    data-size={size}
     className={cn(
       "rounded-xl border border-border bg-card text-card-foreground shadow-xs transition-colors",
-      size === "sm" ? "p-3" : "p-5",
       className
     )}
     {...props}
@@ -27,7 +25,7 @@ const CardHeader = React.forwardRef<
   <div
     ref={ref}
     data-slot="card-header"
-    className={cn("flex flex-col gap-1.5", className)}
+    className={cn("flex flex-col gap-1.5 p-5 pb-3", className)}
     {...props}
   />
 ));
@@ -82,7 +80,7 @@ const CardContent = React.forwardRef<
   <div
     ref={ref}
     data-slot="card-content"
-    className={cn("pt-2", className)}
+    className={cn("p-5 pt-0", className)}
     {...props}
   />
 ));
@@ -95,10 +93,7 @@ const CardFooter = React.forwardRef<
   <div
     ref={ref}
     data-slot="card-footer"
-    className={cn(
-      "-mx-5 -mb-5 mt-4 flex items-center border-t border-border bg-muted/40 p-4 rounded-b-xl",
-      className
-    )}
+    className={cn("flex items-center p-5 pt-0", className)}
     {...props}
   />
 ));
