@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 
 /**
- * Verifies the reference two-column /settings layout: sticky secondary nav on
- * the left, every summary card rendered at once on the right, and the detail
- * editors hidden behind a dialog instead of a full-page tab swap.
+ * Verifies the two-pane inline /settings layout: sticky secondary nav on
+ * the left, summary cards or active section rendered on the right without modal dialogs,
+ * and mobile navigation with back button.
  */
 
 const openSection = vi.fn();
@@ -65,8 +65,8 @@ vi.mock("@/components/settings/settings-nav", async () => {
   );
   return {
     ...actual,
-    SettingsNav: (props: { onSelect: (k: string) => void }) => (
-      <actual.SettingsNav active="profile" onSelect={props.onSelect} />
+    SettingsNav: (props: { active?: any; onSelect: (k: any) => void }) => (
+      <actual.SettingsNav active={props.active ?? "profile"} onSelect={props.onSelect} />
     ),
   };
 });
@@ -81,8 +81,6 @@ describe("/settings reference layout", () => {
     useI18nStore.setState({ locale: "id", preference: "id" });
   });
 
-  // Base UI portals the dialog to document.body, so an explicit unmount is the
-  // only thing that guarantees a later test does not see the previous popup.
   afterEach(() => {
     cleanup();
   });
@@ -128,7 +126,7 @@ describe("/settings reference layout", () => {
     expect(screen.queryByLabelText(/Kata Sandi Saat Ini/i)).not.toBeInTheDocument();
   });
 
-  it("hands off from a summary card to its editor dialog", async () => {
+  it("hands off from a summary card to its inline editor section", async () => {
     const userEvt = userEvent.setup();
     render(<SettingsPage />);
 
@@ -136,38 +134,36 @@ describe("/settings reference layout", () => {
     const cards = screen.getAllByRole("button", { name: /Atur 2FA/i });
     await userEvt.click(cards[cards.length - 1]);
 
-    // Dialog opens with the 2FA editor inside. This string appears only in the
-    // 2FA editor body, never in the dashboard cards, so it identifies the swap.
+    // Inline section opens with the 2FA editor inside.
     const TWO_FA_EDITOR_TEXT = /Mendukung Google Authenticator, Microsoft Authenticator/i;
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(TWO_FA_EDITOR_TEXT)).toBeInTheDocument();
+    expect(await screen.findByText(TWO_FA_EDITOR_TEXT)).toBeInTheDocument();
     // The password form is a different editor — it must NOT be mounted.
-    expect(within(dialog).queryByLabelText(/Kata Sandi Saat Ini/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Kata Sandi Saat Ini/i)).not.toBeInTheDocument();
+    // No modal dialog should exist
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("swaps the editor contents when another section is opened", async () => {
+  it("swaps the editor contents when another section is opened or back is clicked", async () => {
     const userEvt = userEvent.setup();
     render(<SettingsPage />);
 
     const TWO_FA_EDITOR_TEXT = /Mendukung Google Authenticator, Microsoft Authenticator/i;
 
     await userEvt.click(screen.getAllByRole("button", { name: /Atur 2FA/i }).pop()!);
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(TWO_FA_EDITOR_TEXT)).toBeInTheDocument();
+    expect(await screen.findByText(TWO_FA_EDITOR_TEXT)).toBeInTheDocument();
 
-    // Close the modal first: while it is open, Base UI marks the rest of the
-    // page inert, so a card underneath cannot receive a real pointer event.
-    await userEvt.click(within(dialog).getByRole("button", { name: /close/i }));
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
+    // In two-pane inline, user can use the mobile back button or click nav item directly
+    const backButton = screen.getByRole("button", { name: /Kembali ke daftar pengaturan/i });
+    await userEvt.click(backButton);
 
+    // After returning, summary cards are visible again
+    expect(screen.getByText("Profil & Pengaturan")).toBeInTheDocument();
+
+    // Now open password section
     await userEvt.click(screen.getAllByRole("button", { name: /Ubah Kata Sandi/i }).pop()!);
     await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Kata Sandi Saat Ini/i)).toBeInTheDocument();
     });
-    const reopened = screen.getByRole("dialog");
-    expect(within(reopened).getByLabelText(/Kata Sandi Saat Ini/i)).toBeInTheDocument();
-    expect(within(reopened).queryByText(TWO_FA_EDITOR_TEXT)).not.toBeInTheDocument();
+    expect(screen.queryByText(TWO_FA_EDITOR_TEXT)).not.toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-06
+- **[bdc3331c](https://github.com/nealmtroy/TeleBos/commit/bdc3331c)**: feat(ui): apply adaptive custom-scrollbar to dashboard shell and content container
 - **[e73ac9eb](https://github.com/nealmtroy/TeleBos/commit/e73ac9eb)**: feat(ui): replace auto reply accordion with TextEditorModal and reuse across text lists
 - **[4e9b0197](https://github.com/nealmtroy/TeleBos/commit/4e9b0197)**: feat(smm): persist services last_sync_at, prevent startup re-sync storm, and strictly store only curated Telegram services
 - **[475ab959](https://github.com/nealmtroy/TeleBos/commit/475ab959)**: perf(system): background check system status every 2 hours with localStorage cache and render banner only on downtime/degradation
