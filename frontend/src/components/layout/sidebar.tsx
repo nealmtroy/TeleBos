@@ -52,7 +52,22 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { BrandLogo } from "@/components/ui/brand-logo";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SubItem {
   href: string;
@@ -175,11 +190,8 @@ export function Sidebar() {
   const [administrationsOpen, setAdministrationsOpen] = useState(isAdministrationsOpen);
   const [adminRedeemOpen, setAdminRedeemOpen] = useState(isAdminRedeemOpen);
   const [adminSmmOpen, setAdminSmmOpen] = useState(isAdminSmmOpen);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [activeSubmenu, setActiveSubmenu] = useState<"account" | "help" | null>(null);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  const profileRef = useRef<HTMLDivElement>(null);
   const logout = useAuthStore((s) => s.logout);
 
   // Auto-open sections on mount / pathname change
@@ -203,25 +215,23 @@ export function Sidebar() {
     if (isAdministrationsOpen) setAdministrationsOpen(true);
     if (isAdminRedeemOpen) setAdminRedeemOpen(true);
     if (isAdminSmmOpen) setAdminSmmOpen(true);
-  }, [pathname]);
+  }, [
+    pathname,
+    isAccountsPage,
+    isInvitePage,
+    isBroadcastPage,
+    isGroupsChannelsPage,
+    isServicesOpen,
+    isAdministrationsOpen,
+    isAdminRedeemOpen,
+    isAdminSmmOpen,
+  ]);
 
   // Auto-open sidebar on desktop on first mount
   useEffect(() => {
     if (window.innerWidth >= 1024) {
       useAppStore.setState({ sidebarOpen: true });
     }
-  }, []);
-
-  // Close profile dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false);
-        setActiveSubmenu(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   function handleNavClick() {
@@ -461,576 +471,433 @@ export function Sidebar() {
                     is exactly what made this read as "there is no way to scroll".
                     sidebar-scrollbar keeps it visible but out of the way. */}
                 <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-4">
-                  {navGroups.map((group, groupIdx) => {
-            // Filter items in the group by user role
-            const visibleItems = group.items.filter((item) => {
-              const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
-              return userLevel >= (item.minRole ?? 0);
-            });
+                  <TooltipProvider delayDuration={0}>
+                    {navGroups.map((group, groupIdx) => {
+                      // Filter items in the group by user role
+                      const visibleItems = group.items.filter((item) => {
+                        const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
+                        return userLevel >= (item.minRole ?? 0);
+                      });
 
-            if (visibleItems.length === 0) return null;
+                      if (visibleItems.length === 0) return null;
 
-            return (
-              <div key={group.id} className="space-y-1">
-                {/* Group Title or Divider */}
-                {sidebarOpen ? (
-                  <div className="text-[11px] font-bold text-slate-400 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
-                    {group.labelKey}
-                  </div>
-                ) : (
-                  groupIdx > 0 && <div className="border-t border-slate-900/60 my-3 mx-2" />
-                )}
-
-                {visibleItems.map((item) => {
-                  const isActive = (() => {
-                    if (item.href === "/dashboard") return pathname === "/dashboard";
-                    if (item.hasSubItems && item.subItems) {
-                      const hasActiveSub = item.subItems.some((sub) =>
-                        sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
-                      );
-                      if (hasActiveSub) return true;
-                    }
-                    if (item.matchPrefixes) {
-                      return item.matchPrefixes.some((pref) => pathname.startsWith(pref)) || (item.exact ? pathname === item.href : pathname.startsWith(item.href));
-                    }
-                    if (item.href === "/broadcast") {
-                      if (
-                        pathname.startsWith("/broadcast/group-lists") ||
-                        pathname.startsWith("/broadcast/text-lists")
-                      ) {
-                        return false;
-                      }
-                    }
-                    if (item.href === "/groups-channels") {
-                      if (pathname.startsWith("/groups-channels/auto-join")) {
-                        return false;
-                      }
-                    }
-                    return item.exact ? pathname === item.href : pathname.startsWith(item.href);
-                  })();
-
-                  if (item.hasSubItems && item.subItems) {
-                    const { isOpen, setIsOpen } = getSubmenuState(item.href);
-
-                    return (
-                      <div key={item.href} className="relative group/item">
-                        <button
-                          onClick={() => {
-                            if (!sidebarOpen) {
-                              // Expand sidebar and open submenu
-                              toggleSidebar();
-                              setIsOpen(true);
-                            } else {
-                              setIsOpen(!isOpen);
-                            }
-                          }}
-                          className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-colors duration-150 text-left relative",
-                            isActive
-                              ? "bg-primary-500/15 text-primary-400 font-semibold"
-                              : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
-                          )}
-                        >
-                          <item.icon
-                            className={cn(
-                              "h-[18px] w-[18px] flex-shrink-0 transition-colors",
-                              isActive ? "text-primary-400" : "text-slate-400 group-hover/item:text-slate-100"
-                            )}
-                          />
+                      return (
+                        <div key={group.id} className="space-y-1">
+                          {/* Group Title or Divider */}
                           {sidebarOpen ? (
-                            <>
-                              <span className="flex-1 text-left truncate">{_(item.labelKey)}</span>
-                              <ChevronDown
-                                className={cn(
-                                  "h-3.5 w-3.5 transition-transform duration-200 shrink-0",
-                                  isOpen && "rotate-180"
-                                )}
-                              />
-                            </>
+                            <div className="text-[11px] font-bold text-slate-400 px-3.5 pt-2 pb-1 tracking-wider uppercase select-none">
+                              {group.labelKey}
+                            </div>
                           ) : (
-                            isActive && (
-                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-500 rounded-r-md" />
-                            )
+                            groupIdx > 0 && <div className="border-t border-slate-900/60 my-3 mx-2" />
                           )}
-                        </button>
 
-                        {/* Collapsed Tooltip */}
-                        {!sidebarOpen && (
-                          <div className="absolute left-[56px] top-1/2 -translate-y-1/2 bg-slate-900 border border-slate-800 text-white text-xs font-semibold py-1.5 px-3 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:pointer-events-auto transition-all duration-150 translate-x-2 group-hover/item:translate-x-0 whitespace-nowrap z-50">
-                            {_(item.labelKey)}
-                          </div>
-                        )}
+                          {visibleItems.map((item) => {
+                            const isActive = (() => {
+                              if (item.href === "/dashboard") return pathname === "/dashboard";
+                              if (item.hasSubItems && item.subItems) {
+                                const hasActiveSub = item.subItems.some((sub) =>
+                                  sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
+                                );
+                                if (hasActiveSub) return true;
+                              }
+                              if (item.matchPrefixes) {
+                                return item.matchPrefixes.some((pref) => pathname.startsWith(pref)) || (item.exact ? pathname === item.href : pathname.startsWith(item.href));
+                              }
+                              if (item.href === "/broadcast") {
+                                if (
+                                  pathname.startsWith("/broadcast/group-lists") ||
+                                  pathname.startsWith("/broadcast/text-lists")
+                                ) {
+                                  return false;
+                                }
+                              }
+                              if (item.href === "/groups-channels") {
+                                if (pathname.startsWith("/groups-channels/auto-join")) {
+                                  return false;
+                                }
+                              }
+                              return item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                            })();
 
-                        {/* Submenu Accordion */}
-                        {sidebarOpen && (
-                          <AnimatePresence initial={false}>
-                            {isOpen && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.15, ease: "easeOut" }}
-                                className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden"
-                              >
-                                {item.subItems.map((sub) => {
-                                  const isSubActive = sub.exact
-                                    ? pathname === sub.href
-                                    : pathname.startsWith(sub.href);
-                                  return (
+                            if (item.hasSubItems && item.subItems) {
+                              const { isOpen, setIsOpen } = getSubmenuState(item.href);
+
+                              return (
+                                <div key={item.href} className="relative group/item">
+                                  <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        onClick={() => {
+                                          if (!sidebarOpen) {
+                                            toggleSidebar();
+                                            setIsOpen(true);
+                                          } else {
+                                            setIsOpen(!isOpen);
+                                          }
+                                        }}
+                                        className={cn(
+                                          "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-colors duration-150 text-left relative",
+                                          isActive
+                                            ? "bg-primary-500/15 text-primary-400 font-semibold"
+                                            : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
+                                        )}
+                                      >
+                                        <item.icon
+                                          className={cn(
+                                            "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+                                            isActive ? "text-primary-400" : "text-slate-400 group-hover/item:text-slate-100"
+                                          )}
+                                        />
+                                        {sidebarOpen ? (
+                                          <>
+                                            <span className="flex-1 text-left truncate">{_(item.labelKey)}</span>
+                                            <ChevronDown
+                                              className={cn(
+                                                "h-3.5 w-3.5 transition-transform duration-200 shrink-0",
+                                                isOpen && "rotate-180"
+                                              )}
+                                            />
+                                          </>
+                                        ) : (
+                                          isActive && (
+                                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-500 rounded-r-md" />
+                                          )
+                                        )}
+                                      </button>
+                                    </TooltipTrigger>
+                                    {!sidebarOpen && (
+                                      <TooltipContent side="right">
+                                        {_(item.labelKey)}
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+
+                                  {/* Submenu Accordion */}
+                                  {sidebarOpen && isOpen && (
+                                    <div
+                                      className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                                    >
+                                      {item.subItems.map((sub) => {
+                                        const isSubActive = sub.exact
+                                          ? pathname === sub.href
+                                          : pathname.startsWith(sub.href);
+                                        return (
+                                          <Link
+                                            key={sub.href}
+                                            href={sub.href}
+                                            onClick={handleNavClick}
+                                            className={cn(
+                                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                                              isSubActive
+                                                ? "bg-primary-500/10 text-white font-semibold"
+                                                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                                            )}
+                                          >
+                                            <sub.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                                            <span className="truncate">{_(sub.labelKey)}</span>
+                                          </Link>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div key={item.href} className="relative group/item">
+                                <Tooltip delayDuration={0}>
+                                  <TooltipTrigger asChild>
                                     <Link
-                                      key={sub.href}
-                                      href={sub.href}
+                                      href={item.href}
                                       onClick={handleNavClick}
                                       className={cn(
-                                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                                        isSubActive
-                                          ? "bg-primary-500/10 text-white font-semibold"
-                                          : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 relative",
+                                        isActive
+                                          ? "bg-primary-500/15 text-primary-400 font-semibold"
+                                          : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                                       )}
                                     >
-                                      <sub.icon className="h-3.5 w-3.5 flex-shrink-0" />
-                                      <span className="truncate">{_(sub.labelKey)}</span>
+                                      <item.icon
+                                        className={cn(
+                                          "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+                                          isActive ? "text-primary-400" : "text-slate-400 group-hover/item:text-slate-100"
+                                        )}
+                                      />
+                                      {sidebarOpen ? (
+                                        <span className="truncate">{_(item.labelKey)}</span>
+                                      ) : (
+                                        isActive && (
+                                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-500 rounded-r-md" />
+                                        )
+                                      )}
                                     </Link>
-                                  );
-                                })}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={item.href} className="relative group/item">
-                      <Link
-                        href={item.href}
-                        onClick={handleNavClick}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 relative",
-                          isActive
-                            ? "bg-primary-500/15 text-primary-400 font-semibold"
-                            : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
-                        )}
-                      >
-                        <item.icon
-                          className={cn(
-                            "h-[18px] w-[18px] flex-shrink-0 transition-colors",
-                            isActive ? "text-primary-400" : "text-slate-400 group-hover/item:text-slate-100"
-                          )}
-                        />
-                        {sidebarOpen ? (
-                          <span className="truncate">{_(item.labelKey)}</span>
-                        ) : (
-                          isActive && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-500 rounded-r-md" />
-                          )
-                        )}
-                      </Link>
-
-                      {/* Collapsed Tooltip */}
-                      {!sidebarOpen && (
-                        <div className="absolute left-[56px] top-1/2 -translate-y-1/2 bg-slate-900 border border-slate-800 text-white text-xs font-semibold py-1.5 px-3 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:pointer-events-auto transition-all duration-150 translate-x-2 group-hover/item:translate-x-0 whitespace-nowrap z-50">
-                          {_(item.labelKey)}
+                                  </TooltipTrigger>
+                                  {!sidebarOpen && (
+                                    <TooltipContent side="right">
+                                      {_(item.labelKey)}
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </nav>
+                      );
+                    })}
+                  </TooltipProvider>
+                </nav>
 
-        {/* Footer (Profile Section) */}
-        <div className="p-2 border-t border-slate-900 shrink-0 relative" ref={profileRef}>
-          {/* Profile Card / Trigger */}
-          {sidebarOpen ? (
-            <div className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-slate-900/60 rounded-xl transition-all duration-200 select-none">
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileOpen(!profileOpen);
-                  if (profileOpen) setActiveSubmenu(null);
-                }}
-                className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
-                  {initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-white truncate leading-tight">
-                    {user?.full_name || _("navbar.user")}
-                  </p>
-                  <p className="text-[11px] text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
-                    {planName}
-                  </p>
-                </div>
-              </button>
-
-              {userRole === "basic" ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push("/subscriptions");
-                  }}
-                  className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-full transition-colors duration-150 shrink-0 active:scale-95 ml-2 cursor-pointer"
-                >
-                  Upgrade
-                </button>
-              ) : (
-                <div
-                  onClick={() => {
-                    setProfileOpen(!profileOpen);
-                    if (profileOpen) setActiveSubmenu(null);
-                  }}
-                  className={cn(
-                    "px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider shrink-0 ml-2 cursor-pointer",
-                    roleColor
-                  )}
-                >
-                  {roleText}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex justify-center w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileOpen(!profileOpen);
-                  if (profileOpen) setActiveSubmenu(null);
-                }}
-                className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold hover:ring-2 hover:ring-white/20 transition-all shrink-0 active:scale-95 cursor-pointer"
-                title={user?.full_name || user?.email || "Profile"}
-              >
-                {initials}
-              </button>
-            </div>
-          )}
-
-          {/* Floating Dropdown Popover */}
-          <AnimatePresence>
-            {profileOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                transition={{ duration: 0.12, ease: "easeOut" }}
-                className={cn(
-                  "absolute bottom-16 bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl p-1.5 z-50 text-neutral-200 select-none",
-                  sidebarOpen ? "left-2 right-2" : "left-2 w-[260px]"
-                )}
-              >
-                {/* 1. Account item (with flyout submenu) */}
-                <div
-                  className="relative"
-                  onMouseEnter={() => setActiveSubmenu("account")}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubmenu(activeSubmenu === "account" ? null : "account")}
-                    className={cn(
-                      "flex items-center justify-between w-full px-2 py-1.5 rounded-xl text-left transition-colors cursor-pointer",
-                      activeSubmenu === "account" ? "bg-[#2f2f2f] text-white" : "hover:bg-[#2a2a2a] text-neutral-200"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
-                        {initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-white truncate leading-tight">
-                          {user?.full_name || _("navbar.user")}
-                        </p>
-                        <p className="text-[11px] text-neutral-400 capitalize truncate leading-tight mt-0.5">
-                          {planName}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-neutral-400 shrink-0 ml-1.5" />
-                  </button>
-
-                  {/* Account Flyout Submenu */}
-                  {activeSubmenu === "account" && (
-                    <div
-                      className="absolute left-full bottom-0 pl-2 w-64 z-50 max-sm:left-0 max-sm:bottom-full max-sm:mb-2 max-sm:pl-0 max-sm:w-full"
-                      onMouseLeave={() => setActiveSubmenu(null)}
-                    >
-                      <div className="bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl p-2 text-neutral-200">
-                        {/* Email Row */}
-                        <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-neutral-400 border-b border-neutral-800 pb-2 mb-1">
-                          <User className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span className="truncate">{user?.email || "user@telebos.com"}</span>
-                        </div>
-
-                        {/* Active Account with Checkmark */}
-                        <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-[#2a2a2a] text-white my-1">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-6 h-6 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
+                {/* Footer (Profile Section) */}
+                <div className="p-2 border-t border-slate-900 shrink-0 relative">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      {sidebarOpen ? (
+                        <button
+                          type="button"
+                          className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-slate-900/60 rounded-xl transition-all duration-200 select-none text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
+                            <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
                               {initials}
                             </div>
-                            <span className="text-sm font-medium truncate">{user?.full_name || "User"}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-white truncate leading-tight">
+                                {user?.full_name || _("navbar.user")}
+                              </p>
+                              <p className="text-[11px] text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
+                                {planName}
+                              </p>
+                            </div>
                           </div>
-                          <Check className="h-4 w-4 text-white shrink-0 ml-2" />
-                        </div>
 
-                        {/* Balance Row */}
-                        <div className="flex items-center justify-between px-2.5 py-1.5 text-xs text-neutral-300">
-                          <span className="flex items-center gap-1.5 text-neutral-400">
-                            <Wallet className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                            {locale === "id" ? "Saldo" : "Balance"}
-                          </span>
-                          <span className="font-semibold text-emerald-400">Rp {(user?.balance || 0).toLocaleString()}</span>
-                        </div>
-
-                        <div className="border-t border-neutral-800 my-1" />
-
-                        {/* Add Account */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/accounts");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <Plus className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Tambah akun" : "Add account"}</span>
+                          {userRole === "basic" ? (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push("/subscriptions");
+                              }}
+                              className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-full transition-colors duration-150 shrink-0 active:scale-95 ml-2 cursor-pointer"
+                            >
+                              Upgrade
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider shrink-0 ml-2",
+                                roleColor
+                              )}
+                            >
+                              {roleText}
+                            </span>
+                          )}
                         </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-neutral-800 my-1" />
-
-                {/* 2. Subscription status — an upsell only while a cheaper tier exists.
-                    Premium and Owner go straight to their status page instead. */}
-                <button
-                  type="button"
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onClick={() => {
-                    setProfileOpen(false);
-                    setActiveSubmenu(null);
-                    router.push("/subscriptions");
-                  }}
-                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                >
-                  {userRole === "premium" || userRole === "owner" ? (
-                    <CalendarClock className="h-4 w-4 text-neutral-300 shrink-0" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 text-neutral-300 shrink-0" />
-                  )}
-                  <span>
-                    {userRole === "premium" || userRole === "owner"
-                      ? locale === "id"
-                        ? "Status langganan"
-                        : "Subscription status"
-                      : locale === "id"
-                      ? "Tingkatkan paket"
-                      : "Upgrade plan"}
-                  </span>
-                </button>
-
-                {/* 3. Personalization */}
-                <button
-                  type="button"
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onClick={() => {
-                    setProfileOpen(false);
-                    setActiveSubmenu(null);
-                    router.push("/settings?tab=appearance");
-                  }}
-                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                >
-                  <Sliders className="h-4 w-4 text-neutral-300 shrink-0" />
-                  <span>{locale === "id" ? "Personalisasi" : "Personalization"}</span>
-                </button>
-
-                {/* 4. Profile */}
-                <button
-                  type="button"
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onClick={() => {
-                    setProfileOpen(false);
-                    setActiveSubmenu(null);
-                    router.push("/settings");
-                  }}
-                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                >
-                  <User className="h-4 w-4 text-neutral-300 shrink-0" />
-                  <span>{locale === "id" ? "Profil" : "Profile"}</span>
-                </button>
-
-                {/* 5. Settings */}
-                <button
-                  type="button"
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onClick={() => {
-                    setProfileOpen(false);
-                    setActiveSubmenu(null);
-                    router.push("/settings");
-                  }}
-                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                >
-                  <Settings className="h-4 w-4 text-neutral-300 shrink-0" />
-                  <span>{_("navbar.settings")}</span>
-                </button>
-
-                <div className="border-t border-neutral-800 my-1" />
-
-                {/* 6. Help item (with flyout submenu) */}
-                <div
-                  className="relative"
-                  onMouseEnter={() => setActiveSubmenu("help")}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubmenu(activeSubmenu === "help" ? null : "help")}
-                    className={cn(
-                      "flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-left text-xs font-normal transition-colors cursor-pointer",
-                      activeSubmenu === "help" ? "bg-[#2f2f2f] text-white" : "hover:bg-[#2a2a2a] text-neutral-200"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <HelpCircle className="h-4 w-4 text-neutral-300 shrink-0" />
-                      <span>{locale === "id" ? "Bantuan" : "Help"}</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" />
-                  </button>
-
-                  {/* Help Flyout Submenu */}
-                  {activeSubmenu === "help" && (
-                    <div
-                      className="absolute left-full bottom-0 pl-2 w-60 z-50 max-sm:left-0 max-sm:bottom-full max-sm:mb-2 max-sm:pl-0 max-sm:w-full"
-                      onMouseLeave={() => setActiveSubmenu(null)}
+                      ) : (
+                        <div className="flex justify-center w-full">
+                          <button
+                            type="button"
+                            className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold hover:ring-2 hover:ring-white/20 transition-all shrink-0 active:scale-95 cursor-pointer outline-none"
+                            title={user?.full_name || user?.email || "Profile"}
+                          >
+                            {initials}
+                          </button>
+                        </div>
+                      )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side={sidebarOpen ? "top" : "right"}
+                      align={sidebarOpen ? "start" : "end"}
+                      sideOffset={8}
+                      className="w-64 bg-[#212121] border border-neutral-800 p-1.5 shadow-2xl rounded-2xl select-none text-neutral-200"
                     >
-                      <div className="bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl p-1.5 text-neutral-200 space-y-0.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/help");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <HelpCircle className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Pusat Bantuan" : "Help center"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/privacy");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <Shield className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Pusat Privasi" : "Privacy center"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/help#release-notes");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Catatan Rilis" : "Release notes"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/help");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <Smartphone className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Unduh Aplikasi" : "Download apps"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/help#shortcuts");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <Keyboard className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Pintasan Keyboard" : "Keyboard shortcuts"}</span>
-                        </button>
+                      {/* 1. Account item (with flyout submenu) */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2 p-1.5 rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white">
+                          <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
+                            {initials}
+                          </div>
+                          <div className="min-w-0 flex-1 text-left">
+                            <p className="text-xs font-medium text-white truncate leading-tight">
+                              {user?.full_name || _("navbar.user")}
+                            </p>
+                            <p className="text-[11px] text-neutral-400 capitalize truncate leading-tight mt-0.5">
+                              {planName}
+                            </p>
+                          </div>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-64 p-2 bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl text-neutral-200">
+                          {/* Email Row */}
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-neutral-400 border-b border-neutral-800 pb-2 mb-1">
+                            <User className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span className="truncate">{user?.email || "user@telebos.com"}</span>
+                          </div>
 
-                        <div className="border-t border-neutral-800 my-1" />
+                          {/* Active Account with Checkmark */}
+                          <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-[#2a2a2a] text-white my-1">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-6 h-6 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
+                                {initials}
+                              </div>
+                              <span className="text-sm font-medium truncate">{user?.full_name || "User"}</span>
+                            </div>
+                            <Check className="h-4 w-4 text-white shrink-0 ml-2" />
+                          </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/tos");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Ketentuan Layanan" : "Terms of Service"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/privacy");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <Info className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Kebijakan Privasi" : "Privacy Policy"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setActiveSubmenu(null);
-                            router.push("/help");
-                          }}
-                          className="flex items-center gap-2.5 px-2.5 py-2 w-full text-xs font-normal text-neutral-200 hover:text-white hover:bg-[#2a2a2a] rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <Bug className="h-4 w-4 text-neutral-400 shrink-0" />
-                          <span>{locale === "id" ? "Laporkan Bug" : "Report a bug"}</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                          {/* Balance Row */}
+                          <div className="flex items-center justify-between px-2.5 py-1.5 text-xs text-neutral-300">
+                            <span className="flex items-center gap-1.5 text-neutral-400">
+                              <Wallet className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              {locale === "id" ? "Saldo" : "Balance"}
+                            </span>
+                            <span className="font-semibold text-emerald-400">Rp {(user?.balance || 0).toLocaleString()}</span>
+                          </div>
+
+                          <DropdownMenuSeparator className="border-neutral-800 my-1" />
+
+                          {/* Add Account */}
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/accounts")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <Plus className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Tambah akun" : "Add account"}</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuSeparator className="border-neutral-800 my-1" />
+
+                      {/* 2. Subscription status */}
+                      <DropdownMenuItem
+                        onSelect={() => router.push("/subscriptions")}
+                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                      >
+                        {userRole === "premium" || userRole === "owner" ? (
+                          <CalendarClock className="h-4 w-4 text-neutral-300 shrink-0" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 text-neutral-300 shrink-0" />
+                        )}
+                        <span>
+                          {userRole === "premium" || userRole === "owner"
+                            ? locale === "id"
+                              ? "Status langganan"
+                              : "Subscription status"
+                            : locale === "id"
+                            ? "Tingkatkan paket"
+                            : "Upgrade plan"}
+                        </span>
+                      </DropdownMenuItem>
+
+                      {/* 3. Personalization */}
+                      <DropdownMenuItem
+                        onSelect={() => router.push("/settings?tab=appearance")}
+                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                      >
+                        <Sliders className="h-4 w-4 text-neutral-300 shrink-0" />
+                        <span>{locale === "id" ? "Personalisasi" : "Personalization"}</span>
+                      </DropdownMenuItem>
+
+                      {/* 4. Profile */}
+                      <DropdownMenuItem
+                        onSelect={() => router.push("/settings")}
+                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                      >
+                        <User className="h-4 w-4 text-neutral-300 shrink-0" />
+                        <span>{locale === "id" ? "Profil" : "Profile"}</span>
+                      </DropdownMenuItem>
+
+                      {/* 5. Settings */}
+                      <DropdownMenuItem
+                        onSelect={() => router.push("/settings")}
+                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                      >
+                        <Settings className="h-4 w-4 text-neutral-300 shrink-0" />
+                        <span>{_("navbar.settings")}</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator className="border-neutral-800 my-1" />
+
+                      {/* 6. Help Submenu */}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white">
+                          <HelpCircle className="h-4 w-4 text-neutral-300 shrink-0" />
+                          <span>{locale === "id" ? "Bantuan" : "Help"}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-60 p-1.5 bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl text-neutral-200">
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/help")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <HelpCircle className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Pusat Bantuan" : "Help center"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/privacy")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <Shield className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Pusat Privasi" : "Privacy center"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/help#release-notes")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Catatan Rilis" : "Release notes"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/help")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <Smartphone className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Unduh Aplikasi" : "Download apps"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/help#shortcuts")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <Keyboard className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Pintasan Keyboard" : "Keyboard shortcuts"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="border-neutral-800 my-1" />
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/tos")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Ketentuan Layanan" : "Terms of Service"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/privacy")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <Info className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Kebijakan Privasi" : "Privacy Policy"}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => router.push("/help")}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
+                          >
+                            <Bug className="h-4 w-4 text-neutral-400 shrink-0" />
+                            <span>{locale === "id" ? "Laporkan Bug" : "Report a bug"}</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuSeparator className="border-neutral-800 my-1" />
+
+                      {/* 7. Log out */}
+                      <DropdownMenuItem
+                        onSelect={() => setShowLogoutDialog(true)}
+                        className="flex items-center gap-3 px-2.5 py-2 text-xs font-medium text-rose-300 hover:text-rose-100 focus:text-rose-100 hover:bg-rose-950/50 focus:bg-rose-950/50 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4 text-rose-400 shrink-0" />
+                        <span>{_("navbar.logout")}</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-
-                {/* 7. Log out */}
-                <button
-                  type="button"
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onClick={() => {
-                    setProfileOpen(false);
-                    setActiveSubmenu(null);
-                    setShowLogoutDialog(true);
-                  }}
-                  className="flex items-center gap-3 px-2.5 py-2 w-full text-xs font-medium text-rose-300 hover:text-rose-100 hover:bg-rose-950/50 rounded-xl transition-colors text-left cursor-pointer"
-                >
-                  <LogOut className="h-4 w-4 text-rose-400 shrink-0" />
-                  <span>{_("navbar.logout")}</span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </aside>
 
       <ConfirmDialog

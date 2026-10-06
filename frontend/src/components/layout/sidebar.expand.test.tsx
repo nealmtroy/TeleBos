@@ -20,11 +20,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href, ...rest }: any) => (
-    <a href={href} {...rest}>
+  default: require("react").forwardRef(({ children, href, ...rest }: any, ref: any) => (
+    <a ref={ref} href={href} {...rest}>
       {children}
     </a>
-  ),
+  )),
 }));
 
 vi.mock("@/store/auth-store", () => ({
