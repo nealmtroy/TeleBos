@@ -53,10 +53,14 @@ async def sync_services(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(["owner"])),
 ):
-    """Sync services from SMM panel into smm_services table. Owner only."""
+    """Sync allowed services from SMM panel into smm_services table. Owner only."""
     count = await admin_smm_service.sync_services(db)
     await db.commit()
-    return {"synced": count}
+    sync_info = await admin_smm_service.get_services_sync_info(db)
+    return {
+        "synced": count,
+        "last_synced_at": sync_info.get("last_synced_at"),
+    }
 
 
 @router.get("/services", response_model=SmmServiceListResponse)
@@ -77,6 +81,7 @@ async def list_services(
 
     settings = await admin_smm_service.get_global_settings(db)
     global_markup = settings.get("global_markup_percent", 0)
+    sync_info = await admin_smm_service.get_services_sync_info(db)
 
     response_services = []
     for svc in services:
@@ -101,7 +106,11 @@ async def list_services(
         )
         response_services.append(sr)
 
-    return SmmServiceListResponse(services=response_services, total=total)
+    return SmmServiceListResponse(
+        services=response_services,
+        total=total,
+        last_synced_at=sync_info.get("last_synced_at"),
+    )
 
 
 @router.put("/services/{service_id}", response_model=SmmServiceResponse)

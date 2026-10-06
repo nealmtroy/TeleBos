@@ -29,9 +29,10 @@ export interface SmmService {
   updated_at: string | null;
 }
 
-interface SmmServiceListResponse {
+export interface SmmServiceListResponse {
   services: SmmService[];
   total: number;
+  last_synced_at?: string | null;
 }
 
 export interface AdminOrder {

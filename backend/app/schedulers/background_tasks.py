@@ -7,7 +7,12 @@ from sqlalchemy import select
 
 from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
-from app.services.admin_smm_service import fetch_services, refresh_all_pending_smart, sync_services
+from app.services.admin_smm_service import (
+    fetch_services,
+    get_services_last_sync_time,
+    refresh_all_pending_smart,
+    sync_services,
+)
 from app.services.chat_service import sync_all_chats_to_db
 from app.services.profile_sync_service import sync_account_profile
 from app.services.telegram_reg_date_service import reg_date_service
@@ -198,18 +203,39 @@ async def smm_services_sync_loop() -> None:
     """Periodically sync SMM services from the panel API (every 12 hours)."""
     # Wait a little bit after startup to avoid database contention on initialization
     await asyncio.sleep(10)
+    interval_seconds = 43200  # 12 hours
     while True:
         try:
-            logger.info("Background task: Syncing SMM services...")
+            # Check last sync time from DB to prevent re-syncing on every backend restart
+            async with async_session_factory() as db:
+                last_sync = await get_services_last_sync_time(db)
+
+            now = datetime.now(timezone.utc)
+            if last_sync:
+                if last_sync.tzinfo is None:
+                    last_sync = last_sync.replace(tzinfo=timezone.utc)
+                elapsed = (now - last_sync).total_seconds()
+                if elapsed < interval_seconds:
+                    wait_time = max(60, interval_seconds - elapsed)
+                    logger.info(
+                        "SMM services were synced recently (%.1f hours ago, last: %s). Sleeping for %.1f hours before next sync.",
+                        elapsed / 3600,
+                        last_sync.isoformat(),
+                        wait_time / 3600,
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+
+            logger.info("Background task: Syncing allowed Telegram SMM services...")
             services = await fetch_services()
             async with async_session_factory() as db:
                 count = await sync_services(db, services)
                 await db.commit()
-            logger.info("Background task: Synced %d SMM services.", count)
+            logger.info("Background task: Synced %d allowed SMM services.", count)
         except Exception as exc:
             logger.warning("Background SMM services sync loop error: %s", exc)
-        # Sync every 12 hours (43200 seconds)
-        await asyncio.sleep(43200)
+        # Sync every 12 hours
+        await asyncio.sleep(interval_seconds)
 
 
 async def smm_orders_poll_loop() -> None:

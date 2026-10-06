@@ -1,9 +1,10 @@
 """Admin SMM business logic — sync services, manage orders, settings."""
 
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select, desc, asc
+from sqlalchemy import func, select, desc, asc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order
@@ -11,12 +12,15 @@ from app.models.smm_service import SmmService
 from app.models.smm_setting import SmmSetting
 from app.models.user import User
 from app.services import smm_service as smm_api
+from app.smm_service_ids import ALLOWED_SMM_SERVICE_IDS
 
 logger = logging.getLogger(__name__)
 
 # ── Setting keys ─────────────────────────────────────────────────────────────
 
 SETTING_GLOBAL_MARKUP = "global_markup_percent"
+SETTING_SERVICES_LAST_SYNCED_AT = "services_last_synced_at"
+SETTING_SERVICES_LAST_SYNCED_COUNT = "services_last_synced_count"
 
 
 def _parse_int(value: object, default: int | None = 0) -> int | None:
@@ -59,15 +63,48 @@ async def fetch_services() -> list[dict]:
     return await smm_api.get_services()
 
 
+async def get_services_sync_info(db: AsyncSession) -> dict:
+    """Return last sync timestamp and count from smm_settings."""
+    result = await db.execute(
+        select(SmmSetting).where(
+            SmmSetting.key.in_([SETTING_SERVICES_LAST_SYNCED_AT, SETTING_SERVICES_LAST_SYNCED_COUNT])
+        )
+    )
+    rows = {r.key: r.value for r in result.scalars().all()}
+    return {
+        "last_synced_at": rows.get(SETTING_SERVICES_LAST_SYNCED_AT),
+        "last_synced_count": int(rows.get(SETTING_SERVICES_LAST_SYNCED_COUNT, "0")),
+    }
+
+
+async def get_services_last_sync_time(db: AsyncSession) -> datetime | None:
+    """Return parsed datetime of last services sync or None."""
+    result = await db.execute(
+        select(SmmSetting.value).where(SmmSetting.key == SETTING_SERVICES_LAST_SYNCED_AT)
+    )
+    val = result.scalar()
+    if not val:
+        return None
+    try:
+        dt = datetime.fromisoformat(val)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, TypeError):
+        return None
+
+
 async def sync_services(db: AsyncSession, services: list[dict] | None = None) -> int:
-    """Upsert SMM services, optionally using data fetched before opening ``db``."""
+    """Upsert ONLY allowed SMM services, removing any non-allowed services from the DB."""
     if services is None:
         services = await fetch_services()
     if not services:
         return 0
 
-    # Fetch all existing services from DB in a single query
-    result = await db.execute(select(SmmService))
+    # Fetch existing allowed services from DB in a single query
+    result = await db.execute(
+        select(SmmService).where(SmmService.id.in_(list(ALLOWED_SMM_SERVICE_IDS)))
+    )
     existing_map = {s.id: s for s in result.scalars().all()}
 
     count = 0
@@ -77,6 +114,9 @@ async def sync_services(db: AsyncSession, services: list[dict] | None = None) ->
             continue
 
         sid = int(raw_sid)
+        # CRITICAL: Only store Telegram services that TeleBos offers to users!
+        if sid not in ALLOWED_SMM_SERVICE_IDS:
+            continue
 
         # API returns empty strings for nullable fields; normalize to None
         note = svc.get("note") or None
@@ -125,6 +165,23 @@ async def sync_services(db: AsyncSession, services: list[dict] | None = None) ->
             )
             db.add(service)
         count += 1
+
+    # Purge any service rows that are NOT in ALLOWED_SMM_SERVICE_IDS
+    await db.execute(
+        delete(SmmService).where(SmmService.id.not_in(list(ALLOWED_SMM_SERVICE_IDS)))
+    )
+
+    # Persist last sync timestamp and count in SmmSetting
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for k, v in [
+        (SETTING_SERVICES_LAST_SYNCED_AT, now_iso),
+        (SETTING_SERVICES_LAST_SYNCED_COUNT, str(count)),
+    ]:
+        setting = await db.get(SmmSetting, k)
+        if setting:
+            setting.value = v
+        else:
+            db.add(SmmSetting(key=k, value=v))
 
     await db.flush()
     return count

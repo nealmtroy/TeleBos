@@ -152,14 +152,35 @@ export default function SmmServicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg transition shrink-0">
-          <ArrowLeft className="h-5 w-5 text-gray-500" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">SMM Services</h1>
-          <p className="text-gray-500 mt-1">Activate, configure pricing markup, and filter panel services</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Link href="/admin" className="p-2 hover:bg-muted rounded-lg transition shrink-0">
+            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">SMM Services</h1>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <p className="text-muted-foreground text-sm">
+                Allowed Telegram services ({data?.total ?? 0})
+              </p>
+              {data?.last_synced_at && (
+                <span className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">
+                  Last synced: {new Date(data.last_synced_at).toLocaleString()}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          onClick={handleSync}
+          disabled={syncMutation.isPending}
+          size="sm"
+          className="gap-2 self-start sm:self-auto"
+        >
+          <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
+          <span>{syncMutation.isPending ? "Syncing..." : "Sync Services"}</span>
+        </Button>
       </div>
 
       {actionMsg && (
@@ -167,8 +188,8 @@ export default function SmmServicesPage() {
           className={cn(
             "flex items-center gap-2 p-3 rounded-xl text-sm",
             actionMsg.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-700"
-              : "bg-red-50 border border-red-200 text-red-700"
+              ? "bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400"
+              : "bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400"
           )}
         >
           {actionMsg.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
@@ -179,29 +200,26 @@ export default function SmmServicesPage() {
       {/* Toolbar — responsive stack */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search services..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            className="w-full pl-10 pr-4 py-2 border border-border bg-background rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
         <div className="flex gap-2">
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm flex-1 sm:flex-none"
+            className="border border-border bg-background rounded-xl px-3 py-2 text-sm flex-1 sm:flex-none"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-          <Button variant="outline" onClick={handleSync} disabled={syncMutation.isPending} size="sm">
-            <RefreshCw className={cn("h-4 w-4", syncMutation.isPending && "animate-spin")} />
-          </Button>
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-06
+- **[475ab959](https://github.com/nealmtroy/TeleBos/commit/475ab959)**: perf(system): background check system status every 2 hours with localStorage cache and render banner only on downtime/degradation
 - **[c77b7fbc](https://github.com/nealmtroy/TeleBos/commit/c77b7fbc)**: fix(ui): eliminate double-padding on Card component and refine compact dashboard cards
 - **[f8b6d888](https://github.com/nealmtroy/TeleBos/commit/f8b6d888)**: feat(ui): implement official Shadcn Radix sidebar and refactor layout sidebar
 - **[cbce68e0](https://github.com/nealmtroy/TeleBos/commit/cbce68e0)**: fix(middleware): whitelist error pages in PUBLIC_PATHS

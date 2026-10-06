@@ -50,6 +50,7 @@ class SmmServiceResponse(BaseModel):
 class SmmServiceListResponse(BaseModel):
     services: list[SmmServiceResponse]
     total: int
+    last_synced_at: str | None = None
 
 
 class BulkServiceUpdate(BaseModel):
