@@ -719,6 +719,7 @@ const en: Dict = {
     manageTwoFactor: "Manage 2FA",
     status: "Status",
     statusOff: "Not enabled",
+    enabled: "Enabled",
     twoFaRecommendation:
       "We recommend enabling 2FA with an authenticator app such as Google Authenticator or Authy.",
     // API keys card
@@ -729,10 +730,13 @@ const en: Dict = {
     apiKeysCount: "{count} keys",
     lastUsed: "Last used",
     never: "Never",
+    created: "Created",
     // Bank accounts card
     bankAccountsTitle: "Bank Accounts",
     bankAccountsCardDesc: "Store and manage bank and e-wallet accounts for transactions and payments.",
     addAccount: "Add Account",
+    totalAccounts: "Total Accounts",
+    accountCount: "{count} accounts",
     // Appearance card
     appearance: "Appearance",
     appearanceCardDesc: "Adjust how the app looks to match your preferences.",

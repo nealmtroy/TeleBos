@@ -684,7 +684,7 @@ const id: Dict = {
     navApiKeys: "Kunci API Integrasi",
     navApiKeysDesc: "Kelola kunci API untuk integrasi",
     navBankAccounts: "Rekening Bank",
-    navBankAccountsDesc: "Simpan dan kelola rekening & e-wallet",
+    navBankAccountsDesc: "Simpan dan kelola rekening bank serta e-wallet",
     navAppearance: "Tampilan",
     navAppearanceDesc: "Atur tampilan aplikasi",
     navLanguage: "Bahasa",
@@ -719,6 +719,7 @@ const id: Dict = {
     manageTwoFactor: "Atur 2FA",
     status: "Status",
     statusOff: "Tidak aktif",
+    enabled: "Aktif",
     twoFaRecommendation:
       "Kami sarankan untuk mengaktifkan 2FA menggunakan aplikasi authenticator seperti Google Authenticator atau Authy.",
     // API keys card
@@ -729,10 +730,13 @@ const id: Dict = {
     apiKeysCount: "{count} kunci",
     lastUsed: "Terakhir digunakan",
     never: "Belum pernah",
+    created: "Dibuat",
     // Bank accounts card
     bankAccountsTitle: "Rekening Bank",
     bankAccountsCardDesc: "Simpan dan kelola rekening bank dan e-wallet untuk transaksi dan pembayaran.",
     addAccount: "Tambah Akun",
+    totalAccounts: "Total Rekening",
+    accountCount: "{count} rekening",
     // Appearance card
     appearance: "Tampilan",
     appearanceCardDesc: "Sesuaikan tampilan aplikasi sesuai preferensi Anda.",

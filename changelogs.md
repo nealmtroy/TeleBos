@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-05
+- **[9945d6d2](https://github.com/nealmtroy/TeleBos/commit/9945d6d2)**: fix(sentry): resolve connection resilience, captcha cooldown, broadcast retries, and hydration errors
 - **[5de53523](https://github.com/nealmtroy/TeleBos/commit/5de53523)**: Revert "fix(i18n): seed client locale from server value to stop hydration mismatch"
 - **[8e78c364](https://github.com/nealmtroy/TeleBos/commit/8e78c364)**: fix(i18n): seed client locale from server value to stop hydration mismatch
 

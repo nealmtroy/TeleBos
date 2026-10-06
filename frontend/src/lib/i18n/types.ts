@@ -668,6 +668,7 @@ export interface Dict {
     manageTwoFactor: string;
     status: string;
     statusOff: string;
+    enabled: string;
     twoFaRecommendation: string;
     // API keys card
     apiKeysTitle: string;
@@ -677,10 +678,13 @@ export interface Dict {
     apiKeysCount: string;
     lastUsed: string;
     never: string;
+    created: string;
     // Bank accounts card
     bankAccountsTitle: string;
     bankAccountsCardDesc: string;
     addAccount: string;
+    totalAccounts: string;
+    accountCount: string;
     // Appearance card
     appearance: string;
     appearanceCardDesc: string;
