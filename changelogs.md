@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-06
+- **[e2a63bba](https://github.com/nealmtroy/TeleBos/commit/e2a63bba)**: feat(ui): complete Radix UI migration, dual-theme error pages & design tokens
 - **[b17d5179](https://github.com/nealmtroy/TeleBos/commit/b17d5179)**: redesign /settings desktop layout: two-column nav+cards, localized i18n, dialog editors
 
 ## 2026-10-05

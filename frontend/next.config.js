@@ -25,6 +25,10 @@ const nextConfig = {
         source: "/ws/:path*",
         destination: `${apiTarget}/ws/:path*`,
       },
+      {
+        source: "/500",
+        destination: "/500-error",
+      },
     ];
   },
 };
