@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle, HelpCircle, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { AlertTriangle } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import api from "@/lib/api";
 import { Banner } from "@/components/ui/banner";
@@ -26,82 +24,85 @@ interface SystemStatus {
   fetched_at: string;
 }
 
+// ── Constants & Local Storage Cache ──────────────────────────────────────────
+
+const STORAGE_KEY = "telebos:system_status_cache";
+const CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+function getCachedStatus(): SystemStatus | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const age = Date.now() - (parsed._saved_at || 0);
+    if (age < CHECK_INTERVAL_MS && parsed.data) {
+      return parsed.data as SystemStatus;
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return null;
+}
+
+function setCachedStatus(data: SystemStatus) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        data,
+        _saved_at: Date.now(),
+      })
+    );
+  } catch {
+    // Ignore storage write errors (e.g. quota)
+  }
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function AnnouncementBanner() {
   const _ = useT();
-  const [persistedOverall, setPersistedOverall] = useState<StatusOverall | null>(null);
 
-  // Poll system status from the globally-cached backend endpoint
-  const { data, isFetching, isError } = useQuery<SystemStatus>({
+  // Background check every 2 hours, persisted in localStorage across refreshes
+  const { data } = useQuery<SystemStatus>({
     queryKey: ["system-status"],
     queryFn: async () => {
+      // Return cached data if still fresh to avoid network call
+      const cached = getCachedStatus();
+      if (cached) return cached;
+
       const res = await api.get("/system/status");
-      return res.data as SystemStatus;
+      const statusData = res.data as SystemStatus;
+      setCachedStatus(statusData);
+      return statusData;
     },
-    refetchInterval: 600_000, // 10 minutes (backend cache)
-    staleTime: 300_000,       // 5 min before considered stale
-    retry: 2,
+    initialData: () => getCachedStatus() ?? undefined,
+    initialDataUpdatedAt: () => {
+      if (typeof window === "undefined") return undefined;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return parsed._saved_at;
+        }
+      } catch {}
+      return undefined;
+    },
+    staleTime: CHECK_INTERVAL_MS,
+    gcTime: CHECK_INTERVAL_MS * 2,
+    refetchInterval: CHECK_INTERVAL_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
   });
 
-  // Reset overall state change tracking
   const overall = data?.overall ?? null;
-  useEffect(() => {
-    if (!overall) return;
 
-    if (persistedOverall === null) {
-      setPersistedOverall(overall);
-      return;
-    }
-
-    if (overall !== persistedOverall) {
-      setPersistedOverall(overall);
-    }
-  }, [overall, persistedOverall]);
-
-  // Don't hide when loading/error — preserve the last known state
-  // Only hide when we definitively know things are fine
-  const knownUp = overall === "up";
-  const isUnknown = overall === "unknown";
-
-  // Hide when things are perfectly fine or unknown with no data
-  if (knownUp && !isFetching) return null;
-  if (isUnknown && !isFetching && !data?.monitors?.length) return null;
-
-  // Loading state when we have no previous data
-  if (isFetching && !data) {
-    return (
-      <Banner
-        variant="normal"
-        changeLayout={false}
-        className="bg-blue-50/90 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300"
-      >
-        <div className="flex items-center justify-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin shrink-0 text-blue-600" />
-          <span>{_("announcement.loading")}</span>
-        </div>
-      </Banner>
-    );
-  }
-
-  // Error / unknown state
-  if (isError || isUnknown) {
-    return (
-      <Banner
-        id="telegram-status-unknown"
-        variant="normal"
-        changeLayout={false}
-        className="bg-gray-50/90 dark:bg-slate-900/80 border-b border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300"
-      >
-        <div className="flex items-center justify-center gap-2">
-          <HelpCircle className="h-4 w-4 shrink-0 text-gray-500" />
-          <span>{_("announcement.unknown")}</span>
-        </div>
-      </Banner>
-    );
-  }
-
-  // Down state - Rainbow warning
+  // HANYA tampilkan banner jika status down atau degraded.
+  // Jika normal ("up"), loading, atau unknown: sembunyikan sepenuhnya (return null).
   if (overall === "down") {
     return (
       <Banner
@@ -127,7 +128,6 @@ export default function AnnouncementBanner() {
     );
   }
 
-  // Degraded state - Rainbow degraded warning
   if (overall === "degraded") {
     return (
       <Banner
@@ -148,23 +148,6 @@ export default function AnnouncementBanner() {
         <div className="flex items-center justify-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
           <span>{_("announcement.telegramDegraded")}</span>
-        </div>
-      </Banner>
-    );
-  }
-
-  // Up but still fetching (show brief "all good" then transition out)
-  if (overall === "up") {
-    return (
-      <Banner
-        id="telegram-status-up"
-        variant="normal"
-        changeLayout={false}
-        className="bg-green-50/90 border-b border-green-200 text-green-800"
-      >
-        <div className="flex items-center justify-center gap-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-green-600" />
-          <span>{_("announcement.telegramUp")}</span>
         </div>
       </Banner>
     );

@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.services.uptimerobot_status import uptimerobot_service
 
@@ -12,12 +12,13 @@ router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
 
 @router.get("/status")
-async def system_status():
+async def system_status(response: Response):
     """
     Return UptimeRobot-based Telegram service status.
 
-    The response is cached server-side for ~60 seconds.
+    The response is cached server-side and client-side for 2 hours.
     """
+    response.headers["Cache-Control"] = "public, max-age=7200, stale-while-revalidate=3600"
     status = await uptimerobot_service.get_status()
 
     return {
