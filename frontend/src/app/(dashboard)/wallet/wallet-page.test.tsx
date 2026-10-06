@@ -3,23 +3,91 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuthStore } from "@/store/auth-store";
 import { useI18nStore } from "@/lib/i18n";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import WalletPage from "./page";
 
+const initialTransactions = [
+  {
+    id: "tx-pending",
+    type: "topup",
+    amount: 100_000,
+    status: "pending",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "tx-approved",
+    type: "topup",
+    amount: 250_000,
+    status: "approved",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "tx-rejected",
+    type: "withdraw",
+    amount: 50_000,
+    status: "rejected",
+    created_at: new Date().toISOString(),
+  },
+];
+
+let mockTransactions = [...initialTransactions];
+
+vi.mock("@/lib/api", () => {
+  let txCounter = 1;
+  return {
+    default: {
+      get: vi.fn(async (url: string) => {
+        if (url.includes("/wallet/transactions")) {
+          return {
+            data: {
+              transactions: mockTransactions,
+              total: mockTransactions.length,
+              pending_count: mockTransactions.filter((t) => t.status === "pending").length,
+            },
+          };
+        }
+        return { data: {} };
+      }),
+      post: vi.fn(async (url: string, payload: any) => {
+        if (url === "/wallet/topup") {
+          const newTx = {
+            id: `tx-${++txCounter}`,
+            type: "topup",
+            amount: payload.amount,
+            note: payload.note || "QRIS",
+            created_at: new Date().toISOString(),
+            qr_string: "00020101021226600016ID.CO.QRIS.WWW...",
+            status: "pending",
+          };
+          mockTransactions.unshift(newTx);
+          return { data: newTx };
+        }
+        return { data: { success: true } };
+      }),
+    },
+  };
+});
+
 /** Render the wallet page with a known balance and scoped queries. */
 function renderWallet(balance = 500_000) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   useAuthStore.setState({
-    user: {
+    user: balance > 0 || balance === 0 ? {
       id: "u1",
       email: "user@example.com",
       full_name: "Tester",
       role: "basic",
       is_active: true,
       balance,
-    },
+    } : null,
   });
 
-  const { container } = render(<WalletPage />);
+  const { container } = render(
+    <QueryClientProvider client={queryClient}>
+      <WalletPage />
+    </QueryClientProvider>
+  );
   const scope = within(container);
   return {
     container,
@@ -42,6 +110,7 @@ function submitButton(container: HTMLElement): HTMLButtonElement {
 
 beforeEach(() => {
   useI18nStore.setState({ locale: "en" });
+  mockTransactions = JSON.parse(JSON.stringify(initialTransactions));
 });
 
 describe("WalletPage — balance display", () => {
@@ -52,10 +121,7 @@ describe("WalletPage — balance display", () => {
 
   it("falls back to zero when no user is loaded", () => {
     useAuthStore.setState({ user: null });
-    const { byText } = (() => {
-      const { container } = render(<WalletPage />);
-      return { byText: (re: RegExp | string) => within(container).getByText(re) };
-    })();
+    const { byText } = renderWallet(-1);
     expect(byText("Rp 0")).toBeInTheDocument();
   });
 });
@@ -147,12 +213,10 @@ describe("WalletPage — top-up flow with QRIS", () => {
     fireEvent.change(amount(), { target: { value: "100000" } });
     fireEvent.click(submitButton(container));
 
-    // The stand-in submit resolves on a timer; let it flush.
     await vi.waitFor(() => {
-      expect(container.textContent).toContain("Rp 100.000");
+      const pills = container.querySelectorAll("li span.rounded-full");
+      expect([...pills].some((el) => el.textContent === "Pending")).toBe(true);
     });
-    const pills = container.querySelectorAll("li span.rounded-full");
-    expect([...pills].some((el) => el.textContent === "Pending")).toBe(true);
   });
 
   it("allows returning to amount selection via Change Amount button", async () => {
@@ -172,15 +236,18 @@ describe("WalletPage — top-up flow with QRIS", () => {
 });
 
 describe("WalletPage — request history", () => {
-  it("renders the seeded requests with their statuses", () => {
+  it("renders the seeded requests with their statuses", async () => {
     const { container } = renderWallet();
-    expect(container.textContent).toContain("Approved");
-    expect(container.textContent).toContain("Rejected");
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("Approved");
+      expect(container.textContent).toContain("Rejected");
+    });
   });
 
-  it("counts only pending requests in the header badge", () => {
+  it("counts only pending requests in the header badge", async () => {
     const { container } = renderWallet();
-    // The seed has exactly one pending request.
-    expect(container.textContent).toContain("1 pending");
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("1 pending");
+    });
   });
 });

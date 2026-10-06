@@ -3,9 +3,8 @@
 import * as React from "react";
 import * as Sentry from "@sentry/nextjs";
 import { ErrorView } from "@/components/ui/error-view";
-import "@/app/globals.css";
 
-export default function GlobalError({
+export default function ErrorBoundary({
   error,
   reset,
 }: {
@@ -17,14 +16,10 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
-      <body className="antialiased">
-        <ErrorView
-          statusCode={500}
-          error={error}
-          reset={reset}
-        />
-      </body>
-    </html>
+    <ErrorView
+      statusCode={500}
+      error={error}
+      reset={reset}
+    />
   );
 }

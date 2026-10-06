@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import { useAccounts, type Account } from "@/hooks/use-accounts";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Check } from "lucide-react";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function Avatar({ account, size = "sm" }: { account: Account; size?: "sm" | "md" }) {
   const dim = size === "sm" ? "w-6 h-6" : "w-10 h-10";
@@ -32,55 +38,61 @@ export function AccountSwitcher() {
   const { data: accounts } = useAccounts();
   const selectedAccountId = useAppStore((s) => s.selectedAccountId);
   const setSelectedAccount = useAppStore((s) => s.setSelectedAccount);
-  const [open, setOpen] = useState(false);
 
-  const accountsList = Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : [];
+  const accountsList = Array.isArray(accounts)
+    ? accounts.filter((acc) => acc.is_active && !acc.for_sale)
+    : [];
   const selected = accountsList.find((a) => a.id === selectedAccountId);
 
   if (accountsList.length === 0) return null;
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition w-full"
-      >
-        {selected ? <Avatar account={selected} /> : (
-          <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-xs font-bold text-primary-700">
-            T
-          </div>
-        )}
-        <span className="truncate text-gray-700">
-          {selected?.first_name || _("accountSwitcher.selectAccount")}
-        </span>
-        <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 ml-auto" />
-      </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-800 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {selected ? (
+            <Avatar account={selected} />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-950 flex items-center justify-center text-xs font-bold text-primary-700 dark:text-primary-300">
+              T
+            </div>
+          )}
+          <span className="truncate text-gray-700 dark:text-slate-200 flex-1">
+            {selected?.first_name || _("accountSwitcher.selectAccount")}
+          </span>
+          <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-            {accountsList.map((account) => (
-              <button
-                key={account.id}
-                onClick={() => {
-                  setSelectedAccount(account.id);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm w-full text-left hover:bg-gray-50 transition",
-                  selected?.id === account.id && "bg-primary-50"
-                )}
-              >
-                <Avatar account={account} />
-                <span className="truncate">
-                  {account.first_name || account.phone}
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+      <DropdownMenuContent align="start" className="w-[240px] max-h-72 overflow-y-auto">
+        <DropdownMenuLabel className="text-xs text-muted-foreground dark:text-slate-400">
+          {_("accountSwitcher.accounts") || "Accounts"}
+        </DropdownMenuLabel>
+        {accountsList.map((account) => {
+          const isCurrent = selected?.id === account.id;
+          return (
+            <DropdownMenuItem
+              key={account.id}
+              onClick={() => setSelectedAccount(account.id)}
+              className={cn(
+                "flex items-center gap-2 cursor-pointer",
+                isCurrent && "bg-primary-50 dark:bg-primary-950/50 font-medium"
+              )}
+            >
+              <Avatar account={account} />
+              <span className="truncate flex-1 text-gray-800 dark:text-slate-200">
+                {account.first_name || account.phone}
+              </span>
+              {isCurrent && (
+                <Check className="h-4 w-4 text-primary shrink-0" />
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

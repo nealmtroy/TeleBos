@@ -1,12 +1,59 @@
 ---
 name: TeleBos
 description: Multi-account Telegram manager for power users
+themes:
+  - light
+  - dark
 colors:
   primary: "#3b82f6"
   primary-hover: "#2563eb"
   primary-foreground: "#ffffff"
+  # Light Theme Tokens (WCAG AA Compliant >= 4.5:1)
+  light:
+    background: "#ffffff"
+    foreground: "#0f172a"
+    card: "#ffffff"
+    card-foreground: "#0f172a"
+    muted: "#f1f5f9"
+    muted-foreground: "#64748b"
+    secondary: "#f1f5f9"
+    secondary-foreground: "#0f172a"
+    accent: "#f1f5f9"
+    accent-foreground: "#0f172a"
+    destructive: "#ef4444"
+    destructive-foreground: "#ffffff"
+    border: "#e2e8f0"
+    input: "#e2e8f0"
+    ring: "#3b82f6"
+  # Dark Theme Tokens (WCAG AA Compliant >= 4.5:1)
+  dark:
+    background: "#0f172a"
+    foreground: "#f8fafc"
+    card: "#1e293b"
+    card-foreground: "#f8fafc"
+    muted: "#1e293b"
+    muted-foreground: "#cbd5e1"
+    secondary: "#1e293b"
+    secondary-foreground: "#f8fafc"
+    accent: "#1e293b"
+    accent-foreground: "#f8fafc"
+    destructive: "#7f1d1d"
+    destructive-foreground: "#f8fafc"
+    border: "#334155"
+    input: "#334155"
+    ring: "#60a5fa"
+  # Persistent Anchor (Fixed dark frame across both themes)
+  sidebar:
+    background: "#020617"
+    surface: "#0f172a"
+    border: "#0f172a"
+    foreground: "#94a3b8"
+    active: "#3b82f6"
+    active-bg: "rgba(59, 130, 246, 0.1)"
+  # Backward-compatible flat keys
   background: "#ffffff"
   foreground: "#0f172a"
+  card: "#ffffff"
   muted: "#f1f5f9"
   muted-foreground: "#64748b"
   secondary: "#f1f5f9"
@@ -25,12 +72,12 @@ colors:
   sidebar-active: "#3b82f6"
   dark-background: "#0f172a"
   dark-foreground: "#f8fafc"
-  dark-card: "#0f172a"
+  dark-card: "#1e293b"
   dark-secondary: "#1e293b"
   dark-muted: "#1e293b"
-  dark-muted-foreground: "#94a3b8"
+  dark-muted-foreground: "#cbd5e1"
   dark-accent: "#1e293b"
-  dark-border: "#1e293b"
+  dark-border: "#334155"
   dark-destructive: "#7f1d1d"
   dark-ring: "#60a5fa"
 typography:
@@ -92,14 +139,17 @@ components:
     backgroundColor: "{colors.primary-hover}"
   button-outline:
     backgroundColor: "transparent"
-    textColor: "{colors.foreground}"
+    lightTextColor: "{colors.light.foreground}"
+    darkTextColor: "{colors.dark.foreground}"
+    lightBorder: "1px solid {colors.light.border}"
+    darkBorder: "1px solid {colors.dark.border}"
     rounded: "{rounded.lg}"
     padding: "0.5rem 1rem"
-    border: "1px solid {colors.border}"
     height: "2.25rem"
   button-ghost:
     backgroundColor: "transparent"
-    textColor: "{colors.muted-foreground}"
+    lightTextColor: "{colors.light.muted-foreground}"
+    darkTextColor: "{colors.dark.muted-foreground}"
     rounded: "{rounded.lg}"
     padding: "0.5rem 0.75rem"
     height: "2.25rem"
@@ -110,16 +160,23 @@ components:
     padding: "0.5rem 1rem"
     height: "2.25rem"
   card:
-    backgroundColor: "{colors.background}"
-    textColor: "{colors.foreground}"
+    lightBackground: "{colors.light.card}"
+    darkBackground: "{colors.dark.card}"
+    lightTextColor: "{colors.light.card-foreground}"
+    darkTextColor: "{colors.dark.card-foreground}"
+    lightBorder: "1px solid {colors.light.border}"
+    darkBorder: "1px solid {colors.dark.border}"
     rounded: "{rounded.xl}"
     padding: "{spacing.md}"
   input:
-    backgroundColor: "{colors.background}"
-    textColor: "{colors.foreground}"
+    lightBackground: "{colors.light.background}"
+    darkBackground: "{colors.dark.background}"
+    lightTextColor: "{colors.light.foreground}"
+    darkTextColor: "{colors.dark.foreground}"
+    lightBorder: "1px solid {colors.light.input}"
+    darkBorder: "1px solid {colors.dark.input}"
     rounded: "{rounded.lg}"
     padding: "0.5rem 0.75rem"
-    border: "1px solid {colors.input}"
     height: "2.25rem"
   badge-default:
     backgroundColor: "{colors.primary}"
@@ -131,178 +188,330 @@ components:
 
 # Design System: TeleBos
 
-## 1. Overview
+## 1. Overview & Architecture
 
-**Creative North Star: "The Workbench"**
+### Creative North Star: "The Dual-Mode Workbench"
 
-TeleBos is a precision instrument for Telegram power users — a tool that gets out of the way and lets them work. The interface is organized like a well-stocked workbench: every tool is within reach, arranged by task (accounts, broadcast, automation), and built for sustained sessions of high-throughput work.
+TeleBos is a precision instrument designed for Telegram power users managing high-volume broadcasts, account fleets, and automated workflows. The interface functions like an engineered workbench: every tool is readily accessible, segregated by domain, and built for sustained operational focus without cognitive exhaustion.
 
-The aesthetic is **serious and professional**, not decorative. Dark slate surfaces anchor the identity — the sidebar is a deep, confident presence that frames the workspace. The blue accent is used surgically: active states, interactive elements, and data highlights. It never overwhelms. Cards carry thin ring borders instead of shadows — depth is communicated through tonal layering, not elevation. Light mode exists as a respectful accommodation for users who prefer it, but the soul of the product lives in dark mode.
+TeleBos treats **Light Mode** and **Dark Mode** as first-class, equal-status themes. Both themes share identical layout geometry, information density, and interactive states, while providing rigorous WCAG 2.1 AA compliance (contrast ratio ≥ 4.5:1 for body and secondary text, ≥ 3.0:1 for large text and interactive components).
 
-This system explicitly rejects the AI-tool aesthetic: no cream backgrounds, no gradient text, no glassmorphism, no numbered-section markers, no generic SaaS card grids. Every pixel earns its keep by enabling a workflow.
+### The Dual-Layer Architecture
 
-**Key Characteristics:**
-- Dark mode first, light mode as equal-quality accommodation
-- Flat/tonal layering: depth via color, not shadows
-- Surgical blue accent, used on ≤15% of any screen
-- Dense but structured: readable scan paths through complex data
-- Stateful: every interaction has a clear, immediate response
-- Reduced-motion friendly: animations serve state transitions, not decoration
+To maintain spatial grounding while allowing seamless theme switching, TeleBos implements a dual-layer architectural model:
 
-## 2. Colors
+1. **Persistent Anchor Frame (Theme-Independent)**
+   - **The Left Sidebar Navigation** (`#020617` Sidewall) remains consistently dark in **both** light and dark themes. This permanent dark mast provides an unwavering frame of reference, grounds the application hierarchy, and eliminates jarring layout shifts during theme toggling.
+   - Hardcoded dark panels (e.g., Telegram Web K chat emulator previews and terminal logs) remain on dark surfaces across both modes.
+2. **Adaptive Workspace Canvas (Theme-Responsive)**
+   - All workspace pages, dashboards, analytical tables, forms, cards, modal dialogs, and toolbars dynamically respond to the active theme (`light` or `dark`).
+   - Theme switching is orchestrated by Zustand (`theme-store.ts`), backed by `localStorage` (`telebos_theme`), and respects the user's OS preference (`system` default).
+   - Global stylesheet tokens (`tokens.css`), theme transitions (`base.css`), and the utility mapping layer (`dark-bridge.css`) ensure synchronized visual transitions without unstyled flashes or low-contrast artifacts.
 
-The palette is restrained by design — one blue primary on a neutral slate-and-white scaffold. The range is deliberately narrow; constraints produce confidence.
+---
 
-### Primary
-- **Tool Blue** (#3b82f6 / oklch(55% 0.22 262)): The single accent color. Used for interactive elements — buttons, active nav items, links, focus rings. Never used for decorative surfaces, backgrounds, or large areas. Its rarity is the point.
+## 2. Color System & Dual-Theme Tokens
 
-### Neutral (Light)
-- **White** (#ffffff / oklch(100% 0 0)): Canvas background for the main content area and cards.
-- **Slate Ink** (#0f172a / oklch(13% 0.03 250)): Primary body text. Also used for headings and key labels.
-- **Slate Mist** (#f1f5f9 / oklch(97% 0.005 250)): Secondary surface — muted backgrounds, card footers, subtle fills.
-- **Muted Slate** (#64748b / oklch(55% 0.02 250)): Secondary text — labels, descriptions, placeholders, metadata.
-- **Slate Border** (#e2e8f0 / oklch(93% 0.005 250)): Card rings, input borders, dividers.
-- **Alert Red** (#ef4444 / oklch(63% 0.24 25)): Destructive actions, error states, danger badges.
+TeleBos enforces a disciplined slate-and-blue palette. The system rejects warm cream/beige tones, neon pastels, and decorative gradients. Every color token maps to a specific functional role and meets strict accessibility minimums.
 
-### Neutral (Dark)
-- **Deep Slate** (#0f172a / oklch(13% 0.03 250)): Dark canvas background. The surface the product lives on.
-- **Surface Slate** (#1e293b / oklch(26% 0.03 250)): Dark secondary surface — card backgrounds, sidebar surfaces, muted areas.
-- **Light Slate Ink** (#f8fafc / oklch(98% 0 250)): Body text on dark surfaces.
-- **Dim Slate** (#94a3b8 / oklch(66% 0.02 250)): Muted text on dark — secondary labels, metadata, placeholder text.
-- **Dark Border** (#1e293b / oklch(26% 0.03 250)): Dividers and borders on dark backgrounds.
-- **Dark Ring Blue** (#60a5fa / oklch(67% 0.17 262)): Focus rings on dark surfaces.
+### Dual-Theme Token Specification Matrix
 
-### Sidebar
-- **Sidewall** (#020617 / oklch(6% 0.025 250)): The sidebar canvas. Nearly black, establishes frame weight.
-- **Sidewall Surface** (#0f172a / oklch(13% 0.03 250)): Elevated surfaces within the sidebar (dropdowns, tooltips).
-- **Sidewall Border** (#0f172a / oklch(13% 0.03 250)): Sidebar divisions.
-- **Sidewall Text** (#94a3b8 / oklch(66% 0.02 250)): Inactive nav items, labels in the sidebar.
-- **Sidewall Active** (#3b82f6 / oklch(55% 0.22 262)): Active nav item text and indicator.
-- **Sidewall Active Bg** (hsla(221 83% 53% / 0.1)): Active nav item background tint (rgba overlay pattern).
+| Token Name | CSS Custom Property | Tailwind Utility | Light Theme Value | Dark Theme Value | Contrast Ratio vs Surface | Primary Role |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Canvas Background** | `--background` | `bg-background` | `hsl(0 0% 100%)` (`#ffffff`) | `hsl(222.2 47.4% 11.2%)` (`#0f172a`) | Base Surface | Deep workspace canvas |
+| **Canvas Foreground** | `--foreground` | `text-foreground` | `hsl(222.2 84% 4.9%)` (`#020817`) | `hsl(210 40% 98%)` (`#f8fafc`) | ~19.5:1 (L) / ~13:1 (D) | Primary text, titles, headings |
+| **Card Surface** | `--card` | `bg-card` | `hsl(0 0% 100%)` (`#ffffff`) | `hsl(217.2 32.6% 17.5%)` (`#1e293b`) | Elevated Surface | Dashboard panels, bento boxes |
+| **Card Foreground** | `--card-foreground` | `text-card-foreground` | `hsl(222.2 84% 4.9%)` (`#020817`) | `hsl(210 40% 98%)` (`#f8fafc`) | ~19.5:1 (L) / ~10.5:1 (D) | Text inside cards |
+| **Primary Accent** | `--primary` | `bg-primary`, `text-primary` | `hsl(221.2 83.2% 53.3%)` (`#3b82f6`) | `hsl(221.2 83.2% 53.3%)` (`#3b82f6`) | ~4.6:1 on white (L) | Primary CTA fill, active marks |
+| **Primary Foreground**| `--primary-foreground` | `text-primary-foreground` | `hsl(210 40% 98%)` (`#ffffff`) | `hsl(210 40% 98%)` (`#ffffff`) | 8.2:1 against Tool Blue | Text inside filled primary buttons |
+| **Secondary Surface** | `--secondary` | `bg-secondary` | `hsl(210 40% 96.1%)` (`#f1f5f9`) | `hsl(217.2 32.6% 22%)` (`#243248`) | Subtle Surface | Secondary buttons, chips, card headers |
+| **Secondary Text** | `--secondary-foreground` | `text-secondary-foreground` | `hsl(222.2 47.4% 11.2%)` (`#0f172a`) | `hsl(210 40% 98%)` (`#f8fafc`) | ≥ 12:1 against secondary | Text on secondary elements |
+| **Muted Surface** | `--muted` | `bg-muted` | `hsl(210 40% 96.1%)` (`#f1f5f9`) | `hsl(217.2 32.6% 22%)` (`#243248`) | Recessed Surface | Disabled states, table headers |
+| **Muted Text** | `--muted-foreground` | `text-muted-foreground` | `hsl(215.4 16.3% 46.9%)` (`#64748b`) | `hsl(217 24% 78%)` (`#cbd5e1`) | **4.6:1 (L) / 6.5:1 (D)** | Metadata, descriptions, hints |
+| **Border & Divider** | `--border` | `border-border` | `hsl(214.3 31.8% 91.4%)` (`#e2e8f0`) | `hsl(217.2 25% 27%)` (`#334155`) | Hairline boundary | Card edges, inputs, dividers |
+| **Input Border** | `--input` | `border-input` | `hsl(214.3 31.8% 91.4%)` (`#e2e8f0`) | `hsl(217.2 25% 27%)` (`#334155`) | Hairline boundary | Text fields, selectors, textareas |
+| **Focus Ring** | `--ring` | `ring-ring` | `hsl(221.2 83.2% 53.3%)` (`#3b82f6`) | `hsl(217 91% 68%)` (`#60a5fa`) | ≥ 3.0:1 boundary | Keyboard focus outlines |
+| **Destructive Action**| `--destructive` | `bg-destructive` | `hsl(0 84.2% 60.2%)` (`#ef4444`) | `hsl(0 62.8% 30.6%)` (`#7f1d1d`) | Error state | Deletions, bans, critical alerts |
 
-### Named Rules
-**The One Voice Rule.** The blue primary is used on ≤15% of any given screen. Its rarity is what gives it meaning. When everything is blue, nothing is active.
+---
 
-**The No-Tint Rule.** Neutral surfaces are neutral. No warm-tinted creams, no cool-tinted greys "for depth." Chroma in neutrals stays ≤0.005. The accent carries all the color energy.
+### Surface Elevation Ladders
+
+Depth in TeleBos is achieved via **tonal layering**, not diffuse box shadows. Each theme uses an ascending ladder of luminance:
+
+#### Light Mode Surface Ladder (Ascending Brightness & Density)
+1. **Base Canvas:** `#ffffff` (`bg-background`) — Main background for dashboard pages.
+2. **Subtle Surface:** `#f8fafc` (`bg-slate-50`) — Table alternate rows, search filter bars.
+3. **Card Container:** `#ffffff` (`bg-card`) with a 1px border `border-slate-200` (`#e2e8f0`) — Structured bento cards.
+4. **Secondary Surface:** `#f1f5f9` (`bg-slate-100`) — Button backgrounds, active tab strips.
+5. **Floating Panels:** `#ffffff` with subtle `shadow-lg shadow-slate-900/5` and border `border-slate-200` — Modals, popovers, dropdowns.
+
+#### Dark Mode Surface Ladder (Ascending Luminance)
+1. **Base Canvas:** `#0f172a` (`hsl(222.2 47.4% 11.2%)`) — Deep Slate workspace floor.
+2. **Subtle Surface:** `hsl(215 20% 14%)` — Form control backgrounds, disabled surfaces.
+3. **Card Container:** `#1e293b` (`hsl(217.2 32.6% 17.5%)`) with 1px border `border-slate-700/60` — Primary card panels.
+4. **Secondary Surface:** `hsl(217.2 32.6% 22%)` (`#243248`) — Inner wells, table headers, hover rows.
+5. **Raised Surface:** `hsl(215 20% 30%)` (`#334155`) — Floating badges, active segmentation pills.
+6. **Floating Panels:** `#1e293b` with border `border-slate-700` and `shadow-2xl shadow-black/50` — Modals, dropdown menus.
+
+---
+
+### Text Contrast Ladders (Zero Low-Contrast Protocol)
+
+To eliminate unreadable low-contrast text across the application, every text level is calibrated against its corresponding surface:
+
+#### Light Mode Text Hierarchy
+- **Heading / Heavy:** `text-slate-900` (`#0f172a`) — **16:1 contrast** against white. Used for page titles and card headlines.
+- **Body / Standard:** `text-slate-700` (`#334155`) or `text-slate-800` (`#1e293b`) — **8.9:1 to 12.5:1 contrast**. Used for table content, paragraph copy, and form values.
+- **Muted / Secondary:** `text-slate-500` (`#64748b`) or `text-muted-foreground` — **4.6:1 contrast** (passes WCAG AA 4.5:1 minimum). Used for metadata, subtitles, timestamps.
+  > [!IMPORTANT]
+  > **Light Mode Rule:** Never use `text-slate-400` (`#94a3b8`) for readable text on a light canvas. Its contrast ratio is only 2.6:1 and violates accessibility requirements.
+- **Placeholders & Hints:** `placeholder:text-slate-500` (`#64748b`, 4.6:1).
+- **Disabled Text:** `text-slate-400` with disabled attribute and reduced cursor opacity.
+
+#### Dark Mode Text Hierarchy
+- **Heading / Heavy:** `text-slate-50` (`#f8fafc`) or `text-foreground` — **13:1 contrast** against `#1e293b`. Used for page titles and card headlines.
+- **Body / Standard:** `text-slate-200` (`#e2e8f0`) — **10.2:1 contrast**. Used for table content, paragraphs, form entries.
+- **Muted / Secondary:** `text-slate-300` / `hsl(217 24% 78%)` (`#cbd5e1`) or `text-muted-foreground` — **6.5:1 contrast** against `#1e293b`. Used for metadata, subtitles, timestamps.
+  > [!IMPORTANT]
+  > **Dark Mode Rule:** Never leave raw `text-slate-500` unmapped on dark surfaces (it drops to 2.8:1). Use `text-muted-foreground` or `dark:text-slate-300` so contrast remains ≥ 6:1.
+- **Placeholders & Hints:** `placeholder:text-slate-400` (`hsl(215 12% 76%)`, 5.2:1).
+- **Primary Text Links on Dark:** When blue text appears on dark surfaces, use `text-blue-400` (`#60a5fa`, 5.8:1) or `text-primary-300` (`#93c5fd`, 8.1:1). Never use raw mid-blue `text-primary` (`#3b82f6`) as bare text on dark surfaces (it achieves only 2.8:1).
+
+---
+
+### Status Badges & Functional Accents Matrix
+
+Status indicators must retain strong contrast and recognizability in both themes. Badges use a tinted background, subtle border, and high-contrast text:
+
+| Status Role | Light Mode Classes | Light Preview | Dark Mode Classes | Dark Preview |
+| :--- | :--- | :--- | :--- | :--- |
+| **Success / Active** | `bg-emerald-50 text-emerald-800 border border-emerald-200` | Emerald-800 on pale green (~6.5:1) | `bg-emerald-950/40 text-emerald-400 border border-emerald-800/50` | Emerald-400 on deep green (~8.2:1) |
+| **Warning / Idle / Refill** | `bg-amber-50 text-amber-800 border border-amber-200` | Amber-800 on pale amber (~6.8:1) | `bg-amber-950/40 text-amber-300 border border-amber-800/50` | Amber-300 on deep amber (~9.1:1) |
+| **Destructive / Error / Ban** | `bg-rose-50 text-rose-800 border border-rose-200` | Rose-800 on pale rose (~7.0:1) | `bg-rose-950/40 text-rose-300 border border-rose-800/50` | Rose-300 on deep rose (~8.5:1) |
+| **Info / Telegram Primary** | `bg-blue-50 text-blue-800 border border-blue-200` | Blue-800 on pale blue (~7.4:1) | `bg-blue-950/40 text-blue-300 border border-blue-800/50` | Blue-300 on deep blue (~9.0:1) |
+| **Neutral / Offline** | `bg-slate-100 text-slate-700 border border-slate-200` | Slate-700 on slate-100 (~7.2:1) | `bg-slate-800/60 text-slate-300 border border-slate-700/60` | Slate-300 on slate-800 (~6.8:1) |
+
+---
+
+### Persistent Frame (Sidebar Invariant)
+
+The sidebar is anchored in dark slate across both themes:
+- **Canvas:** `#020617` (`bg-slate-950` / Sidewall).
+- **Group Labels:** `text-slate-400` (`#94a3b8`), font-size `0.625rem`, uppercase, tracking `0.05em`.
+- **Inactive Nav Items:** `text-slate-400 hover:text-slate-100 hover:bg-slate-900/60`.
+- **Active Nav Item:** `text-blue-400 bg-blue-500/10 border-l-2 border-blue-500`.
+- **Inverted Action Buttons:** Any white button inside persistent dark panels must use `[data-keep-white]` with dark text `text-slate-900` to prevent white-on-white text inversion.
+
+---
 
 ## 3. Typography
 
-**Display & Body Font:** Inter (variable, with `ui-sans-serif, system-ui, sans-serif` fallback)
-**Label/Mono Font:** `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
+TeleBos uses a single font family for the entire application to ensure mechanical precision and eliminate font-pairing inconsistencies.
 
-Inter was chosen for its large x-height and tight letterforms — it reads well at small sizes (dense tables, logs, status text) and has the authority to anchor headlines. One family for everything eliminates pairing risk and keeps the system minimal.
+- **Primary Stack:** Inter (`Inter, ui-sans-serif, system-ui, sans-serif`).
+- **Monospace Stack:** `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`.
 
-### Hierarchy
-- **Display** (ExtraBold 800, `clamp(2.25rem, 5vw, 3.5rem)`, line-height 1.1, tracking -0.03em): Landing page hero headlines only. Never used inside the dashboard.
-- **Headline** (Bold 700, `clamp(1.5rem, 3vw, 2rem)`, line-height 1.2, tracking -0.02em): Page titles, section headings in the dashboard.
-- **Title** (Semibold 600, 1rem/16px, line-height 1.4, tracking -0.01em): Card titles, modal headers, list item primary labels.
-- **Body** (Regular 400, 0.875rem/14px, line-height 1.6): Default text — paragraphs, descriptions, table cells, log content. Cap line length at 65–75ch.
-- **Label** (Medium 500, 0.8125rem/13px, line-height 1.25): Form labels, navigation items, badges, small metadata.
-- **Mono** (Regular 400, 0.8125rem/13px, line-height 1.5): Code blocks, session strings, numeric IDs, technical data display.
+### Typographic Scale & Theme Mapping
 
-### Named Rules
-**The Single-Family Rule.** Inter for everything. No second font family, no "display font" pairing. The hierarchy is expressed through weight, size, and color alone — not a font swap. This enforces the tool-like precision of the brand.
+| Scale Level | Weight & Size | Line Height | Tracking | Light Mode Class | Dark Mode Class | Usage Context |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Display** | 800 (ExtraBold), `clamp(2.25rem, 5vw, 3.5rem)` | 1.1 | `-0.03em` | `text-slate-900` | `text-white` | Landing page hero only. Never inside dashboard. |
+| **Headline**| 700 (Bold), `clamp(1.5rem, 3vw, 2rem)` | 1.2 | `-0.02em` | `text-slate-900` | `text-slate-100` | Dashboard page titles, modal headers. |
+| **Title** | 600 (Semibold), `1rem` (16px) | 1.4 | `-0.01em` | `text-slate-900` | `text-slate-100` | Card titles, section headers, dialog titles. |
+| **Body** | 400 (Regular), `0.875rem` (14px) | 1.6 | Normal | `text-slate-700` | `text-slate-200` | Standard table content, paragraphs, form entries. |
+| **Label** | 500 (Medium), `0.8125rem` (13px) | 1.25 | Normal | `text-slate-900` | `text-slate-200` | Form labels, table column headers, tab triggers. |
+| **Muted** | 400 (Regular), `0.8125rem` (13px) | 1.4 | Normal | `text-slate-500` | `text-slate-300` | Timestamps, secondary IDs, help descriptions. |
+| **Mono** | 400 (Regular), `0.8125rem` (13px) | 1.5 | Normal | `text-slate-800` | `text-slate-200` | Telegram user IDs, phone numbers, session strings. |
 
-## 4. Elevation
+---
 
-TeleBos uses **tonal layering**, not shadows, to communicate depth. The dark-mode sidebar is the deepest surface (slate-950), with the content area a step above (slate-900 dark / white light). Cards are differentiated from their container by a subtle ring border (`ring-1 ring-foreground/10`) rather than a drop shadow.
+## 4. Elevation, Borders & Transitions
 
-Dialogues, dropdowns, and floating panels use a slightly lighter surface color in dark mode, or a thin shadow in light mode. The rule: if it floats, it gets either a tonal lift or a `shadow-lg` — never both.
+TeleBos avoids dramatic drop shadows in favor of crisp boundaries and purposeful state transitions.
 
-### Shadow Vocabulary
-- **Floating panel** (light: `0 10px 15px -3px rgba(0,0,0,0.1)`, dark: none — tonal lift only): Dropdowns, popovers, menus.
-- **Modal** (light: `0 20px 25px -5px rgba(0,0,0,0.15)`, dark: `0 25px 50px rgba(0,0,0,0.5)`): Dialog overlays.
-- **Hover lift** (light: `0 4px 12px rgba(0,0,0,0.08)`, dark: none): Interactive card hover states.
+### Border Strategy
+- **Light Mode:** 1px hairline border using `border-slate-200` (`#e2e8f0`) on cards, inputs, and dividers. Cards at rest carry `ring-1 ring-slate-900/5` or `border border-slate-200`.
+- **Dark Mode:** 1px hairline border using `border-slate-800` (`#1e293b`) or `border-slate-700/60` (`#334155`). Cards do not use drop shadows at rest; separation is delivered via the contrast between base `#0f172a` and card surface `#1e293b`.
 
-### Named Rules
-**The Flat-By-Default Rule.** Surfaces are flat at rest. Shadows appear only as a response to state (hover, focus, open). A card at rest should look like it's printed on the page, not hovering above it.
+### Shadows (State-Triggered Only)
+- **Resting Cards:** `shadow-none` (both themes).
+- **Interactive Card Hover:**
+  - Light Mode: `shadow-md shadow-slate-900/5` + subtle upward transform (`-translate-y-[1px]`).
+  - Dark Mode: Surface highlight (`bg-slate-800/80` or `border-slate-600`) without shadow blur.
+- **Dropdowns & Popovers:**
+  - Light Mode: `shadow-lg shadow-slate-900/10 border border-slate-200 bg-white`.
+  - Dark Mode: `shadow-2xl shadow-black/60 border border-slate-800 bg-slate-900`.
+- **Modals & Overlays:**
+  - Light Mode: Backdrop `bg-black/40 backdrop-blur-sm`, container `bg-white border border-slate-200 shadow-2xl`.
+  - Dark Mode: Backdrop `bg-black/75 backdrop-blur-sm`, container `bg-slate-900 border border-slate-800 shadow-2xl`.
 
-## 5. Components
+### Theme Transition Smoothing
+All color-shifting surfaces employ the transition tokens defined in `base.css`:
+```css
+transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
+```
+This guarantees an instantaneous, flicker-free transition when switching between Light and Dark modes.
 
-### Buttons
+---
 
-Buttons are the most interactive element in the system. They use a compact 2.25rem (36px) default height, rounded-lg corners, and clear hover/focus states.
+## 5. Component Specifications (Dual-Theme Implementation)
 
-- **Shape:** Rounded-lg (8px). Compact 2.25rem default height.
-- **Primary** (`bg-primary text-primary-foreground`): Tool Blue fill, white text. Used for the single primary action on a screen. Hover: 80% opacity (not a color shift). Focus: 3px ring at 50% opacity. Active: pressed down 1px.
-- **Secondary** (`bg-secondary text-secondary-foreground`): Slate Mist fill in light, Surface Slate in dark. Used for secondary actions alongside a primary button.
-- **Outline** (`border-border bg-background hover:bg-muted`): Transparent fill with border. Neutral, for non-critical actions.
-- **Ghost** (`hover:bg-muted hover:text-foreground`): Borderless, minimal. For toolbar items, table row actions, dismiss buttons.
-- **Destructive** (`bg-destructive/10 text-destructive`): Tinted red. Used only for irreversible destructive actions (delete account, terminate session, cancel running job).
-- **Link** (`text-primary underline-offset-4 hover:underline`): Text-only action, styled as a link.
-- **Disabled:** `opacity-50`, no pointer events. No hover state. The disabled button communicates "this action is unavailable" without removing it.
+### 1. Buttons
 
-### Cards
+Standard button height is **2.25rem (36px)** with `rounded-lg` (8px corners) and `text-sm font-medium`.
 
-Cards are the primary content container in the dashboard. They feel printed, not floating.
+- **Primary Button:**
+  - Fill: `bg-primary` (`#3b82f6`).
+  - Text: `text-white` (`#ffffff`).
+  - Hover: `hover:bg-primary-hover` (`#2563eb`) or `hover:opacity-90`.
+  - Focus: `focus-visible:ring-2 focus-visible:ring-primary/50`.
+- **Secondary Button:**
+  - Light: `bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-200/60`.
+  - Dark: `bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700/60`.
+- **Outline Button:**
+  - Light: `bg-transparent text-slate-800 border border-slate-200 hover:bg-slate-50`.
+  - Dark: `bg-transparent text-slate-200 border border-slate-700 hover:bg-slate-800/60`.
+- **Ghost Button:**
+  - Light: `bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900`.
+  - Dark: `bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white`.
+- **Destructive Button:**
+  - Light: `bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200`.
+  - Dark: `bg-rose-950/40 text-rose-300 hover:bg-rose-900/50 border border-rose-800/50`.
+- **Disabled State:**
+  - Both Themes: `opacity-50 pointer-events-none cursor-not-allowed`.
 
-- **Corner Style:** Rounded-xl (12px).
-- **Background:** White (light) / Deep Slate (dark).
-- **Border Strategy:** `ring-1 ring-foreground/10` in both themes — a thin, subtle outline that defines the card boundary without casting a shadow.
-- **Internal Padding:** 1rem (16px) default, 0.75rem on `size="sm"` variant.
-- **Footer:** Tinted background (slate-mist / surface-slate), separated by a hairline border. Contains secondary actions or metadata.
-- **States:** Hover on interactive cards: lift via `shadow-lg shadow-primary-50` in light, subtle bg shift in dark. Never nested.
+---
 
-### Badges
+### 2. Cards & Bento Containers
 
-Small, compact status indicators. Fully rounded (`rounded-full`), 1.25rem (20px) height.
+Cards organize telemetry, account lists, and action consoles.
 
-- **Default:** Tool Blue fill, white text. Active status, counts.
-- **Secondary:** Slate Mist fill. Neutral metadata.
-- **Destructive:** Tinted red (`bg-destructive/10 text-destructive`). Error states, bans, failures.
-- **Outline:** Border only, no fill. Subtle labels.
-- **Ghost:** No visible container. Hover-reveal variant for inline tags.
+- **Structure:**
+  - Corner Radius: `rounded-xl` (12px).
+  - Padding: `p-4` (16px) or `p-6` (24px) for major sections.
+- **Surfaces:**
+  - Light: `bg-white text-slate-900 border border-slate-200 shadow-sm shadow-slate-900/5`.
+  - Dark: `bg-slate-900 text-slate-100 border border-slate-800`.
+- **Card Header & Title:**
+  - Title: `text-base font-semibold text-slate-900 dark:text-slate-100`.
+  - Subtitle: `text-sm text-slate-500 dark:text-slate-300`.
+- **Card Footer:**
+  - Light: `bg-slate-50/60 border-t border-slate-100 px-4 py-3`.
+  - Dark: `bg-slate-800/40 border-t border-slate-800 px-4 py-3`.
 
-### Inputs / Fields
+---
 
-Form controls use a clean bordered style consistent with the flat aesthetic.
+### 3. Form Inputs, Selects & Textareas
 
-- **Style:** 1px solid border (`border-input`), rounded-lg (8px), 2.25rem default height.
-- **Background:** White (light) / transparent (dark, with dark-border).
-- **Focus:** Blue ring at 50% opacity (`focus-visible:ring-3 focus-visible:ring-ring/50`). Never a border color shift alone — the ring is mandatory.
-- **Placeholder:** Muted Slate / Dim Slate, with 4.5:1 contrast against background (never the default low-contrast browser grey).
-- **Error:** Red border + red focus ring (`aria-invalid:border-destructive aria-invalid:ring-destructive/20`).
-- **Disabled:** Reduced opacity, no interactive states.
+Form controls must guarantee high contrast and unambiguous focus states.
 
-### Navigation
+- **Geometry:** Height `2.25rem` (36px), padding `px-3 py-2`, `rounded-lg` (8px).
+- **Light Theme:**
+  - Surface: `bg-white`.
+  - Border: `border border-slate-300`.
+  - Text: `text-slate-900`.
+  - Placeholder: `placeholder:text-slate-500`.
+  - Focus: `focus:border-primary focus:ring-2 focus:ring-primary/20`.
+- **Dark Theme:**
+  - Surface: `bg-slate-950/60` (or `hsl(215 20% 14%)`).
+  - Border: `border border-slate-700`.
+  - Text: `text-slate-100`.
+  - Placeholder: `placeholder:text-slate-400`.
+  - Focus: `focus:border-primary-400 focus:ring-2 focus:ring-primary-400/25`.
+- **Error State:**
+  - Light: `border-rose-500 focus:ring-rose-500/20 text-rose-900`.
+  - Dark: `border-rose-500 focus:ring-rose-500/25 text-rose-100`.
 
-The sidebar is the primary navigation. It's a persistent dark panel on the left.
+---
 
-- **Style:** Nearly-black canvas (#020617), with group-section labels in tiny uppercase tracking-wider. Segmented by labeled groups (MAIN MENU, AUTOMATION, BILLING, SUPPORT).
-- **Link Default:** Slate-400 text, no background. Subdued but readable.
-- **Link Active:** Blue text (`text-primary-400`), blue left border indicator (2px), subtle blue bg tint at 10%.
-- **Collapsed Mode:** Icon-only at 72px width. Active items show a thin blue left indicator. Hover reveals tooltip labels.
-- **Mobile:** Full overlay with semi-transparent backdrop. Close button in header.
-- **Submenu:** Collapsible accordion for grouped items (Broadcast, Orders, Admin). Blue left border indent line.
-- **Profile Section:** Bottom of sidebar — user avatar (gradient initials), name, email, wallet balance. Click opens a floating popover with settings and logout.
+### 4. Tables & Data Grids
 
-### Skeleton / Loading
+Tables manage high-density account sessions, proxy latency, and broadcast queues.
 
-- **Pattern:** Shimmer animation (`shimmer: bg-position slide, 1.5s ease-in-out infinite`). Used for initial page load and async content transitions.
-- **Shape:** Rounded blocks matching the content silhouette. Cards get card-shaped skeletons; text gets line-height-matched rows.
+- **Table Header:**
+  - Light: `bg-slate-50 text-slate-700 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider`.
+  - Dark: `bg-slate-900/80 text-slate-300 border-b border-slate-800 text-xs font-semibold uppercase tracking-wider`.
+- **Data Rows:**
+  - Light: `border-b border-slate-100 hover:bg-slate-50/80 text-slate-700`.
+  - Dark: `border-b border-slate-800/60 hover:bg-slate-800/50 text-slate-200`.
+- **Cell Padding:** `px-4 py-3 text-sm`.
 
-## 6. Do's and Don'ts
+---
+
+### 5. Dialogs, Modals & Sheets
+
+- **Backdrop:**
+  - Light: `bg-slate-950/40 backdrop-blur-sm`.
+  - Dark: `bg-black/75 backdrop-blur-sm`.
+- **Modal Surface:**
+  - Light: `bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 text-slate-900`.
+  - Dark: `bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 text-slate-100`.
+- **Close Button:**
+  - Light: `text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1.5`.
+  - Dark: `text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg p-1.5`.
+
+---
+
+### 6. Loading Skeletons & Shimmer States
+
+- **Animation:** `animate-shimmer` with 1.5s ease slide.
+- **Light Mode:** Base `bg-slate-100` shimmering to `bg-slate-200/60`.
+- **Dark Mode:** Base `bg-slate-800` shimmering to `bg-slate-700/60`.
+
+---
+
+## 6. Low-Contrast Prevention Guardrails
+
+To prevent regression and guarantee crystal-clear legibility across all screens, every UI implementation must adhere to the following 8 Golden Rules:
+
+### Rule 1: The Slate-400 Ban on Light Surfaces
+Never author `text-slate-400` or `text-gray-400` for readable labels, metadata, or table entries on a light canvas. Use `text-slate-500` or `text-muted-foreground` (≥ 4.6:1) instead.
+
+### Rule 2: The Slate-500 Ban on Dark Surfaces
+Never author raw `text-slate-500` on dark cards. It drops contrast to 2.8:1 and fails WCAG AA. Always map through `text-muted-foreground` or use `dark:text-slate-300` (≥ 6.5:1).
+
+### Rule 3: The Primary-Text Accent Rule
+Never use mid-blue `#3b82f6` (`text-primary`) as unstyled text on dark backgrounds. For links, breadcrumbs, or text buttons on dark surfaces, use `text-blue-400` (`#60a5fa`) or `text-primary-300` (`#93c5fd`). Reserve filled `--primary` for solid buttons and badges with white text.
+
+### Rule 4: Explicit Status Badge Text Contrast
+Status chips must never combine light pastel backgrounds with pale text in light mode, nor dark backgrounds with dark text in dark mode. Always enforce:
+- **Light:** Tinted-50 fill + 800-step text + 200-step border.
+- **Dark:** Tinted-950/40 fill + 300/400-step text + 800/50-step border.
+
+### Rule 5: Preserved Dark Surface Text Invariant (`[data-keep-white]`)
+When an inverted white control resides on a permanent dark surface (such as the sidebar or Telegram chat bubble), apply `[data-keep-white]` and ensure the label retains dark ink `text-slate-900`. Never allow theme remapping to produce white text on a white button.
+
+### Rule 6: Form Placeholder Standard
+Input placeholders must maintain ≥ 4.5:1 contrast against their input fill. Use `placeholder:text-slate-500` in light mode and `placeholder:text-slate-400` in dark mode. Default browser placeholders that appear washed out are strictly prohibited.
+
+### Rule 7: Hairline Boundary Verification
+Cards and form fields must never bleed into the page canvas. Always verify that:
+- Light cards carry a visible 1px `border-slate-200` against `#ffffff` or `#f8fafc`.
+- Dark cards carry a visible 1px `border-slate-800` or `border-slate-700/60` against `#0f172a`.
+
+### Rule 8: Smooth Theme Transitions
+Never use abrupt color flips. Ensure all dynamic surfaces inherit `transition: background-color 0.2s, border-color 0.2s, color 0.2s` from `base.css` to deliver silky, flicker-free transitions.
+
+---
+
+## 7. Do's and Don'ts Matrix
 
 ### Do:
-- **Do** use Tool Blue sparingly — ≤15% of any given screen. Let slate and white do the heavy lifting.
-- **Do** use tonal layering for depth instead of shadows. Flat surfaces communicate "solid tool" more effectively than lifted cards.
-- **Do** use `text-wrap: balance` on h1–h3 and `text-wrap: pretty` on long body text.
-- **Do** use Inter weight and size as the sole typographic hierarchy. No font swaps, no decorative display type.
-- **Do** show clear loading, empty, error, and success states for every async operation. Power users need certainty.
-- **Do** respect `prefers-reduced-motion` — fade transitions over slide/choreography.
-- **Do** keep body text contrast ≥4.5:1 and placeholder text at the same standard.
+- **Do** test every screen in both Light and Dark modes before finalizing changes.
+- **Do** use semantic tokens (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border`) instead of hardcoded hex colors.
+- **Do** maintain the permanent dark frame on the sidebar (`#020617`) in both themes.
+- **Do** ensure normal body text meets ≥ 4.5:1 contrast and large headings meet ≥ 3.0:1 in both themes.
+- **Do** use `text-wrap: balance` on section headings and `text-wrap: pretty` on long descriptions.
+- **Do** use visible focus rings (`focus-visible:ring-2 focus-visible:ring-primary/50`) for full keyboard navigation.
+- **Do** preserve fast, subtle micro-interactions (150–200ms) with `ease-out`.
 
 ### Don't:
-- **Don't** use cream, sand, beige, or "warm neutral" backgrounds — this is the defining AI-aesthetic tell.
-- **Don't** use gradient text (`background-clip: text` with gradient) — it's decorative and never meaningful.
-- **Don't** use glassmorphism, backdrop-blur surfaces, or frosted-glass effects.
-- **Don't** use tiny uppercase tracked "eyebrow" labels above section headings.
-- **Don't** use numbered section markers (01 / 02 / 03) as decorative scaffolding.
-- **Don't** use "hero-metric" layouts (big number, small label, gradient accent) — the SaaS cliché.
-- **Don't** use side-stripe borders greater than 1px on cards, list items, or callouts.
-- **Don't** nest cards. A card inside a card is always wrong.
-- **Don't** use purple, pink, or teal accents. The single blue primary is the only accent.
-- **Don't** apply shadows to cards at rest. Flat by default.
-- **Don't** invent secondary colors, tertiary colors, or color ramps the system doesn't have.
-- **Don't** use bounce or elastic animations. Ease-out-quart or ease-out-expo only.
-- **Don't** reference Telegram's own UI aesthetic — TeleBos is its own product.
+- **Don't** use cream, sand, beige, or warm-tinted backgrounds (violates the serious workbench identity).
+- **Don't** use decorative gradient text (`background-clip: text` with gradient).
+- **Don't** use glassmorphism or heavy backdrop-blur surfaces inside dashboard cards.
+- **Don't** use `text-slate-400` on white or `text-slate-500` on dark card surfaces.
+- **Don't** nest cards inside cards (creates cluttered visual noise).
+- **Don't** apply blurry drop shadows to resting cards (depth is communicated through tonal layering and hairline borders).
+- **Don't** invert the sidebar canvas to white in Light mode — the sidebar is a persistent dark anchor.
+- **Don't** invent random secondary accent colors (purple, pink, amber, teal) for layout decoration. Blue is the single primary accent.

@@ -3,9 +3,9 @@ import { ErrorView } from "@/components/ui/error-view";
 
 export const metadata: Metadata = {
   title: "404 - Page Not Found | TeleBos",
-  description: "Oops! The page you are looking for does not exist.",
+  description: "The requested page could not be found.",
 };
 
-export default function NotFoundPage() {
+export default function NotFoundErrorPage() {
   return <ErrorView statusCode={404} />;
 }

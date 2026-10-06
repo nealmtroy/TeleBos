@@ -2,14 +2,14 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 /**
  * Shared presentational primitives for the /settings page.
  *
- * The settings page renders a two-column layout: a sticky secondary nav on the
- * left and a stack of independent settings cards on the right. Each card owns
- * its own header (icon + title + description) and an optional action slot, so
- * the card body stays free for whatever control that section needs.
+ * Built on top of official shadcn primitives (Card, Badge) while
+ * preserving the exact ergonomics expected by settings modules.
  */
 
 export function SettingsCard({
@@ -20,15 +20,9 @@ export function SettingsCard({
   className?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-xl border border-border/70 bg-card p-5 shadow-xs",
-        "transition-colors duration-200",
-        className
-      )}
-    >
+    <Card className={cn("p-5 border-border/70", className)}>
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -93,8 +87,7 @@ export function SettingsDivider({ className }: { className?: string }) {
 
 /**
  * Status pill used for the profile "Active" badge and the two-factor state.
- * `tone` maps to semantic colours instead of a raw palette so the dark theme
- * stays readable without duplicating hex values in the markup.
+ * Composes shadcn Badge with high-contrast variants.
  */
 export function SettingsBadge({
   children,
@@ -103,23 +96,15 @@ export function SettingsBadge({
   children: ReactNode;
   tone?: "success" | "neutral" | "warning";
 }) {
-  const tones = {
-    success:
-      "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    neutral: "border-border bg-muted text-muted-foreground",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  } as const;
+  const variant = tone === "neutral" ? "secondary" : tone;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5",
-        "text-xs font-medium",
-        tones[tone]
-      )}
+    <Badge
+      variant={variant}
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium"
     >
       {children}
-    </span>
+    </Badge>
   );
 }
 

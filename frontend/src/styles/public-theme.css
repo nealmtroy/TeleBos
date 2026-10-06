@@ -86,11 +86,8 @@
 /* ===================================================================
    Mobile navigation reveal
    -------------------------------------------------------------------
-   The existing animate-in / fade-in-0 / slide-in-from-* utilities in
-   animations.css are scoped to [data-state="open"], which is Radix's
-   attribute. The sheet here is built on @base-ui/react, which emits
-   data-starting-style instead, so those classes never fire here. These
-   keyframes are unconditional and safe to use anywhere.
+   Keyframes for smooth mobile sheet navigation reveal. Unconditional
+   and safe to use with Radix UI Sheet component.
    =================================================================== */
 
 @keyframes public-nav-in {

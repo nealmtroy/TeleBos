@@ -1081,6 +1081,56 @@ const id: Dict = {
     pageNotFound: "404",
   },
 
+  // ── Halaman Error (401, 403, 404, 500, 503) ────────────────────────────
+  errors: {
+    badge: {
+      401: "401 • Belum Terotentikasi",
+      403: "403 • Akses Ditolak",
+      404: "404 • Tidak Ditemukan",
+      500: "500 • Gangguan Server",
+      503: "503 • Layanan Tidak Tersedia",
+    },
+    unauthorized: {
+      title: "Sesi Berakhir atau Perlu Masuk",
+      description: "Anda perlu masuk ke akun TeleBos Anda untuk mengakses halaman atau fitur ini.",
+      actionLogin: "Masuk Sekarang",
+      actionHome: "Kembali ke Beranda",
+    },
+    forbidden: {
+      title: "Akses Ditolak",
+      description: "Akun Anda tidak memiliki izin untuk melihat atau mengelola halaman ini.",
+      actionDashboard: "Kembali ke Dashboard",
+      actionHome: "Ke Beranda",
+      actionSupport: "Hubungi Bantuan",
+    },
+    notFound: {
+      title: "Halaman Tidak Ditemukan",
+      description: "Halaman yang Anda tuju tidak ditemukan, tautan rusak, atau telah dipindahkan.",
+      actionHome: "Kembali ke Beranda",
+      actionDashboard: "Ke Dashboard",
+      actionBack: "Kembali ke Halaman Sebelumnya",
+    },
+    serverError: {
+      title: "Terjadi Kesalahan Server",
+      description: "Sistem mendeteksi kendala pada server internal kami saat memproses permintaan Anda.",
+      actionRetry: "Muat Ulang Halaman",
+      actionHome: "Kembali ke Beranda",
+      actionReport: "Laporkan Masalah",
+    },
+    serviceUnavailable: {
+      title: "Layanan Dalam Pemeliharaan",
+      description: "Server kami sedang dalam jadwal pemeliharaan atau sedang mengalami beban tinggi sementara waktu. Silakan coba kembali sesaat lagi.",
+      actionRetry: "Coba Lagi",
+      actionStatus: "Cek Status Layanan",
+      actionHome: "Kembali ke Beranda",
+    },
+    technicalDetails: "Detail Teknis",
+    copyError: "Salin Pesan Error",
+    copied: "Pesan error berhasil disalin",
+    needHelp: "Butuh bantuan lebih lanjut?",
+    contactSupport: "Hubungi Tim Support",
+  },
+
   // ── Halaman Bantuan ─────────────────────────────────────────────────────
   help: {
     title: "Bantuan & Dokumentasi",

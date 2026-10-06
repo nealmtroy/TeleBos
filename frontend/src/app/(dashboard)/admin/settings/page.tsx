@@ -38,6 +38,7 @@ import {
   Sliders,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -280,63 +281,45 @@ export default function AdminSystemConfigPage() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab("smm")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-            activeTab === "smm"
-              ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-xs"
-              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200"
-          )}
-        >
-          <Server className="h-4 w-4 text-blue-500" />
-          <span>SMM Provider & API</span>
-        </button>
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => setActiveTab(val as ConfigTab)}
+        className="w-full"
+      >
+        <TabsList className="h-auto p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl flex items-center justify-start gap-1 overflow-x-auto w-full">
+          <TabsTrigger
+            value="smm"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+          >
+            <Server className="h-4 w-4 text-blue-500" />
+            <span>SMM Provider & API</span>
+          </TabsTrigger>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("payment")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-            activeTab === "payment"
-              ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-xs"
-              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200"
-          )}
-        >
-          <QrCode className="h-4 w-4 text-emerald-500" />
-          <span>Deposit & Rekening Platform</span>
-        </button>
+          <TabsTrigger
+            value="payment"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+          >
+            <QrCode className="h-4 w-4 text-emerald-500" />
+            <span>Deposit & Rekening Platform</span>
+          </TabsTrigger>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("marketplace")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-            activeTab === "marketplace"
-              ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-xs"
-              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200"
-          )}
-        >
-          <Radio className="h-4 w-4 text-amber-500" />
-          <span>Marketplace & Siaran</span>
-        </button>
+          <TabsTrigger
+            value="marketplace"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+          >
+            <Radio className="h-4 w-4 text-amber-500" />
+            <span>Marketplace & Siaran</span>
+          </TabsTrigger>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("system")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-            activeTab === "system"
-              ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-xs"
-              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200"
-          )}
-        >
-          <Lock className="h-4 w-4 text-purple-500" />
-          <span>Sistem & Keamanan</span>
-        </button>
-      </div>
+          <TabsTrigger
+            value="system"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+          >
+            <Lock className="h-4 w-4 text-purple-500" />
+            <span>Sistem & Keamanan</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* ── TAB 1: SMM PROVIDER & API ── */}
       {activeTab === "smm" && (

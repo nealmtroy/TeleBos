@@ -1027,6 +1027,56 @@ export interface Dict {
     pageNotFound: string;
   };
 
+  // Error Pages (401, 403, 404, 500, 503)
+  errors: {
+    badge: {
+      401: string;
+      403: string;
+      404: string;
+      500: string;
+      503: string;
+    };
+    unauthorized: {
+      title: string;
+      description: string;
+      actionLogin: string;
+      actionHome: string;
+    };
+    forbidden: {
+      title: string;
+      description: string;
+      actionDashboard: string;
+      actionHome: string;
+      actionSupport: string;
+    };
+    notFound: {
+      title: string;
+      description: string;
+      actionHome: string;
+      actionDashboard: string;
+      actionBack: string;
+    };
+    serverError: {
+      title: string;
+      description: string;
+      actionRetry: string;
+      actionHome: string;
+      actionReport: string;
+    };
+    serviceUnavailable: {
+      title: string;
+      description: string;
+      actionRetry: string;
+      actionStatus: string;
+      actionHome: string;
+    };
+    technicalDetails: string;
+    copyError: string;
+    copied: string;
+    needHelp: string;
+    contactSupport: string;
+  };
+
   // Help Page
   help: {
     title: string;

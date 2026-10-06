@@ -1081,6 +1081,56 @@ const en: Dict = {
     pageNotFound: "404",
   },
 
+  // ── Error Pages (401, 403, 404, 500, 503) ──────────────────────────────────
+  errors: {
+    badge: {
+      401: "401 • Unauthorized",
+      403: "403 • Access Forbidden",
+      404: "404 • Not Found",
+      500: "500 • Server Error",
+      503: "503 • Service Unavailable",
+    },
+    unauthorized: {
+      title: "Session Expired or Login Required",
+      description: "You need to be signed in to your TeleBos account to access this page.",
+      actionLogin: "Sign In Now",
+      actionHome: "Back to Home",
+    },
+    forbidden: {
+      title: "Access Forbidden",
+      description: "Your account does not have permission to view or manage this resource.",
+      actionDashboard: "Go to Dashboard",
+      actionHome: "Back to Home",
+      actionSupport: "Contact Support",
+    },
+    notFound: {
+      title: "Page Not Found",
+      description: "The page you are looking for doesn't exist, was removed, or the link is broken.",
+      actionHome: "Back to Home",
+      actionDashboard: "Go to Dashboard",
+      actionBack: "Go Back",
+    },
+    serverError: {
+      title: "Internal Server Error",
+      description: "An unexpected server issue occurred while processing your request.",
+      actionRetry: "Reload Page",
+      actionHome: "Back to Home",
+      actionReport: "Report Issue",
+    },
+    serviceUnavailable: {
+      title: "Service Under Maintenance",
+      description: "Our server is temporarily undergoing maintenance or experiencing heavy load. Please try again in a few moments.",
+      actionRetry: "Try Again",
+      actionStatus: "Check Status",
+      actionHome: "Back to Home",
+    },
+    technicalDetails: "Technical Details",
+    copyError: "Copy Error Details",
+    copied: "Error details copied to clipboard",
+    needHelp: "Need further assistance?",
+    contactSupport: "Contact Support Team",
+  },
+
   // ── Help Page ────────────────────────────────────────────────────────────
   help: {
     title: "Help & Documentation",

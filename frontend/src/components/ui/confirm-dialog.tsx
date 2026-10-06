@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { type ReactNode } from "react";
 import { Trash2, AlertTriangle, Info, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -27,123 +34,75 @@ export function ConfirmDialog({
   variant = "danger",
   loading = false,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !loading) {
-        onOpenChange(false);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, loading, onOpenChange]);
-
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
-  if (!open) return null;
-
   const iconMap = {
-    danger: { Icon: Trash2, bg: "bg-rose-100 dark:bg-rose-950/50", fg: "text-rose-600 dark:text-rose-400" },
-    warning: { Icon: AlertTriangle, bg: "bg-amber-100 dark:bg-amber-950/50", fg: "text-amber-600 dark:text-amber-400" },
-    info: { Icon: Info, bg: "bg-blue-100 dark:bg-blue-950/50", fg: "text-blue-600 dark:text-blue-400" },
+    danger: {
+      Icon: Trash2,
+      bg: "bg-rose-100 dark:bg-rose-950/50",
+      fg: "text-rose-600 dark:text-rose-400",
+      btnVariant: "destructive" as const,
+    },
+    warning: {
+      Icon: AlertTriangle,
+      bg: "bg-amber-100 dark:bg-amber-950/50",
+      fg: "text-amber-600 dark:text-amber-400",
+      btnVariant: "default" as const,
+    },
+    info: {
+      Icon: Info,
+      bg: "bg-blue-100 dark:bg-blue-950/50",
+      fg: "text-blue-600 dark:text-blue-400",
+      btnVariant: "default" as const,
+    },
   };
 
-  const { Icon, bg, fg } = iconMap[variant];
+  const { Icon, bg, fg, btnVariant } = iconMap[variant];
 
-  const confirmButtonStyles = {
-    danger:
-      "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white",
-    warning:
-      "bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white",
-    info:
-      "bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white",
-  };
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      onClick={() => {
-        if (!loading) onOpenChange(false);
-      }}
-    >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        style={{ animation: "fadeIn 0.2s ease-out" }}
-      />
-
-      {/* Dialog */}
-      <div
-        ref={dialogRef}
-        className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 w-full max-w-sm p-6"
-        style={{
-          animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col items-center text-center">
-          <div className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-4`}>
+  return (
+    <Dialog open={open} onOpenChange={loading ? undefined : onOpenChange}>
+      <DialogContent className="max-w-sm p-6 text-center">
+        <DialogHeader className="items-center text-center">
+          <div
+            className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-2`}
+          >
             <Icon className={`h-6 w-6 ${fg}`} />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-1">{title}</h3>
-          <div className="text-sm text-gray-500 dark:text-slate-300 mb-6">{message}</div>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => onOpenChange(false)}
+          <DialogTitle className="text-lg font-bold text-foreground">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-1">
+            {message}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex gap-3 w-full mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
             disabled={loading}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700/80 hover:bg-gray-200 dark:hover:bg-slate-700 border border-transparent dark:border-slate-600 disabled:opacity-50 rounded-xl transition-all duration-200 active:scale-[0.98] cursor-pointer"
+            onClick={() => onOpenChange(false)}
           >
             {cancelText}
-          </button>
-          <button
-            onClick={onConfirm}
+          </Button>
+
+          <Button
+            type="button"
+            variant={btnVariant}
+            className="flex-1"
             disabled={loading}
-            className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 active:scale-[0.98] shadow-sm disabled:opacity-50 ${confirmButtonStyles[variant]}`}
+            onClick={onConfirm}
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {confirmText}
-              </span>
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
             ) : (
               confirmText
             )}
-          </button>
+          </Button>
         </div>
-      </div>
-
-      {/* Animations keyframes */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.9) translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
-    </div>,
-    document.body
+      </DialogContent>
+    </Dialog>
   );
 }

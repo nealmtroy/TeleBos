@@ -178,7 +178,8 @@ export function ApiKeysCard({
 }) {
   const t = useT();
 
-  const active = keys.filter((k) => !k.revoked_at);
+  const safeKeys = Array.isArray(keys) ? keys : [];
+  const active = safeKeys.filter((k) => !k.revoked_at);
   const lastUsed = active
     .map((k) => k.last_used_at)
     .filter((v): v is string => Boolean(v))

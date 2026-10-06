@@ -1,5 +1,4 @@
-import { mergeProps } from "@base-ui/react/merge-props"
-import { useRender } from "@base-ui/react/use-render"
+import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -14,6 +13,12 @@ const badgeVariants = cva(
           "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
         destructive:
           "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        success:
+          "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50 [a]:hover:bg-emerald-100",
+        warning:
+          "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50 [a]:hover:bg-amber-100",
+        info:
+          "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 [a]:hover:bg-blue-100",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:
@@ -27,26 +32,14 @@ const badgeVariants = cva(
   }
 )
 
-function Badge({
-  className,
-  variant = "default",
-  render,
-  ...props
-}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
-  return useRender({
-    defaultTagName: "span",
-    props: mergeProps<"span">(
-      {
-        className: cn(badgeVariants({ variant }), className),
-      },
-      props
-    ),
-    render,
-    state: {
-      slot: "badge",
-      variant,
-    },
-  })
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
 }
 
 export { Badge, badgeVariants }

@@ -59,6 +59,7 @@ import {
   TwoFactorCard,
 } from "@/components/settings/settings-summary-cards";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 type TabKey = SettingsSectionKey;
 
@@ -203,7 +204,7 @@ export default function SettingsPage() {
   // Load API keys
   useEffect(() => {
     api.get("/api-keys")
-      .then((response) => setApiKeys(response.data))
+      .then((response) => setApiKeys(Array.isArray(response.data) ? response.data : []))
       .catch(() => toast.error(_("settings.failedLoadApiKeys")))
       .finally(() => setApiKeysLoading(false));
   }, []);
@@ -1173,10 +1174,10 @@ export default function SettingsPage() {
                             <h2 className="text-base font-bold text-slate-900">
                               {_("settings.twoFactorTitle")}
                             </h2>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <Badge variant="success" className="gap-1 font-semibold">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                               {_("settings.active")}
-                            </span>
+                            </Badge>
                           </div>
                           <p className="text-sm text-slate-500 mt-1 max-w-xl">
                             {_("settings.twoFactorEnabledStatus")} Akun Anda kini dilindungi lapisan keamanan kedua saat masuk dari perangkat atau browser baru.
@@ -1242,10 +1243,10 @@ export default function SettingsPage() {
                             <h2 className="text-base font-bold text-slate-900">
                               {_("settings.twoFactorTitle")}
                             </h2>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Badge variant="warning" className="gap-1 font-semibold">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                               {_("settings.off")}
-                            </span>
+                            </Badge>
                           </div>
                           <p className="text-sm text-slate-500 mt-1 max-w-xl">
                             {_("settings.twoFactorDesc")} Lindungi akun Anda dari kebocoran kata sandi dengan mengharuskan kode verifikasi 6-digit dari aplikasi autentikator.
@@ -1891,9 +1892,9 @@ export default function SettingsPage() {
                     {_("settings.themeModeDesc")}
                   </p>
                 </div>
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 self-start sm:self-auto">
+                <Badge variant="secondary" className="self-start sm:self-auto font-medium">
                   {theme === "system" ? _("settings.themeSystem") : theme === "dark" ? _("settings.themeDark") : _("settings.themeLight")}
-                </span>
+                </Badge>
               </div>
 
               <div className="p-6">
@@ -2052,11 +2053,11 @@ export default function SettingsPage() {
                     {_("settings.languageSectionDesc")}
                   </p>
                 </div>
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 self-start sm:self-auto">
+                <Badge variant="secondary" className="self-start sm:self-auto font-medium">
                   {preference === "system"
                     ? `${_("settings.languageSystem")} (${locale.toUpperCase()})`
                     : locale.toUpperCase()}
-                </span>
+                </Badge>
               </div>
 
               <div className="p-6">

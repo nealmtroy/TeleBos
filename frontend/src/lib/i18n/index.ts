@@ -57,11 +57,18 @@ interface I18nState {
 }
 
 function getInitialLocale(): Locale {
-  // During SSR there is no navigator, so fall back to what middleware
-  // negotiated from Accept-Language. Without this every server-rendered
-  // response was English regardless of the visitor's browser, which meant
-  // crawlers and chat previews only ever saw the English copy and first paint
-  // flashed English before hydration.
+  if (typeof window !== "undefined") {
+    // Read the lang attribute rendered by the server to guarantee 100% matching hydration!
+    const htmlLang = document.documentElement?.lang;
+    if (htmlLang === "id" || htmlLang === "en") {
+      return htmlLang as Locale;
+    }
+    try {
+      const stored = localStorage.getItem("telebo_locale");
+      if (stored === "id" || stored === "en") return stored as Locale;
+    } catch {}
+    return getSystemLocale();
+  }
   return getRequestLocale() ?? "en";
 }
 
@@ -71,12 +78,21 @@ export const useI18nStore = create<I18nState>((set) => ({
   setLocale: (locale) => {
     try {
       localStorage.setItem("telebo_locale", locale);
+      document.cookie = `telebo_locale=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+      if (typeof document !== "undefined") {
+        document.documentElement.lang = locale;
+      }
     } catch {}
     set({ locale, preference: locale });
   },
   setPreference: (preference) => {
     try {
       localStorage.setItem("telebo_locale", preference);
+      const resolved = preference === "system" ? getSystemLocale() : preference;
+      document.cookie = `telebo_locale=${resolved}; path=/; max-age=31536000; SameSite=Lax`;
+      if (typeof document !== "undefined") {
+        document.documentElement.lang = resolved;
+      }
     } catch {}
     const resolvedLocale = preference === "system" ? getSystemLocale() : preference;
     set({ preference, locale: resolvedLocale });
