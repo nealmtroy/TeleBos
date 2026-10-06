@@ -17,6 +17,12 @@ const PUBLIC_PATHS = [
   "/favicon.ico",
   "/og-image.png",
   "/monitoring",
+  "/401",
+  "/403",
+  "/404",
+  "/500",
+  "/500-error",
+  "/503",
 ];
 
 // ── Locale negotiation ──────────────────────────────────────────────────────
