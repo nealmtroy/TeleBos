@@ -481,6 +481,9 @@ const en: Dict = {
     add: "Add",
     deleteConfirm: "Delete this text list?",
     delete: "Delete",
+    editText: "Edit Text",
+    modalAddTitle: "Add Message to Text List",
+    modalEditTitle: "Edit Text List Message",
   },
 
   // ── Broadcast History ───────────────────────────────────────────────────
@@ -667,6 +670,11 @@ const en: Dict = {
     addAccount: "Add Account",
     failedToLoad: "Failed to load accounts",
     retry: "Retry",
+    setText: "Set Text",
+    editText: "Edit Text",
+    modalTitle: "Configure Auto-Reply Message",
+    modalDesc: "Automatic welcome message sent to users the first time they direct message this account.",
+    enableForAccount: "Enable Auto-Reply for this account",
   },
 
   // ── App Settings ────────────────────────────────────────────────────────

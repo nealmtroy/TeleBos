@@ -481,6 +481,9 @@ export interface Dict {
     add: string;
     deleteConfirm: string;
     delete: string;
+    editText: string;
+    modalAddTitle: string;
+    modalEditTitle: string;
   };
 
   // Broadcast History
@@ -616,6 +619,11 @@ export interface Dict {
     addAccount: string;
     failedToLoad: string;
     retry: string;
+    setText: string;
+    editText: string;
+    modalTitle: string;
+    modalDesc: string;
+    enableForAccount: string;
   };
 
   // Settings (App)

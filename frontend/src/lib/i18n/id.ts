@@ -481,6 +481,9 @@ const id: Dict = {
     add: "Tambah",
     deleteConfirm: "Hapus daftar teks ini?",
     delete: "Hapus",
+    editText: "Edit Teks",
+    modalAddTitle: "Tambah Pesan ke Daftar Teks",
+    modalEditTitle: "Edit Pesan Daftar Teks",
   },
 
   // ── Riwayat Siaran ──────────────────────────────────────────────────────
@@ -667,6 +670,11 @@ const id: Dict = {
     addAccount: "Tambah Akun",
     failedToLoad: "Gagal memuat akun",
     retry: "Coba lagi",
+    setText: "Set Text",
+    editText: "Edit Text",
+    modalTitle: "Atur Pesan Balas Otomatis",
+    modalDesc: "Pesan selamat datang otomatis yang dikirim ke pengguna saat pertama kali mengirim DM ke akun ini.",
+    enableForAccount: "Aktifkan Balas Otomatis untuk akun ini",
   },
 
   // ── Pengaturan Aplikasi ─────────────────────────────────────────────────

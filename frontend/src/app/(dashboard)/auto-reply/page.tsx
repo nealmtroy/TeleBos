@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
-import { AutoReplyEditor } from "@/components/accounts/auto-reply-editor";
+import { TextEditorModal } from "@/components/ui/text-editor";
 import {
   MessageCircleReply,
   Shield,
@@ -23,10 +23,7 @@ import {
   RefreshCw,
   Plus,
   Search,
-  ChevronDown,
-  ChevronUp,
-  Check,
-  X,
+  Edit3,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
 
@@ -38,7 +35,12 @@ export default function AutoReplyPage() {
   const _ = useT();
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
-  const { data: rawAccounts, isLoading, error, refetch } = useAccounts({ is_active: true, limit: 1000 });
+  const {
+    data: rawAccounts,
+    isLoading,
+    error,
+    refetch,
+  } = useAccounts({ is_active: true, limit: 1000 });
   const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
 
   // Role check
@@ -46,8 +48,10 @@ export default function AutoReplyPage() {
     return (
       <div className="text-center py-16">
         <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
-        <p className="text-sm text-gray-500">
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100 mb-1">
+          Access Denied
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-slate-400">
           Auto Reply feature is not available for your plan. Upgrade to Pro or
           Premium to access this feature.
         </p>
@@ -58,22 +62,22 @@ export default function AutoReplyPage() {
   // ── State ──────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Global / bulk settings
   const [bulkText, setBulkText] = useState("");
   const [bulkEnabled, setBulkEnabled] = useState(true);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkMsg, setBulkMsg] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
 
-  // Per-account draft edits (only for the expanded row)
-  const [draftText, setDraftText] = useState("");
-  const [draftEnabled, setDraftEnabled] = useState(false);
-  const [draftDirty, setDraftDirty] = useState(false);
+  // Per-account Modal Editor state
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [modalEnabled, setModalEnabled] = useState(false);
+  const [modalSaving, setModalSaving] = useState(false);
 
   const updateMutation = useUpdateAutoReply();
   const bulkMutation = useBulkUpdateAutoReply();
@@ -105,47 +109,34 @@ export default function AutoReplyPage() {
   }, [filtered, page]);
 
   // Stats
-  const totalActive = accounts?.filter((a) => a.auto_reply_enabled).length ?? 0;
+  const totalActive =
+    accounts?.filter((a) => a.auto_reply_enabled).length ?? 0;
   const totalAccounts = accounts?.length ?? 0;
 
-  // ── Expand / collapse row ─────────────────────────────────────
-  function handleExpand(account: Account) {
-    if (expandedId === account.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(account.id);
-    setDraftText(account.auto_reply_text ?? "");
-    setDraftEnabled(account.auto_reply_enabled ?? false);
-    setDraftDirty(false);
+  // ── Open Editor Modal ─────────────────────────────────────────
+  function handleOpenEditor(account: Account) {
+    setEditingAccount(account);
+    setModalEnabled(account.auto_reply_enabled ?? false);
   }
 
-  // ── Per-account save ──────────────────────────────────────────
-  const [perSaving, setPerSaving] = useState(false);
-  const [perMsg, setPerMsg] = useState<string | null>(null);
-
-  async function handleSaveExpanded() {
-    if (!expandedId) return;
-    setPerSaving(true);
-    setPerMsg(null);
+  // ── Save from Editor Modal ────────────────────────────────────
+  async function handleSaveAccountMessage(newText: string) {
+    if (!editingAccount) return;
+    setModalSaving(true);
     try {
       await updateMutation.mutateAsync({
-        accountId: expandedId,
-        auto_reply_enabled: draftEnabled,
-        auto_reply_text: draftText.trim() || null,
+        accountId: editingAccount.id,
+        auto_reply_enabled: modalEnabled,
+        auto_reply_text: newText.trim() || null,
       });
-      setDraftDirty(false);
-      setPerMsg("saved");
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    } catch (err: any) {
-      setPerMsg(err?.response?.data?.detail || "Failed");
+      setEditingAccount(null);
     } finally {
-      setPerSaving(false);
+      setModalSaving(false);
     }
-    setTimeout(() => setPerMsg(null), 3000);
   }
 
-  // ── Quick toggle (no text change) ─────────────────────────────
+  // ── Quick toggle switch ───────────────────────────────────────
   async function handleQuickToggle(account: Account) {
     try {
       await updateMutation.mutateAsync({
@@ -255,10 +246,12 @@ export default function AutoReplyPage() {
     return (
       <div className="max-w-5xl mx-auto text-center py-12">
         <MessageCircleReply className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-2">
           {_("autoReply.noAccounts")}
         </h1>
-        <p className="text-gray-500 mb-6">{_("autoReply.noAccountsDesc")}</p>
+        <p className="text-gray-500 dark:text-slate-400 mb-6">
+          {_("autoReply.noAccountsDesc")}
+        </p>
         <Link
           href="/accounts/add"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
@@ -289,7 +282,7 @@ export default function AutoReplyPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
             <CheckCircle2 className="h-3 w-3" />
             {totalActive}/{totalAccounts} active
           </span>
@@ -298,74 +291,90 @@ export default function AutoReplyPage() {
 
       {/* Bulk Action Panel — visible when items selected */}
       {someSelected && (
-        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="bg-primary-50/70 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800/80 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p className="text-sm font-medium text-primary-800">
+            <p className="text-sm font-medium text-primary-900 dark:text-primary-200">
               {selectedIds.size} account{selectedIds.size > 1 ? "s" : ""}{" "}
               selected
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedIds(new Set())}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition"
               >
                 Clear
               </button>
             </div>
           </div>
 
-          {/* Bulk config */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex items-center gap-2">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={bulkEnabled}
-                  onChange={(e) => setBulkEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
-              </label>
-              <span className="text-sm text-gray-700">
-                {bulkEnabled ? _("autoReply.enableAll") : _("autoReply.disableAll")}
-              </span>
-            </div>
-            <div className="flex-1">
-              <AutoReplyEditor
-                value={bulkText}
-                onChange={setBulkText}
-                placeholder={_("autoReply.globalMessagePlaceholder")}
-                rows={2}
-                disabled={bulkSaving}
-              />
-            </div>
-          </div>
+          {/* Bulk config row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkEnabled}
+                    onChange={(e) => setBulkEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
+                </label>
+                <span className="text-xs font-medium text-gray-700 dark:text-slate-300">
+                  {bulkEnabled
+                    ? _("autoReply.enableAll")
+                    : _("autoReply.disableAll")}
+                </span>
+              </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleBulkApply}
-              disabled={bulkSaving}
-              className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 transition"
-            >
-              {bulkSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" />
-                  {_("autoReply.applying")}
-                </>
-              ) : (
-                _("autoReply.applyToAll")
-              )}
-            </button>
-            {bulkMsg && (
-              <span
-                className={cn(
-                  "text-sm",
-                  bulkMsg.type === "error" ? "text-red-500" : "text-green-600"
-                )}
+              {/* Set / Edit Bulk Text Button */}
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-primary-700 dark:text-primary-300 bg-white dark:bg-slate-800 border border-primary-200 dark:border-primary-700 hover:bg-primary-50 dark:hover:bg-slate-700 shadow-2xs transition"
               >
-                {bulkMsg.text}
-              </span>
-            )}
+                <Edit3 className="h-3.5 w-3.5" />
+                {bulkText
+                  ? _("autoReply.editText")
+                  : _("autoReply.setText")}
+              </button>
+
+              {bulkText && (
+                <span className="text-xs text-gray-600 dark:text-slate-400 italic truncate max-w-xs">
+                  &ldquo;{bulkText.slice(0, 45)}
+                  {bulkText.length > 45 ? "…" : ""}&rdquo;
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBulkApply}
+                disabled={bulkSaving}
+                className="px-4 py-2 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 transition"
+              >
+                {bulkSaving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin inline mr-1.5" />
+                    {_("autoReply.applying")}
+                  </>
+                ) : (
+                  _("autoReply.applyToAll")
+                )}
+              </button>
+              {bulkMsg && (
+                <span
+                  className={cn(
+                    "text-xs font-medium",
+                    bulkMsg.type === "error"
+                      ? "text-red-500"
+                      : "text-green-600 dark:text-green-400"
+                  )}
+                >
+                  {bulkMsg.text}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -383,7 +392,7 @@ export default function AutoReplyPage() {
       </div>
 
       {/* Account Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-2xs">
         {/* Table header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">
           <label className="flex items-center cursor-pointer shrink-0">
@@ -395,7 +404,7 @@ export default function AutoReplyPage() {
             />
           </label>
           <span className="flex-1 min-w-0">Account</span>
-          <span className="hidden sm:block w-48 text-center">Message</span>
+          <span className="hidden sm:block w-72 text-center">Message</span>
           <span className="w-20 text-center">Status</span>
           <span className="w-16 text-center">Toggle</span>
         </div>
@@ -408,202 +417,147 @@ export default function AutoReplyPage() {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-700/80">
             {paginatedFiltered.map((account) => {
-              const isExpanded = expandedId === account.id;
               const isSelected = selectedIds.has(account.id);
               const hasMessage = !!account.auto_reply_text?.trim();
 
               return (
-                <div key={account.id}>
-                  {/* Compact row */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer select-none",
-                      isExpanded && "bg-primary-50/50 dark:bg-primary-950/40",
-                      isSelected && !isExpanded && "bg-blue-50/40 dark:bg-blue-950/30",
-                      !isExpanded && !isSelected && "hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                    )}
+                <div
+                  key={account.id}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 transition-colors",
+                    isSelected
+                      ? "bg-blue-50/40 dark:bg-blue-950/30"
+                      : "hover:bg-gray-50/70 dark:hover:bg-slate-700/40"
+                  )}
+                >
+                  {/* Checkbox */}
+                  <label
+                    className="flex items-center shrink-0 cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Checkbox */}
-                    <label
-                      className="flex items-center shrink-0 cursor-pointer"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(account.id)}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
-                      />
-                    </label>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(account.id)}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+                    />
+                  </label>
 
-                    {/* Account info */}
-                    <div
-                      className="flex items-center gap-3 flex-1 min-w-0"
-                      onClick={() => handleExpand(account)}
-                    >
-                      <AccountAvatar
-                        accountId={account.id}
-                        telegramId={account.telegram_id}
-                        firstName={account.first_name}
-                        phone={account.phone}
-                        colorId={account.color_id}
-                        hasProfilePhoto={account.has_profile_photo}
-                        photoVersion={account.photo_version}
-                        isActive={account.is_active}
-                        profilePhotoPath={account.profile_photo_path}
-                        size="sm"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">
-                          {account.first_name || _("accountCard.unnamed")}{" "}
-                          {account.last_name || ""}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-300 truncate">
-                          {account.username
-                            ? `@${account.username}`
-                            : account.phone}
-                        </p>
-                      </div>
-                    </div>
+                  {/* Account info */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <AccountAvatar
+                      accountId={account.id}
+                      telegramId={account.telegram_id}
+                      firstName={account.first_name}
+                      phone={account.phone}
+                      colorId={account.color_id}
+                      hasProfilePhoto={account.has_profile_photo}
+                      photoVersion={account.photo_version}
+                      isActive={account.is_active}
+                      profilePhotoPath={account.profile_photo_path}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">
+                        {account.first_name || _("accountCard.unnamed")}{" "}
+                        {account.last_name || ""}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                        {account.username
+                          ? `@${account.username}`
+                          : account.phone}
+                      </p>
 
-                    {/* Message preview */}
-                    <div
-                      className="hidden sm:block w-48 text-center"
-                      onClick={() => handleExpand(account)}
-                    >
-                      {hasMessage ? (
-                        <span className="text-xs text-gray-500 dark:text-slate-300 truncate block max-w-full">
-                          {account.auto_reply_text!.slice(0, 40)}
-                          {account.auto_reply_text!.length > 40 ? "…" : ""}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-300 dark:text-slate-400 italic">
-                          No message set
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Status badge */}
-                    <div className="w-20 text-center" onClick={() => handleExpand(account)}>
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold",
-                          account.auto_reply_enabled
-                            ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300"
-                            : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
+                      {/* Mobile action button */}
+                      <div className="sm:hidden mt-1.5 flex items-center gap-2">
+                        {hasMessage ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditor(account)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            {_("autoReply.editText")}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditor(account)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                          >
+                            <Plus className="h-3 w-3" />
+                            {_("autoReply.setText")}
+                          </button>
                         )}
-                      >
-                        {account.auto_reply_enabled
-                          ? _("autoReply.on")
-                          : _("autoReply.off")}
-                      </span>
-                    </div>
-
-                    {/* Toggle */}
-                    <div
-                      className="w-16 flex justify-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={account.auto_reply_enabled ?? false}
-                          onChange={() => handleQuickToggle(account)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
-                      </label>
-                    </div>
-
-                    {/* Expand indicator */}
-                    <div
-                      className="shrink-0 text-gray-400"
-                      onClick={() => handleExpand(account)}
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Expanded editor */}
-                  {isExpanded && (
-                    <div className="px-3 sm:px-4 py-4 bg-gray-50/80 border-t border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150">
-                      <div className="max-w-2xl space-y-3 sm:ml-12">
-                        <div className="flex items-center gap-3 mb-2">
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={draftEnabled}
-                              onChange={(e) => {
-                                setDraftEnabled(e.target.checked);
-                                setDraftDirty(true);
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
-                          </label>
-                          <span className="text-sm text-gray-700">
-                            {draftEnabled
-                              ? _("autoReply.on")
-                              : _("autoReply.off")}
-                          </span>
-                        </div>
-
-                        <AutoReplyEditor
-                          value={draftText}
-                          onChange={(val) => {
-                            setDraftText(val);
-                            setDraftDirty(true);
-                          }}
-                          placeholder={_("autoReply.replyPlaceholder")}
-                          rows={3}
-                          disabled={perSaving}
-                        />
-
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={handleSaveExpanded}
-                            disabled={perSaving || !draftDirty}
-                            className={cn(
-                              "px-4 py-2 text-sm font-medium rounded-lg transition",
-                              draftDirty
-                                ? "bg-primary-600 text-white hover:bg-primary-700"
-                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            )}
-                          >
-                            {perSaving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              _("autoReply.save")
-                            )}
-                          </button>
-                          <button
-                            onClick={() => setExpandedId(null)}
-                            className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-                          >
-                            Cancel
-                          </button>
-                          {perMsg && (
-                            <span
-                              className={cn(
-                                "text-xs",
-                                perMsg === "saved"
-                                  ? "text-green-600"
-                                  : "text-red-500"
-                              )}
-                            >
-                              {perMsg === "saved"
-                                ? _("autoReply.saved")
-                                : perMsg}
-                            </span>
-                          )}
-                        </div>
+                  {/* Message Column (Desktop): preview & button */}
+                  <div className="hidden sm:block w-72">
+                    {hasMessage ? (
+                      <div className="flex items-center justify-between gap-2 bg-gray-50 dark:bg-slate-800/80 border border-gray-200/80 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5">
+                        <span
+                          className="text-xs text-gray-700 dark:text-slate-300 truncate flex-1"
+                          title={account.auto_reply_text!}
+                        >
+                          {account.auto_reply_text}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditor(account)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/50 transition shrink-0"
+                          title={_("autoReply.editText")}
+                        >
+                          <Edit3 className="h-3 w-3" />
+                          <span>{_("autoReply.editText")}</span>
+                        </button>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditor(account)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg text-primary-600 dark:text-primary-400 bg-primary-50 hover:bg-primary-100 dark:bg-primary-950/60 dark:hover:bg-primary-900 border border-primary-200/80 dark:border-primary-800/80 transition"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>{_("autoReply.setText")}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status badge */}
+                  <div className="w-20 text-center">
+                    <span
+                      className={cn(
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold",
+                        account.auto_reply_enabled
+                          ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300"
+                          : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
+                      )}
+                    >
+                      {account.auto_reply_enabled
+                        ? _("autoReply.on")
+                        : _("autoReply.off")}
+                    </span>
+                  </div>
+
+                  {/* Quick Toggle switch */}
+                  <div
+                    className="w-16 flex justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={account.auto_reply_enabled ?? false}
+                        onChange={() => handleQuickToggle(account)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
+                    </label>
+                  </div>
                 </div>
               );
             })}
@@ -628,6 +582,64 @@ export default function AutoReplyPage() {
           />
         </div>
       )}
+
+      {/* ── Per-Account Text Editor Modal ── */}
+      {editingAccount && (
+        <TextEditorModal
+          open={editingAccount !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingAccount(null);
+          }}
+          title={
+            editingAccount.first_name
+              ? `Auto Reply — ${editingAccount.first_name}`
+              : _("autoReply.modalTitle")
+          }
+          description={
+            editingAccount.username
+              ? `@${editingAccount.username} (${editingAccount.phone})`
+              : editingAccount.phone || _("autoReply.modalDesc")
+          }
+          value={editingAccount.auto_reply_text || ""}
+          onSave={handleSaveAccountMessage}
+          placeholder={_("autoReply.replyPlaceholder")}
+          saveText={_("autoReply.save")}
+          cancelText="Batal"
+          isLoading={modalSaving}
+          extraHeaderContent={
+            <div className="flex items-center gap-2.5 pt-2 pb-1 border-t border-gray-100 dark:border-slate-800">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={modalEnabled}
+                  onChange={(e) => setModalEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4.5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-transform peer-checked:bg-primary-600" />
+              </label>
+              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">
+                {_("autoReply.enableForAccount")}
+              </span>
+            </div>
+          }
+        />
+      )}
+
+      {/* ── Bulk Text Editor Modal ── */}
+      <TextEditorModal
+        open={showBulkModal}
+        onOpenChange={setShowBulkModal}
+        title="Auto Reply Template (Massal)"
+        description={`Atur template pesan yang akan diterapkan ke ${selectedIds.size} akun terpilih.`}
+        value={bulkText}
+        onSave={(val) => {
+          setBulkText(val);
+          setShowBulkModal(false);
+        }}
+        placeholder={_("autoReply.globalMessagePlaceholder")}
+        saveText="Gunakan Template"
+        cancelText="Batal"
+      />
     </div>
   );
 }
