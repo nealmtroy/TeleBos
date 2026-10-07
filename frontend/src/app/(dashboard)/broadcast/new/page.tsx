@@ -7,8 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAccounts } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
-import { AccountAvatar } from "@/components/accounts/account-avatar";
-import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
+import { AccountSelector } from "@/components/accounts/account-selector";
 import {
   useGroupLists,
   useTextLists,
@@ -48,8 +47,6 @@ export default function NewBroadcastPage() {
   const startMutation = useStartBroadcast();
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
-  const [accountSearchQuery, setAccountSearchQuery] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [groupListId, setGroupListId] = useState("");
   const [textListId, setTextListId] = useState("");
   const [mode, setMode] = useState<"multi_random" | "single_text">("multi_random");
@@ -218,20 +215,6 @@ export default function NewBroadcastPage() {
   const isRunning = activeJob && activeJob.status === "running";
   const isCompleted = activeJob && activeJob.status === "completed";
 
-  const filteredByFolder = selectedFolderId
-    ? (accounts || []).filter((acc: Account) => acc.folder_ids?.includes(selectedFolderId))
-    : (accounts || []);
-
-  const filteredAccounts = filteredByFolder.filter((acc: Account) => {
-    const q = accountSearchQuery.toLowerCase();
-    return (
-      (acc.first_name || "").toLowerCase().includes(q) ||
-      (acc.phone || "").toLowerCase().includes(q)
-    );
-  });
-
-  const folderList = Array.isArray(folders) ? folders : [];
-
   return (
     <div className="space-y-6">
       <div>
@@ -295,118 +278,25 @@ export default function NewBroadcastPage() {
         <h2 className="font-semibold text-gray-900">{_("newBroadcast.configuration")}</h2>
 
         {/* Accounts Selection */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {_("newBroadcast.account") || "Telegram Accounts"} ({selectedAccountIds.length} selected)
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedAccountIds((accounts || []).map((a) => a.id))}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-              >
-                Select All
-              </button>
-              <span className="text-gray-300 text-xs">|</span>
-              <button
-                type="button"
-                onClick={() => setSelectedAccountIds([])}
-                className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          {/* Folder filter */}
-          <div className="mb-3">
-            <FolderFilterBar
-              folders={folderList}
-              selectedFolderId={selectedFolderId}
-              onSelect={setSelectedFolderId}
-            />
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search accounts by name or phone..."
-              value={accountSearchQuery}
-              onChange={(e) => setAccountSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-            />
-          </div>
-
-          {/* Scrollable grid */}
-          <div className={cn(
-            "grid grid-cols-1 md:grid-cols-2 gap-3 max-h-56 overflow-y-auto p-1.5 border rounded-lg transition-all duration-200",
+        <AccountSelector
+          title={_("newBroadcast.account") || "Telegram Accounts"}
+          description="Pilih akun pengirim yang akan digunakan untuk mengirim pesan siaran"
+          accounts={accounts}
+          folders={folders}
+          isLoading={accountsLoading}
+          selectedAccountIds={selectedAccountIds}
+          onChange={setSelectedAccountIds}
+          disabled={isRunning}
+          error={attemptedSubmit && selectedAccountIds.length === 0}
+          errorMessage={
             attemptedSubmit && selectedAccountIds.length === 0
-              ? "border-red-300 bg-red-50/10 shadow-sm shadow-red-100"
-              : "border-gray-200 bg-gray-50"
-          )}>
-            {filteredAccounts.length === 0 ? (
-              <div className="col-span-full text-center py-6 text-sm text-gray-500">
-                No accounts found
-              </div>
-            ) : (
-              filteredAccounts.map((acc: Account) => {
-                const isSelected = selectedAccountIds.includes(acc.id);
-                const initials = (acc.first_name || "").slice(0, 2).toUpperCase() || "TG";
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => {
-                      setSelectedAccountIds((prev) =>
-                        isSelected
-                          ? prev.filter((id) => id !== acc.id)
-                          : [...prev, acc.id]
-                      );
-                    }}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border bg-white cursor-pointer select-none transition-all duration-200",
-                      isSelected
-                        ? "border-primary-500 ring-2 ring-primary-500/20"
-                        : "border-gray-200 hover:border-gray-300"
-                    )}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      className="pointer-events-none"
-                    />
-                    <AccountAvatar
-                      accountId={acc.id}
-                      telegramId={acc.telegram_id}
-                      firstName={acc.first_name}
-                      phone={acc.phone}
-                      colorId={acc.color_id}
-                      hasProfilePhoto={acc.has_profile_photo}
-                      photoVersion={acc.photo_version}
-                      isActive={acc.is_active}
-                      profilePhotoPath={acc.profile_photo_path}
-                      size="md"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {acc.first_name || "Unknown"}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">{acc.phone}</p>
-                    </div>
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        acc.is_active ? "bg-green-500" : "bg-red-500"
-                      )}
-                      title={acc.is_active ? "Active" : "Expired"}
-                    />
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+              ? (_("newBroadcast.selectAccount") || "Pilih setidaknya satu akun untuk broadcast")
+              : undefined
+          }
+          variant="plain"
+          columns={2}
+          maxHeight="max-h-60"
+        />
 
         {/* Group list */}
         <div>

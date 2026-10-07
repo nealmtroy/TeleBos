@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
 import { useAccounts } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
-import { AccountAvatar } from "@/components/accounts/account-avatar";
-import { FolderFilterBar } from "@/components/accounts/folder-filter-bar";
+import { AccountSelector } from "@/components/accounts/account-selector";
 import {
   useInviteJobs,
   useStartInvite,
@@ -55,8 +54,6 @@ export default function InvitePage() {
   const startMutation = useStartInvite();
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
-  const [accountSearchQuery, setAccountSearchQuery] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [destGroup, setDestGroup] = useState("");
   const [destType, setDestType] = useState<"username" | "link" | "group_id">("username");
   const [sourceGroups, setSourceGroups] = useState<{ type: string; value: string }[]>([]);
@@ -196,123 +193,19 @@ export default function InvitePage() {
       {/* Main Content Form */}
       <div className="space-y-6">
         {/* Step 1: Account Selection */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">{_("invite.selectAccounts")}</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">
-                {selectedAccountIds.length} {_("invite.selected")}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (accounts) {
-                    if (selectedAccountIds.length === accounts.length) {
-                      setSelectedAccountIds([]);
-                    } else {
-                      setSelectedAccountIds(accounts.map((a) => a.id));
-                    }
-                  }
-                }}
-                className="text-xs text-primary-600 hover:underline"
-              >
-                {accounts && selectedAccountIds.length === accounts.length
-                  ? _("invite.deselectAll")
-                  : _("invite.selectAll")}
-              </button>
-            </div>
-          </div>
-
-          {folders && folders.length > 0 && (
-            <FolderFilterBar
-              folders={folders}
-              selectedFolderId={selectedFolderId}
-              onSelect={setSelectedFolderId}
-            />
-          )}
-
-          {/* Search accounts */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder={_("invite.searchAccountsPlaceholder")}
-              value={accountSearchQuery}
-              onChange={(e) => setAccountSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-
-          {accountsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            </div>
-          ) : !accounts || accounts.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">{_("invite.noActiveAccounts")}</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1">
-              {accounts
-                .filter((acc: Account) => {
-                  if (selectedFolderId && !acc.folder_ids?.includes(selectedFolderId)) return false;
-                  if (accountSearchQuery.trim()) {
-                    const q = accountSearchQuery.toLowerCase();
-                    const name = (acc.first_name || "").toLowerCase() + " " + (acc.last_name || "").toLowerCase();
-                    const phone = (acc.phone || "").toLowerCase();
-                    const username = (acc.username || "").toLowerCase();
-                    return name.includes(q) || phone.includes(q) || username.includes(q);
-                  }
-                  return true;
-                })
-                .map((acc: Account) => {
-                  const isSelected = selectedAccountIds.includes(acc.id);
-                  const displayName = acc.first_name
-                    ? `${acc.first_name} ${acc.last_name || ""}`.trim()
-                    : acc.phone;
-                  return (
-                    <div
-                      key={acc.id}
-                      onClick={() => {
-                        setSelectedAccountIds((prev) =>
-                          isSelected ? prev.filter((id) => id !== acc.id) : [...prev, acc.id]
-                        );
-                      }}
-                      className={cn(
-                        "flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition",
-                        isSelected
-                          ? "border-primary-500 bg-primary-50/50"
-                          : "border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        className="pointer-events-none"
-                      />
-                      <AccountAvatar
-                        accountId={acc.id}
-                        telegramId={acc.telegram_id}
-                        firstName={acc.first_name}
-                        phone={acc.phone}
-                        photoVersion={acc.photo_version}
-                        colorId={acc.color_id}
-                        hasProfilePhoto={acc.has_profile_photo}
-                        isActive={acc.is_active}
-                        profilePhotoPath={acc.profile_photo_path}
-                        size="sm"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {displayName}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {acc.username ? `@${acc.username}` : acc.phone}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
+        <AccountSelector
+          stepNumber={1}
+          title={_("invite.selectAccounts")}
+          description="Pilih akun pengirim yang akan digunakan untuk mengeksekusi invite"
+          accounts={accounts}
+          folders={folders}
+          isLoading={accountsLoading}
+          selectedAccountIds={selectedAccountIds}
+          onChange={setSelectedAccountIds}
+          disabled={!!currentTrackingId && activeJob?.status === "running"}
+          columns={3}
+          maxHeight="max-h-64"
+        />
 
         {/* Step 2: Destination Group */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-4">

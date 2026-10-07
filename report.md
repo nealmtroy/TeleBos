@@ -285,6 +285,19 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
    - File template tidak terpakai `components/ui/sidebar.tsx` (768 baris) telah dihapus dari repositori.
    - Komponen produksi [components/layout/sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/layout/sidebar.tsx) dipertahankan sebagai domain-specific sidebar Telegram dashboard (sudah menggunakan Radix Tooltip, DropdownMenu, dan Dialog).
 
+5. **Standardisasi Pemilihan Akun Telegram (`<AccountSelector>`):** ✅
+   - **Masalah Sebelumnya:** Halaman New Invite (`/invite`), New Broadcast (`/broadcast/new`), dan Auto Join (`/groups-channels/auto-join`) memiliki layout pemilihan akun yang terfragmentasi dan berbeda satu sama lain (Auto Join tidak memiliki filter folder maupun pencarian, broadcast memakai grid sederhana, invite memiliki layout sendiri).
+   - **Solusi:** Dibuat komponen reusable modern [frontend/src/components/accounts/account-selector.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/account-selector.tsx) yang memadukan:
+     - Badge counter dinamis `(X / total dipilih)`.
+     - Aksi cepat `Pilih Semua` dan `Batal / Bersihkan` dengan status sinkron terhadap hasil filter.
+     - Folder Filter Tabs terintegrasi (`FolderFilterBar`).
+     - Pencarian instan (nama depan, nama belakang, telepon, dan username).
+     - Responsive grid dengan official `AccountAvatar`, status badge (Normal / Limited), pulsing online dot, dan Radix Checkbox.
+     - Terintegrasi penuh di ketiga halaman:
+       - `invite/page.tsx`
+       - `broadcast/new/page.tsx`
+       - `groups-channels/auto-join/page.tsx`
+
 ---
 
 ## 🚀 5. Ringkasan Status Proyek Setelah Fase 1, 2, & 3
@@ -294,4 +307,5 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
 | **Fase 1 (P0)** | `Select`, `Switch`, `Checkbox` | 🟢 **100% Selesai** | Lulus build & typecheck, deployed to VPS |
 | **Fase 2 (P1)** | `Dialog` (20+ modal), `Tabs` (12 modul) | 🟢 **100% Selesai** | Lulus build & typecheck, deployed to VPS |
 | **Fase 3 (P2)** | `Badge`, `Avatar`, `Tooltip`, Cleanup Dead Code | 🟢 **100% Selesai** | Lulus build (`60/60 routes`) & `tsc` 0 errors |
+| **Standardisasi Modul** | **Account Selector (`/invite`, `/broadcast/new`, `/groups-channels/auto-join`)** | 🟢 **100% Selesai** | Lulus build (`60/60 routes`) & `tsc` 0 errors |
 

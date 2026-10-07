@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
+import { useAccountFolders } from "@/hooks/use-account-folders";
+import { AccountSelector } from "@/components/accounts/account-selector";
 import { useGroupLists, useCreateGroupList, type GroupListItem } from "@/hooks/use-broadcast";
 import {
   useAutoJoinJobs,
@@ -208,6 +210,7 @@ export default function AutoJoinPage() {
 
   // Accounts
   const { data: rawAccounts, isLoading: accountsLoading } = useAccounts({ is_active: true, limit: 1000 });
+  const { data: folders } = useAccountFolders();
   const activeAccounts = useMemo(() => {
     return (rawAccounts || []).filter((a) => a.is_active && !a.for_sale);
   }, [rawAccounts]);
@@ -375,27 +378,6 @@ export default function AutoJoinPage() {
     if (selected.length === 0 || effectiveTargets.length === 0) return 0;
     return buildJoinTasks(effectiveTargets, selected, distributionMode).length;
   }, [effectiveTargets, activeAccounts, selectedAccountIds, distributionMode]);
-
-  // Toggle account selection
-  const toggleAccount = (id: string) => {
-    if (isRunning) return;
-    setSelectedAccountIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAllAccounts = () => {
-    if (isRunning) return;
-    setSelectedAccountIds(new Set(activeAccounts.map((a) => a.id)));
-  };
-
-  const deselectAllAccounts = () => {
-    if (isRunning) return;
-    setSelectedAccountIds(new Set());
-  };
 
   // Save current bulk text to group lists
   const handleSaveToGroupList = async () => {
@@ -720,99 +702,20 @@ export default function AutoJoinPage() {
           </div>
 
           {/* Card 2: Account Selection */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-            <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs">
-                  2
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">Pilih Akun Telegram</h2>
-                  <p className="text-xs text-gray-500 dark:text-slate-300">
-                    {selectedAccountIds.size} dari {activeAccounts.length} akun aktif dipilih
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={selectAllAccounts}
-                  disabled={isRunning || activeAccounts.length === 0}
-                  className="text-primary-600 dark:text-primary-400 hover:text-primary-700 disabled:opacity-50"
-                >
-                  Pilih Semua
-                </button>
-                <span className="text-gray-300 dark:text-slate-600">|</span>
-                <button
-                  type="button"
-                  onClick={deselectAllAccounts}
-                  disabled={isRunning || selectedAccountIds.size === 0}
-                  className="text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-white disabled:opacity-50"
-                >
-                  Batal
-                </button>
-              </div>
-            </div>
-
-            <div className="p-5">
-              {accountsLoading ? (
-                <div className="flex items-center justify-center py-8 text-gray-400 dark:text-slate-400 text-xs gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin text-primary-500" />
-                  Memuat akun...
-                </div>
-              ) : activeAccounts.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 dark:text-slate-400 text-xs">
-                  Tidak ada akun aktif yang tersedia. Tambahkan atau sambungkan akun terlebih dahulu.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                  {activeAccounts.map((acc) => {
-                    const isSelected = selectedAccountIds.has(acc.id);
-                    return (
-                      <div
-                        key={acc.id}
-                        onClick={() => toggleAccount(acc.id)}
-                        className={cn(
-                          "flex items-center gap-3 p-2.5 rounded-xl transition-colors cursor-pointer select-none text-xs",
-                          isSelected
-                            ? "bg-primary-50 dark:bg-primary-950/60 text-primary-950 dark:text-primary-200 font-medium"
-                            : "text-gray-700 dark:text-slate-200 hover:bg-gray-100/70 dark:hover:bg-slate-700/60",
-                          isRunning && "pointer-events-none opacity-80"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "w-4 h-4 rounded flex items-center justify-center border transition",
-                            isSelected
-                              ? "bg-primary-600 border-primary-600 text-white"
-                              : "border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-                          )}
-                        >
-                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                        </div>
-                        <div className="truncate flex-1">
-                          <p className="font-semibold text-gray-900 dark:text-slate-100 truncate">
-                            {acc.first_name || "Tanpa Nama"} {acc.last_name || ""}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-slate-300 font-mono">{acc.phone}</p>
-                        </div>
-                        {acc.spam_status === "limited" ? (
-                          <Badge variant="outline" className="text-[11px] font-semibold bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/50 shrink-0">
-                            Limited
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[11px] font-semibold bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50 shrink-0">
-                            Normal
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          <AccountSelector
+            stepNumber={2}
+            title="Pilih Akun Telegram"
+            description="Pilih akun yang akan digunakan untuk bergabung ke grup/channel"
+            accounts={activeAccounts}
+            folders={folders}
+            isLoading={accountsLoading}
+            selectedAccountIds={selectedAccountIds}
+            onChange={(ids) => setSelectedAccountIds(new Set(ids))}
+            disabled={isRunning}
+            showSpamStatus={true}
+            columns={2}
+            maxHeight="max-h-60"
+          />
         </div>
 
         {/* Right Column: Execution Config & Live Progress (5 cols) */}
