@@ -42,6 +42,8 @@ export interface AccountSelectorProps {
   showSpamStatus?: boolean;
   /** Additional container styling */
   className?: string;
+  /** Custom search placeholder */
+  searchPlaceholder?: string;
   /** Visual variant: 'card' (with background & border) or 'plain' (transparent wrapper) */
   variant?: "card" | "plain";
 }
@@ -62,6 +64,7 @@ export function AccountSelector({
   columns = 2,
   showSpamStatus = true,
   className,
+  searchPlaceholder,
   variant = "card",
 }: AccountSelectorProps) {
   const _ = useT();
@@ -89,13 +92,26 @@ export function AccountSelector({
       if (selectedFolderId && !acc.folder_ids?.includes(selectedFolderId)) {
         return false;
       }
-      // Search query (matches first_name, last_name, phone, username)
+      // Search query (smart matching: first_name, last_name, phone, @username, telegram_id)
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
+        const rawQ = searchQuery.toLowerCase().trim();
+        const cleanQ = rawQ.replace(/^@/, "");
+        const digitQ = rawQ.replace(/\D/g, "");
+
         const fullName = `${acc.first_name || ""} ${acc.last_name || ""}`.toLowerCase();
-        const phone = (acc.phone || "").toLowerCase();
-        const username = (acc.username || "").toLowerCase();
-        return fullName.includes(q) || phone.includes(q) || username.includes(q);
+        const username = (acc.username || "").toLowerCase().replace(/^@/, "");
+        const rawPhone = (acc.phone || "").toLowerCase();
+        const digitPhone = rawPhone.replace(/\D/g, "");
+        const tgId = String(acc.telegram_id || "");
+
+        const matchName = fullName.includes(rawQ) || (cleanQ.length > 0 && fullName.includes(cleanQ));
+        const matchUsername = username.includes(cleanQ);
+        const matchPhone =
+          rawPhone.includes(rawQ) ||
+          (digitQ.length >= 3 && digitPhone.includes(digitQ));
+        const matchTgId = tgId.includes(rawQ);
+
+        return matchName || matchUsername || matchPhone || matchTgId;
       }
       return true;
     });
@@ -202,26 +218,63 @@ export function AccountSelector({
       )}
 
       {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          disabled={disabled || accounts.length === 0}
-          placeholder={
-            _("invite.searchAccountsPlaceholder") || "Cari akun berdasarkan nama, nomor telepon, atau username..."
-          }
-          className="w-full pl-9.5 pr-8 py-2 text-xs sm:text-sm bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 transition"
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => setSearchQuery("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+      <div className="space-y-1.5">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSearchQuery("");
+            }}
+            disabled={disabled || accounts.length === 0}
+            placeholder={
+              searchPlaceholder ||
+              _("accountsList.searchPlaceholder") ||
+              "Cari nama, no hp, user ID, atau @username..."
+            }
+            className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 transition shadow-2xs"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              title="Hapus pencarian (Esc)"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Info hasil filter jika pencarian atau folder aktif */}
+        {(searchQuery.trim() !== "" || selectedFolderId !== null) && accounts.length > 0 && (
+          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 px-1 pt-0.5">
+            <span>
+              Menampilkan <strong className="font-semibold text-gray-900 dark:text-slate-200">{filteredAccounts.length}</strong> dari {accounts.length} akun
+            </span>
+            <div className="flex items-center gap-2 font-medium">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-primary-600 dark:text-primary-400 hover:underline"
+                >
+                  Reset kata kunci
+                </button>
+              )}
+              {selectedFolderId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFolderId(null)}
+                  className="text-gray-500 dark:text-slate-400 hover:underline"
+                >
+                  Semua folder
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
@@ -247,9 +300,18 @@ export function AccountSelector({
             </p>
           </div>
         ) : filteredAccounts.length === 0 ? (
-          <div className="py-8 text-center space-y-1 text-xs text-gray-500 dark:text-slate-400">
-            <p className="font-semibold text-gray-700 dark:text-slate-300">Tidak ada akun yang sesuai filter</p>
-            <p className="text-[11px] text-gray-400">Coba ubah kata kunci pencarian atau pilih folder lain.</p>
+          <div className="py-8 text-center space-y-2 text-xs text-gray-500 dark:text-slate-400">
+            <p className="font-semibold text-gray-700 dark:text-slate-300">Tidak ada akun yang sesuai pencarian atau filter</p>
+            <p className="text-[11px] text-gray-400">Coba ubah kata kunci pencarian atau ganti filter folder.</p>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1 bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-medium hover:bg-gray-300 dark:hover:bg-slate-700 transition"
+              >
+                Hapus Pencarian
+              </button>
+            )}
           </div>
         ) : (
           <div
