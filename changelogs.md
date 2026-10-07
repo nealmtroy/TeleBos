@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-08
+- **[99cb9a1a](https://github.com/nealmtroy/TeleBos/commit/99cb9a1a)**: feat(ui): complete Phase 2 tabs and dialogs standardization to Shadcn UI
 - **[01b59fc1](https://github.com/nealmtroy/TeleBos/commit/01b59fc1)**: feat(ui): migrate Phase 1 raw select, checkbox, and switch primitives to Shadcn UI
 - **[2511270f](https://github.com/nealmtroy/TeleBos/commit/2511270f)**: fix(backend): reload SmmService after update to prevent MissingGreenlet on updated_at
 

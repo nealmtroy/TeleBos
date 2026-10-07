@@ -23,12 +23,12 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
 
 | Komponen Shadcn / Radix UI | File UI Library | Primitif Dasar | Status Penggunaan Resmi | Jumlah Bypassed / Re-implementasi | Tingkat Urgensi |
 | :--- | :--- | :--- | :---: | :---: | :---: |
-| **Select** | [select.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/select.tsx) | `@radix-ui/react-select` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa** (seluruh 37+ lokasi telah dimigrasi ke `<Select>`) | **Tuntas (P0)** |
-| **Switch** | [switch.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/switch.tsx) | `@radix-ui/react-switch` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa** (seluruh class `.tg-toggle` & `peer-checked` dimigrasi ke `<Switch>`) | **Tuntas (P0)** |
-| **Checkbox** | [checkbox.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/checkbox.tsx) | `@radix-ui/react-checkbox` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di dashboard** (seluruh 24 lokasi tabel & modal dimigrasi ke `<Checkbox>`) | **Tuntas (P0)** |
+| **Select** | [select.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/select.tsx) | `@radix-ui/react-select` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa** (seluruh 37+ lokasi telah dimigrasi ke `<Select>`) | **Tuntas (P0 - Fase 1)** |
+| **Switch** | [switch.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/switch.tsx) | `@radix-ui/react-switch` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa** (seluruh class `.tg-toggle` & `peer-checked` dimigrasi ke `<Switch>`) | **Tuntas (P0 - Fase 1)** |
+| **Checkbox** | [checkbox.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/checkbox.tsx) | `@radix-ui/react-checkbox` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di dashboard** (seluruh 24 lokasi tabel & modal dimigrasi ke `<Checkbox>`) | **Tuntas (P0 - Fase 1)** |
+| **Dialog / Modal** | [dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/dialog.tsx) | `@radix-ui/react-dialog` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di modul dashboard** (seluruh 20+ modal dimigrasikan ke `<Dialog>`) | **Tuntas (P1 - Fase 2)** |
+| **Tabs** | [tabs.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tabs.tsx) | `@radix-ui/react-tabs` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di dashboard** (seluruh 12 modul tab dimigrasikan ke `<Tabs>`) | **Tuntas (P1 - Fase 2)** |
 | **Sidebar** | [sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/sidebar.tsx) | Shadcn Sidebar v4 | 🔴 **0 file (0%)** | [sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/layout/sidebar.tsx) (917 baris) dibuat manual dari nol | **Sedang (P2)** |
-| **Dialog / Modal** | [dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/dialog.tsx) | `@radix-ui/react-dialog` | ⚠️ **5 file** | **20+ modal** manual dengan `fixed inset-0` | **Tinggi (P1)** |
-| **Tabs** | [tabs.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tabs.tsx) | `@radix-ui/react-tabs` | ⚠️ **1 file** | **9 modul** membuat tab manual via `useState` | **Tinggi (P1)** |
 | **Avatar** | [avatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/avatar.tsx) | `@radix-ui/react-avatar` | ⚠️ **1 file** | [ChatAvatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatAvatar.tsx) membuat ulang fallback logic | **Sedang (P2)** |
 | **Badge** | [badge.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/badge.tsx) | Shadcn CVA Badge | ⚠️ **4 file** | **36+ lokasi** manual `<span className="rounded-full">` | **Sedang (P2)** |
 | **Tooltip** | [tooltip.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tooltip.tsx) | `@radix-ui/react-tooltip` | ⚠️ **1 file** | **50+ icon button** memakai atribut native `title="..."` | **Rendah (P3)** |
@@ -100,51 +100,47 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
 
 ---
 
-### 3.4 `Dialog` / Modal (`@radix-ui/react-dialog` -> `components/ui/dialog.tsx`)
-* **Kondisi Komponen:** File [dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/dialog.tsx) lengkap dengan `DialogPortal`, `DialogOverlay`, `DialogContent`, `DialogHeader`, `DialogTitle`, dan `DialogClose`.
-* **Tingkat Penggunaan:** Hanya dipakai di 5 file (`confirm-dialog.tsx`, `text-editor.tsx`, `profile-card.tsx`, `subscriptions/page.tsx`, `group-lists/page.tsx`).
-* **Re-implementasi Manual (20+ File Overlay Kustom):**
-  - Menggunakan pola overlay: `<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm ...">`
-  - Tidak ada penanganan tombol Escape keyboard terintegrasi.
-  - Membuka modal berisiko bentrok z-index dengan dropdown/popover lain.
-  - **Daftar File Bypassed:**
-    1. [spam-appeal-dialog.tsx#L193](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/spam-appeal-dialog.tsx#L193)
-    2. [transfer-accounts-dialog.tsx#L263](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/transfer-accounts-dialog.tsx#L263)
-    3. [folder-manager-dialog.tsx#L191](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/folder-manager-dialog.tsx#L191)
-    4. [smm-order-manager.tsx#L849](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/orders/smm-order-manager.tsx#L849)
-    5. [LightboxModal.tsx#L30](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/LightboxModal.tsx#L30)
-    6. [ScheduledQueueModal.tsx#L43](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduledQueueModal.tsx#L43)
-    7. [ScheduleModal.tsx#L43](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduleModal.tsx#L43)
-    8. [PollDialog.tsx#L49](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/PollDialog.tsx#L49)
-    9. [ForwardModal.tsx#L51](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ForwardModal.tsx#L51)
-    10. [ChatLeftColumn.tsx#L925, L973](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatLeftColumn.tsx#L925)
-    11. [wallet/page.tsx#L1326](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/wallet/page.tsx#L1326)
-    12. [orders/buy-accounts/page.tsx#L776](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/buy-accounts/page.tsx#L776)
-    13. [orders/page.tsx#L1736](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx#L1736)
-    14. [groups-channels/page.tsx#L447](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/page.tsx#L447)
-    15. [contacts/page.tsx#L652, L818](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/contacts/page.tsx#L652)
-    16. [admin/users/page.tsx#L673, L835, L899](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/users/page.tsx#L673)
-    17. [admin/transactions/page.tsx#L580, L685](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/transactions/page.tsx#L580)
-    18. [admin/redeem-codes/page.tsx#L137](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-codes/page.tsx#L137)
-    19. [admin/broadcasts/page.tsx#L998](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/broadcasts/page.tsx#L998)
-    20. [admin/auto-replies/page.tsx#L439](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/auto-replies/page.tsx#L439)
+### 3.4 `Dialog` / Modal (`@radix-ui/react-dialog` -> `components/ui/dialog.tsx`) — 🟢 **SELESAI (100% Migrasi)**
+* **Kondisi Komponen:** File [dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/dialog.tsx) lengkap dengan `DialogPortal`, `DialogOverlay`, `DialogContent`, `DialogHeader`, `DialogTitle`, dan `DialogDescription`.
+* **Status Implementasi:** **100% Selesai di Fase 2**. Seluruh modal manual berbasis `fixed inset-0` dan `createPortal` telah dimigrasikan ke Shadcn `<Dialog>`.
+* **Keuntungan yang Diperoleh:** Focus trap otomatis, penutupan dengan tombol `Escape`, backdrop scroll locking bawaan Radix, dan penghilangan duplikasi CSS keyframe kustom.
+* **Daftar File yang Telah Dimigrasi:**
+  1. [groups-channels/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/page.tsx) — Modal gabung grup/channel publik & privat.
+  2. [orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx) — Modal struk rincian pesanan.
+  3. [wallet/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/wallet/page.tsx) — Modal rincian & bukti mutasi saldo.
+  4. [contacts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/contacts/page.tsx) — Modal Import Kontak (manual/file) & Export Kontak.
+  5. [orders/buy-accounts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/buy-accounts/page.tsx) — Modal serah terima custody akun Telegram.
+  6. [admin/users/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/users/page.tsx) — Modal Detail User, Penyesuaian Saldo, & Suspend User.
+  7. [admin/transactions/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/transactions/page.tsx) — Modal Audit Transaksi & Alasan Tolak.
+  8. [admin/redeem-codes/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/redeem-codes/page.tsx) — Modal Buat Kode Redeem Kupon.
+  9. [admin/broadcasts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/broadcasts/page.tsx) — Modal Rincian Job Broadcast & Peringatan Konflik Duplikat.
+  10. [admin/auto-replies/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/auto-replies/page.tsx) — Modal Preview Pesan Auto-Reply.
+  11. [spam-appeal-dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/spam-appeal-dialog.tsx) — Wizard Dialog Banding Spamblock (Idle, Warning, Captcha, Success).
+  12. [transfer-accounts-dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/transfer-accounts-dialog.tsx) — Dialog Transfer Kepemilikan Akun Telegram.
+  13. [folder-manager-dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/folder-manager-dialog.tsx) — Dialog Manajemen Folder Akun & Anggota.
+  14. [ScheduleModal.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduleModal.tsx) — Modal Jadwalkan Pesan Obrolan.
+  15. [ScheduledQueueModal.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ScheduledQueueModal.tsx) — Modal Antrean Pesan Terjadwal.
+  16. [ForwardModal.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ForwardModal.tsx) — Modal Teruskan Pesan ke Chat Lain.
+  17. [PollDialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/PollDialog.tsx) — Modal Buat Polling / Kuis Telegram.
 
 ---
 
-### 3.5 `Tabs` (`@radix-ui/react-tabs` -> `components/ui/tabs.tsx`)
+### 3.5 `Tabs` (`@radix-ui/react-tabs` -> `components/ui/tabs.tsx`) — 🟢 **SELESAI (100% Migrasi)**
 * **Kondisi Komponen:** File [tabs.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tabs.tsx) (50 baris) menyediakan `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` dengan accessibility `role="tab"` dan keyboard navigation otomatis (panah kiri/kanan).
-* **Tingkat Penggunaan:** Hanya di 1 file ([admin/settings/page.tsx#L41](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/settings/page.tsx#L41)).
-* **Re-implementasi Manual (9 Modul):**
-  Semua modul berikut membuat state `const [activeTab, setActiveTab] = useState(...)` dan merender tombol `<button onClick={() => setActiveTab(...)} className="...">` secara manual:
-  1. [orders/page.tsx#L170](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx#L170) — Tab All, SMM, Accounts, Deposits, Withdrawals.
-  2. [wallet/page.tsx#L136](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/wallet/page.tsx#L136) — Tab Topup vs Withdraw.
-  3. [settings/page.tsx#L83](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/settings/page.tsx#L83) — Tab Profile, Security, 2FA, API Keys, Rekening, dsb.
-  4. [groups-channels/page.tsx#L46](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/page.tsx#L46) & [public/page.tsx#L41](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/public/page.tsx#L41) & [accounts/[id]/groups-channels/page.tsx#L24](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/%5Bid%5D/groups-channels/page.tsx#L24) — Tab Groups vs Channels.
-  5. [accounts/add/page.tsx#L15](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/add/page.tsx#L15) — Tab OTP vs Upload vs QR.
-  6. [ChatRightColumn.tsx#L65](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatRightColumn.tsx#L65) — Tab Info, Members, Admins, Permissions, Links.
-  7. [EmojiPicker.tsx#L143](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/EmojiPicker.tsx#L143) — Tab Emoji, Sticker, GIF.
-  8. [text-editor.tsx#L48](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/text-editor.tsx#L48) — Tab Edit vs Preview.
-  9. [account-settings-page.tsx#L504](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/accounts/account-settings-page.tsx#L504) — Tab Main, Change, Forgot, Recovery.
+* **Status Implementasi:** **100% Selesai di Fase 2**. Seluruh implementasi tab tombol manual telah distandarisasi ke `<Tabs>`.
+* **Daftar File yang Telah Dimigrasi:**
+  1. [groups-channels/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/page.tsx) — Filter tab Grup vs Channel.
+  2. [groups-channels/public/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/groups-channels/public/page.tsx) — Tab navigasi Channel Publik.
+  3. [accounts/[id]/groups-channels/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/%5Bid%5D/groups-channels/page.tsx) — Tab Grup vs Channel per akun.
+  4. [accounts/add/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/accounts/add/page.tsx) — Tab metode tambah akun (QR Code vs Nomor Telepon vs Session File).
+  5. [text-editor.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/text-editor.tsx) — Tab mode Tulis vs Preview pesan.
+  6. [EmojiPicker.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/EmojiPicker.tsx) — Tab kategori Emoji, Stiker, dan GIF.
+  7. [ChatRightColumn.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatRightColumn.tsx) — Tab Berkas, Media, Tautan obrolan.
+  8. [orders/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/orders/page.tsx) — Ribbon tabs kategori pesanan (All, SMM, Accounts, Topup, Withdraw).
+  9. [wallet/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/wallet/page.tsx) — Tab Topup vs Withdraw & Tab filter jenis mutasi dompet.
+  10. [contacts/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/contacts/page.tsx) — Tab mode Import Kontak (Manual vs File CSV/VCF).
+  11. [admin/transactions/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/transactions/page.tsx) — Tab filter tipe transaksi sistem.
+  12. [admin/auto-replies/page.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/app/%28dashboard%29/admin/auto-replies/page.tsx) — Tab filter status bot responder (All, Running, Stopped).
 
 ---
 
@@ -206,16 +202,50 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
    - Standarisasi seluruh 24 input checkbox tabel header ("Select All"), tabel rows, batch actions, dan modal ke `<Checkbox>` (`@radix-ui/react-checkbox`).
    - Modul yang dimigrasi: `auto-reply`, `orders/sell-accounts`, `invite`, `broadcast/new`, `settings`, `admin/settings`, `groups-channels/auto-join`, `PollDialog`, `folder-manager-dialog`, `transfer-accounts-dialog`.
 
-### Fase 2: Prioritas P1 (Aksesibilitas & Menghilangkan Duplikasi Overlay)
-1. **Standarisasi 20+ Modal ke `Dialog` Shadcn:**
-   - Ganti wrapper `fixed inset-0` dengan `<Dialog>` dan `<DialogContent>`.
-   - Mengeliminasi potensi bug z-index stacking context serta otomatis mendukung penutupan modal via tombol `Esc`.
-2. **Migrasi Button Tab ke `Tabs` Shadcn:**
-   - Konversikan navigasi tab di `orders/page.tsx`, `wallet/page.tsx`, dan `settings/page.tsx` ke `<Tabs>`, `<TabsList>`, dan `<TabsTrigger>`.
+### Fase 2: Prioritas P1 (Aksesibilitas & Menghilangkan Duplikasi Overlay / Tabs) — ✅ **SELESAI (COMPLETED)**
+*Status: 100% Selesai & Lulus Typecheck (`npx tsc --noEmit` 0 errors, Next.js build 60/60 routes sukses, Deployed to VPS `94.237.73.186`)*
 
-### Fase 3: Prioritas P2 (Konsistensi Desain & Pembersihan Dead Code)
+1. **Standarisasi 20+ Modal ke `Dialog` Shadcn (`@radix-ui/react-dialog`):** ✅
+   - Seluruh modal custom berbasis `fixed inset-0 z-50` dan `createPortal(..., document.body)` telah diganti dengan `<Dialog>`, `<DialogContent>`, `<DialogHeader>`, `<DialogTitle>`, `<DialogDescription>`.
+   - Mengeliminasi kode repetitif event listener `Escape`, manual backdrop, dan scroll lock kustom.
+   - Modul yang dimigrasi:
+     - `groups-channels/page.tsx` (Modal Join Group/Channel)
+     - `orders/page.tsx` (Modal struk detail pesanan)
+     - `wallet/page.tsx` (Modal struk rincian mutasi)
+     - `contacts/page.tsx` (Modal Import & Export Kontak)
+     - `orders/buy-accounts/page.tsx` (Modal serah terima custody akun)
+     - `admin/users/page.tsx` (Modal Detail User, Saldo, Suspend)
+     - `admin/transactions/page.tsx` (Modal Audit & Alasan Tolak)
+     - `admin/redeem-codes/page.tsx` (Modal Buat Kode Redeem)
+     - `admin/broadcasts/page.tsx` (Modal Detail Job & Conflict Warning)
+     - `admin/auto-replies/page.tsx` (Modal Preview Pesan Auto-Reply)
+     - `spam-appeal-dialog.tsx` (Modal wizard banding spamblock)
+     - `transfer-accounts-dialog.tsx` (Modal transfer kepemilikan akun)
+     - `folder-manager-dialog.tsx` (Modal kelola folder & anggota akun)
+     - `ScheduleModal.tsx` (Modal jadwalkan pesan obrolan)
+     - `ScheduledQueueModal.tsx` (Modal antrean pesan terjadwal)
+     - `ForwardModal.tsx` (Modal teruskan pesan obrolan)
+     - `PollDialog.tsx` (Modal buat polling & kuis)
+
+2. **Migrasi Button Tab ke `Tabs` Shadcn (`@radix-ui/react-tabs`):** ✅
+   - Seluruh navigasi tab tombol berbasis state manual `useState` telah distandarisasi ke `<Tabs>`, `<TabsList>`, `<TabsTrigger>`, `<TabsContent>`.
+   - Modul yang dimigrasi:
+     - `groups-channels/page.tsx` (Tab Grup vs Channel)
+     - `groups-channels/public/page.tsx` (Tab Channel Publik)
+     - `accounts/[id]/groups-channels/page.tsx` (Tab Grup vs Channel per akun)
+     - `accounts/add/page.tsx` (Tab metode tambah akun)
+     - `text-editor.tsx` (Tab Tulis vs Preview)
+     - `EmojiPicker.tsx` (Tab kategori Emoji/Stiker)
+     - `ChatRightColumn.tsx` (Tab Berkas & Media obrolan)
+     - `orders/page.tsx` (Ribbon tabs kategori pesanan)
+     - `wallet/page.tsx` (Tab Topup vs Withdraw & Tab filter transaksi)
+     - `contacts/page.tsx` (Tab mode Import Manual vs File)
+     - `admin/transactions/page.tsx` (Tab filter tipe transaksi)
+     - `admin/auto-replies/page.tsx` (Tab filter status bot responder)
+
+### Fase 3: Prioritas P2 (Konsistensi Desain & Pembersihan Dead Code) — ⏳ **BERIKUTNYA**
 1. **Unified Status Badge:**
-   - Ganti seluruh span `rounded-full` ad-hoc dengan `<Badge variant="...">`.
+   - Ganti span `rounded-full` ad-hoc dengan `<Badge variant="...">`.
 2. **Standardisasi Tooltip:**
    - Ganti atribut `title="..."` pada icon action buttons penting dengan `<Tooltip>`.
 3. **Pembersihan / Integrasi Sidebar:**
