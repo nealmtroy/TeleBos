@@ -101,18 +101,28 @@ export function Navbar() {
           <Link
             href="/orders"
             className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-emerald-50/90 to-teal-50/70 dark:from-emerald-950/40 dark:to-teal-950/30 hover:from-emerald-100/90 dark:hover:from-emerald-900/50 border border-emerald-200/90 dark:border-emerald-800/60 rounded-xl transition-all duration-200 group active:scale-95 shadow-xs"
-            title="Saldo Akun — Klik untuk kelola pesanan & saldo"
+            title={_("navbar.balance") + " — " + _("navbar.role") + ": " + roleText}
           >
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-400/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
               <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <div className="flex flex-col text-left">
+            <div className="flex flex-col text-left gap-0.5">
               <span className="text-[11px] uppercase font-bold text-emerald-600/90 dark:text-emerald-400/90 leading-none hidden sm:block tracking-wider">
-                Saldo
+                {_("navbar.balance")}
               </span>
-              <span className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono tracking-tight leading-tight">
-                Rp {(user?.balance || 0).toLocaleString("id-ID")}
-              </span>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono tracking-tight leading-tight">
+                  Rp {(user?.balance || 0).toLocaleString("id-ID")}
+                </span>
+                {/* Role Badge — muncul bareng balance di navbar */}
+                <span className={cn(
+                  "inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 rounded-md border text-[10px] sm:text-[11px] font-bold uppercase tracking-wider leading-none",
+                  roleColor
+                )}>
+                  <RoleIcon className="h-2.5 sm:h-3 w-2.5 sm:w-3" />
+                  <span className="inline">{roleText}</span>
+                </span>
+              </div>
             </div>
           </Link>
 
@@ -184,7 +194,7 @@ export function Navbar() {
                 <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-transparent dark:border-emerald-800/60 rounded-lg">
                   <Wallet className="h-4 w-4 text-emerald-600" />
                   <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-                    Balance: <span className="font-bold">{(user?.balance || 0).toLocaleString()}</span>
+                    {_("navbar.balance")}: <span className="font-bold">{(user?.balance || 0).toLocaleString()}</span>
                   </span>
                 </div>
               </div>

@@ -9,6 +9,13 @@ import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Link as LinkIcon, ShieldAlert,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
 import { ChatAvatar } from "@/components/chat/ChatAvatar";
@@ -206,17 +213,21 @@ function PublicGroupsChannelsContent() {
         {/* Sort Select */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">Sort:</span>
-          <select
+          <Select
             value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value as any);
+            onValueChange={(val) => {
+              setSortBy(val as any);
               setPage(1);
             }}
-            className="px-2 py-1 text-xs border border-gray-200 rounded-md focus:ring-1 focus:ring-primary-500 outline-none bg-white text-gray-700"
           >
-            <option value="member_count">{_("groupsChannels.memberCount") || "Total Members"}</option>
-            <option value="online_count">{_("groupsChannels.onlineCount") || "Active Members"}</option>
-          </select>
+            <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="member_count">{_("groupsChannels.memberCount") || "Total Members"}</SelectItem>
+              <SelectItem value="online_count">{_("groupsChannels.onlineCount") || "Active Members"}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

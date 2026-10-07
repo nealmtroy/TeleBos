@@ -23,6 +23,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * Parse bulk text input and extract Telegram links/usernames.
@@ -411,15 +418,19 @@ export default function GroupListsPage() {
 
               {/* Add item to this list */}
               <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                <select
+                <Select
                   value={newItemType}
-                  onChange={(e) => setNewItemType(e.target.value as any)}
-                  className="px-2 py-1.5 border border-gray-300 rounded text-xs bg-white"
+                  onValueChange={(val) => setNewItemType(val as any)}
                 >
-                  <option value="username">{_("groupLists.typeUsername")}</option>
-                  <option value="link">{_("groupLists.typeLink")}</option>
-                  <option value="group_id">{_("groupLists.typeGroupId")}</option>
-                </select>
+                  <SelectTrigger className="h-8 w-[140px] text-xs bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="username">{_("groupLists.typeUsername")}</SelectItem>
+                    <SelectItem value="link">{_("groupLists.typeLink")}</SelectItem>
+                    <SelectItem value="group_id">{_("groupLists.typeGroupId")}</SelectItem>
+                  </SelectContent>
+                </Select>
                 <input
                   value={newItemValue}
                   onChange={(e) => setNewItemValue(e.target.value)}

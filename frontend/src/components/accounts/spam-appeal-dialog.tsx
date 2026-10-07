@@ -5,6 +5,13 @@ import { createPortal } from "react-dom";
 import { useT } from "@/lib/i18n";
 import { useStartSpamAppeal, useResumeSpamAppeal } from "@/hooks/use-accounts";
 import { useToast } from "@/components/ui/toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertTriangle, ExternalLink, Loader2, Send, CheckCircle2, ShieldAlert } from "lucide-react";
 
 interface SpamAppealDialogProps {
@@ -319,24 +326,27 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
               <label className="text-xs font-semibold uppercase text-slate-400">
                 {_("accountDetail.appealReasonLabel")}
               </label>
-              <select
+              <Select
                 value={selectedPreset}
-                onChange={(e) => {
-                  const val = e.target.value;
+                onValueChange={(val) => {
                   setSelectedPreset(val);
                   const preset = APPEAL_PRESETS.find(p => p.id === val);
                   if (preset && val !== "custom") {
                     setReason(preset.text);
                   }
                 }}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white text-slate-900 transition-all font-medium"
               >
-                {APPEAL_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full h-11 px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm bg-white text-slate-900 font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {APPEAL_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">

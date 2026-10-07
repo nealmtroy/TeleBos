@@ -32,6 +32,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Eyebrow,
   Chip,
   PriceTag,
@@ -440,15 +447,16 @@ export default function BuyAccountsPage() {
             </div>
 
             {/* Sort Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="h-9 rounded-lg border border-border/80 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 px-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs cursor-pointer"
-            >
-              <option value="price-asc">Price: Lowest First</option>
-              <option value="price-desc">Price: Highest First</option>
-              <option value="contacts-desc">Most Contacts</option>
-            </select>
+            <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+              <SelectTrigger className="h-9 w-[170px] rounded-lg text-xs font-medium">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="price-asc">Price: Lowest First</SelectItem>
+                <SelectItem value="price-desc">Price: Highest First</SelectItem>
+                <SelectItem value="contacts-desc">Most Contacts</SelectItem>
+              </SelectContent>
+            </Select>
 
             {/* Clear Filters Button */}
             {hasActiveFilters && (

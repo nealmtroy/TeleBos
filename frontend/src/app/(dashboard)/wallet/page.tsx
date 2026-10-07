@@ -47,6 +47,13 @@ import {
 } from "@/hooks/use-wallet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface ActivePayment {
@@ -911,19 +918,22 @@ export default function WalletPage() {
                             <span>{_("wallet.manageBankAccounts")}</span>
                           </Link>
                         </div>
-                        <select
-                          id="wallet-saved-account"
+                        <Select
                           value={selectedAccountId}
-                          onChange={(e) => handleAccountSelect(e.target.value)}
-                          className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                          onValueChange={handleAccountSelect}
                         >
-                          <option value="manual">{_("wallet.useManualAccount")}</option>
-                          {accounts.map((acc) => (
-                            <option key={acc.id} value={acc.id}>
-                              {acc.provider} - {acc.accountNumber} ({acc.accountHolder}) {acc.isDefault ? "★ Utama" : ""}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger id="wallet-saved-account" className="w-full h-11 text-sm rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">{_("wallet.useManualAccount")}</SelectItem>
+                            {accounts.map((acc) => (
+                              <SelectItem key={acc.id} value={acc.id}>
+                                {acc.provider} - {acc.accountNumber} ({acc.accountHolder}) {acc.isDefault ? "★ Utama" : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
 
@@ -936,18 +946,21 @@ export default function WalletPage() {
                         >
                           {_("wallet.destinationMethod")}
                         </label>
-                        <select
-                          id="wallet-method"
+                        <Select
                           value={method}
-                          onChange={(e) => setMethod(e.target.value)}
-                          className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                          onValueChange={setMethod}
                         >
-                          {WITHDRAW_METHODS.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {_(m.labelKey)}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger id="wallet-method" className="w-full h-11 text-sm rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {WITHDRAW_METHODS.map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {_(m.labelKey)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </div>
@@ -1177,16 +1190,20 @@ export default function WalletPage() {
           {/* Right: Status selector and Search input */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             {/* Status Selector */}
-            <select
+            <Select
               value={historyStatusFilter}
-              onChange={(e) => setHistoryStatusFilter(e.target.value as any)}
-              className="h-9 px-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              onValueChange={(val: any) => setHistoryStatusFilter(val)}
             >
-              <option value="all">{_("wallet.allStatus")}</option>
-              <option value="pending">{_("wallet.status.pending")}</option>
-              <option value="approved">{_("wallet.status.approved")}</option>
-              <option value="rejected">{_("wallet.status.rejected")}</option>
-            </select>
+              <SelectTrigger className="h-9 w-[150px] text-xs rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{_("wallet.allStatus")}</SelectItem>
+                <SelectItem value="pending">{_("wallet.status.pending")}</SelectItem>
+                <SelectItem value="approved">{_("wallet.status.approved")}</SelectItem>
+                <SelectItem value="rejected">{_("wallet.status.rejected")}</SelectItem>
+              </SelectContent>
+            </Select>
 
             {/* Search Input */}
             <div className="relative">

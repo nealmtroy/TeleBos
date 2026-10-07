@@ -12,6 +12,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface DateTimePickerProps {
   id?: string;
@@ -125,31 +132,37 @@ export function DateTimePicker({
             <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
               <Clock className="size-3.5 text-primary shrink-0" />
               <span className="font-semibold">Waktu:</span>
-              <select
-                aria-label="Jam"
-                value={hours}
-                onChange={(e) => handleTimeChange(parseInt(e.target.value, 10), minutes)}
-                className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1 font-mono font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+              <Select
+                value={String(hours)}
+                onValueChange={(val) => handleTimeChange(parseInt(val, 10), minutes)}
               >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {String(i).padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="Jam" className="h-7 w-[56px] px-2 py-1 text-xs font-mono font-medium bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {String(i).padStart(2, "0")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <span>:</span>
-              <select
-                aria-label="Menit"
-                value={minutes}
-                onChange={(e) => handleTimeChange(hours, parseInt(e.target.value, 10))}
-                className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1 font-mono font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+              <Select
+                value={String(minutes)}
+                onValueChange={(val) => handleTimeChange(hours, parseInt(val, 10))}
               >
-                {Array.from({ length: 60 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {String(i).padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="Menit" className="h-7 w-[56px] px-2 py-1 text-xs font-mono font-medium bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {String(i).padStart(2, "0")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-1.5">
               <Button

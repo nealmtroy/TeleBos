@@ -22,6 +22,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/store/auth-store";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataPagination } from "@/components/ui/pagination";
 import {
   Users,
@@ -336,18 +343,22 @@ function ContactsContent() {
             )}
           </div>
 
-          <select
-            value={selectedAccount}
-            onChange={(e) => setSelectedAccount(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-slate-200"
+          <Select
+            value={selectedAccount || "_none"}
+            onValueChange={(val) => setSelectedAccount(val === "_none" ? "" : val)}
           >
-            <option value="">{_("contacts.selectAccount")}</option>
-            {(Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : []).map((acc) => (
-              <option key={acc.id} value={acc.id}>
-                {acc.first_name || acc.phone}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full h-10 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-slate-200">
+              <SelectValue placeholder={_("contacts.selectAccount")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">{_("contacts.selectAccount")}</SelectItem>
+              {(Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : []).map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  {acc.first_name || acc.phone}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Action buttons: Import & Export */}
           <div className="grid grid-cols-2 gap-2">

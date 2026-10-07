@@ -39,6 +39,7 @@ import { ChatItem, FolderFilter } from "./types";
 import { TgIcon } from "./helpers";
 import { AccountSwitcher } from "./AccountSwitcher";
 import { ChatAvatar } from "./ChatAvatar";
+import { Switch } from "@/components/ui/switch";
 
 interface ChatLeftColumnProps {
   selectedAccount: string;
@@ -404,9 +405,10 @@ export function ChatLeftColumn({
                     <div style={{ fontSize: 14, fontWeight: 500, color: "var(--tg-text-primary)" }}>Dark Mode</div>
                     <div style={{ fontSize: 12, color: "var(--tg-text-tertiary)", marginTop: 2 }}>Day / Night color scheme</div>
                   </div>
-                  <button
-                    className={`tg-toggle${tgTheme === "dark" ? " is-on" : ""}`}
-                    onClick={() => setTgTheme(tgTheme === "dark" ? "light" : "dark")}
+                  <Switch
+                    checked={tgTheme === "dark"}
+                    onCheckedChange={(checked) => setTgTheme(checked ? "dark" : "light")}
+                    aria-label="Toggle dark mode"
                   />
                 </div>
 

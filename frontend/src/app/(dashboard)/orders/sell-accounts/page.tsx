@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/toast";
 import {
   Eyebrow,
@@ -386,12 +387,10 @@ export default function SellAccountsPage() {
                 <TableHeader>
                   <TableRow className="border-b border-border/60 bg-muted/10">
                     <TableHead className="w-12 text-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={allFilteredSelected}
-                        onChange={handleSelectAll}
+                        onCheckedChange={handleSelectAll}
                         aria-label="Select all eligible accounts"
-                        className="h-4 w-4 cursor-pointer rounded-md border-border text-primary focus:ring-primary/40"
                       />
                     </TableHead>
                     <TableHead>Account Identity</TableHead>
@@ -420,12 +419,10 @@ export default function SellAccountsPage() {
                           className="text-center"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={isSelected}
-                            onChange={() => handleToggleSelect(acc.id)}
+                            onCheckedChange={() => handleToggleSelect(acc.id)}
                             aria-label={`Select account ${acc.phone}`}
-                            className="h-4 w-4 cursor-pointer rounded-md border-border text-primary focus:ring-primary/40"
                           />
                         </TableCell>
 
@@ -505,13 +502,12 @@ export default function SellAccountsPage() {
                       isSelected && "bg-primary/[0.04]"
                     )}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isSelected}
-                      onChange={() => handleToggleSelect(acc.id)}
+                      onCheckedChange={() => handleToggleSelect(acc.id)}
                       onClick={(e) => e.stopPropagation()}
                       aria-label={`Select account ${acc.phone}`}
-                      className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded-md border-border text-primary focus:ring-primary/40"
+                      className="mt-1"
                     />
 
                     <div className="min-w-0 flex-1 space-y-1.5">

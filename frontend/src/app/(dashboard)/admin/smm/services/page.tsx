@@ -34,6 +34,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -210,16 +217,20 @@ export default function SmmServicesPage() {
           />
         </div>
         <div className="flex gap-2">
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border border-border bg-background rounded-xl px-3 py-2 text-sm flex-1 sm:flex-none"
+          <Select
+            value={categoryFilter || "all"}
+            onValueChange={(val) => setCategoryFilter(val === "all" ? "" : val)}
           >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full sm:w-[200px] h-10 border border-border bg-background rounded-xl px-3 py-2 text-sm">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -318,16 +329,20 @@ export default function SmmServicesPage() {
                               </span>
                             </TableCell>
                             <TableCell className="py-2 px-4 text-right whitespace-nowrap">
-                              <select
-                                value={svc.markup_percent}
-                                onChange={(e) => handleSetMarkup(svc, parseInt(e.target.value))}
-                                className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-primary-500"
+                              <Select
+                                value={String(svc.markup_percent)}
+                                onValueChange={(val) => handleSetMarkup(svc, parseInt(val))}
                                 disabled={updateService.isPending}
                               >
-                                {[0, 5, 10, 15, 20, 30, 50, 100].map((pct) => (
-                                  <option key={pct} value={pct}>{pct}%</option>
-                                ))}
-                              </select>
+                                <SelectTrigger className="h-7 w-[75px] text-xs px-2 py-1 bg-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[0, 5, 10, 15, 20, 30, 50, 100].map((pct) => (
+                                    <SelectItem key={pct} value={String(pct)}>{pct}%</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </TableCell>
                             <TableCell className="py-2 px-4 text-center text-xs text-gray-500 whitespace-nowrap">
                               {svc.min_qty.toLocaleString()} / {svc.max_qty.toLocaleString()}

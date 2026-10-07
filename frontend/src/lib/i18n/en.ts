@@ -57,15 +57,17 @@ const en: Dict = {
   },
 
   // ── Navbar ──────────────────────────────────────────────────────────────
-  navbar: {
-    settings: "Settings",
-    logout: "Logout",
-    logoutTitle: "Logout",
-    logoutConfirm: "Are you sure you want to logout from your account?",
-    cancel: "Cancel",
-    yesLogout: "Yes, Logout",
-    user: "User",
-  },
+    navbar: {
+      settings: "Settings",
+      logout: "Logout",
+      logoutTitle: "Logout",
+      logoutConfirm: "Are you sure you want to logout from your account?",
+      cancel: "Cancel",
+      yesLogout: "Yes, Logout",
+      user: "User",
+      balance: "Balance",
+      role: "Role",
+    },
 
   notifications: {
     open: "Open notifications",

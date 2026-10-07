@@ -25,6 +25,7 @@ import api from "@/lib/api";
 import { MessageItem } from "./types";
 import { getAvatarGradient } from "./helpers";
 import { getChatPhotoUrl } from "@/lib/avatar";
+import { Switch } from "@/components/ui/switch";
 
 interface ChatRightColumnProps {
   showRightDrawer: boolean;
@@ -313,9 +314,10 @@ export function ChatRightColumn({
                   </span>
                 </div>
               </div>
-              <button
-                className={`tg-toggle${notificationsOn ? " is-on" : ""}`}
-                onClick={() => setNotificationsOn(!notificationsOn)}
+              <Switch
+                checked={notificationsOn}
+                onCheckedChange={setNotificationsOn}
+                aria-label="Toggle notifications"
               />
             </div>
 

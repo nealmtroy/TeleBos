@@ -44,6 +44,13 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 type SortOption = "default" | "price_asc" | "price_desc" | "speed" | "min_asc";
@@ -493,17 +500,21 @@ function ServicesListView({
           <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
             <ArrowUpDown className="h-3.5 w-3.5" /> Urutkan:
           </span>
-          <select
+          <Select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="rounded-xl border border-input bg-background text-foreground text-xs px-3 py-2 outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary font-medium cursor-pointer"
+            onValueChange={(val) => setSortBy(val as SortOption)}
           >
-            <option value="default">Default</option>
-            <option value="price_asc">Harga: Termurah</option>
-            <option value="price_desc">Harga: Termahal</option>
-            <option value="speed">Kecepatan: Tercepat</option>
-            <option value="min_asc">Min Order: Terkecil</option>
-          </select>
+            <SelectTrigger className="w-[160px] h-9 text-xs rounded-xl font-medium">
+              <SelectValue placeholder="Urutkan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Default</SelectItem>
+              <SelectItem value="price_asc">Harga: Termurah</SelectItem>
+              <SelectItem value="price_desc">Harga: Termahal</SelectItem>
+              <SelectItem value="speed">Kecepatan: Tercepat</SelectItem>
+              <SelectItem value="min_asc">Min Order: Terkecil</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

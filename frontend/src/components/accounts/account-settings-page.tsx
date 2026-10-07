@@ -17,6 +17,14 @@ import { AccountAvatar } from "@/components/accounts/account-avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   invalidateTwoFAAccountQueries,
@@ -330,19 +338,18 @@ function PrivacySelect({
   _: (key: string, params?: any) => string;
 }) {
   return (
-    <select
-      id={id}
-      name={name}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="min-w-[130px] rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-    >
-      {PRIVACY_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {_(opt.label)}
-        </option>
-      ))}
-    </select>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger id={id} className="min-w-[140px] h-9 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {PRIVACY_OPTIONS.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {_(opt.label)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -982,22 +989,15 @@ function AutoReplySettings({ accountId, account }: { accountId: string; account:
       </p>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Label htmlFor="auto-reply-enabled" className="relative inline-flex cursor-pointer items-center">
-            <input
-              id="auto-reply-enabled"
-              name="auto_reply_enabled"
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              aria-describedby="auto-reply-description"
-              className="peer sr-only"
-            />
-            <span className="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-primary peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-checked:after:translate-x-full after:absolute after:start-0.5 after:size-5 after:rounded-full after:border after:border-border after:bg-background after:transition-transform" />
-            <span className="sr-only">{_("accountSettings.autoReply")}</span>
-          </Label>
-          <span className="text-sm text-foreground">
+          <Switch
+            id="auto-reply-enabled"
+            checked={enabled}
+            onCheckedChange={setEnabled}
+            aria-describedby="auto-reply-description"
+          />
+          <Label htmlFor="auto-reply-enabled" className="text-sm font-normal text-foreground cursor-pointer">
             {enabled ? _("accountSettings.autoReplyOn") : _("accountSettings.autoReplyOff")}
-          </span>
+          </Label>
         </div>
 
         <div className="space-y-1.5">

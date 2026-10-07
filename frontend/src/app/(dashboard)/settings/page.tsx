@@ -59,6 +59,14 @@ import {
   TwoFactorCard,
 } from "@/components/settings/settings-summary-cards";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type TabKey = SettingsSectionKey;
 
@@ -1443,11 +1451,10 @@ export default function SettingsPage() {
                                 : "bg-card border-border hover:bg-accent/60"
                             )}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={isChecked}
-                              onChange={() => toggleApiScope(scope)}
-                              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                              onCheckedChange={() => toggleApiScope(scope)}
+                              className="mt-0.5"
                             />
                             <div className="flex flex-col">
                               <code className="text-xs font-mono font-semibold text-foreground">{scope}</code>
@@ -1673,34 +1680,38 @@ export default function SettingsPage() {
                       <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         {_("settings.bankName")}
                       </label>
-                      <select
+                      <Select
                         value={newAccountProvider}
-                        onChange={(e) => setNewAccountProvider(e.target.value)}
-                        className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        onValueChange={setNewAccountProvider}
                       >
-                        {newAccountType === "bank" ? (
-                          <>
-                            <option value="BCA">BCA (Bank Central Asia)</option>
-                            <option value="Mandiri">Bank Mandiri</option>
-                            <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
-                            <option value="BNI">BNI (Bank Negara Indonesia)</option>
-                            <option value="CIMB Niaga">CIMB Niaga</option>
-                            <option value="Permata">Bank Permata</option>
-                            <option value="BSI">BSI (Bank Syariah Indonesia)</option>
-                            <option value="Danamon">Bank Danamon</option>
-                            <option value="Bank Jago">Bank Jago</option>
-                            <option value="SeaBank">SeaBank</option>
-                          </>
-                        ) : (
-                          <>
-                            <option value="DANA">DANA</option>
-                            <option value="GoPay">GoPay</option>
-                            <option value="OVO">OVO</option>
-                            <option value="ShopeePay">ShopeePay</option>
-                            <option value="LinkAja">LinkAja</option>
-                          </>
-                        )}
-                      </select>
+                        <SelectTrigger className="w-full h-10 rounded-lg">
+                          <SelectValue placeholder="Pilih Bank / E-Wallet" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {newAccountType === "bank" ? (
+                            <>
+                              <SelectItem value="BCA">BCA (Bank Central Asia)</SelectItem>
+                              <SelectItem value="Mandiri">Bank Mandiri</SelectItem>
+                              <SelectItem value="BRI">BRI (Bank Rakyat Indonesia)</SelectItem>
+                              <SelectItem value="BNI">BNI (Bank Negara Indonesia)</SelectItem>
+                              <SelectItem value="CIMB Niaga">CIMB Niaga</SelectItem>
+                              <SelectItem value="Permata">Bank Permata</SelectItem>
+                              <SelectItem value="BSI">BSI (Bank Syariah Indonesia)</SelectItem>
+                              <SelectItem value="Danamon">Bank Danamon</SelectItem>
+                              <SelectItem value="Bank Jago">Bank Jago</SelectItem>
+                              <SelectItem value="SeaBank">SeaBank</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="DANA">DANA</SelectItem>
+                              <SelectItem value="GoPay">GoPay</SelectItem>
+                              <SelectItem value="OVO">OVO</SelectItem>
+                              <SelectItem value="ShopeePay">ShopeePay</SelectItem>
+                              <SelectItem value="LinkAja">LinkAja</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1734,11 +1745,9 @@ export default function SettingsPage() {
 
                   <div className="pt-1">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={newAccountDefault}
-                        onChange={(e) => setNewAccountDefault(e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                        onCheckedChange={(checked) => setNewAccountDefault(!!checked)}
                       />
                       <span className="text-xs text-foreground font-medium">
                         {_("settings.isDefaultAccount")}

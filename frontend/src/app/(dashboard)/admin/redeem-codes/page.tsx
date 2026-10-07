@@ -25,6 +25,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export default function AdminRedeemCodesPage() {
@@ -169,32 +176,36 @@ function RedeemCodesContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label htmlFor="create-redeem-code-type" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.codeType")}</label>
-                  <select
-                    id="create-redeem-code-type"
-                    name="code_type"
+                  <Select
                     value={formData.code_type}
-                    onChange={(e) => setFormData({ ...formData, code_type: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition font-medium"
+                    onValueChange={(val) => setFormData({ ...formData, code_type: val })}
                   >
-                    <option value="subscription">{_("adminRedeem.typeSubscription")}</option>
-                    <option value="balance">{_("adminRedeem.typeBalance")}</option>
-                  </select>
+                    <SelectTrigger id="create-redeem-code-type" className="w-full h-10 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 border-gray-200 font-medium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="subscription">{_("adminRedeem.typeSubscription")}</SelectItem>
+                      <SelectItem value="balance">{_("adminRedeem.typeBalance")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {formData.code_type === "subscription" && (
                   <>
                     <div>
                       <label htmlFor="create-redeem-plan" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.plan")}</label>
-                      <select
-                        id="create-redeem-plan"
-                        name="plan"
+                      <Select
                         value={formData.plan}
-                        onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
+                        onValueChange={(val) => setFormData({ ...formData, plan: val })}
                       >
-                        <option value="pro">Pro</option>
-                        <option value="premium">Premium</option>
-                      </select>
+                        <SelectTrigger id="create-redeem-plan" className="w-full h-10 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 border-gray-200">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <label htmlFor="create-redeem-duration-days" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.durationDays")}</label>

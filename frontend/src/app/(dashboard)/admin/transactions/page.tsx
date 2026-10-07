@@ -47,6 +47,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -383,16 +390,17 @@ export default function AdminTransactionsPage() {
 
           {/* Status selector and Search input */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="h-9 px-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            >
-              <option value="all">Semua Status</option>
-              <option value="pending">Menunggu (Pending)</option>
-              <option value="approved">Disetujui (Approved)</option>
-              <option value="rejected">Ditolak (Rejected)</option>
-            </select>
+            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
+              <SelectTrigger className="h-9 w-full sm:w-[170px] text-xs">
+                <SelectValue placeholder="Semua Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="pending">Menunggu (Pending)</SelectItem>
+                <SelectItem value="approved">Disetujui (Approved)</SelectItem>
+                <SelectItem value="rejected">Ditolak (Rejected)</SelectItem>
+              </SelectContent>
+            </Select>
 
             <div className="relative">
               <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />

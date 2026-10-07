@@ -57,15 +57,17 @@ const id: Dict = {
   },
 
   // ── Bilah Atas ──────────────────────────────────────────────────────────
-  navbar: {
-    settings: "Pengaturan",
-    logout: "Keluar",
-    logoutTitle: "Keluar",
-    logoutConfirm: "Apakah Anda yakin ingin keluar dari akun ini?",
-    cancel: "Batal",
-    yesLogout: "Ya, Keluar",
-    user: "Pengguna",
-  },
+    navbar: {
+      settings: "Pengaturan",
+      logout: "Keluar",
+      logoutTitle: "Keluar",
+      logoutConfirm: "Apakah Anda yakin ingin keluar dari akun ini?",
+      cancel: "Batal",
+      yesLogout: "Ya, Keluar",
+      user: "Pengguna",
+      balance: "Saldo",
+      role: "Peran",
+    },
 
   notifications: {
     open: "Buka notifikasi",

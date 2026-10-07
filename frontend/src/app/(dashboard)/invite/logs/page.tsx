@@ -18,6 +18,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ClipboardList,
   Search,
   Plus,
@@ -117,30 +124,38 @@ function InviteLogsContent() {
       {/* Filters Bar */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs">
         <div className="flex flex-wrap gap-3">
-          <select
-            value={effectiveJobId}
-            onChange={(e) => setSelectedJobId(e.target.value)}
-            className="px-3.5 py-2 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 text-gray-800 w-full sm:min-w-64 sm:w-auto"
+          <Select
+            value={effectiveJobId || "_none"}
+            onValueChange={(val) => setSelectedJobId(val === "_none" ? "" : val)}
           >
-            <option value="">{_("invite.selectJob")}</option>
-            {(jobs || []).map((j: InviteJob) => (
-              <option key={j.id} value={j.id}>
-                {j.destination_group} — {new Date(j.created_at).toLocaleDateString()} ({j.status})
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="px-3.5 py-2 border border-gray-200 rounded-lg text-xs font-medium bg-gray-50 text-gray-800 w-full sm:min-w-64 sm:w-auto h-9">
+              <SelectValue placeholder={_("invite.selectJob")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">{_("invite.selectJob")}</SelectItem>
+              {(jobs || []).map((j: InviteJob) => (
+                <SelectItem key={j.id} value={j.id}>
+                  {j.destination_group} — {new Date(j.created_at).toLocaleDateString()} ({j.status})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3.5 py-2 border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 text-gray-800"
+          <Select
+            value={statusFilter || "all"}
+            onValueChange={(val) => setStatusFilter(val === "all" ? "" : val)}
           >
-            <option value="">{_("invite.allStatuses")}</option>
-            <option value="success">{_("invite.success")}</option>
-            <option value="error">{_("invite.error")}</option>
-            <option value="skipped">{_("invite.skipped")}</option>
-            <option value="already_member">{_("invite.alreadyMember")}</option>
-          </select>
+            <SelectTrigger className="px-3.5 py-2 border border-gray-200 rounded-lg text-xs font-medium bg-gray-50 text-gray-800 h-9 w-[160px]">
+              <SelectValue placeholder={_("invite.allStatuses")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{_("invite.allStatuses")}</SelectItem>
+              <SelectItem value="success">{_("invite.success")}</SelectItem>
+              <SelectItem value="error">{_("invite.error")}</SelectItem>
+              <SelectItem value="skipped">{_("invite.skipped")}</SelectItem>
+              <SelectItem value="already_member">{_("invite.alreadyMember")}</SelectItem>
+            </SelectContent>
+          </Select>
 
           <div className="flex-1 relative min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />

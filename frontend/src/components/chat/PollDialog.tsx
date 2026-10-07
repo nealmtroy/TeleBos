@@ -2,6 +2,14 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, X, BarChart } from "lucide-react";
 import api from "@/lib/api";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PollDialogProps {
   accountId: string;
@@ -129,29 +137,28 @@ export function PollDialog({ accountId, chatId, isOpen, onClose }: PollDialogPro
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <label htmlFor="poll-anonymous" className="text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                 Anonymous Voting
               </label>
-              <input
-                type="checkbox"
+              <Checkbox
+                id="poll-anonymous"
                 checked={pollAnonymous}
-                onChange={(e) => setPollAnonymous(e.target.checked)}
-                className="h-4 w-4 text-primary rounded border-slate-350 focus:ring-primary focus:outline-none cursor-pointer"
+                onCheckedChange={(checked) => setPollAnonymous(!!checked)}
               />
             </div>
 
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <label htmlFor="poll-quiz" className="text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                 Quiz Mode
               </label>
-              <input
-                type="checkbox"
+              <Checkbox
+                id="poll-quiz"
                 checked={pollIsQuiz}
-                onChange={(e) => {
-                  setPollIsQuiz(e.target.checked);
-                  if (!e.target.checked) setPollCorrectIdx(null);
+                onCheckedChange={(checked) => {
+                  const val = !!checked;
+                  setPollIsQuiz(val);
+                  if (!val) setPollCorrectIdx(null);
                 }}
-                className="h-4 w-4 text-primary rounded border-slate-350 focus:ring-primary focus:outline-none cursor-pointer"
               />
             </div>
 
@@ -160,18 +167,22 @@ export function PollDialog({ accountId, chatId, isOpen, onClose }: PollDialogPro
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
                   Correct Choice
                 </label>
-                <select
-                  value={pollCorrectIdx ?? ""}
-                  onChange={(e) => setPollCorrectIdx(e.target.value === "" ? null : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#202b36] rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-slate-800 dark:text-white text-xs font-medium"
+                <Select
+                  value={pollCorrectIdx != null ? String(pollCorrectIdx) : "_none"}
+                  onValueChange={(val) => setPollCorrectIdx(val === "_none" ? null : Number(val))}
                 >
-                  <option value="">Select correct option...</option>
-                  {pollOptions.map((opt, idx) => (
-                    <option key={idx} value={idx}>
-                      Option {idx + 1}: {opt || "(Empty)"}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-9 text-xs font-medium rounded-xl bg-slate-50 dark:bg-[#202b36] border-slate-200 dark:border-slate-800">
+                    <SelectValue placeholder="Select correct option..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Select correct option...</SelectItem>
+                    {pollOptions.map((opt, idx) => (
+                      <SelectItem key={idx} value={String(idx)}>
+                        Option {idx + 1}: {opt || "(Empty)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>

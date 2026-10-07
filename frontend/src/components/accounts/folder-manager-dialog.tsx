@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useAccountFolders,
   useCreateFolder,
@@ -258,11 +259,9 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                         key={account.id}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer transition group"
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isInFolder}
-                          onChange={() => toggleAccountInFolder(account.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          onCheckedChange={() => toggleAccountInFolder(account.id)}
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">

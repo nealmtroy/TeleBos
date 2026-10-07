@@ -17,6 +17,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   CheckCircle,
   XCircle,
   FileDown,
@@ -188,19 +195,23 @@ export default function BroadcastLogsPage() {
 
       {/* Job selector */}
       <div className="flex items-center gap-3 flex-wrap">
-        <select
-          value={selectedJobId}
-          onChange={(e) => setSelectedJobId(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white min-w-[250px]"
+        <Select
+          value={selectedJobId || "_none"}
+          onValueChange={(val) => setSelectedJobId(val === "_none" ? "" : val)}
         >
-          <option value="">{_("broadcastLogs.selectJob")}</option>
-          {(jobs || []).map((job) => (
-            <option key={job.id} value={job.id}>
-              [{job.status.toUpperCase()}] {formatDate(job.created_at)} —{" "}
-              {job.sent_count}/{job.total_groups} sent
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white min-w-[250px] h-10">
+            <SelectValue placeholder={_("broadcastLogs.selectJob")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none">{_("broadcastLogs.selectJob")}</SelectItem>
+            {(jobs || []).map((job) => (
+              <SelectItem key={job.id} value={job.id}>
+                [{job.status.toUpperCase()}] {formatDate(job.created_at)} —{" "}
+                {job.sent_count}/{job.total_groups} sent
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {selectedJobId && selectedJob && (
           <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -234,15 +245,19 @@ export default function BroadcastLogsPage() {
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-primary-500"
+            <Select
+              value={statusFilter || "all"}
+              onValueChange={(val) => setStatusFilter(val === "all" ? "" : val)}
             >
-              <option value="">{_("broadcastLogs.allStatuses")}</option>
-              <option value="success">{_("broadcastLogs.success")}</option>
-              <option value="error">{_("broadcastLogs.error")}</option>
-            </select>
+              <SelectTrigger className="w-[170px] h-10 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                <SelectValue placeholder={_("broadcastLogs.allStatuses")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{_("broadcastLogs.allStatuses")}</SelectItem>
+                <SelectItem value="success">{_("broadcastLogs.success")}</SelectItem>
+                <SelectItem value="error">{_("broadcastLogs.error")}</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex-1" />
             <button
               onClick={() => handleExport("csv")}

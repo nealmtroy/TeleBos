@@ -50,6 +50,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DoubleBezelShell,
   ButtonInButton,
   MetricReadout,
@@ -1062,31 +1069,35 @@ export default function OrderHistoryPage() {
         {/* Filter Controls Group */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5 items-center">
           {/* Status Dropdown */}
-          <div className="relative w-full sm:w-auto">
-            <select
+          <div className="w-full sm:w-auto">
+            <Select
               value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
+              onValueChange={(val) => {
+                setStatusFilter(val);
                 setPage(1);
               }}
-              className="w-full sm:w-[150px] appearance-none border border-border/90 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs font-semibold bg-card dark:bg-slate-900/90 text-foreground outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150 cursor-pointer"
             >
-              <option value="all">
-                {locale === "id" ? "Semua Status" : "All Statuses"}
-              </option>
-              <option value="Selesai">
-                {locale === "id" ? "● Selesai" : "● Completed"}
-              </option>
-              <option value="Proses">
-                {locale === "id" ? "● Proses" : "● Processing"}
-              </option>
-              <option value="Menunggu">
-                {locale === "id" ? "● Menunggu" : "● Pending"}
-              </option>
-              <option value="Dibatalkan">
-                {locale === "id" ? "● Dibatalkan" : "● Cancelled"}
-              </option>
-            </select>
+              <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs font-semibold rounded-xl bg-card dark:bg-slate-900/90 border-border/90">
+                <SelectValue placeholder={locale === "id" ? "Semua Status" : "All Statuses"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {locale === "id" ? "Semua Status" : "All Statuses"}
+                </SelectItem>
+                <SelectItem value="Selesai">
+                  {locale === "id" ? "● Selesai" : "● Completed"}
+                </SelectItem>
+                <SelectItem value="Proses">
+                  {locale === "id" ? "● Proses" : "● Processing"}
+                </SelectItem>
+                <SelectItem value="Menunggu">
+                  {locale === "id" ? "● Menunggu" : "● Pending"}
+                </SelectItem>
+                <SelectItem value="Dibatalkan">
+                  {locale === "id" ? "● Dibatalkan" : "● Cancelled"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Date Picker Range with Presets */}

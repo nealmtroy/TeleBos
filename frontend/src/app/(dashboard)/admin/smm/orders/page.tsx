@@ -29,6 +29,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -130,20 +137,24 @@ export default function SmmOrdersPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm flex-1 sm:flex-none bg-white outline-none focus:ring-1 focus:ring-primary-500"
+          <Select
+            value={statusFilter || "all"}
+            onValueChange={(val) => setStatusFilter(val === "all" ? "" : val)}
           >
-            <option value="">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Processing">Processing</option>
-            <option value="In progress">In Progress</option>
-            <option value="Partial">Partial</option>
-            <option value="Success">Success</option>
-            <option value="Error">Error</option>
-            <option value="Failed">Failed</option>
-          </select>
+            <SelectTrigger className="w-full sm:w-[170px] h-10 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="Pending">Pending</SelectItem>
+              <SelectItem value="Processing">Processing</SelectItem>
+              <SelectItem value="In progress">In Progress</SelectItem>
+              <SelectItem value="Partial">Partial</SelectItem>
+              <SelectItem value="Success">Success</SelectItem>
+              <SelectItem value="Error">Error</SelectItem>
+              <SelectItem value="Failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" onClick={handleRefreshAll} disabled={refreshAllMutation.isPending} size="sm">
             {refreshAllMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -750,7 +750,7 @@ export function Sidebar() {
                               <Wallet className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                               {locale === "id" ? "Saldo" : "Balance"}
                             </span>
-                            <span className="font-semibold text-emerald-400">Rp {(user?.balance || 0).toLocaleString()}</span>
+                            <span className="font-semibold text-emerald-400">Rp {(user?.balance || 0).toLocaleString("id-ID")}</span>
                           </div>
 
                           <DropdownMenuSeparator className="border-neutral-800 my-1" />

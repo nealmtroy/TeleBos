@@ -48,6 +48,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataPagination } from "@/components/ui/pagination";
 import {
   Table,
@@ -627,54 +634,66 @@ function BroadcastManagementContent() {
           </button>
 
           {/* Status Select */}
-          <select
+          <Select
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onValueChange={(val) => {
+              setStatusFilter(val);
               setPage(1);
             }}
-            className="px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-medium"
           >
-            <option value="all">All Statuses</option>
-            <option value="running">Running</option>
-            <option value="paused">Paused</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="cancelled">Stopped (Cancelled)</option>
-          </select>
+            <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-slate-50 border-slate-200">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="running">Running</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="cancelled">Stopped (Cancelled)</SelectItem>
+            </SelectContent>
+          </Select>
 
           {/* Loop Select */}
-          <select
+          <Select
             value={loopFilter}
-            onChange={(e) => {
-              setLoopFilter(e.target.value);
+            onValueChange={(val) => {
+              setLoopFilter(val);
               setPage(1);
             }}
-            className="px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-medium"
           >
-            <option value="all">All Types</option>
-            <option value="loop">Looping Only</option>
-            <option value="single">Single Run Only</option>
-          </select>
+            <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-slate-50 border-slate-200">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="loop">Looping Only</SelectItem>
+              <SelectItem value="single">Single Run Only</SelectItem>
+            </SelectContent>
+          </Select>
 
           {/* Sort Select */}
-          <select
+          <Select
             value={`${sortBy}:${sortOrder}`}
-            onChange={(e) => {
-              const [sb, so] = e.target.value.split(":");
+            onValueChange={(val) => {
+              const [sb, so] = val.split(":");
               setSortBy(sb);
               setSortOrder(so as "asc" | "desc");
               setPage(1);
             }}
-            className="px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700 font-semibold"
           >
-            <option value="updated_at:desc">Latest Updated</option>
-            <option value="sent_count:desc">Sent: Terbanyak (High to Low)</option>
-            <option value="sent_count:asc">Sent: Terdikit (Low to High)</option>
-            <option value="fail_count:desc">Failed: Terbanyak</option>
-            <option value="created_at:desc">Newest Created</option>
-            <option value="created_at:asc">Oldest Created</option>
-          </select>
+            <SelectTrigger className="h-9 w-[190px] text-xs font-semibold bg-slate-50 border-slate-200">
+              <SelectValue placeholder="Latest Updated" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated_at:desc">Latest Updated</SelectItem>
+              <SelectItem value="sent_count:desc">Sent: Terbanyak (High to Low)</SelectItem>
+              <SelectItem value="sent_count:asc">Sent: Terdikit (Low to High)</SelectItem>
+              <SelectItem value="fail_count:desc">Failed: Terbanyak</SelectItem>
+              <SelectItem value="created_at:desc">Newest Created</SelectItem>
+              <SelectItem value="created_at:asc">Oldest Created</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

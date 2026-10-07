@@ -19,6 +19,14 @@ import { useAutoJoinSocket } from "@/hooks/use-socket";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buildJoinTasks } from "./autoJoinTaskPlan";
@@ -662,19 +670,23 @@ export default function AutoJoinPage() {
                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                       Pilih Group List Tersimpan:
                     </label>
-                    <select
-                      value={selectedListId}
-                      onChange={(e) => setSelectedListId(e.target.value)}
+                    <Select
+                      value={selectedListId || "_none"}
+                      onValueChange={(val) => setSelectedListId(val === "_none" ? "" : val)}
                       disabled={isRunning || listsLoading}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     >
-                      <option value="">-- Pilih Group List --</option>
-                      {(savedGroupLists || []).map((list) => (
-                        <option key={list.id} value={list.id}>
-                          {list.name} ({list.items.length} target)
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900">
+                        <SelectValue placeholder="-- Pilih Group List --" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">-- Pilih Group List --</SelectItem>
+                        {(savedGroupLists || []).map((list) => (
+                          <SelectItem key={list.id} value={list.id}>
+                            {list.name} ({list.items.length} target)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {activeSavedList ? (
@@ -844,12 +856,10 @@ export default function AutoJoinPage() {
                   <span className="font-semibold text-gray-800 dark:text-slate-100">Randomize Jitter (± 2s)</span>
                   <p className="text-xs text-gray-400 dark:text-slate-300">Variasi jeda agar lebih natural</p>
                 </div>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={randomizeDelay}
-                  onChange={(e) => setRandomizeDelay(e.target.checked)}
+                  onCheckedChange={(checked) => setRandomizeDelay(Boolean(checked))}
                   disabled={isRunning}
-                  className="w-4 h-4 accent-primary-600 rounded cursor-pointer"
                 />
               </div>
 

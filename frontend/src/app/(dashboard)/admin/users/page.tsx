@@ -54,6 +54,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn, formatDate } from "@/lib/utils";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -485,20 +492,24 @@ function UsersContent() {
 
                       {/* Role */}
                       <TableCell className="py-3 px-4 text-center whitespace-normal">
-                        <select
+                        <Select
                           value={u.role}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className={cn(
-                            "text-xs font-semibold px-2 py-1 rounded-lg border transition focus:outline-none focus:ring-1 focus:ring-primary-500",
-                            ROLE_COLORS[u.role] || "bg-gray-100 text-gray-700"
-                          )}
+                          onValueChange={(val) => handleRoleChange(u.id, val)}
                           disabled={updateRole.isPending}
                         >
-                          <option value="basic">Basic</option>
-                          <option value="pro">Pro</option>
-                          <option value="premium">Premium</option>
-                          <option value="owner">Owner</option>
-                        </select>
+                          <SelectTrigger className={cn(
+                            "h-7 text-xs font-semibold px-2 rounded-lg border",
+                            ROLE_COLORS[u.role] || "bg-gray-100 text-gray-700"
+                          )}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="premium">Premium</SelectItem>
+                            <SelectItem value="owner">Owner</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
 
                       {/* Balance */}
@@ -918,17 +929,21 @@ function UsersContent() {
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Durasi Penangguhan
                 </label>
-                <select
+                <Select
                   value={suspendDuration}
-                  onChange={(e) => setSuspendDuration(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  onValueChange={setSuspendDuration}
                 >
-                  <option value="0">Permanen (Sampai di-unsuspend manual)</option>
-                  <option value="1">1 Hari</option>
-                  <option value="3">3 Hari</option>
-                  <option value="7">7 Hari (1 Minggu)</option>
-                  <option value="30">30 Hari (1 Bulan)</option>
-                </select>
+                  <SelectTrigger className="w-full h-10 text-xs rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Permanen (Sampai di-unsuspend manual)</SelectItem>
+                    <SelectItem value="1">1 Hari</SelectItem>
+                    <SelectItem value="3">3 Hari</SelectItem>
+                    <SelectItem value="7">7 Hari (1 Minggu)</SelectItem>
+                    <SelectItem value="30">30 Hari (1 Bulan)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>

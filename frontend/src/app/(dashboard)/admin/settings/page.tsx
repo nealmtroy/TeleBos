@@ -40,6 +40,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -649,14 +651,12 @@ export default function AdminSystemConfigPage() {
               </div>
 
               <div className="flex items-center gap-2 pt-1">
-                <input
+                <Checkbox
                   id="watermark-enabled"
-                  type="checkbox"
                   checked={watermarkEnabled}
-                  onChange={(e) => setWatermarkEnabled(e.target.checked)}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  onCheckedChange={(checked) => setWatermarkEnabled(!!checked)}
                 />
-                <label htmlFor="watermark-enabled" className="text-xs text-gray-700 dark:text-slate-300 font-medium">
+                <label htmlFor="watermark-enabled" className="text-xs text-gray-700 dark:text-slate-300 font-medium cursor-pointer">
                   Aktifkan Watermark pada Pesan Broadcast Paket Gratis
                 </label>
               </div>
@@ -690,14 +690,13 @@ export default function AdminSystemConfigPage() {
                   Jika diaktifkan, hanya Owner dan Administrator yang dapat login dan menggunakan platform.
                 </p>
               </div>
-              <input
-                type="checkbox"
+              <Switch
                 checked={maintenanceMode}
-                onChange={(e) => {
-                  setMaintenanceMode(e.target.checked);
-                  toast.success(e.target.checked ? "Mode pemeliharaan diaktifkan" : "Mode pemeliharaan dinonaktifkan");
+                onCheckedChange={(checked) => {
+                  setMaintenanceMode(checked);
+                  toast.success(checked ? "Mode pemeliharaan diaktifkan" : "Mode pemeliharaan dinonaktifkan");
                 }}
-                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                aria-label="Toggle maintenance mode"
               />
             </div>
 
@@ -710,14 +709,13 @@ export default function AdminSystemConfigPage() {
                   Izinkan pengunjung baru membuat akun dan mendaftar di TeleBos secara publik.
                 </p>
               </div>
-              <input
-                type="checkbox"
+              <Switch
                 checked={registrationOpen}
-                onChange={(e) => {
-                  setRegistrationOpen(e.target.checked);
-                  toast.success(e.target.checked ? "Pendaftaran dibuka" : "Pendaftaran ditutup");
+                onCheckedChange={(checked) => {
+                  setRegistrationOpen(checked);
+                  toast.success(checked ? "Pendaftaran dibuka" : "Pendaftaran ditutup");
                 }}
-                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                aria-label="Toggle open registration"
               />
             </div>
           </CardContent>

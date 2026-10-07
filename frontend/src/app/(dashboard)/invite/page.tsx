@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuthStore } from "@/store/auth-store";
 import { useAccounts } from "@/hooks/use-accounts";
 import { useAccountFolders } from "@/hooks/use-account-folders";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
@@ -16,8 +17,15 @@ import type { Account } from "@/hooks/use-accounts";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@/store/auth-store";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   UserPlus,
   Play,
@@ -275,11 +283,9 @@ export default function InvitePage() {
                           : "border-gray-200 hover:border-gray-300"
                       )}
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="pointer-events-none"
                       />
                       <AccountAvatar
                         accountId={acc.id}
@@ -316,17 +322,21 @@ export default function InvitePage() {
               <label className="block text-xs font-medium text-gray-500 mb-1">
                 {_("invite.destinationType")}
               </label>
-              <select
+              <Select
                 value={destType}
-                onChange={(e) => setDestType(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                onValueChange={(val: any) => setDestType(val)}
               >
-                {destTypeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-200 rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {destTypeOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -364,17 +374,21 @@ export default function InvitePage() {
           <p className="text-xs text-gray-500">{_("invite.sourceGroupsDesc")}</p>
 
           <div className="flex flex-col sm:flex-row gap-2">
-            <select
+            <Select
               value={newSourceType}
-              onChange={(e) => setNewSourceType(e.target.value as any)}
-              className="w-full sm:w-32 sm:shrink-0 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onValueChange={(val: any) => setNewSourceType(val)}
             >
-              {destTypeOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full sm:w-36 sm:shrink-0 h-10 text-sm bg-white border-gray-200 rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {destTypeOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <input
               type="text"
               placeholder={

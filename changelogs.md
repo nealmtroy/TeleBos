@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-08
+- **[2511270f](https://github.com/nealmtroy/TeleBos/commit/2511270f)**: fix(backend): reload SmmService after update to prevent MissingGreenlet on updated_at
+
 ## 2026-10-06
 - **[a0600e87](https://github.com/nealmtroy/TeleBos/commit/a0600e87)**: feat(settings): redesign settings to responsive two-pane inline layout with mobile drilldown
 - **[bdc3331c](https://github.com/nealmtroy/TeleBos/commit/bdc3331c)**: feat(ui): apply adaptive custom-scrollbar to dashboard shell and content container

@@ -27,6 +27,14 @@ import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { BroadcastEntitlementBanner } from "@/components/broadcast/broadcast-entitlement-banner";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function NewBroadcastPage() {
   const _ = useT();
@@ -364,11 +372,9 @@ export default function NewBroadcastPage() {
                         : "border-gray-200 hover:border-gray-300"
                     )}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isSelected}
-                      readOnly
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 pointer-events-none"
+                      className="pointer-events-none"
                     />
                     <AccountAvatar
                       accountId={acc.id}
@@ -405,21 +411,27 @@ export default function NewBroadcastPage() {
         {/* Group list */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.groupList")}</label>
-          <select
-            value={groupListId}
-            onChange={(e) => setGroupListId(e.target.value)}
-            className={cn(
-              "w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all duration-200",
-              attemptedSubmit && !groupListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
-            )}
+          <Select
+            value={groupListId || "_none"}
+            onValueChange={(val) => setGroupListId(val === "_none" ? "" : val)}
           >
-            <option value="">{_("newBroadcast.groupListPlaceholder")}</option>
-            {(groupLists || []).map((gl) => (
-              <option key={gl.id} value={gl.id}>
-                {gl.name} ({gl.items.length} {_("groupLists.groups")})
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              className={cn(
+                "w-full h-11 text-sm bg-white rounded-lg",
+                attemptedSubmit && !groupListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
+              )}
+            >
+              <SelectValue placeholder={_("newBroadcast.groupListPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">{_("newBroadcast.groupListPlaceholder")}</SelectItem>
+              {(groupLists || []).map((gl) => (
+                <SelectItem key={gl.id} value={gl.id}>
+                  {gl.name} ({gl.items.length} {_("groupLists.groups")})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Mode */}
@@ -451,21 +463,27 @@ export default function NewBroadcastPage() {
         {mode === "multi_random" ? (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.textList")}</label>
-            <select
-              value={textListId}
-              onChange={(e) => setTextListId(e.target.value)}
-              className={cn(
-                "w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white transition-all duration-200",
-                attemptedSubmit && !textListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
-              )}
+            <Select
+              value={textListId || "_none"}
+              onValueChange={(val) => setTextListId(val === "_none" ? "" : val)}
             >
-              <option value="">{_("newBroadcast.textListPlaceholder")}</option>
-              {(textLists || []).map((tl) => (
-                <option key={tl.id} value={tl.id}>
-                  {tl.name} ({tl.texts.length} {_("textLists.texts")})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                className={cn(
+                  "w-full h-11 text-sm bg-white rounded-lg",
+                  attemptedSubmit && !textListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
+                )}
+              >
+                <SelectValue placeholder={_("newBroadcast.textListPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">{_("newBroadcast.textListPlaceholder")}</SelectItem>
+                {(textLists || []).map((tl) => (
+                  <SelectItem key={tl.id} value={tl.id}>
+                    {tl.name} ({tl.texts.length} {_("textLists.texts")})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : (
           <div>
@@ -486,12 +504,10 @@ export default function NewBroadcastPage() {
         {/* Delays & Randomize */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="delayRandomized"
               checked={delayRandomized}
-              onChange={(e) => setDelayRandomized(e.target.checked)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+              onCheckedChange={(checked) => setDelayRandomized(!!checked)}
             />
             <label htmlFor="delayRandomized" className="text-sm font-medium text-gray-700 cursor-pointer">
               Randomize Delay per Group (5-30 seconds)
@@ -543,12 +559,10 @@ export default function NewBroadcastPage() {
             Cycle Log Destination
           </label>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="logWebOnly"
               checked={logWebOnly}
-              onChange={(e) => setLogWebOnly(e.target.checked)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+              onCheckedChange={(checked) => setLogWebOnly(!!checked)}
             />
             <label htmlFor="logWebOnly" className="text-sm text-gray-700 cursor-pointer">
               Web only (don't send cycle logs to Telegram)

@@ -19,6 +19,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useAccounts, useTransferAccounts, type Account } from "@/hooks/use-accounts";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
 import { useToast } from "@/components/ui/toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
@@ -559,12 +560,12 @@ export function TransferAccountsDialog({
           <div className="space-y-3 pt-2">
             <div className="p-3.5 bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/80 rounded-xl space-y-2">
               <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
+                  id="override-limit"
                   checked={overrideLimit}
-                  onChange={(e) => setOverrideLimit(e.target.checked)}
+                  onCheckedChange={(checked) => setOverrideLimit(!!checked)}
                   disabled={transferMutation.isPending}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mt-0.5"
                 />
                 <div className="text-xs">
                   <span className="font-semibold text-gray-900 dark:text-slate-100">

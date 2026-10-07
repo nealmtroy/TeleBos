@@ -11,6 +11,13 @@ import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Plus, X, Link as LinkIcon, RefreshCw,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
 import { ChatAvatar } from "@/components/chat/ChatAvatar";
@@ -235,18 +242,22 @@ function GroupsChannelsContent() {
           </div>
         </div>
 
-        <select
-          value={selectedAccount}
-          onChange={(e) => setSelectedAccount(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
+        <Select
+          value={selectedAccount || "_none"}
+          onValueChange={(val) => setSelectedAccount(val === "_none" ? "" : val)}
         >
-          <option value="">{_("chats.selectAccount")}</option>
-          {(Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : []).map((acc) => (
-            <option key={acc.id} value={acc.id}>
-              {acc.first_name || acc.phone}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full h-10 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-200">
+            <SelectValue placeholder={_("chats.selectAccount")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none">{_("chats.selectAccount")}</SelectItem>
+            {(Array.isArray(accounts) ? accounts.filter((acc) => acc.is_active && !acc.for_sale) : []).map((acc) => (
+              <SelectItem key={acc.id} value={acc.id}>
+                {acc.first_name || acc.phone}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {selectedAccount && syncedAt && (
           <div className="text-xs text-gray-500 dark:text-slate-400 flex items-center justify-between">

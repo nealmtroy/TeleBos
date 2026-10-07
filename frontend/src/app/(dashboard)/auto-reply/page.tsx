@@ -26,6 +26,8 @@ import {
   Edit3,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -311,20 +313,19 @@ export default function AutoReplyPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={bulkEnabled}
-                    onChange={(e) => setBulkEnabled(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
-                </label>
-                <span className="text-xs font-medium text-gray-700 dark:text-slate-300">
+                <Switch
+                  id="bulk-toggle"
+                  checked={bulkEnabled}
+                  onCheckedChange={setBulkEnabled}
+                />
+                <label
+                  htmlFor="bulk-toggle"
+                  className="text-xs font-medium text-gray-700 dark:text-slate-300 cursor-pointer"
+                >
                   {bulkEnabled
                     ? _("autoReply.enableAll")
                     : _("autoReply.disableAll")}
-                </span>
+                </label>
               </div>
 
               {/* Set / Edit Bulk Text Button */}
@@ -395,14 +396,13 @@ export default function AutoReplyPage() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-2xs">
         {/* Table header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700 text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">
-          <label className="flex items-center cursor-pointer shrink-0">
-            <input
-              type="checkbox"
+          <div className="flex items-center shrink-0">
+            <Checkbox
               checked={allPageSelected}
-              onChange={toggleSelectAll}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+              onCheckedChange={toggleSelectAll}
+              aria-label="Select all"
             />
-          </label>
+          </div>
           <span className="flex-1 min-w-0">Account</span>
           <span className="hidden sm:block w-72 text-center">Message</span>
           <span className="w-20 text-center">Status</span>
@@ -431,17 +431,16 @@ export default function AutoReplyPage() {
                   )}
                 >
                   {/* Checkbox */}
-                  <label
-                    className="flex items-center shrink-0 cursor-pointer"
+                  <div
+                    className="flex items-center shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isSelected}
-                      onChange={() => toggleSelect(account.id)}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 cursor-pointer"
+                      onCheckedChange={() => toggleSelect(account.id)}
+                      aria-label={`Select account ${account.phone}`}
                     />
-                  </label>
+                  </div>
 
                   {/* Account info */}
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -548,15 +547,11 @@ export default function AutoReplyPage() {
                     className="w-16 flex justify-center"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={account.auto_reply_enabled ?? false}
-                        onChange={() => handleQuickToggle(account)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-primary-600" />
-                    </label>
+                    <Switch
+                      checked={account.auto_reply_enabled ?? false}
+                      onCheckedChange={() => handleQuickToggle(account)}
+                      aria-label="Toggle auto reply"
+                    />
                   </div>
                 </div>
               );
@@ -608,18 +603,17 @@ export default function AutoReplyPage() {
           isLoading={modalSaving}
           extraHeaderContent={
             <div className="flex items-center gap-2.5 pt-2 pb-1 border-t border-gray-100 dark:border-slate-800">
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={modalEnabled}
-                  onChange={(e) => setModalEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-8 h-4.5 bg-gray-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-transform peer-checked:bg-primary-600" />
-              </label>
-              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">
+              <Switch
+                id="modal-enabled-toggle"
+                checked={modalEnabled}
+                onCheckedChange={setModalEnabled}
+              />
+              <label
+                htmlFor="modal-enabled-toggle"
+                className="text-xs font-medium text-gray-700 dark:text-slate-300 cursor-pointer"
+              >
                 {_("autoReply.enableForAccount")}
-              </span>
+              </label>
             </div>
           }
         />

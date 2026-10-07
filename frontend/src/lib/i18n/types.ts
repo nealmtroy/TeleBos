@@ -57,15 +57,17 @@ export interface Dict {
   };
 
   // Navbar
-  navbar: {
-    settings: string;
-    logout: string;
-    logoutTitle: string;
-    logoutConfirm: string;
-    cancel: string;
-    yesLogout: string;
-    user: string;
-  };
+    navbar: {
+      settings: string;
+      logout: string;
+      logoutTitle: string;
+      logoutConfirm: string;
+      cancel: string;
+      yesLogout: string;
+      user: string;
+      balance: string;
+      role: string;
+    };
 
   notifications: {
     open: string;
