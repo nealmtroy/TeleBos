@@ -235,6 +235,7 @@ async def update_service(db: AsyncSession, service_id: int, updates: dict) -> Sm
             setattr(service, key, value)
 
     await db.flush()
+    await db.refresh(service)  # Reload DB-generated fields (updated_at via onupdate=func.now())
     return service
 
 
