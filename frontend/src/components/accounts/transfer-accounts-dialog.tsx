@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useAccounts, useTransferAccounts, type Account } from "@/hooks/use-accounts";
+import { Badge } from "@/components/ui/badge";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
 import { useToast } from "@/components/ui/toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -285,9 +286,9 @@ export function TransferAccountsDialog({
                 <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100">
                   Transfer Akun Telegram
                 </DialogTitle>
-                <span className="px-2 py-0.5 text-[11px] font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-800">
+                <Badge variant="secondary" className="text-[11px] font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
                   Owner Only
-                </span>
+                </Badge>
               </div>
               <DialogDescription className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                 Pindahkan kepemilikan akun Telegram ke pengguna lain melalui alamat email
@@ -354,17 +355,16 @@ export function TransferAccountsDialog({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 rounded text-[11px] font-semibold capitalize",
-                            u.role === "owner" && "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300",
-                            u.role === "premium" && "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
-                            u.role === "pro" && "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300",
-                            u.role === "basic" && "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                          )}
+                        <Badge
+                          variant={
+                            u.role === "owner" ? "secondary" :
+                            u.role === "premium" ? "warning" :
+                            u.role === "pro" ? "info" : "outline"
+                          }
+                          className="capitalize text-[11px]"
                         >
                           {u.role}
-                        </span>
+                        </Badge>
                       </div>
                     </button>
                   ))}
@@ -412,9 +412,9 @@ export function TransferAccountsDialog({
               <label className="text-sm font-semibold text-gray-900 dark:text-slate-200 flex items-center gap-1.5">
                 <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Pilih Akun yang Akan Dipindahkan
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                <Badge variant="info" className="text-xs font-semibold">
                   {selectedIds.size} dipilih
-                </span>
+                </Badge>
               </label>
 
               <div className="flex items-center gap-2 text-xs">

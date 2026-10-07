@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { Calendar, Clock, Search, RefreshCw, Info, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface EstimateResult {
   status: "exact" | "approx" | "older_than" | "newer_than" | "unknown";
@@ -55,19 +56,19 @@ export default function AgeCheckerPage() {
   };
 
   const getStatusBadge = (status: EstimateResult["status"]) => {
-    const statusMap = {
-      exact: { text: _("ageChecker.statusExact"), color: "bg-green-50 text-green-700 border-green-200" },
-      approx: { text: _("ageChecker.statusApprox"), color: "bg-blue-50 text-blue-700 border-blue-200" },
-      older_than: { text: _("ageChecker.statusOlder"), color: "bg-amber-50 text-amber-700 border-amber-200" },
-      newer_than: { text: _("ageChecker.statusNewer"), color: "bg-amber-50 text-amber-700 border-amber-200" },
-      unknown: { text: _("ageChecker.statusUnknown"), color: "bg-gray-50 text-gray-500 border-gray-200" },
+    const statusMap: Record<EstimateResult["status"], { text: string; variant: "success" | "info" | "warning" | "secondary" }> = {
+      exact: { text: _("ageChecker.statusExact"), variant: "success" },
+      approx: { text: _("ageChecker.statusApprox"), variant: "info" },
+      older_than: { text: _("ageChecker.statusOlder"), variant: "warning" },
+      newer_than: { text: _("ageChecker.statusNewer"), variant: "warning" },
+      unknown: { text: _("ageChecker.statusUnknown"), variant: "secondary" },
     };
 
     const current = statusMap[status] || statusMap.unknown;
     return (
-      <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border", current.color)}>
+      <Badge variant={current.variant} className="text-xs font-medium">
         {current.text}
-      </span>
+      </Badge>
     );
   };
 

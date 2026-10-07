@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { DatePickerWithRange } from "@/components/ui/date-picker-range";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 import { MessageItem } from "./types";
 
@@ -76,13 +77,17 @@ export function ChatSearchBar({
           />
           <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-400" />
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 rounded-lg transition"
-          title="Close Search"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 rounded-lg transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Close Search</TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

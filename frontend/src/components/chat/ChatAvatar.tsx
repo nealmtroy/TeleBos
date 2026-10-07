@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   getAccountPhotoUrl,
@@ -9,6 +8,7 @@ import {
   getTelegramAvatarColor,
 } from "@/lib/avatar";
 import { Bookmark, ShieldCheck, Bot } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ChatAvatarProps {
   accountId: string;
@@ -53,8 +53,6 @@ export function ChatAvatar({
     ? getAccountPhotoUrl(accountId, photoVersion)
     : getChatPhotoUrl(accountId, chatId, photoVersion);
 
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-
   // An inactive/expired account with no cached photo can't be fetched
   // on demand, so skip the request rather than take a 404 in the console.
   const isPhotoCached = !!profilePhotoPath;
@@ -63,12 +61,6 @@ export function ChatAvatar({
   const shouldRenderImage =
     (isAccount ? (hasProfilePhoto ?? (photoVersion ?? 0) > 0) : photoVersion != null) &&
     isImageLoadable;
-
-  const showFallback = !shouldRenderImage || failedUrl === photoUrl;
-
-  useEffect(() => {
-    setFailedUrl(null);
-  }, [photoUrl]);
 
   // Determine fallback initials
   const initial = getAvatarInitial(chatTitle, "?");
@@ -90,7 +82,7 @@ export function ChatAvatar({
   }
 
   return (
-    <div
+    <Avatar
       className={cn(
         "rounded-full flex-shrink-0 relative overflow-hidden flex items-center justify-center font-bold text-white select-none",
         sizeClassName,
@@ -98,28 +90,31 @@ export function ChatAvatar({
       )}
       style={{ backgroundColor }}
     >
-      {!showFallback && (
-        <img
+      {shouldRenderImage && (
+        <AvatarImage
           src={photoUrl}
-          onError={() => setFailedUrl(photoUrl)}
           className="w-full h-full object-cover rounded-full absolute inset-0"
-          alt=""
+          alt={chatTitle || ""}
         />
       )}
-      {showFallback && (
-        <span className={cn("flex items-center justify-center w-full h-full text-sm", fallbackTextClassName)}>
-          {isSavedMessages ? (
-            <Bookmark className="w-1/2 h-1/2 text-white" />
-          ) : isTelegram ? (
-            <ShieldCheck className="w-1/2 h-1/2 text-white" />
-          ) : isBot ? (
-            <Bot className="w-1/2 h-1/2 text-white" />
-          ) : (
-            initial
-          )}
-        </span>
-      )}
+      <AvatarFallback
+        className={cn(
+          "flex items-center justify-center w-full h-full text-sm font-bold text-white",
+          fallbackTextClassName
+        )}
+        style={{ backgroundColor: "transparent" }}
+      >
+        {isSavedMessages ? (
+          <Bookmark className="w-1/2 h-1/2 text-white" />
+        ) : isTelegram ? (
+          <ShieldCheck className="w-1/2 h-1/2 text-white" />
+        ) : isBot ? (
+          <Bot className="w-1/2 h-1/2 text-white" />
+        ) : (
+          initial
+        )}
+      </AvatarFallback>
       {children}
-    </div>
+    </Avatar>
   );
 }

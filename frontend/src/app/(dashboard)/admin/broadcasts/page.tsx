@@ -47,6 +47,7 @@ import {
   Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -885,28 +886,29 @@ function BroadcastManagementContent() {
                       {/* Mode & Loop Column */}
                       <TableCell className="py-3.5 px-4 text-center whitespace-normal">
                         {job.loop_enabled ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          <Badge variant="outline" className="gap-1 text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
                             <Repeat className="h-3 w-3" />
                             Looping ({job.delay_after_all}s)
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-200">
+                          <Badge variant="outline" className="text-xs text-slate-500 bg-slate-50 border-slate-200">
                             Single Run
-                          </span>
+                          </Badge>
                         )}
                       </TableCell>
 
                       {/* Status Column */}
                       <TableCell className="py-3.5 px-4 whitespace-normal">
-                        <span
+                        <Badge
+                          variant="outline"
                           className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+                            "gap-1.5 text-xs font-medium border",
                             statusInfo.bg
                           )}
                         >
                           <span className={cn("h-1.5 w-1.5 rounded-full", statusInfo.dot)} />
                           {statusInfo.label}
-                        </span>
+                        </Badge>
                       </TableCell>
 
                       {/* Timestamps Column */}
@@ -1026,14 +1028,15 @@ function BroadcastManagementContent() {
             <DialogHeader className="pr-6">
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-lg font-bold text-slate-900">Broadcast Job Details</DialogTitle>
-                <span
+                <Badge
+                  variant="outline"
                   className={cn(
-                    "px-2 py-0.5 rounded-full text-xs font-medium border",
+                    "text-xs font-medium border",
                     (STATUS_BADGES[selectedJob.status] || STATUS_BADGES.cancelled).bg
                   )}
                 >
                   {selectedJob.status.toUpperCase()}
-                </span>
+                </Badge>
               </div>
               <DialogDescription className="text-xs font-mono text-slate-400 mt-1">
                 {selectedJob.id}

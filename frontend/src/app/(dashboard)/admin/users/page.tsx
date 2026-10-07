@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -485,9 +486,9 @@ function UsersContent() {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-semibold text-gray-900 truncate max-w-[180px]">{u.email}</p>
                               {!u.is_active && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
                                   Suspended
-                                </span>
+                                </Badge>
                               )}
                             </div>
                             <p className="text-xs text-gray-500 truncate max-w-[200px]">
@@ -536,18 +537,18 @@ function UsersContent() {
                           </div>
                           {connected > 0 ? (
                             <div className="flex flex-wrap items-center gap-1 text-xs">
-                              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
+                              <Badge variant="success" className="text-[11px] h-5">
                                 {activeAcc} active
-                              </span>
+                              </Badge>
                               {limitedAcc > 0 && (
-                                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-medium border border-amber-200">
+                                <Badge variant="warning" className="text-[11px] h-5">
                                   {limitedAcc} limited
-                                </span>
+                                </Badge>
                               )}
                               {expiredAcc > 0 && (
-                                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-medium border border-rose-200">
+                                <Badge variant="destructive" className="text-[11px] h-5">
                                   {expiredAcc} expired
-                                </span>
+                                </Badge>
                               )}
                             </div>
                           ) : (
@@ -567,18 +568,18 @@ function UsersContent() {
                           {bcTotal > 0 ? (
                             <div className="flex flex-wrap items-center gap-1 text-xs">
                               {bcRunning > 0 ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                                <Badge variant="success" className="text-[11px] h-5 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                   {bcRunning} running
-                                </span>
+                                </Badge>
                               ) : null}
-                              <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium border border-blue-200">
+                              <Badge variant="info" className="text-[11px] h-5">
                                 {bcFinished} finished
-                              </span>
+                              </Badge>
                               {bcFailed > 0 && (
-                                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-medium border border-rose-200">
+                                <Badge variant="destructive" className="text-[11px] h-5">
                                   {bcFailed} failed
-                                </span>
+                                </Badge>
                               )}
                             </div>
                           ) : (
@@ -705,9 +706,9 @@ function UsersContent() {
                     {detailUser.email}
                   </DialogTitle>
                   <DialogDescription className="flex items-center gap-2 mt-0.5">
-                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase", ROLE_COLORS[detailUser.role])}>
+                    <Badge variant="outline" className={cn("text-[10px] font-bold uppercase", ROLE_COLORS[detailUser.role])}>
                       {detailUser.role}
-                    </span>
+                    </Badge>
                     {detailUser.full_name && (
                       <span className="text-xs text-gray-500">{detailUser.full_name}</span>
                     )}

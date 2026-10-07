@@ -16,6 +16,8 @@ import { SpamAppealDialog } from "@/components/accounts/spam-appeal-dialog";
 import { useCancelSellAccount } from "@/hooks/use-marketplace";
 import { useAuthStore } from "@/store/auth-store";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export default function AccountDetailPage() {
   const _ = useT();
@@ -141,10 +143,10 @@ export default function AccountDetailPage() {
               {account.first_name || _("accountDetail.unnamed")} {account.last_name || ""}
             </h1>
             {account.is_premium && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs">
+              <Badge className="gap-1 font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs border-transparent">
                 <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
                 Premium
-              </span>
+              </Badge>
             )}
           </div>
           <p className="text-sm text-gray-500">
@@ -198,44 +200,43 @@ export default function AccountDetailPage() {
               </div>
               <div>
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.status")}</span>
-                {account.for_sale ? (
-                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {_("accountDetail.inactive")}
-                  </span>
-                ) : account.is_active ? (
-                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {_("accountDetail.active")}
-                  </span>
-                ) : (
-                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {_("accountDetail.expired")}
-                  </span>
-                )}
+                <span className="ml-1 inline-block">
+                  {account.for_sale ? (
+                    <Badge variant="secondary">
+                      {_("accountDetail.inactive")}
+                    </Badge>
+                  ) : account.is_active ? (
+                    <Badge variant="success">
+                      {_("accountDetail.active")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive">
+                      {_("accountDetail.expired")}
+                    </Badge>
+                  )}
+                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 uppercase">Telegram Tier</span>
-                {account.is_premium ? (
-                  <span className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border border-purple-300/80 dark:border-purple-700/80">
-                    <Star className="size-3 fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" />
-                    Premium
-                  </span>
-                ) : (
-                  <span className="inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">
-                    Standard
-                  </span>
-                )}
+                <span className="ml-1 inline-block">
+                  {account.is_premium ? (
+                    <Badge variant="outline" className="gap-1 font-semibold bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border-purple-300/80 dark:border-purple-700/80">
+                      <Star className="size-3 fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" />
+                      Premium
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">
+                      Standard
+                    </Badge>
+                  )}
+                </span>
               </div>
               <div>
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.twoFa")}</span>
-                <span
-                  className={cn(
-                    "inline-block ml-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                    account.twofa_enabled
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-gray-100 text-gray-500"
-                  )}
-                >
-                  {account.twofa_enabled ? _("accountDetail.on") : _("accountDetail.off")}
+                <span className="ml-1 inline-block">
+                  <Badge variant={account.twofa_enabled ? "warning" : "secondary"}>
+                    {account.twofa_enabled ? _("accountDetail.on") : _("accountDetail.off")}
+                  </Badge>
                 </span>
               </div>
               <div>
@@ -263,30 +264,34 @@ export default function AccountDetailPage() {
               <div>
                 <span className="text-xs text-gray-400 uppercase">{_("accountDetail.spamStatus")}</span>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span
-                    className={cn(
-                      "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+                  <Badge
+                    variant={
                       account.spam_status === "normal"
-                        ? "bg-green-100 text-green-800"
+                        ? "success"
                         : account.spam_status === "limited"
-                        ? "bg-red-100 text-red-800 animate-pulse"
-                        : "bg-gray-100 text-gray-500"
-                    )}
+                        ? "destructive"
+                        : "secondary"
+                    }
+                    className={account.spam_status === "limited" ? "animate-pulse" : ""}
                   >
                     {account.spam_status === "normal"
                       ? _("accountDetail.spamStatusNormal")
                       : account.spam_status === "limited"
                       ? _("accountDetail.spamStatusLimited")
                       : _("accountDetail.spamStatusUnknown")}
-                  </span>
-                  <button
-                    onClick={() => checkSpamMutation.mutate(account.id)}
-                    disabled={checkSpamMutation.isPending || isRestricted}
-                    className="p-1 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-50 transition"
-                    title={_("accountDetail.checkSpamBtn")}
-                  >
-                    <RefreshCw className={cn("h-3.5 w-3.5", checkSpamMutation.isPending && "animate-spin")} />
-                  </button>
+                  </Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => checkSpamMutation.mutate(account.id)}
+                        disabled={checkSpamMutation.isPending || isRestricted}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500 disabled:opacity-50 transition"
+                      >
+                        <RefreshCw className={cn("h-3.5 w-3.5", checkSpamMutation.isPending && "animate-spin")} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{_("accountDetail.checkSpamBtn")}</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
               <div>

@@ -38,6 +38,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -504,9 +505,10 @@ export default function AdminTransactionsPage() {
 
                       {/* Status */}
                       <TableCell className="py-3 px-4">
-                        <span
+                        <Badge
+                          variant="outline"
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize",
+                            "text-[10px] font-semibold border capitalize",
                             STATUS_STYLES[tx.status]
                           )}
                         >
@@ -515,7 +517,7 @@ export default function AdminTransactionsPage() {
                             : tx.status === "pending"
                             ? "Menunggu"
                             : "Ditolak"}
-                        </span>
+                        </Badge>
                       </TableCell>
 
                       {/* Actions */}
@@ -594,14 +596,15 @@ export default function AdminTransactionsPage() {
                   {selectedTx.type === "topup" || selectedTx.type === "redeem" ? "+" : "-"} {formatIDR(selectedTx.amount)}
                 </p>
                 <div className="pt-1">
-                  <span
+                  <Badge
+                    variant="outline"
                     className={cn(
-                      "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize",
+                      "text-xs font-semibold border capitalize",
                       STATUS_STYLES[selectedTx.status]
                     )}
                   >
                     {selectedTx.status}
-                  </span>
+                  </Badge>
                 </div>
               </div>
 

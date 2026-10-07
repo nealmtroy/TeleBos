@@ -62,6 +62,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ActivePayment {
@@ -608,10 +609,10 @@ export default function WalletPage() {
                   </button>
 
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    <Badge variant="warning" className="gap-1.5 px-2.5 py-1 text-xs font-semibold">
                       <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                       {_("wallet.status.pending")}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
 
@@ -1103,10 +1104,10 @@ export default function WalletPage() {
                 {_("wallet.history")}
               </h2>
               {pendingCount > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                <Badge variant="warning" className="gap-1 px-2.5 py-0.5 text-xs font-semibold">
                   <Clock className="h-3 w-3" />
                   {pendingCount} {_("wallet.pending")}
-                </span>
+                </Badge>
               )}
             </div>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
@@ -1366,14 +1367,18 @@ export default function WalletPage() {
                   {selectedTransaction.type === "topup" ? "+" : "-"} {formatIDR(selectedTransaction.amount)}
                 </p>
                 <div className="pt-1">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border",
-                      STATUS_STYLES[selectedTransaction.status]
-                    )}
+                  <Badge
+                    variant={
+                      selectedTransaction.status === "approved"
+                        ? "success"
+                        : selectedTransaction.status === "pending"
+                        ? "warning"
+                        : "destructive"
+                    }
+                    className="gap-1 px-2.5 py-0.5 text-xs font-semibold"
                   >
                     {_(`wallet.status.${selectedTransaction.status}`)}
-                  </span>
+                  </Badge>
                 </div>
               </div>
 

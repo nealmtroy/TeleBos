@@ -63,6 +63,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   DoubleBezelShell,
   ButtonInButton,
@@ -783,34 +785,44 @@ export default function OrderHistoryPage() {
           </div>
 
           {/* Quick Export Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={filteredItems.length === 0}
-            className="h-9 rounded-xl border-border/80 bg-card text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted"
-            title="Export CSV"
-          >
-            <Download className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={filteredItems.length === 0}
+                className="h-9 rounded-xl border-border/80 bg-card text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted"
+              >
+                <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Export CSV</TooltipContent>
+          </Tooltip>
 
           {/* Refresh All Orders */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refreshAll.mutate()}
-            disabled={refreshAll.isPending}
-            className="h-9 w-9 p-0 rounded-xl border-border/80 bg-card shadow-2xs hover:bg-muted"
-            title={locale === "id" ? "Perbarui Status Semua Pesanan" : "Refresh All Orders"}
-          >
-            <RefreshCw
-              className={cn(
-                "h-3.5 w-3.5 text-muted-foreground",
-                refreshAll.isPending && "animate-spin text-primary"
-              )}
-            />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshAll.mutate()}
+                disabled={refreshAll.isPending}
+                className="h-9 w-9 p-0 rounded-xl border-border/80 bg-card shadow-2xs hover:bg-muted"
+              >
+                <RefreshCw
+                  className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground",
+                    refreshAll.isPending && "animate-spin text-primary"
+                  )}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {locale === "id" ? "Perbarui Status Semua Pesanan" : "Refresh All Orders"}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -1291,18 +1303,22 @@ export default function OrderHistoryPage() {
                             {item.detail}
                           </p>
                           {item.detail !== "-" && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(item.detail, `target-${item.id}`)}
-                              className="text-muted-foreground/50 hover:text-foreground p-0.5 shrink-0"
-                              title="Copy Target"
-                            >
-                              {copiedId === `target-${item.id}` ? (
-                                <Check className="h-3 w-3 text-emerald-500" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(item.detail, `target-${item.id}`)}
+                                  className="text-muted-foreground/50 hover:text-foreground p-0.5 shrink-0"
+                                >
+                                  {copiedId === `target-${item.id}` ? (
+                                    <Check className="h-3 w-3 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy Target</TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       </TableCell>
@@ -1340,9 +1356,10 @@ export default function OrderHistoryPage() {
 
                       {/* Status */}
                       <TableCell className="py-3.5 px-4 text-center whitespace-nowrap w-[110px]">
-                        <span
+                        <Badge
+                          variant="outline"
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border",
+                            "gap-1.5 text-[11px] font-semibold border",
                             statusConf.bgBadge
                           )}
                         >
@@ -1355,7 +1372,7 @@ export default function OrderHistoryPage() {
                           <span>
                             {locale === "id" ? statusConf.labelId : statusConf.labelEn}
                           </span>
-                        </span>
+                        </Badge>
                       </TableCell>
 
                       {/* Progres */}
@@ -1400,20 +1417,24 @@ export default function OrderHistoryPage() {
                             Detail
                           </Button>
                           {item.type === "smm" && item.originalItem.smm_order_id && (
-                            <button
-                              type="button"
-                              onClick={() => refreshOrder.mutate(item.id)}
-                              disabled={refreshOrder.isPending}
-                              className="p-1.5 text-muted-foreground hover:text-primary border border-border/80 rounded-lg hover:bg-muted transition-colors shadow-2xs"
-                              title={_("orders.refreshStatus") || "Refresh"}
-                            >
-                              <RefreshCw
-                                className={cn(
-                                  "h-3 w-3",
-                                  refreshOrder.isPending && "animate-spin text-primary"
-                                )}
-                              />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => refreshOrder.mutate(item.id)}
+                                  disabled={refreshOrder.isPending}
+                                  className="p-1.5 text-muted-foreground hover:text-primary border border-border/80 rounded-lg hover:bg-muted transition-colors shadow-2xs"
+                                >
+                                  <RefreshCw
+                                    className={cn(
+                                      "h-3 w-3",
+                                      refreshOrder.isPending && "animate-spin text-primary"
+                                    )}
+                                  />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("orders.refreshStatus") || "Refresh"}</TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       </TableCell>
@@ -1749,9 +1770,10 @@ export default function OrderHistoryPage() {
                     <span className="font-mono font-bold text-foreground">
                       {selectedDetail.progressPercent}%
                     </span>
-                    <span
+                    <Badge
+                      variant="outline"
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border",
+                        "gap-1 text-[10px] font-semibold border",
                         STATUS_CONFIG[selectedDetail.status]?.bgBadge
                       )}
                     >
@@ -1766,7 +1788,7 @@ export default function OrderHistoryPage() {
                           ? STATUS_CONFIG[selectedDetail.status]?.labelId
                           : STATUS_CONFIG[selectedDetail.status]?.labelEn}
                       </span>
-                    </span>
+                    </Badge>
                   </div>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">

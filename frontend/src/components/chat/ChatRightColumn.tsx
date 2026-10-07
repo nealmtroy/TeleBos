@@ -27,6 +27,7 @@ import { getAvatarGradient } from "./helpers";
 import { getChatPhotoUrl } from "@/lib/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface ChatRightColumnProps {
   showRightDrawer: boolean;
@@ -284,14 +285,18 @@ export function ChatRightColumn({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleCopyLink(inviteLink || `https://t.me/${username}`)}
-                    className="p-1.5 rounded-lg transition"
-                    style={{ color: "var(--tg-text-secondary)" }}
-                    title="Copy Link"
-                  >
-                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleCopyLink(inviteLink || `https://t.me/${username}`)}
+                        className="p-1.5 rounded-lg transition"
+                        style={{ color: "var(--tg-text-secondary)" }}
+                      >
+                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy Link</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             )}

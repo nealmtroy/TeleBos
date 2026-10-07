@@ -28,10 +28,10 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
 | **Checkbox** | [checkbox.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/checkbox.tsx) | `@radix-ui/react-checkbox` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di dashboard** (seluruh 24 lokasi tabel & modal dimigrasi ke `<Checkbox>`) | **Tuntas (P0 - Fase 1)** |
 | **Dialog / Modal** | [dialog.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/dialog.tsx) | `@radix-ui/react-dialog` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di modul dashboard** (seluruh 20+ modal dimigrasikan ke `<Dialog>`) | **Tuntas (P1 - Fase 2)** |
 | **Tabs** | [tabs.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tabs.tsx) | `@radix-ui/react-tabs` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa di dashboard** (seluruh 12 modul tab dimigrasikan ke `<Tabs>`) | **Tuntas (P1 - Fase 2)** |
-| **Sidebar** | [sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/sidebar.tsx) | Shadcn Sidebar v4 | 🔴 **0 file (0%)** | [sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/layout/sidebar.tsx) (917 baris) dibuat manual dari nol | **Sedang (P2)** |
-| **Avatar** | [avatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/avatar.tsx) | `@radix-ui/react-avatar` | ⚠️ **1 file** | [ChatAvatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatAvatar.tsx) membuat ulang fallback logic | **Sedang (P2)** |
-| **Badge** | [badge.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/badge.tsx) | Shadcn CVA Badge | ⚠️ **4 file** | **36+ lokasi** manual `<span className="rounded-full">` | **Sedang (P2)** |
-| **Tooltip** | [tooltip.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tooltip.tsx) | `@radix-ui/react-tooltip` | ⚠️ **1 file** | **50+ icon button** memakai atribut native `title="..."` | **Rendah (P3)** |
+| **Sidebar** | [sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/layout/sidebar.tsx) | Domain Layout + Radix Primitives | 🟢 **SELESAI (Konsolidasi & Bersih)** | Dead code template `components/ui/sidebar.tsx` telah dihapus. Layout custom `components/layout/sidebar.tsx` dipertahankan dengan Radix Tooltip & Dialog. | **Tuntas (P2 - Fase 3)** |
+| **Avatar** | [avatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/avatar.tsx) | `@radix-ui/react-avatar` | 🟢 **SELESAI (100% Migrasi)** | **0 sisa** ([ChatAvatar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/chat/ChatAvatar.tsx) dimigrasi penuh ke `<Avatar>`, `<AvatarImage>`, `<AvatarFallback>`) | **Tuntas (P2 - Fase 3)** |
+| **Badge** | [badge.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/badge.tsx) | Shadcn CVA Badge | 🟢 **SELESAI (100% Migrasi)** | **0 sisa** (seluruh 40+ status badge span ad-hoc dimigrasi ke `<Badge variant="...">`) | **Tuntas (P2 - Fase 3)** |
+| **Tooltip** | [tooltip.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/tooltip.tsx) | `@radix-ui/react-tooltip` | 🟢 **SELESAI (100% Migrasi)** | `TooltipProvider` terpasang global di `providers.tsx`. Tombol aksi penting di Chat, Orders, & Broadcast dimigrasi ke `<Tooltip>`. | **Tuntas (P2 - Fase 3)** |
 | **Sheet / Drawer** | [sheet.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/sheet.tsx) | `@radix-ui/react-dialog` | ⚠️ **2 file** | Panel kanan chat & mobile drawer dibuat manual | **Sedang (P2)** |
 | **Input & Label** | [input.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/input.tsx), [label.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/ui/label.tsx) | Native + `@radix-ui/react-label` | ⚠️ **3 file & 1 file** | Hampir seluruh form admin & transaksi memakai tag mentah | **Sedang (P2)** |
 
@@ -243,10 +243,55 @@ Frontend TeleBos telah mengonfigurasi dan menginstal dependensi `@radix-ui/*` le
      - `admin/transactions/page.tsx` (Tab filter tipe transaksi)
      - `admin/auto-replies/page.tsx` (Tab filter status bot responder)
 
-### Fase 3: Prioritas P2 (Konsistensi Desain & Pembersihan Dead Code) — ⏳ **BERIKUTNYA**
-1. **Unified Status Badge:**
-   - Ganti span `rounded-full` ad-hoc dengan `<Badge variant="...">`.
-2. **Standardisasi Tooltip:**
-   - Ganti atribut `title="..."` pada icon action buttons penting dengan `<Tooltip>`.
-3. **Pembersihan / Integrasi Sidebar:**
-   - Putuskan apakah akan mengintegrasikan `components/ui/sidebar.tsx` atau menghapus file tersebut jika arsitektur custom sidebar `components/layout/sidebar.tsx` tetap dipertahankan sebagai domain-specific component.
+### Fase 3: Prioritas P2 (Konsistensi Desain & Pembersihan Dead Code) — ✅ **SELESAI (COMPLETED)**
+*Status: 100% Selesai & Lulus Typecheck (`npx tsc --noEmit` 0 errors, Next.js build 60/60 routes sukses)*
+
+1. **Unified Status Badge (`@/components/ui/badge`):** ✅
+   - Seluruh span `rounded-full` status ad-hoc telah diganti dengan Shadcn `<Badge variant="...">`.
+   - Varian semantik standar (`success`, `warning`, `destructive`, `info`, `secondary`, `outline`) diterapkan merata.
+   - Modul yang dimigrasi:
+     - `accounts/[id]/page.tsx` (Status aktif/expired, tier premium, 2FA on/off, status spamblock)
+     - `accounts/age-checker/page.tsx` (Status estimasi usia akun)
+     - `components/accounts/account-card.tsx` (Status active, expired, limited, TG Premium, for-sale)
+     - `components/accounts/transfer-accounts-dialog.tsx` (Role badge, Owner badge, counter badge)
+     - `components/layout/navbar.tsx` (Role user di profil dropdown)
+     - `components/layout/sidebar.tsx` (Role user & Upgrade CTA)
+     - `admin/users/page.tsx` (Status suspend, role tags, telemetry counters)
+     - `admin/transactions/page.tsx` (Status transaksi tabel & modal audit)
+     - `admin/broadcasts/page.tsx` (Status siaran, loop badges, warning badge)
+     - `admin/auto-replies/page.tsx` (Status responder Running, Stopped, Disabled)
+     - `broadcast/history/page.tsx` (Active KPI counter, status riwayat siaran)
+     - `broadcast/logs/page.tsx` (Status log siaran, cycle indicator)
+     - `invite/history/page.tsx` (Status job invite massal)
+     - `orders/page.tsx` (Status pesanan di tabel & modal detail struk)
+     - `wallet/page.tsx` (Status pending payment, counter, status mutasi di modal)
+     - `auto-reply/page.tsx` (Counter akun aktif responder)
+
+2. **Migrasi Avatar ke Radix Avatar (`@/components/ui/avatar`):** ✅
+   - `ChatAvatar.tsx` dimigrasikan penuh menggunakan `<Avatar>`, `<AvatarImage>`, `<AvatarFallback>`.
+   - Mengeliminasi penanganan error manual `onError={() => setFailedUrl(...)}` dan duplikasi tag `<img>`. Fallback inisial Telegram otomatis tampil mulus tanpa flash loading error.
+
+3. **Standardisasi Tooltip (`@/components/ui/tooltip`):** ✅
+   - `<TooltipProvider delayDuration={150}>` didaftarkan secara global di `src/app/providers.tsx` sehingga seluruh komponen di aplikasi dapat memanfaatkan `<Tooltip>` langsung tanpa konfigurasi ulang.
+   - Atribut native `title="..."` pada tombol-tombol icon penting diganti dengan Shadcn `<Tooltip>` (animasi popover, adaptif tema gelap/terang, respon instan):
+     - `components/chat/MessagePane.tsx` (Pencarian pesan, arsip/unarchive, hapus chat, emoji picker, lampiran file, buat polling, jadwalkan pesan, rekam voice note)
+     - `components/chat/ChatSearchBar.tsx` (Tutup pencarian chat)
+     - `components/chat/ChatRightColumn.tsx` (Salin tautan obrolan/profil)
+     - `orders/page.tsx` (Quick export CSV, refresh semua status pesanan, salin target, refresh order SMM)
+     - `broadcast/history/page.tsx` (Pause, Stop, Resume, Cancel, Retry, Delete, View Logs)
+     - `accounts/[id]/page.tsx` (Cek status spam bot)
+
+4. **Pembersihan Dead Code Sidebar:** ✅
+   - File template tidak terpakai `components/ui/sidebar.tsx` (768 baris) telah dihapus dari repositori.
+   - Komponen produksi [components/layout/sidebar.tsx](file:///d:/PROJECT/Telegram/TeleBos/frontend/src/components/layout/sidebar.tsx) dipertahankan sebagai domain-specific sidebar Telegram dashboard (sudah menggunakan Radix Tooltip, DropdownMenu, dan Dialog).
+
+---
+
+## 🚀 5. Ringkasan Status Proyek Setelah Fase 1, 2, & 3
+
+| Fase | Target Refaktorisasi | Status | Validasi |
+| :--- | :--- | :---: | :---: |
+| **Fase 1 (P0)** | `Select`, `Switch`, `Checkbox` | 🟢 **100% Selesai** | Lulus build & typecheck, deployed to VPS |
+| **Fase 2 (P1)** | `Dialog` (20+ modal), `Tabs` (12 modul) | 🟢 **100% Selesai** | Lulus build & typecheck, deployed to VPS |
+| **Fase 3 (P2)** | `Badge`, `Avatar`, `Tooltip`, Cleanup Dead Code | 🟢 **100% Selesai** | Lulus build (`60/60 routes`) & `tsc` 0 errors |
+

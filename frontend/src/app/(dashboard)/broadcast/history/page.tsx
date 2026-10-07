@@ -42,6 +42,8 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useState, useCallback } from "react";
 import { useAccounts } from "@/hooks/use-accounts";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const statusColors: Record<string, string> = {
   pending: "bg-gray-100 text-gray-600",
@@ -137,10 +139,10 @@ export default function BroadcastHistoryPage() {
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-extrabold text-gray-900">{runningCount}</span>
               {runningCount > 0 ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
+                <Badge variant="success" className="gap-1 text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Active
-                </span>
+                </Badge>
               ) : (
                 <span className="text-xs text-gray-400">Idle</span>
               )}
@@ -294,14 +296,22 @@ export default function BroadcastHistoryPage() {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
-                      <span
-                        className={cn(
-                          "px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
-                          statusColors[job.status] || "bg-gray-100 text-gray-600"
-                        )}
+                      <Badge
+                        variant={
+                          job.status === "completed"
+                            ? "success"
+                            : job.status === "running"
+                            ? "info"
+                            : job.status === "failed"
+                            ? "destructive"
+                            : job.status === "paused"
+                            ? "warning"
+                            : "secondary"
+                        }
+                        className="capitalize font-medium text-xs"
                       >
                         {job.status}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex items-center gap-2">
@@ -342,92 +352,112 @@ export default function BroadcastHistoryPage() {
                         {/* Running controls */}
                         {job.status === "running" && (
                           <>
-                            <button
-                              onClick={() =>
-                                actionMutation.mutate({
-                                  jobId: job.id,
-                                  action: "pause",
-                                })
-                              }
-                              className="p-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition"
-                              title={_("broadcastHistory.pause")}
-                            >
-                              <Pause className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                openConfirm(
-                                  _("broadcastHistory.stop"),
-                                  _("broadcastHistory.stopConfirm"),
-                                  () =>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
                                     actionMutation.mutate({
                                       jobId: job.id,
-                                      action: "stop",
+                                      action: "pause",
                                     })
-                                )
-                              }
-                              className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                              title={_("broadcastHistory.stop")}
-                            >
-                              <Square className="h-4 w-4" />
-                            </button>
+                                  }
+                                  className="p-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition"
+                                >
+                                  <Pause className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("broadcastHistory.pause")}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
+                                    openConfirm(
+                                      _("broadcastHistory.stop"),
+                                      _("broadcastHistory.stopConfirm"),
+                                      () =>
+                                        actionMutation.mutate({
+                                          jobId: job.id,
+                                          action: "stop",
+                                        })
+                                    )
+                                  }
+                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                >
+                                  <Square className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("broadcastHistory.stop")}</TooltipContent>
+                            </Tooltip>
                           </>
                         )}
 
                         {/* Paused controls */}
                         {job.status === "paused" && (
                           <>
-                            <button
-                              onClick={() =>
-                                actionMutation.mutate({
-                                  jobId: job.id,
-                                  action: "resume",
-                                })
-                              }
-                              className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-                              title={_("broadcastHistory.resume")}
-                            >
-                              <Play className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                openConfirm(
-                                  _("broadcastHistory.stop"),
-                                  _("broadcastHistory.stopConfirm"),
-                                  () =>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
                                     actionMutation.mutate({
                                       jobId: job.id,
-                                      action: "stop",
+                                      action: "resume",
                                     })
-                                )
-                              }
-                              className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                              title={_("broadcastHistory.stop")}
-                            >
-                              <Square className="h-4 w-4" />
-                            </button>
+                                  }
+                                  className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                                >
+                                  <Play className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("broadcastHistory.resume")}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
+                                    openConfirm(
+                                      _("broadcastHistory.stop"),
+                                      _("broadcastHistory.stopConfirm"),
+                                      () =>
+                                        actionMutation.mutate({
+                                          jobId: job.id,
+                                          action: "stop",
+                                        })
+                                    )
+                                  }
+                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                >
+                                  <Square className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("broadcastHistory.stop")}</TooltipContent>
+                            </Tooltip>
                           </>
                         )}
 
                         {/* Pending — allow stop to cancel before execution */}
                         {job.status === "pending" && (
-                          <button
-                            onClick={() =>
-                              openConfirm(
-                                _("broadcastHistory.cancel"),
-                                _("broadcastHistory.cancelConfirm"),
-                                () =>
-                                  actionMutation.mutate({
-                                    jobId: job.id,
-                                    action: "stop",
-                                  })
-                              )
-                            }
-                            className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                            title={_("broadcastHistory.cancel")}
-                          >
-                            <Square className="h-4 w-4" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() =>
+                                  openConfirm(
+                                    _("broadcastHistory.cancel"),
+                                    _("broadcastHistory.cancelConfirm"),
+                                    () =>
+                                      actionMutation.mutate({
+                                        jobId: job.id,
+                                        action: "stop",
+                                      })
+                                  )
+                                }
+                                className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                              >
+                                <Square className="h-4 w-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{_("broadcastHistory.cancel")}</TooltipContent>
+                          </Tooltip>
                         )}
 
                         {/* Terminal states — retry + delete */}
@@ -435,46 +465,58 @@ export default function BroadcastHistoryPage() {
                           job.status
                         ) && (
                           <>
-                            <button
-                              onClick={() =>
-                                retryMutation.mutate(job.id)
-                              }
-                              disabled={retryMutation.isPending}
-                              className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
-                              title={_("broadcastHistory.retry")}
-                            >
-                              <RotateCw className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                openConfirm(
-                                  _("broadcastHistory.delete"),
-                                  _("broadcastHistory.deleteConfirm"),
-                                  () => deleteMutation.mutate(job.id)
-                                )
-                              }
-                              disabled={deleteMutation.isPending}
-                              className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
-                              title={_("broadcastHistory.delete")}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
+                                    retryMutation.mutate(job.id)
+                                  }
+                                  disabled={retryMutation.isPending}
+                                  className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
+                                >
+                                  <RotateCw className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("broadcastHistory.retry")}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
+                                    openConfirm(
+                                      _("broadcastHistory.delete"),
+                                      _("broadcastHistory.deleteConfirm"),
+                                      () => deleteMutation.mutate(job.id)
+                                    )
+                                  }
+                                  disabled={deleteMutation.isPending}
+                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{_("broadcastHistory.delete")}</TooltipContent>
+                            </Tooltip>
                           </>
                         )}
 
                         {/* View Logs — for all non-pending jobs */}
                         {job.status !== "pending" && (
-                          <button
-                            onClick={() =>
-                              router.push(
-                                `/broadcast/logs?jobId=${job.id}`
-                              )
-                            }
-                            className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
-                            title={_("broadcastHistory.viewLogs")}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() =>
+                                  router.push(
+                                    `/broadcast/logs?jobId=${job.id}`
+                                  )
+                                }
+                                className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{_("broadcastHistory.viewLogs")}</TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>

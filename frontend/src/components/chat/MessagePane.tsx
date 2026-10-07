@@ -43,6 +43,7 @@ import { EMOJI_SUGGESTIONS } from "./constants";
 import { RecordingVoiceBanner } from "./RecordingVoiceBanner";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ChatHeaderSubtitle } from "./ChatHeaderSubtitle";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 // In-memory cache for message date grouping to eliminate redundant new Date / toLocaleDateString (COM-01)
 const formattedDateCache = new Map<string, string>();
@@ -705,46 +706,58 @@ export function MessagePane({
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowSearchPanel(!showSearchPanel);
-            }}
-            className={cn(
-              "p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-95",
-              showSearchPanel && "text-primary bg-primary/10 dark:bg-primary/20"
-            )}
-            title="Search Messages"
-          >
-            <Search className="h-4.5 w-4.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSearchPanel(!showSearchPanel);
+                }}
+                className={cn(
+                  "p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-95",
+                  showSearchPanel && "text-primary bg-primary/10 dark:bg-primary/20"
+                )}
+              >
+                <Search className="h-4.5 w-4.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Search Messages</TooltipContent>
+          </Tooltip>
           {onArchive && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onArchive();
-              }}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-850 transition active:scale-95"
-              title={isArchived ? t("chats.unarchive") : t("chats.archive")}
-            >
-              {isArchived ? (
-                <ArchiveRestore className="h-4.5 w-4.5" />
-              ) : (
-                <Archive className="h-4.5 w-4.5" />
-              )}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onArchive();
+                  }}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-850 transition active:scale-95"
+                >
+                  {isArchived ? (
+                    <ArchiveRestore className="h-4.5 w-4.5" />
+                  ) : (
+                    <Archive className="h-4.5 w-4.5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{isArchived ? t("chats.unarchive") : t("chats.archive")}</TooltipContent>
+            </Tooltip>
           )}
           {onDelete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition active:scale-95"
-              title={t("chats.delete")}
-            >
-              <Trash2 className="h-4.5 w-4.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition active:scale-95"
+                >
+                  <Trash2 className="h-4.5 w-4.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("chats.delete")}</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -1089,30 +1102,38 @@ export function MessagePane({
               />
             ) : (
               <div className="flex items-end gap-2 px-3 py-2 w-full">
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowEmojiPicker((prev) => !prev);
-                  }}
-                  className="tg-emoji-btn p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center cursor-pointer"
-                  title="Emojis"
-                >
-                  <Smile className="h-5 w-5" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowEmojiPicker((prev) => !prev);
+                      }}
+                      className="tg-emoji-btn p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center cursor-pointer"
+                    >
+                      <Smile className="h-5 w-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Emojis</TooltipContent>
+                </Tooltip>
 
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
-                  title={t("chats.attachFile")}
-                >
-                  <Paperclip className="h-5 w-5" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("chats.attachFile")}</TooltipContent>
+                </Tooltip>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -1125,13 +1146,17 @@ export function MessagePane({
                   className="hidden"
                 />
 
-                <button
-                  onClick={() => setShowPollDialog(true)}
-                  className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
-                  title="Create Poll"
-                >
-                  <BarChart className="h-5 w-5" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowPollDialog(true)}
+                      className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#202b36] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                    >
+                      <BarChart className="h-5 w-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Create Poll</TooltipContent>
+                </Tooltip>
 
                 <textarea
                   ref={inputRef}
@@ -1157,13 +1182,17 @@ export function MessagePane({
                 {messageText.trim() || attachedFile ? (
                   <div className="flex items-center gap-1.5">
                     {messageText.trim() && (
-                      <button
-                        onClick={() => setShowScheduleModal(true)}
-                        className="p-2.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
-                        title="Schedule Message"
-                      >
-                        <Clock className="h-4.5 w-4.5" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setShowScheduleModal(true)}
+                            className="p-2.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                          >
+                            <Clock className="h-4.5 w-4.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Schedule Message</TooltipContent>
+                      </Tooltip>
                     )}
                     <button
                       onClick={handleSend}
@@ -1178,13 +1207,17 @@ export function MessagePane({
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={startRecording}
-                    className="p-2.5 rounded-full transition-all duration-200 flex-shrink-0 flex items-center justify-center w-10 h-10 bg-slate-100 hover:bg-slate-200 dark:bg-[#202b36] text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 active:scale-95 shadow-sm"
-                    title="Record Voice Note"
-                  >
-                    <Mic className="h-4.5 w-4.5" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={startRecording}
+                        className="p-2.5 rounded-full transition-all duration-200 flex-shrink-0 flex items-center justify-center w-10 h-10 bg-slate-100 hover:bg-slate-200 dark:bg-[#202b36] text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 active:scale-95 shadow-sm"
+                      >
+                        <Mic className="h-4.5 w-4.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Record Voice Note</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             )}

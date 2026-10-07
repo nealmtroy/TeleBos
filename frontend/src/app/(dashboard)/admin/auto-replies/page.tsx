@@ -39,6 +39,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { DataPagination } from "@/components/ui/pagination";
 import {
   Table,
@@ -354,30 +355,23 @@ function AutoReplyManagementContent() {
                         )}
                       </TableCell>
 
-                      {/* Status */}
                       <TableCell className="py-3.5 px-4 text-center whitespace-normal">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
-                            isRunning
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : item.auto_reply_enabled
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-gray-100 text-gray-600 border-gray-200"
-                          )}
+                        <Badge
+                          variant={isRunning ? "success" : item.auto_reply_enabled ? "warning" : "secondary"}
+                          className="gap-1.5 text-xs font-semibold"
                         >
                           <span
                             className={cn(
                               "w-1.5 h-1.5 rounded-full",
                               isRunning
-                                ? "bg-emerald-500"
+                                ? "bg-emerald-500 animate-pulse"
                                 : item.auto_reply_enabled
                                 ? "bg-amber-500"
                                 : "bg-gray-400"
                             )}
                           />
                           {isRunning ? "Running" : item.auto_reply_enabled ? "Stopped" : "Disabled"}
-                        </span>
+                        </Badge>
                       </TableCell>
 
                       {/* Total Replied */}

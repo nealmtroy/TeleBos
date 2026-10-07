@@ -6,6 +6,7 @@ import { useT } from "@/lib/i18n";
 import { useState, useCallback } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import api from "@/lib/api";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
@@ -273,33 +274,33 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
       {/* Badges */}
       <div className="px-5 py-2.5 flex items-center gap-1.5 flex-wrap">
         {account.for_sale ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
+          <Badge variant="info">
             {_("accountCard.inactive")}
-          </span>
+          </Badge>
         ) : account.is_active ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
+          <Badge variant="success">
             {_("accountCard.active")}
-          </span>
+          </Badge>
         ) : (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200/50 dark:border-red-800/50">
+          <Badge variant="destructive">
             {_("accountCard.expired")}
-          </span>
+          </Badge>
         )}
         {account.spam_status === "limited" && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50 animate-pulse">
+          <Badge variant="warning" className="animate-pulse">
             Limited
-          </span>
+          </Badge>
         )}
         {account.is_premium && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border border-purple-300/80 dark:border-purple-700/80">
+          <Badge variant="outline" className="gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border-purple-300/80 dark:border-purple-700/80 font-semibold">
             <Star className="h-2.5 w-2.5 fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" />
             TG Premium
-          </span>
+          </Badge>
         )}
         {account.is_resale && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+          <Badge variant="secondary" className="bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-semibold">
             Resale
-          </span>
+          </Badge>
         )}
       </div>
 

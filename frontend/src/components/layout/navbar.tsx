@@ -10,6 +10,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 
 export function Navbar() {
   const user = useAuthStore((s) => s.user);
@@ -183,10 +184,10 @@ export function Navbar() {
                   </div>
                 </div>
                 {/* Role Badge */}
-                <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wide", roleColor)}>
+                <Badge variant="outline" className={cn("gap-1.5 text-[11px] font-bold uppercase tracking-wide", roleColor)}>
                   <RoleIcon className="h-3 w-3" />
                   {roleText}
-                </div>
+                </Badge>
               </div>
 
               {/* Balance display */}

@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle,
   XCircle,
@@ -215,16 +216,15 @@ export default function BroadcastLogsPage() {
 
         {selectedJobId && selectedJob && (
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span
-              className={cn(
-                "px-2 py-0.5 rounded-full text-xs font-medium",
-                selectedJob.status === "completed" && "bg-green-100 text-green-800",
-                selectedJob.status === "running" && "bg-blue-100 text-blue-800",
-                selectedJob.status === "failed" && "bg-red-100 text-red-800"
-              )}
+            <Badge
+              variant={
+                selectedJob.status === "completed" ? "success" :
+                selectedJob.status === "running" ? "info" : "destructive"
+              }
+              className="uppercase"
             >
               {selectedJob.status}
-            </span>
+            </Badge>
             <span>{_("broadcastLogs.sent")}: {selectedJob.sent_count}</span>
             <span>{_("broadcastLogs.failed")}: {selectedJob.fail_count}</span>
           </div>
@@ -347,10 +347,10 @@ export default function BroadcastLogsPage() {
                           return (
                             <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-gray-50 transition">
                               <TableCell className="px-4 py-3 whitespace-normal">
-                                <span className="inline-flex items-center gap-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                                <Badge variant="secondary" className="gap-1 bg-indigo-100 text-indigo-700 border-indigo-200">
                                   <Layers className="h-3 w-3" />
                                   C{expandedCycle}
-                                </span>
+                                </Badge>
                               </TableCell>
                               <TableCell className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">
                                 {log.group_identifier}

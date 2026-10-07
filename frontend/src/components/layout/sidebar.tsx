@@ -68,6 +68,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface SubItem {
   href: string;
@@ -673,24 +674,25 @@ export function Sidebar() {
                           </div>
 
                           {userRole === "basic" ? (
-                            <span
+                            <Badge
                               onClick={(e) => {
                                 e.stopPropagation();
                                 router.push("/subscriptions");
                               }}
-                              className="px-2.5 py-0.5 text-[11px] font-medium text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-full transition-colors duration-150 shrink-0 active:scale-95 ml-2 cursor-pointer"
+                              className="text-[11px] font-medium text-white bg-neutral-800 hover:bg-neutral-700 border-neutral-700 shrink-0 ml-2 cursor-pointer active:scale-95"
                             >
                               Upgrade
-                            </span>
+                            </Badge>
                           ) : (
-                            <span
+                            <Badge
+                              variant="outline"
                               className={cn(
-                                "px-2 py-0.5 rounded-full border text-[11px] font-bold uppercase tracking-wider shrink-0 ml-2",
+                                "text-[11px] font-bold uppercase tracking-wider shrink-0 ml-2",
                                 roleColor
                               )}
                             >
                               {roleText}
-                            </span>
+                            </Badge>
                           )}
                         </button>
                       ) : (

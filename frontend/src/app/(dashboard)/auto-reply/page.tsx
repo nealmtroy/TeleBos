@@ -28,6 +28,7 @@ import {
 import { DataPagination } from "@/components/ui/pagination";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -284,10 +285,10 @@ export default function AutoReplyPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
+          <Badge variant="success" className="gap-1.5 px-3 py-1 font-medium text-xs">
             <CheckCircle2 className="h-3 w-3" />
             {totalActive}/{totalAccounts} active
-          </span>
+          </Badge>
         </div>
       </div>
 

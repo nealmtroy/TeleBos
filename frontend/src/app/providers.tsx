@@ -7,6 +7,7 @@ import { useI18nStore } from "@/lib/i18n";
 import { useThemeStore } from "@/store/theme-store";
 import { ToastProvider } from "@/components/ui/toast";
 import { Toaster } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -149,11 +150,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <LanguageSync />
-        <ThemeSync />
-        <LayoutAnimationSanitizer />
-        {children}
-        <Toaster richColors position="top-right" theme={resolvedTheme} />
+        <TooltipProvider delayDuration={150}>
+          <LanguageSync />
+          <ThemeSync />
+          <LayoutAnimationSanitizer />
+          {children}
+          <Toaster richColors position="top-right" theme={resolvedTheme} />
+        </TooltipProvider>
       </ToastProvider>
     </QueryClientProvider>
   );
