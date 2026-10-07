@@ -24,6 +24,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 
 export interface TextEditorProps {
@@ -356,34 +357,18 @@ export function TextEditor({
 
         {/* Right side: Mode Switch (Edit vs Preview) & Char count */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-gray-200/80 dark:bg-slate-800 rounded-lg p-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab("edit")}
-              className={cn(
-                "px-2 py-0.5 rounded-md text-[11px] font-medium transition flex items-center gap-1",
-                activeTab === "edit"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 shadow-xs"
-                  : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-              )}
-            >
-              <Edit3 className="h-3 w-3" />
-              Tulis
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("preview")}
-              className={cn(
-                "px-2 py-0.5 rounded-md text-[11px] font-medium transition flex items-center gap-1",
-                activeTab === "preview"
-                  ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 shadow-xs"
-                  : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-              )}
-            >
-              <Eye className="h-3 w-3" />
-              Preview
-            </button>
-          </div>
+          <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "edit" | "preview")}>
+            <TabsList className="h-7 bg-gray-200/80 dark:bg-slate-800 p-0.5">
+              <TabsTrigger value="edit" className="h-6 px-2 text-[11px] gap-1">
+                <Edit3 className="h-3 w-3" />
+                Tulis
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="h-6 px-2 text-[11px] gap-1">
+                <Eye className="h-3 w-3" />
+                Preview
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           <span
             className={cn(

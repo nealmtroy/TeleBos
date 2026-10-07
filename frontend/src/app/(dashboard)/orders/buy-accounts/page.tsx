@@ -29,6 +29,13 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -780,116 +787,118 @@ export default function BuyAccountsPage() {
       />
 
       {/* ── High-End Success & Custody Transfer Modal ─────────────── */}
-      {successOpen && boughtAccount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
-            onClick={() => setSuccessOpen(false)}
-          />
-          <div className="relative w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
-            <div className="rounded-xl border border-border/80 bg-card p-6 text-center space-y-5 shadow-lg">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
-                <CheckCircle2 className="h-7 w-7" />
+      <Dialog
+        open={successOpen && !!boughtAccount}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSuccessOpen(false);
+            setBoughtAccount(null);
+          }
+        }}
+      >
+        {boughtAccount && (
+          <DialogContent className="max-w-md p-6 text-center space-y-5">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+
+            <DialogHeader className="space-y-1 text-center sm:text-center">
+              <DialogTitle className="text-xl font-bold tracking-tight text-foreground text-center">
+                Account Custody Transferred!
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed text-center">
+                The MTProto session has been bound to your workspace. Full credentials and session keys are ready.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Credential Data Box */}
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5 text-left space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Phone Number:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-foreground">
+                    {boughtAccount.phone}
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(boughtAccount.phone, "Phone")}
+                    className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                    title="Copy Phone"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
-                  Account Custody Transferred!
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  The MTProto session has been bound to your workspace. Full credentials and session keys are ready.
-                </p>
-              </div>
-
-              {/* Credential Data Box */}
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5 text-left space-y-2.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Phone Number:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-foreground">
-                      {boughtAccount.phone}
-                    </span>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">User ID:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-semibold text-foreground">
+                    {boughtAccount.telegram_id || "—"}
+                  </span>
+                  {boughtAccount.telegram_id && (
                     <button
-                      onClick={() => copyToClipboard(boughtAccount.phone, "Phone")}
-                      className="text-muted-foreground hover:text-foreground p-0.5"
-                      title="Copy Phone"
+                      onClick={() =>
+                        copyToClipboard(String(boughtAccount.telegram_id), "User ID")
+                      }
+                      className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                      title="Copy User ID"
                     >
                       <Copy className="h-3 w-3" />
                     </button>
-                  </div>
+                  )}
                 </div>
+              </div>
 
+              {(boughtAccount.first_name || boughtAccount.last_name) && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">User ID:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-semibold text-foreground">
-                      {boughtAccount.telegram_id || "—"}
-                    </span>
-                    {boughtAccount.telegram_id && (
-                      <button
-                        onClick={() =>
-                          copyToClipboard(String(boughtAccount.telegram_id), "User ID")
-                        }
-                        className="text-muted-foreground hover:text-foreground p-0.5"
-                        title="Copy User ID"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-muted-foreground">Profile Name:</span>
+                  <span className="font-medium text-foreground">
+                    {boughtAccount.first_name || ""} {boughtAccount.last_name || ""}
+                  </span>
                 </div>
+              )}
 
-                {(boughtAccount.first_name || boughtAccount.last_name) && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Profile Name:</span>
-                    <span className="font-medium text-foreground">
-                      {boughtAccount.first_name || ""} {boughtAccount.last_name || ""}
-                    </span>
-                  </div>
-                )}
-
-                {boughtAccount.username && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Username:</span>
-                    <span className="font-mono text-primary font-medium">
-                      @{boughtAccount.username}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-                <Button
-                  variant="default"
-                  size="default"
-                  onClick={() => {
-                    setSuccessOpen(false);
-                    setBoughtAccount(null);
-                    window.location.href = "/accounts";
-                  }}
-                  className="flex-1 justify-center gap-2 h-10 rounded-lg text-xs font-semibold"
-                >
-                  <span>Manage in My Accounts</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSuccessOpen(false);
-                    setBoughtAccount(null);
-                  }}
-                  className="h-10 rounded-lg text-xs font-semibold"
-                >
-                  Continue Shopping
-                </Button>
-              </div>
+              {boughtAccount.username && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Username:</span>
+                  <span className="font-mono text-primary font-medium">
+                    @{boughtAccount.username}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <Button
+                variant="default"
+                size="default"
+                onClick={() => {
+                  setSuccessOpen(false);
+                  setBoughtAccount(null);
+                  window.location.href = "/accounts";
+                }}
+                className="flex-1 justify-center gap-2 h-10 rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                <span>Manage in My Accounts</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSuccessOpen(false);
+                  setBoughtAccount(null);
+                }}
+                className="h-10 rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                Continue Shopping
+              </Button>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

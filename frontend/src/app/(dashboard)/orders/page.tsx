@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
@@ -56,6 +55,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   DoubleBezelShell,
   ButtonInButton,
@@ -193,19 +200,6 @@ export default function OrderHistoryPage() {
   // Detail Modal State
   const [selectedDetail, setSelectedDetail] = useState<UnifiedOrder | null>(null);
 
-  // Prevent body scroll and close on ESC when detail modal is open
-  useEffect(() => {
-    if (!selectedDetail) return;
-    document.body.style.overflow = "hidden";
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedDetail(null);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [selectedDetail]);
 
   // Real backend wallet transactions & local fallback
   const { data: walletData, isLoading: isWalletLoading, refetch: refetchWallet } = useWalletTransactions({ limit: 100 });
@@ -873,151 +867,75 @@ export default function OrderHistoryPage() {
       {/* ── 3. Segmented Navigation Ribbon (Machined Hardware Tabs) ─ */}
       <div className="flex items-center justify-between gap-3 border-b border-border/80 pb-3">
         <div className="overflow-x-auto no-scrollbar py-0.5 max-w-full">
-          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-950/80 p-1 border border-slate-200/90 dark:border-slate-800 shadow-2xs shrink-0 whitespace-nowrap">
-            <button
-              type="button"
-              onClick={() => handleTabChange("all")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-                activeTab === "all"
-                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <ClipboardList className={cn("h-3.5 w-3.5", activeTab === "all" ? "text-primary-foreground" : "text-slate-400")} />
-              <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                  activeTab === "all"
-                    ? "bg-white/20 text-white font-bold border-white/20"
-                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-                )}
+          <Tabs value={activeTab} onValueChange={(val) => handleTabChange(val as HistoryTab)}>
+            <TabsList className="h-auto rounded-xl bg-slate-100 dark:bg-slate-950/80 p-1 border border-slate-200/90 dark:border-slate-800 shadow-2xs shrink-0 whitespace-nowrap gap-1">
+              <TabsTrigger
+                value="all"
+                className="flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
               >
-                {metrics.totalOrders}
-              </span>
-            </button>
+                <ClipboardList className="h-3.5 w-3.5" />
+                <span>{locale === "id" ? "Semua Order" : "All Orders"}</span>
+                <span className="rounded-md px-1.5 py-0.5 font-mono text-[10px] border border-inherit bg-black/10 dark:bg-white/10">
+                  {metrics.totalOrders}
+                </span>
+              </TabsTrigger>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("smm")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-                activeTab === "smm"
-                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <ShoppingCart className={cn("h-3.5 w-3.5", activeTab === "smm" ? "text-primary-foreground" : "text-slate-400")} />
-              <span>{locale === "id" ? "Layanan SMM" : "SMM"}</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                  activeTab === "smm"
-                    ? "bg-white/20 text-white font-bold border-white/20"
-                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-                )}
+              <TabsTrigger
+                value="smm"
+                className="flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
               >
-                {metrics.totalSmm}
-              </span>
-            </button>
+                <ShoppingCart className="h-3.5 w-3.5" />
+                <span>{locale === "id" ? "Layanan SMM" : "SMM"}</span>
+                <span className="rounded-md px-1.5 py-0.5 font-mono text-[10px] border border-inherit bg-black/10 dark:bg-white/10">
+                  {metrics.totalSmm}
+                </span>
+              </TabsTrigger>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("accounts")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-                activeTab === "accounts"
-                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <User className={cn("h-3.5 w-3.5", activeTab === "accounts" ? "text-primary-foreground" : "text-slate-400")} />
-              <span>{locale === "id" ? "Akun TG" : "TG Accounts"}</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                  activeTab === "accounts"
-                    ? "bg-white/20 text-white font-bold border-white/20"
-                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-                )}
+              <TabsTrigger
+                value="accounts"
+                className="flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
               >
-                {metrics.totalAccounts}
-              </span>
-            </button>
+                <User className="h-3.5 w-3.5" />
+                <span>{locale === "id" ? "Akun TG" : "TG Accounts"}</span>
+                <span className="rounded-md px-1.5 py-0.5 font-mono text-[10px] border border-inherit bg-black/10 dark:bg-white/10">
+                  {metrics.totalAccounts}
+                </span>
+              </TabsTrigger>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("deposits")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-                activeTab === "deposits"
-                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <ArrowDownLeft className={cn("h-3.5 w-3.5", activeTab === "deposits" ? "text-primary-foreground" : "text-slate-400")} />
-              <span>Deposit</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                  activeTab === "deposits"
-                    ? "bg-white/20 text-white font-bold border-white/20"
-                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-                )}
+              <TabsTrigger
+                value="deposits"
+                className="flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
               >
-                {metrics.totalDeposits}
-              </span>
-            </button>
+                <ArrowDownLeft className="h-3.5 w-3.5" />
+                <span>Deposit</span>
+                <span className="rounded-md px-1.5 py-0.5 font-mono text-[10px] border border-inherit bg-black/10 dark:bg-white/10">
+                  {metrics.totalDeposits}
+                </span>
+              </TabsTrigger>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("withdrawals")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-                activeTab === "withdrawals"
-                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <ArrowUpRight className={cn("h-3.5 w-3.5", activeTab === "withdrawals" ? "text-primary-foreground" : "text-slate-400")} />
-              <span>{locale === "id" ? "Penarikan" : "Withdrawal"}</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                  activeTab === "withdrawals"
-                    ? "bg-white/20 text-white font-bold border-white/20"
-                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-                )}
+              <TabsTrigger
+                value="withdrawals"
+                className="flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
               >
-                {metrics.totalWithdrawals}
-              </span>
-            </button>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                <span>{locale === "id" ? "Penarikan" : "Withdrawal"}</span>
+                <span className="rounded-md px-1.5 py-0.5 font-mono text-[10px] border border-inherit bg-black/10 dark:bg-white/10">
+                  {metrics.totalWithdrawals}
+                </span>
+              </TabsTrigger>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("balance")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs select-none border transition-colors duration-150 font-semibold",
-                activeTab === "balance"
-                  ? "bg-primary text-primary-foreground shadow-xs shadow-primary/30 border-primary"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <Gift className={cn("h-3.5 w-3.5", activeTab === "balance" ? "text-primary-foreground" : "text-slate-400")} />
-              <span>{locale === "id" ? "Voucher & Saldo" : "Voucher & Adjust"}</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[10px] border transition-colors duration-150",
-                  activeTab === "balance"
-                    ? "bg-white/20 text-white font-bold border-white/20"
-                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/60"
-                )}
+              <TabsTrigger
+                value="balance"
+                className="flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
               >
-                {metrics.totalBalanceAdj}
-              </span>
-            </button>
-          </div>
+                <Gift className="h-3.5 w-3.5" />
+                <span>{locale === "id" ? "Voucher & Saldo" : "Voucher & Adjust"}</span>
+                <span className="rounded-md px-1.5 py-0.5 font-mono text-[10px] border border-inherit bg-black/10 dark:bg-white/10">
+                  {metrics.totalBalanceAdj}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Reset Filter Button if active */}
@@ -1740,279 +1658,268 @@ export default function OrderHistoryPage() {
         </div>
       )}
 
-      {/* ── 7. Order Detail Dialog (Doppelrand Modal Architecture) ─ */}
-      {selectedDetail &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
-            onClick={() => setSelectedDetail(null)}
-          >
-            <div
-              className="relative w-full max-w-lg rounded-2xl border border-border/80 bg-gradient-to-b from-foreground/[0.04] via-foreground/[0.01] to-transparent p-1 shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="rounded-[calc(1rem-2px)] sm:rounded-[calc(1rem)] bg-card text-card-foreground p-5 sm:p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)] space-y-5">
-                {/* Modal Header */}
-                <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-foreground">
-                        {selectedDetail.orderIdDisplay}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleCopy(
-                            selectedDetail.orderIdDisplay,
-                            `modal-${selectedDetail.id}`
-                          )
-                        }
-                        className="text-muted-foreground/60 hover:text-foreground p-1 rounded hover:bg-muted"
-                        title="Copy Order ID"
-                      >
-                        {copiedId === `modal-${selectedDetail.id}` ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {locale === "id" ? "Detail Spesifikasi Pesanan" : "Order Specification Details"}
-                    </p>
-                  </div>
-
+      {/* ── 7. Order Detail Dialog ─ */}
+      <Dialog
+        open={!!selectedDetail}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDetail(null);
+        }}
+      >
+        {selectedDetail && (
+          <DialogContent className="max-w-lg p-5 sm:p-6 space-y-5">
+            {/* Modal Header */}
+            <DialogHeader className="border-b border-border/60 pb-4 text-left">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <DialogTitle className="font-mono text-sm font-bold text-foreground">
+                    {selectedDetail.orderIdDisplay}
+                  </DialogTitle>
                   <button
                     type="button"
-                    onClick={() => setSelectedDetail(null)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    onClick={() =>
+                      handleCopy(
+                        selectedDetail.orderIdDisplay,
+                        `modal-${selectedDetail.id}`
+                      )
+                    }
+                    className="text-muted-foreground/60 hover:text-foreground p-1 rounded hover:bg-muted"
+                    title="Copy Order ID"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Hero Banner inside Modal */}
-                <div className="rounded-xl border border-border/70 bg-muted/30 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5">
-                      <h3 className="font-bold text-base text-foreground leading-snug">
-                        {selectedDetail.serviceName}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedDetail.serviceSublabel}
-                      </p>
-                    </div>
-                    {selectedDetail.type === "deposit" || selectedDetail.type === "redeem" ? (
-                      <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">
-                        +{selectedDetail.priceDisplay.replace(/^\+/, "")}
-                      </span>
-                    ) : selectedDetail.type === "withdraw" ? (
-                      <span className="font-bold text-lg text-rose-600 dark:text-rose-400 tabular-nums shrink-0">
-                        -{selectedDetail.priceDisplay.replace(/^-/, "")}
-                      </span>
-                    ) : selectedDetail.type === "admin_adjustment" ? (
-                      <span
-                        className={cn(
-                          "font-bold text-lg tabular-nums shrink-0",
-                          selectedDetail.priceRaw >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-rose-600 dark:text-rose-400"
-                        )}
-                      >
-                        {selectedDetail.priceDisplay}
-                      </span>
-                    ) : (
-                      <PriceTag
-                        value={selectedDetail.priceRaw}
-                        size="lg"
-                        className="font-bold shrink-0"
-                      />
-                    )}
-                  </div>
-
-                  {/* Progress Bar inside Hero */}
-                  <div className="space-y-1.5 pt-2 border-t border-border/40">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground font-medium">
-                        {locale === "id" ? "Status Progres" : "Progress Status"}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-foreground">
-                          {selectedDetail.progressPercent}%
-                        </span>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border",
-                            STATUS_CONFIG[selectedDetail.status]?.bgBadge
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full",
-                              STATUS_CONFIG[selectedDetail.status]?.dotColor
-                            )}
-                          />
-                          <span>
-                            {locale === "id"
-                              ? STATUS_CONFIG[selectedDetail.status]?.labelId
-                              : STATUS_CONFIG[selectedDetail.status]?.labelEn}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500 ease-out",
-                          STATUS_CONFIG[selectedDetail.status]?.progressColor
-                        )}
-                        style={{ width: `${selectedDetail.progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Detailed Spec Grid */}
-                <div className="space-y-2.5 text-xs">
-                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                    <span className="font-semibold text-muted-foreground">
-                      {locale === "id" ? "Tipe Transaksi" : "Transaction Type"}
-                    </span>
-                    <span className="font-bold text-foreground col-span-2">
-                      {selectedDetail.typeName}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                    <span className="font-semibold text-muted-foreground">
-                      {locale === "id" ? "Target / Akun" : "Target / Account"}
-                    </span>
-                    <div className="col-span-2 flex items-center justify-between gap-2">
-                      <span className="font-mono text-foreground break-all select-all">
-                        {selectedDetail.detail}
-                      </span>
-                      {selectedDetail.detail !== "-" && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopy(selectedDetail.detail, "modal-target")
-                          }
-                          className="p-1 text-muted-foreground hover:text-foreground shrink-0 rounded hover:bg-muted"
-                          title="Copy Target"
-                        >
-                          {copiedId === "modal-target" ? (
-                            <Check className="h-3 w-3 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                    <span className="font-semibold text-muted-foreground">
-                      {locale === "id" ? "Kuantitas" : "Quantity"}
-                    </span>
-                    <span className="font-bold text-foreground col-span-2 tabular-nums">
-                      {selectedDetail.quantityDisplay}
-                    </span>
-                  </div>
-
-                  {selectedDetail.paymentMethod && (
-                    <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                      <span className="font-semibold text-muted-foreground">
-                        {locale === "id" ? "Metode / Kanal" : "Method / Channel"}
-                      </span>
-                      <span className="font-medium text-foreground col-span-2">
-                        {selectedDetail.paymentMethod}
-                      </span>
-                    </div>
-                  )}
-
-                  {selectedDetail.adminNote && (
-                    <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                      <span className="font-semibold text-muted-foreground">
-                        {locale === "id" ? "Catatan Admin" : "Admin Note"}
-                      </span>
-                      <span className="font-medium text-primary col-span-2">
-                        {selectedDetail.adminNote}
-                      </span>
-                    </div>
-                  )}
-
-                  {selectedDetail.smmOrderId && (
-                    <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                      <span className="font-semibold text-muted-foreground">
-                        Provider Order ID
-                      </span>
-                      <span className="font-mono text-foreground col-span-2">
-                        #{selectedDetail.smmOrderId}
-                      </span>
-                    </div>
-                  )}
-
-                  {selectedDetail.remains !== undefined &&
-                    selectedDetail.remains !== null && (
-                      <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                        <span className="font-semibold text-muted-foreground">
-                          {locale === "id" ? "Sisa Antrean" : "Remains"}
-                        </span>
-                        <span className="font-mono text-foreground col-span-2">
-                          {selectedDetail.remains.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-
-                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
-                    <span className="font-semibold text-muted-foreground">
-                      {locale === "id" ? "Waktu Dibuat" : "Created At"}
-                    </span>
-                    <span className="font-medium text-foreground col-span-2">
-                      {selectedDetail.dateStr} • {selectedDetail.timeStr}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Modal Footer Actions */}
-                <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/60">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const summary = [
-                        `Order ID: ${selectedDetail.orderIdDisplay}`,
-                        `Layanan: ${selectedDetail.serviceName}`,
-                        `Target: ${selectedDetail.detail}`,
-                        `Jumlah: ${selectedDetail.quantityDisplay}`,
-                        `Total: ${selectedDetail.priceDisplay}`,
-                        `Status: ${selectedDetail.status}`,
-                        `Waktu: ${selectedDetail.dateStr} ${selectedDetail.timeStr}`,
-                      ].join("\n");
-                      handleCopy(summary, "modal-summary");
-                    }}
-                    className="h-9 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
-                  >
-                    {copiedId === "modal-summary" ? (
+                    {copiedId === `modal-${selectedDetail.id}` ? (
                       <Check className="h-3.5 w-3.5 text-emerald-500" />
                     ) : (
                       <Copy className="h-3.5 w-3.5" />
                     )}
-                    <span>{locale === "id" ? "Salin Ringkasan" : "Copy Summary"}</span>
-                  </Button>
+                  </button>
+                </div>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {locale === "id"
+                    ? "Detail Spesifikasi Pesanan"
+                    : "Order Specification Details"}
+                </DialogDescription>
+              </div>
+            </DialogHeader>
 
-                  <Button
-                    onClick={() => setSelectedDetail(null)}
-                    className="h-9 rounded-xl px-5 text-xs font-semibold"
+            {/* Hero Banner inside Modal */}
+            <div className="rounded-xl border border-border/70 bg-muted/30 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-0.5">
+                  <h3 className="font-bold text-base text-foreground leading-snug">
+                    {selectedDetail.serviceName}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedDetail.serviceSublabel}
+                  </p>
+                </div>
+                {selectedDetail.type === "deposit" || selectedDetail.type === "redeem" ? (
+                  <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">
+                    +{selectedDetail.priceDisplay.replace(/^\+/, "")}
+                  </span>
+                ) : selectedDetail.type === "withdraw" ? (
+                  <span className="font-bold text-lg text-rose-600 dark:text-rose-400 tabular-nums shrink-0">
+                    -{selectedDetail.priceDisplay.replace(/^-/, "")}
+                  </span>
+                ) : selectedDetail.type === "admin_adjustment" ? (
+                  <span
+                    className={cn(
+                      "font-bold text-lg tabular-nums shrink-0",
+                      selectedDetail.priceRaw >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    )}
                   >
-                    {locale === "id" ? "Tutup" : "Close"}
-                  </Button>
+                    {selectedDetail.priceDisplay}
+                  </span>
+                ) : (
+                  <PriceTag
+                    value={selectedDetail.priceRaw}
+                    size="lg"
+                    className="font-bold shrink-0"
+                  />
+                )}
+              </div>
+
+              {/* Progress Bar inside Hero */}
+              <div className="space-y-1.5 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">
+                    {locale === "id" ? "Status Progres" : "Progress Status"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-foreground">
+                      {selectedDetail.progressPercent}%
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border",
+                        STATUS_CONFIG[selectedDetail.status]?.bgBadge
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          STATUS_CONFIG[selectedDetail.status]?.dotColor
+                        )}
+                      />
+                      <span>
+                        {locale === "id"
+                          ? STATUS_CONFIG[selectedDetail.status]?.labelId
+                          : STATUS_CONFIG[selectedDetail.status]?.labelEn}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-500 ease-out",
+                      STATUS_CONFIG[selectedDetail.status]?.progressColor
+                    )}
+                    style={{ width: `${selectedDetail.progressPercent}%` }}
+                  />
                 </div>
               </div>
             </div>
-          </div>,
-          document.body
+
+            {/* Detailed Spec Grid */}
+            <div className="space-y-2.5 text-xs">
+              <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                <span className="font-semibold text-muted-foreground">
+                  {locale === "id" ? "Tipe Transaksi" : "Transaction Type"}
+                </span>
+                <span className="font-bold text-foreground col-span-2">
+                  {selectedDetail.typeName}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                <span className="font-semibold text-muted-foreground">
+                  {locale === "id" ? "Target / Akun" : "Target / Account"}
+                </span>
+                <div className="col-span-2 flex items-center justify-between gap-2">
+                  <span className="font-mono text-foreground break-all select-all">
+                    {selectedDetail.detail}
+                  </span>
+                  {selectedDetail.detail !== "-" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(selectedDetail.detail, "modal-target")
+                      }
+                      className="p-1 text-muted-foreground hover:text-foreground shrink-0 rounded hover:bg-muted"
+                      title="Copy Target"
+                    >
+                      {copiedId === "modal-target" ? (
+                        <Check className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                <span className="font-semibold text-muted-foreground">
+                  {locale === "id" ? "Kuantitas" : "Quantity"}
+                </span>
+                <span className="font-bold text-foreground col-span-2 tabular-nums">
+                  {selectedDetail.quantityDisplay}
+                </span>
+              </div>
+
+              {selectedDetail.paymentMethod && (
+                <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                  <span className="font-semibold text-muted-foreground">
+                    {locale === "id" ? "Metode / Kanal" : "Method / Channel"}
+                  </span>
+                  <span className="font-medium text-foreground col-span-2">
+                    {selectedDetail.paymentMethod}
+                  </span>
+                </div>
+              )}
+
+              {selectedDetail.adminNote && (
+                <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                  <span className="font-semibold text-muted-foreground">
+                    {locale === "id" ? "Catatan Admin" : "Admin Note"}
+                  </span>
+                  <span className="font-medium text-primary col-span-2">
+                    {selectedDetail.adminNote}
+                  </span>
+                </div>
+              )}
+
+              {selectedDetail.smmOrderId && (
+                <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                  <span className="font-semibold text-muted-foreground">
+                    Provider Order ID
+                  </span>
+                  <span className="font-mono text-foreground col-span-2">
+                    #{selectedDetail.smmOrderId}
+                  </span>
+                </div>
+              )}
+
+              {selectedDetail.remains !== undefined &&
+                selectedDetail.remains !== null && (
+                  <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                    <span className="font-semibold text-muted-foreground">
+                      {locale === "id" ? "Sisa Antrean" : "Remains"}
+                    </span>
+                    <span className="font-mono text-foreground col-span-2">
+                      {selectedDetail.remains.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
+              <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                <span className="font-semibold text-muted-foreground">
+                  {locale === "id" ? "Waktu Dibuat" : "Created At"}
+                </span>
+                <span className="font-medium text-foreground col-span-2">
+                  {selectedDetail.dateStr} • {selectedDetail.timeStr}
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const summary = [
+                    `Order ID: ${selectedDetail.orderIdDisplay}`,
+                    `Layanan: ${selectedDetail.serviceName}`,
+                    `Target: ${selectedDetail.detail}`,
+                    `Jumlah: ${selectedDetail.quantityDisplay}`,
+                    `Total: ${selectedDetail.priceDisplay}`,
+                    `Status: ${selectedDetail.status}`,
+                    `Waktu: ${selectedDetail.dateStr} ${selectedDetail.timeStr}`,
+                  ].join("\n");
+                  handleCopy(summary, "modal-summary");
+                }}
+                className="h-9 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
+              >
+                {copiedId === "modal-summary" ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                <span>{locale === "id" ? "Salin Ringkasan" : "Copy Summary"}</span>
+              </Button>
+
+              <Button
+                onClick={() => setSelectedDetail(null)}
+                className="h-9 rounded-xl px-5 text-xs font-semibold"
+              >
+                {locale === "id" ? "Tutup" : "Close"}
+              </Button>
+            </div>
+          </DialogContent>
         )}
+      </Dialog>
     </div>
   );
 }

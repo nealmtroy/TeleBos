@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   ArrowRightLeft,
   X,
@@ -258,46 +264,37 @@ export function TransferAccountsDialog({
     }
   };
 
-  if (!open || !isOwner) return null;
+  if (!isOwner) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-        onClick={() => !transferMutation.isPending && onOpenChange(false)}
-      />
-
-      {/* Modal Dialog */}
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden z-10 animate-in fade-in-0 zoom-in-95 duration-200">
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!transferMutation.isPending) onOpenChange(val);
+      }}
+    >
+      <DialogContent className="max-w-2xl p-0 max-h-[90vh] flex flex-col overflow-hidden bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40">
+        <DialogHeader className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 text-left pr-12">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
               <ArrowRightLeft className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">
+                <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100">
                   Transfer Akun Telegram
-                </h2>
+                </DialogTitle>
                 <span className="px-2 py-0.5 text-[11px] font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-800">
                   Owner Only
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+              <DialogDescription className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                 Pindahkan kepemilikan akun Telegram ke pengguna lain melalui alamat email
-              </p>
+              </DialogDescription>
             </div>
           </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            disabled={transferMutation.isPending}
-            className="p-1.5 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -639,8 +636,7 @@ export function TransferAccountsDialog({
             )}
           </button>
         </div>
-      </div>
-    </div>,
-    document.body
+      </DialogContent>
+    </Dialog>
   );
 }

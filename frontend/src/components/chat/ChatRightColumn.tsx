@@ -26,6 +26,7 @@ import { MessageItem } from "./types";
 import { getAvatarGradient } from "./helpers";
 import { getChatPhotoUrl } from "@/lib/avatar";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ChatRightColumnProps {
   showRightDrawer: boolean;
@@ -239,21 +240,20 @@ export function ChatRightColumn({
 
         {/* Groupish Navigation Tabs */}
         {isGroupish && (
-          <div className="flex overflow-x-auto border-b text-[11px] font-bold scrollbar-none" style={{ borderColor: "var(--tg-border)", backgroundColor: "var(--tg-bg-primary)" }}>
-            {(["info", "members", "admins", "permissions", "links"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-3.5 py-3 border-b-2 capitalize transition flex-shrink-0",
-                  activeTab === tab
-                    ? "border-primary text-primary font-extrabold"
-                    : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                )}
-              >
-                {tab === "links" ? "Invite Links" : tab}
-              </button>
-            ))}
+          <div className="border-b" style={{ borderColor: "var(--tg-border)", backgroundColor: "var(--tg-bg-primary)" }}>
+            <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as typeof activeTab)}>
+              <TabsList className="h-10 bg-transparent p-0 flex overflow-x-auto scrollbar-none rounded-none justify-start">
+                {(["info", "members", "admins", "permissions", "links"] as const).map((tab) => (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="px-3.5 py-2.5 h-10 border-b-2 rounded-none capitalize transition flex-shrink-0 text-[11px] font-bold data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent border-transparent text-slate-400 shadow-none"
+                  >
+                    {tab === "links" ? "Invite Links" : tab}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
         )}
 

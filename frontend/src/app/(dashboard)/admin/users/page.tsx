@@ -44,6 +44,13 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataPagination } from "@/components/ui/pagination";
 import {
@@ -679,40 +686,35 @@ function UsersContent() {
       </div>
 
       {/* User Details Modal */}
-      {detailUser && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setDetailUser(null)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg p-6 space-y-5"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Dialog
+        open={!!detailUser}
+        onOpenChange={(open) => {
+          if (!open) setDetailUser(null);
+        }}
+      >
+        {detailUser && (
+          <DialogContent className="max-w-lg p-6 space-y-5">
             {/* Header */}
-            <div className="flex items-start justify-between">
+            <DialogHeader className="flex flex-row items-start justify-between space-y-0 text-left border-b border-border/40 pb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm border border-blue-100">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm border border-blue-100 shrink-0">
                   {detailUser.email ? detailUser.email[0].toUpperCase() : "U"}
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-base">{detailUser.email}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <DialogTitle className="font-bold text-gray-900 text-base">
+                    {detailUser.email}
+                  </DialogTitle>
+                  <DialogDescription className="flex items-center gap-2 mt-0.5">
                     <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase", ROLE_COLORS[detailUser.role])}>
                       {detailUser.role}
                     </span>
                     {detailUser.full_name && (
                       <span className="text-xs text-gray-500">{detailUser.full_name}</span>
                     )}
-                  </div>
+                  </DialogDescription>
                 </div>
               </div>
-              <button
-                onClick={() => setDetailUser(null)}
-                className="text-gray-400 hover:text-gray-600 text-sm p-1 rounded-lg"
-              >
-                ✕
-              </button>
-            </div>
+            </DialogHeader>
 
             {/* Suspension Banner */}
             {!detailUser.is_active && (
@@ -836,28 +838,27 @@ function UsersContent() {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* Balance Modal */}
-      {balanceModal && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setBalanceModal(null)}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-200 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
+      <Dialog
+        open={!!balanceModal}
+        onOpenChange={(open) => {
+          if (!open) setBalanceModal(null);
+        }}
+      >
+        {balanceModal && (
+          <DialogContent className="max-w-sm p-6 space-y-4">
+            <DialogHeader className="text-left space-y-1">
+              <DialogTitle className="text-base font-bold text-gray-900">
                 {balanceModal.type === "add" ? _("admin.addBalance") : _("admin.deductBalance")}
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
+              </DialogTitle>
+              <DialogDescription className="text-xs text-gray-500 truncate">
                 {balanceModal.user.email} (Balance: {balanceModal.user.balance.toLocaleString()})
-              </p>
-            </div>
+              </DialogDescription>
+            </DialogHeader>
 
             <input
               type="number"
@@ -870,14 +871,19 @@ function UsersContent() {
             />
 
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setBalanceModal(null)} className="flex-1 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBalanceModal(null)}
+                className="flex-1 text-xs cursor-pointer"
+              >
                 Cancel
               </Button>
               <Button
                 size="sm"
                 onClick={handleBalanceAction}
                 disabled={updateBalance.isPending || !balanceAmount}
-                className="flex-1 text-xs"
+                className="flex-1 text-xs cursor-pointer"
               >
                 {updateBalance.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -888,9 +894,9 @@ function UsersContent() {
                 )}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* Delete User Confirm Dialog */}
       <ConfirmDialog
@@ -905,24 +911,29 @@ function UsersContent() {
       />
 
       {/* Suspend User Modal */}
-      {suspendModal && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setSuspendModal(null)}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 shrink-0">
-                <Ban className="h-5 w-5" />
+      <Dialog
+        open={!!suspendModal}
+        onOpenChange={(open) => {
+          if (!open) setSuspendModal(null);
+        }}
+      >
+        {suspendModal && (
+          <DialogContent className="max-w-md p-6 space-y-4">
+            <DialogHeader className="text-left space-y-0">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 shrink-0">
+                  <Ban className="h-5 w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold text-gray-900">
+                    Suspend Akun Pengguna
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-gray-500 mt-0.5 truncate">
+                    {suspendModal.email}
+                  </DialogDescription>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Suspend Akun Pengguna</h3>
-                <p className="text-xs text-gray-500 mt-0.5 truncate">{suspendModal.email}</p>
-              </div>
-            </div>
+            </DialogHeader>
 
             <div className="space-y-3 pt-1">
               <div>
@@ -973,7 +984,7 @@ function UsersContent() {
                 variant="outline"
                 size="sm"
                 onClick={() => setSuspendModal(null)}
-                className="flex-1 text-xs"
+                className="flex-1 text-xs cursor-pointer"
               >
                 Batal
               </Button>
@@ -981,7 +992,7 @@ function UsersContent() {
                 size="sm"
                 onClick={handleSuspendUser}
                 disabled={suspendUser.isPending || !suspendReason.trim()}
-                className="flex-1 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                className="flex-1 text-xs bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
               >
                 {suspendUser.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -990,9 +1001,9 @@ function UsersContent() {
                 )}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* Unsuspend Confirm Dialog */}
       <ConfirmDialog

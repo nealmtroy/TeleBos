@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
 import api from "@/lib/api";
 import { ChatItem } from "./types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ForwardModalProps {
   accountId: string;
@@ -44,26 +50,17 @@ export function ForwardModal({
     },
   });
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in-0 duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-white dark:bg-[#17212b] rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[70vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Forward to...</h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full max-w-md bg-white dark:bg-[#17212b] rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[70vh] p-0 border-slate-200 dark:border-slate-800">
+        <DialogHeader className="p-4 border-b border-slate-200 dark:border-slate-800 pr-12 text-left">
+          <DialogTitle className="text-base font-bold text-slate-900 dark:text-slate-100">
+            Forward to...
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Select a chat to forward the selected messages
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-100 dark:divide-slate-800/50 custom-scroll">
           {forwardChatsData?.chats && forwardChatsData.chats.length > 0 ? (
             forwardChatsData.chats
@@ -91,7 +88,7 @@ export function ForwardModal({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -55,6 +55,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { DataPagination } from "@/components/ui/pagination";
 import {
   Table,
@@ -1013,31 +1020,25 @@ function BroadcastManagementContent() {
       </div>
 
       {/* ── Job Details Modal ──────────────────────────────────────────────── */}
-      {selectedJob && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-slate-900">Broadcast Job Details</h3>
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-full text-xs font-medium border",
-                      (STATUS_BADGES[selectedJob.status] || STATUS_BADGES.cancelled).bg
-                    )}
-                  >
-                    {selectedJob.status.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-xs font-mono text-slate-400 mt-1">{selectedJob.id}</p>
+      <Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
+        {selectedJob && (
+          <DialogContent className="max-w-xl p-6 max-h-[90vh] overflow-y-auto space-y-5">
+            <DialogHeader className="pr-6">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-lg font-bold text-slate-900">Broadcast Job Details</DialogTitle>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-medium border",
+                    (STATUS_BADGES[selectedJob.status] || STATUS_BADGES.cancelled).bg
+                  )}
+                >
+                  {selectedJob.status.toUpperCase()}
+                </span>
               </div>
-              <button
-                onClick={() => setSelectedJob(null)}
-                className="h-7 w-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
+              <DialogDescription className="text-xs font-mono text-slate-400 mt-1">
+                {selectedJob.id}
+              </DialogDescription>
+            </DialogHeader>
 
             {/* Duplicate Conflict Warning Box in Modal */}
             {selectedJob.has_duplicate_accounts && (
@@ -1232,9 +1233,9 @@ function BroadcastManagementContent() {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* ── Confirmation Modal ──────────────────────────────────────────────── */}
       <ConfirmDialog

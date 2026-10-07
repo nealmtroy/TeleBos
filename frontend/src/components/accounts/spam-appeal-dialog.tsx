@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { useStartSpamAppeal, useResumeSpamAppeal } from "@/hooks/use-accounts";
 import { useToast } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -13,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertTriangle, ExternalLink, Loader2, Send, CheckCircle2, ShieldAlert } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SpamAppealDialogProps {
   open: boolean;
@@ -71,7 +78,6 @@ const APPEAL_PRESETS = [
 export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDialogProps) {
   const _ = useT();
   const { toast } = useToast();
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Mutations
   const startAppealMutation = useStartSpamAppeal();
@@ -96,32 +102,6 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
       setStatus("idle");
     }
   }, [open]);
-
-  // Handle body scroll locking
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
-  // Handle Escape key
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && status !== "submitting") {
-        onOpenChange(false);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, status, onOpenChange]);
-
-  if (!open) return null;
 
   const isSubmitting = status === "submitting";
 
@@ -196,35 +176,42 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
     }
   }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
-        onClick={() => {
-          if (!isSubmitting) onOpenChange(false);
-        }}
-        style={{ animation: "fadeIn 0.2s ease-out" }}
-      />
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!isSubmitting) onOpenChange(val);
+      }}
+    >
+      <DialogContent className="max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <DialogHeader className={cn(status === "success" && "text-center sm:text-center", (status === "submitting" || status === "warning") && "sr-only")}>
+          <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            {status === "success" && _("accountDetail.appealSuccessTitle")}
+            {status === "warning" && _("accountDetail.appealForceWarningTitle")}
+            {status === "captcha" && (
+              <>
+                <AlertTriangle className="h-5 w-5 text-amber-500 animate-pulse" />
+                {_("accountDetail.appealCaptchaTitle")}
+              </>
+            )}
+            {status === "idle" && (
+              <>
+                <Send className="h-5 w-5 text-primary-500" />
+                {_("accountDetail.appealTitle")}
+              </>
+            )}
+            {status === "submitting" && "Submitting Spam Appeal"}
+          </DialogTitle>
+          <DialogDescription className={cn(status !== "success" && "sr-only", "text-sm text-slate-500 max-w-sm mx-auto")}>
+            {status === "success" ? _("accountDetail.appealSuccessDesc") : "Spam appeal dialog"}
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* Dialog container */}
-      <div
-        ref={dialogRef}
-        className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
-        style={{
-          animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
         {/* Success State */}
         {status === "success" && (
-          <div className="text-center py-6 space-y-4">
+          <div className="text-center py-4 space-y-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-8 w-8 text-emerald-600 animate-bounce" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-slate-900">{_("accountDetail.appealSuccessTitle")}</h3>
-              <p className="text-sm text-slate-500 max-w-sm mx-auto">{_("accountDetail.appealSuccessDesc")}</p>
             </div>
             <button
               onClick={() => onOpenChange(false)}
@@ -265,10 +252,6 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
         {/* Captcha State */}
         {status === "captcha" && captchaUrl && (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500 animate-pulse" />
-              {_("accountDetail.appealCaptchaTitle")}
-            </h3>
             <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100 font-sans">
               {_("accountDetail.appealCaptchaDesc")}
             </p>
@@ -311,11 +294,6 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
         {/* Main Appeal Form State */}
         {status === "idle" && (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Send className="h-5 w-5 text-primary-500" />
-              {_("accountDetail.appealTitle")}
-            </h3>
-
             {errorMsg && (
               <p className="text-xs text-rose-600 font-medium bg-rose-50 p-2.5 rounded-lg border border-rose-100">
                 {errorMsg}
@@ -392,26 +370,7 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
             </p>
           </div>
         )}
-      </div>
-
-      {/* Global CSS styles for transitions */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
-    </div>,
-    document.body
+      </DialogContent>
+    </Dialog>
   );
 }

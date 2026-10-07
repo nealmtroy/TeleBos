@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -139,189 +145,149 @@ function RedeemCodesContent() {
       </div>
 
       {/* Create Code Form Modal */}
-      {mounted && showForm && createPortal(
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={() => setShowForm(false)}
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
-            style={{ animation: "fadeIn 0.2s ease-out" }}
-          />
+      <Dialog open={mounted && showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <DialogHeader className="pb-4 border-b border-gray-100 text-left">
+            <DialogTitle className="text-lg font-bold text-gray-900">
+              {_("adminRedeem.createCode")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Form untuk membuat kode redeem baru
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Modal Content */}
-          <div
-            className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg p-6 flex flex-col max-h-[90vh] overflow-y-auto"
-            style={{
-              animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0">
-              <h3 className="text-lg font-bold text-gray-900">
-                {_("adminRedeem.createCode")}
-              </h3>
-              <button
-                onClick={() => setShowForm(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+          {/* Form */}
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label htmlFor="create-redeem-code-type" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.codeType")}</label>
+                <Select
+                  value={formData.code_type}
+                  onValueChange={(val) => setFormData({ ...formData, code_type: val })}
+                >
+                  <SelectTrigger id="create-redeem-code-type" className="w-full h-10 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 border-gray-200 font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="subscription">{_("adminRedeem.typeSubscription")}</SelectItem>
+                    <SelectItem value="balance">{_("adminRedeem.typeBalance")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Form */}
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label htmlFor="create-redeem-code-type" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.codeType")}</label>
-                  <Select
-                    value={formData.code_type}
-                    onValueChange={(val) => setFormData({ ...formData, code_type: val })}
-                  >
-                    <SelectTrigger id="create-redeem-code-type" className="w-full h-10 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 border-gray-200 font-medium">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="subscription">{_("adminRedeem.typeSubscription")}</SelectItem>
-                      <SelectItem value="balance">{_("adminRedeem.typeBalance")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.code_type === "subscription" && (
-                  <>
-                    <div>
-                      <label htmlFor="create-redeem-plan" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.plan")}</label>
-                      <Select
-                        value={formData.plan}
-                        onValueChange={(val) => setFormData({ ...formData, plan: val })}
-                      >
-                        <SelectTrigger id="create-redeem-plan" className="w-full h-10 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 border-gray-200">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pro">Pro</SelectItem>
-                          <SelectItem value="premium">Premium</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label htmlFor="create-redeem-duration-days" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.durationDays")}</label>
-                      <input
-                        id="create-redeem-duration-days"
-                        name="duration_days"
-                        type="number"
-                        value={formData.duration_days}
-                        onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
-                        min={1}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {formData.code_type === "balance" && (
-                  <div className="sm:col-span-2">
-                    <label htmlFor="create-redeem-amount" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.amount")}</label>
+              {formData.code_type === "subscription" && (
+                <>
+                  <div>
+                    <label htmlFor="create-redeem-plan" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.plan")}</label>
+                    <Select
+                      value={formData.plan}
+                      onValueChange={(val) => setFormData({ ...formData, plan: val })}
+                    >
+                      <SelectTrigger id="create-redeem-plan" className="w-full h-10 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 border-gray-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label htmlFor="create-redeem-duration-days" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.durationDays")}</label>
                     <input
-                      id="create-redeem-amount"
-                      name="amount"
+                      id="create-redeem-duration-days"
+                      name="duration_days"
                       type="number"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      value={formData.duration_days}
+                      onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                       min={1}
-                      placeholder="e.g. 10000"
                     />
                   </div>
-                )}
+                </>
+              )}
 
-                <div>
-                  <label htmlFor="create-redeem-max-uses" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.maxUses")}</label>
+              {formData.code_type === "balance" && (
+                <div className="sm:col-span-2">
+                  <label htmlFor="create-redeem-amount" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.amount")}</label>
                   <input
-                    id="create-redeem-max-uses"
-                    name="max_uses"
+                    id="create-redeem-amount"
+                    name="amount"
                     type="number"
-                    value={formData.max_uses}
-                    onChange={(e) => setFormData({ ...formData, max_uses: e.target.value })}
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
                     min={1}
+                    placeholder="e.g. 10000"
                   />
                 </div>
+              )}
 
-                <div>
-                  <label htmlFor="create-redeem-expires-at" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.expiresAt")}</label>
-                  <DateTimePicker
-                    id="create-redeem-expires-at"
-                    date={expiresDate}
-                    setDate={setExpiresDate}
-                    minDate={new Date()}
-                    placeholder="Pilih batas kedaluwarsa (opsional)"
-                    className="w-full"
-                    triggerClassName="w-full border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 text-gray-700 dark:text-slate-200"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="create-redeem-prefix" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.prefix")}</label>
-                  <input
-                    id="create-redeem-prefix"
-                    name="code_prefix"
-                    type="text"
-                    value={formData.code_prefix}
-                    onChange={(e) => setFormData({ ...formData, code_prefix: e.target.value })}
-                    placeholder="e.g. PROMO"
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
-                    maxLength={20}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="create-redeem-custom-code" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Custom Code <span className="text-gray-400 font-normal lowercase">(opsional)</span></label>
-                  <input
-                    id="create-redeem-custom-code"
-                    name="custom_code"
-                    type="text"
-                    value={formData.custom_code}
-                    onChange={(e) => setFormData({ ...formData, custom_code: e.target.value })}
-                    placeholder="e.g. free-trial-1-month"
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
-                    maxLength={50}
-                  />
-                </div>
+              <div>
+                <label htmlFor="create-redeem-max-uses" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.maxUses")}</label>
+                <input
+                  id="create-redeem-max-uses"
+                  name="max_uses"
+                  type="number"
+                  value={formData.max_uses}
+                  onChange={(e) => setFormData({ ...formData, max_uses: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
+                  min={1}
+                />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-gray-100 shrink-0">
-                <Button type="submit" disabled={createCode.isPending} className="flex-1 py-2.5">
-                  {createCode.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  {_("adminRedeem.createCode")}
-                </Button>
-                <Button variant="outline" type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5">Cancel</Button>
+              <div>
+                <label htmlFor="create-redeem-expires-at" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.expiresAt")}</label>
+                <DateTimePicker
+                  id="create-redeem-expires-at"
+                  date={expiresDate}
+                  setDate={setExpiresDate}
+                  minDate={new Date()}
+                  placeholder="Pilih batas kedaluwarsa (opsional)"
+                  className="w-full"
+                  triggerClassName="w-full border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50/50 hover:bg-gray-50 text-gray-700 dark:text-slate-200"
+                />
               </div>
-            </form>
-          </div>
 
-          {/* Animations keyframes */}
-          <style jsx global>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes scaleIn {
-              from {
-                opacity: 0;
-                transform: scale(0.95) translateY(8px);
-              }
-              to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-              }
-            }
-          `}</style>
-        </div>,
-        document.body
-      )}
+              <div>
+                <label htmlFor="create-redeem-prefix" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{_("adminRedeem.prefix")}</label>
+                <input
+                  id="create-redeem-prefix"
+                  name="code_prefix"
+                  type="text"
+                  value={formData.code_prefix}
+                  onChange={(e) => setFormData({ ...formData, code_prefix: e.target.value })}
+                  placeholder="e.g. PROMO"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
+                  maxLength={20}
+                />
+              </div>
+              <div>
+                <label htmlFor="create-redeem-custom-code" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Custom Code <span className="text-gray-400 font-normal lowercase">(opsional)</span></label>
+                <input
+                  id="create-redeem-custom-code"
+                  name="custom_code"
+                  type="text"
+                  value={formData.custom_code}
+                  onChange={(e) => setFormData({ ...formData, custom_code: e.target.value })}
+                  placeholder="e.g. free-trial-1-month"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 bg-gray-50/50 hover:bg-gray-50 transition"
+                  maxLength={50}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-100 shrink-0">
+              <Button type="submit" disabled={createCode.isPending} className="flex-1 py-2.5 cursor-pointer">
+                {createCode.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                {_("adminRedeem.createCode")}
+              </Button>
+              <Button variant="outline" type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 cursor-pointer">Cancel</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Search */}
       <div className="relative max-w-md">

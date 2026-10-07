@@ -54,6 +54,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -320,73 +328,49 @@ export default function AdminTransactionsPage() {
       {/* Filter and Search Bar */}
       <Card className="border-gray-200 dark:border-slate-800 shadow-xs">
         <div className="p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Type Filter Buttons */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800/80 overflow-x-auto self-start">
-            <button
-              type="button"
-              onClick={() => setTypeFilter("all")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-                typeFilter === "all"
-                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-2xs"
-                  : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200"
-              )}
-            >
-              Semua Jenis
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("topup")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-                typeFilter === "topup"
-                  ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-2xs"
-                  : "text-gray-600 dark:text-slate-400 hover:text-emerald-600"
-              )}
-            >
-              <ArrowDownToLine className="h-3.5 w-3.5" />
-              <span>Deposit</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("withdraw")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-                typeFilter === "withdraw"
-                  ? "bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-2xs"
-                  : "text-gray-600 dark:text-slate-400 hover:text-blue-600"
-              )}
-            >
-              <ArrowUpFromLine className="h-3.5 w-3.5" />
-              <span>Penarikan</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("redeem")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-                typeFilter === "redeem"
-                  ? "bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-2xs"
-                  : "text-gray-600 dark:text-slate-400 hover:text-purple-600"
-              )}
-            >
-              <Ticket className="h-3.5 w-3.5" />
-              <span>Redeem</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("admin_adjustment")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap",
-                typeFilter === "admin_adjustment"
-                  ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-2xs"
-                  : "text-gray-600 dark:text-slate-400 hover:text-amber-600"
-              )}
-            >
-              <Coins className="h-3.5 w-3.5" />
-              <span>Saldo Admin</span>
-            </button>
-          </div>
+          {/* Type Filter Tabs */}
+          <Tabs
+            value={typeFilter}
+            onValueChange={(val) => setTypeFilter(val as any)}
+            className="w-auto self-start"
+          >
+            <TabsList className="bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl h-auto gap-1 flex items-center overflow-x-auto">
+              <TabsTrigger
+                value="all"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-gray-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-2xs"
+              >
+                Semua Jenis
+              </TabsTrigger>
+              <TabsTrigger
+                value="topup"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-300 data-[state=active]:shadow-2xs"
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+                <span>Deposit</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="withdraw"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 data-[state=active]:shadow-2xs"
+              >
+                <ArrowUpFromLine className="h-3.5 w-3.5" />
+                <span>Penarikan</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="redeem"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 data-[state=active]:shadow-2xs"
+              >
+                <Ticket className="h-3.5 w-3.5" />
+                <span>Redeem</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="admin_adjustment"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300 data-[state=active]:shadow-2xs"
+              >
+                <Coins className="h-3.5 w-3.5" />
+                <span>Saldo Admin</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Status selector and Search input */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
@@ -581,32 +565,25 @@ export default function AdminTransactionsPage() {
       </Card>
 
       {/* ── TRANSACTION DETAIL AUDIT MODAL ── */}
-      {selectedTx && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => setSelectedTx(null)}
-        >
-          <div
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+      <Dialog
+        open={!!selectedTx}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTx(null);
+        }}
+      >
+        {selectedTx && (
+          <DialogContent className="max-w-md p-0 overflow-hidden">
+            <DialogHeader className="p-5 border-b border-gray-100 dark:border-slate-800 flex flex-row items-center justify-between text-left space-y-0">
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary-500" />
-                <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+                <DialogTitle className="text-sm font-bold text-gray-900 dark:text-slate-100">
                   Audit Transaksi Keuangan
-                </h3>
+                </DialogTitle>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTx(null)}
-                className="p-1 rounded text-gray-400 hover:text-gray-700"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+              <DialogDescription className="sr-only">
+                Detail audit transaksi #{selectedTx.id}
+              </DialogDescription>
+            </DialogHeader>
 
             <div className="p-6 space-y-4 text-xs">
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center space-y-1">
@@ -681,30 +658,27 @@ export default function AdminTransactionsPage() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* ── REJECT REASON MODAL ── */}
-      {rejectingTx && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => setRejectingTx(null)}
-        >
-          <div
-            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+      <Dialog
+        open={!!rejectingTx}
+        onOpenChange={(open) => {
+          if (!open) setRejectingTx(null);
+        }}
+      >
+        {rejectingTx && (
+          <DialogContent className="max-w-sm p-6 space-y-4">
+            <DialogHeader className="text-left space-y-1">
+              <DialogTitle className="text-base font-bold text-gray-900 dark:text-slate-100">
                 Tolak Permintaan Transaksi
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
+              </DialogTitle>
+              <DialogDescription className="text-xs text-gray-500">
                 Tolak transaksi ID <span className="font-mono font-bold">{rejectingTx.id}</span> ({formatIDR(rejectingTx.amount)}).
-              </p>
-            </div>
+              </DialogDescription>
+            </DialogHeader>
 
             <form onSubmit={handleRejectSubmit} className="space-y-4">
               <div className="space-y-1.5">
@@ -742,9 +716,9 @@ export default function AdminTransactionsPage() {
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

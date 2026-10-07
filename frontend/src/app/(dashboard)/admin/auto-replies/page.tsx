@@ -31,6 +31,14 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { DataPagination } from "@/components/ui/pagination";
 import {
   Table,
@@ -204,31 +212,34 @@ function AutoReplyManagementContent() {
         {/* Filters */}
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-gray-200/60 rounded-xl">
-            {(
-              [
-                { id: "all", label: "All Accounts" },
-                { id: "running", label: "Running" },
-                { id: "stopped", label: "Stopped" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setStatusFilter(tab.id);
-                  setPage(1);
-                }}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                  statusFilter === tab.id
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-800"
-                )}
+          <Tabs
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val as "all" | "running" | "stopped");
+              setPage(1);
+            }}
+          >
+            <TabsList className="bg-gray-200/60 p-1 h-auto rounded-xl">
+              <TabsTrigger
+                value="all"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500"
               >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+                All Accounts
+              </TabsTrigger>
+              <TabsTrigger
+                value="running"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500"
+              >
+                Running
+              </TabsTrigger>
+              <TabsTrigger
+                value="stopped"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500"
+              >
+                Stopped
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Search */}
           <div className="relative w-full sm:w-72">
@@ -435,26 +446,20 @@ function AutoReplyManagementContent() {
       </div>
 
       {/* Message Preview Modal */}
-      {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
+      <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}>
+        {previewItem && (
+          <DialogContent className="max-w-md p-6 space-y-4">
+            <DialogHeader className="pr-6">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-sm">Auto-Reply Message Preview</h3>
-                  <p className="text-xs text-gray-400">{previewItem.phone}</p>
+                  <DialogTitle className="font-bold text-gray-900 text-sm">Auto-Reply Message Preview</DialogTitle>
+                  <DialogDescription className="text-xs text-gray-400">{previewItem.phone}</DialogDescription>
                 </div>
               </div>
-              <button
-                onClick={() => setPreviewItem(null)}
-                className="text-gray-400 hover:text-gray-600 text-sm p-1 rounded-lg"
-              >
-                ✕
-              </button>
-            </div>
+            </DialogHeader>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-xs text-gray-800 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
               {previewItem.auto_reply_text || "No text configured."}
@@ -478,9 +483,9 @@ function AutoReplyManagementContent() {
                 <span>{copiedId === previewItem.id ? "Copied" : "Copy Message"}</span>
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

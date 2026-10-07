@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDraftStore } from "@/lib/drafts";
 import { EMOJI_CATEGORIES, MOCK_GIFS, EMOJI_SUGGESTIONS } from "./constants";
 
@@ -139,24 +140,20 @@ export function EmojiPicker({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tab Headers */}
-      <div className="flex border-b text-xs font-semibold mb-2 flex-shrink-0" style={{ borderColor: "var(--tg-border)", color: "var(--tg-text-secondary)" }}>
-        {(["emoji", "sticker", "gif"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setPickerTab(tab)}
-            className={cn(
-              "flex-1 pb-2 text-center border-b-2 capitalize transition font-bold cursor-pointer",
-              pickerTab === tab
-                ? "border-primary text-primary"
-                : "border-transparent opacity-70 hover:opacity-100"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <Tabs value={pickerTab} onValueChange={(val) => setPickerTab(val as typeof pickerTab)} className="w-full mb-2 flex-shrink-0">
+        <TabsList className="w-full h-8 bg-transparent p-0 border-b rounded-none" style={{ borderColor: "var(--tg-border)" }}>
+          {(["emoji", "sticker", "gif"] as const).map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              onMouseDown={(e) => e.preventDefault()}
+              className="flex-1 h-8 rounded-none border-b-2 capitalize transition font-bold cursor-pointer text-xs data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent border-transparent opacity-70 data-[state=active]:opacity-100 shadow-none"
+            >
+              {tab}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* Picker Body */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">

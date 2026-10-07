@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   FolderOpen,
   Pencil,
@@ -92,17 +98,7 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, managingFolder, onOpenChange]);
 
-  // Prevent body scroll
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
 
-  if (!open) return null;
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -187,46 +183,39 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
 
   const accountCount = (ids: string[] | undefined) => ids?.length ?? 0;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-start justify-center p-4 pt-12 sm:pt-16"
-      onClick={() => {
-        if (!managingFolder) onOpenChange(false);
-      }}
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" style={{ animation: "fadeIn 0.2s ease-out" }} />
-
-      {/* Dialog */}
-      <div
-        className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg max-h-[75vh] flex flex-col"
-        style={{ animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)" }}
-        onClick={(e) => e.stopPropagation()}
+  return (
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(val) => {
+          if (!val) {
+            setManagingFolder(null);
+            onOpenChange(false);
+          }
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-2">
-            {managingFolder ? (
-              <button
-                onClick={() => setManagingFolder(null)}
-                className="p-1 -ml-1 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-            ) : null}
-            <h3 className="text-lg font-semibold text-gray-900">
-              {managingFolder
-                ? _("accountFolders.folderAccounts", { name: managingFolder.name })
-                : _("accountFolders.title")}
-            </h3>
-          </div>
-          <button
-            onClick={() => { setManagingFolder(null); onOpenChange(false); }}
-            className="p-1.5 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        <DialogContent className="max-w-lg p-0 max-h-[85vh] flex flex-col overflow-hidden">
+          {/* Header */}
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-gray-100 shrink-0 text-left pr-12">
+            <div className="flex items-center gap-2">
+              {managingFolder ? (
+                <button
+                  onClick={() => setManagingFolder(null)}
+                  className="p-1 -ml-1 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              ) : null}
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                {managingFolder
+                  ? _("accountFolders.folderAccounts", { name: managingFolder.name })
+                  : _("accountFolders.title")}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="sr-only">
+              Folder management dialog
+            </DialogDescription>
+          </DialogHeader>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -407,39 +396,21 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
             </>
           )}
         </div>
-      </div>
+      </DialogContent>
+    </Dialog>
 
-      {/* Delete confirmation */}
-      <ConfirmDialog
-        open={deleteFolderId !== null}
-        onOpenChange={() => setDeleteFolderId(null)}
-        onConfirm={handleDelete}
-        title={_("accountFolders.deleteFolder")}
-        message={_("accountFolders.deleteConfirm")}
-        confirmText={_("accountFolders.delete")}
-        cancelText={_("navbar.cancel")}
-        variant="warning"
-        loading={deleteFolder.isPending}
-      />
-
-      {/* Animations */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.9) translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
-    </div>,
-    document.body
+    {/* Delete confirmation */}
+    <ConfirmDialog
+      open={deleteFolderId !== null}
+      onOpenChange={() => setDeleteFolderId(null)}
+      onConfirm={handleDelete}
+      title={_("accountFolders.deleteFolder")}
+      message={_("accountFolders.deleteConfirm")}
+      confirmText={_("accountFolders.delete")}
+      cancelText={_("navbar.cancel")}
+      variant="warning"
+      loading={deleteFolder.isPending}
+    />
+  </>
   );
 }

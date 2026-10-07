@@ -1,7 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Clock, X, Trash2 } from "lucide-react";
+import { Clock, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { MessageItem } from "./types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ScheduledQueueModalProps {
   accountId: string;
@@ -36,29 +43,18 @@ export function ScheduledQueueModal({
     }
   });
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in-0 duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-white dark:bg-[#17212b] rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[70vh] text-left"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full max-w-md bg-white dark:bg-[#17212b] rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[70vh] p-0 text-left border-slate-200 dark:border-slate-800">
+        <DialogHeader className="p-4 border-b border-slate-200 dark:border-slate-800 pr-12 text-left">
+          <DialogTitle className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
             <Clock className="h-4.5 w-4.5 text-primary" />
             Scheduled Queue ({scheduledMessagesData?.length || 0})
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            List of scheduled messages in this chat
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex-1 overflow-y-auto p-4 custom-scroll space-y-3">
           {scheduledMessagesData && scheduledMessagesData.length > 0 ? (
             scheduledMessagesData.map((msg) => (
@@ -109,7 +105,7 @@ export function ScheduledQueueModal({
             Close
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

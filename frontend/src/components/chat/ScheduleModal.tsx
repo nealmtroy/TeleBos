@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Clock, X, Loader2 } from "lucide-react";
+import { Clock, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ScheduleModalProps {
   accountId: string;
@@ -36,31 +43,20 @@ export function ScheduleModal({
     }
   });
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in-0 duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm bg-white dark:bg-[#17212b] rounded-2xl shadow-xl animate-in zoom-in-95 duration-200 flex flex-col p-4 text-left"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between pb-3 border-b border-slate-150 dark:border-slate-800">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full max-w-sm bg-white dark:bg-[#17212b] rounded-2xl shadow-xl p-4 text-left border-slate-150 dark:border-slate-800">
+        <DialogHeader className="pb-3 border-b border-slate-150 dark:border-slate-800 pr-6 text-left">
+          <DialogTitle className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
             <Clock className="h-4.5 w-4.5 text-primary" />
             Schedule Message
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
-          >
-            <X className="h-4.5 w-4.5" />
-          </button>
-        </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Schedule a message to be sent at a future time
+          </DialogDescription>
+        </DialogHeader>
         
-        <div className="py-4 space-y-3">
+        <div className="py-2 space-y-3">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Choose date and time to send this message:
           </p>
@@ -104,7 +100,7 @@ export function ScheduleModal({
             Schedule
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

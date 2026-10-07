@@ -11,6 +11,11 @@ import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, ArrowLeft, MessageSquare, RefreshCw, Loader2,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
 
@@ -149,31 +154,22 @@ export default function GroupsChannelsPage() {
       </div>
 
       {/* Tabs: Groups | Channels */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-100 overflow-x-auto scrollbar-none">
-        <button
-          onClick={() => setActiveTab("groups")}
-          className={cn(
-            "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
-            activeTab === "groups"
-              ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          )}
+      <div className="px-3 py-2 border-b border-gray-100">
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as "groups" | "channels")}
         >
-          <Users className="h-3 w-3 inline mr-1" />
-          {_("groupsChannels.groups")}
-        </button>
-        <button
-          onClick={() => setActiveTab("channels")}
-          className={cn(
-            "flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-full transition whitespace-nowrap",
-            activeTab === "channels"
-              ? "bg-primary-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          )}
-        >
-          <Hash className="h-3 w-3 inline mr-1" />
-          {_("groupsChannels.channels")}
-        </button>
+          <TabsList className="h-8 bg-gray-100 p-0.5">
+            <TabsTrigger value="groups" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
+              <Users className="h-3 w-3" />
+              {_("groupsChannels.groups")}
+            </TabsTrigger>
+            <TabsTrigger value="channels" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
+              <Hash className="h-3 w-3" />
+              {_("groupsChannels.channels")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Content */}
