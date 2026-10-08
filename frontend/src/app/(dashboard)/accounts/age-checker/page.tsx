@@ -107,6 +107,7 @@ export default function AgeCheckerPage() {
                 <input
                   type="text"
                   id="telegramId"
+                  name="telegramId"
                   value={telegramId}
                   onChange={(e) => setTelegramId(e.target.value)}
                   placeholder={_("ageChecker.inputPlaceholder")}

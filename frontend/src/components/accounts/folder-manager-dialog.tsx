@@ -226,10 +226,13 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
+                  id="folder-member-search"
+                  name="memberSearch"
                   type="text"
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                   placeholder={_("accountFolders.searchAccounts")}
+                  aria-label={_("accountFolders.searchAccounts")}
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                 />
               </div>
@@ -301,6 +304,9 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                         {isEditing ? (
                           <div className="flex items-center gap-2 flex-1 mr-2">
                             <input
+                              id={`folder-rename-${folder.id}`}
+                              name={`renameFolder_${folder.id}`}
+                              aria-label={_("accountFolders.renameFolder") || "Rename Folder"}
                               type="text"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
@@ -371,6 +377,9 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
               {/* Create new folder */}
               <div className="flex items-center gap-2">
                 <input
+                  id="new-folder-name"
+                  name="newFolderName"
+                  aria-label={_("accountFolders.folderNamePlaceholder")}
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}

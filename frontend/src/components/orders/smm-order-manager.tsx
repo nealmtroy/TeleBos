@@ -482,9 +482,12 @@ function ServicesListView({
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
+            id="smm-services-search"
+            name="search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={_("smmOrderManager.searchPlaceholder") || "Cari layanan SMM"}
             placeholder={_("smmOrderManager.searchPlaceholder")}
             className="w-full pl-9 pr-9 py-2 rounded-xl text-sm bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
           />
@@ -964,7 +967,7 @@ function OrderModal({
             {/* Target Input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-foreground">
+                <label htmlFor="smm-data-target" className="text-xs font-bold text-foreground">
                   {_("orders.dataTarget") || "Target / Link Telegram"}
                 </label>
                 {targetExample && (
@@ -974,6 +977,8 @@ function OrderModal({
                 )}
               </div>
               <input
+                id="smm-data-target"
+                name="dataTarget"
                 type="text"
                 value={dataTarget}
                 onChange={(e) => setDataTarget(e.target.value)}
@@ -995,7 +1000,7 @@ function OrderModal({
             {/* Quantity Stepper & Presets */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-foreground">
+                <label htmlFor="smm-order-quantity" className="text-xs font-bold text-foreground">
                   {_("orders.quantity") || "Jumlah Pemesanan"}
                 </label>
                 <span className="text-[11px] text-muted-foreground">
@@ -1012,14 +1017,17 @@ function OrderModal({
                   <Minus className="h-4 w-4" />
                 </button>
                 <input
+                  id="smm-order-quantity"
+                  name="quantity"
                   type="number"
                   value={quantityInput}
                   onChange={(e) => setQuantityInput(e.target.value)}
                   onBlur={(e) => commitQuantity(e.target.value)}
                   min={service.min}
                   max={service.max}
+                  aria-label={_("orders.quantity") || "Jumlah Pemesanan"}
                   className="w-full text-center py-2.5 rounded-xl text-base font-bold bg-background border border-input text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums"
-                  />
+                />
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.min(service.max, quantity + 100))}
@@ -1078,10 +1086,12 @@ function OrderModal({
 
             {/* Optional Comments */}
             <div>
-              <label className="block text-xs font-bold text-foreground mb-1.5">
+              <label htmlFor="smm-order-comments" className="block text-xs font-bold text-foreground mb-1.5">
                 {_("smmOrderManager.commentsOptional")}
               </label>
               <textarea
+                id="smm-order-comments"
+                name="comments"
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}

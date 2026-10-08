@@ -160,6 +160,9 @@ export function EmojiPicker({
         {pickerTab === "emoji" && (
           <div className="flex-1 flex flex-col min-h-0">
             <input
+              id="emoji-picker-search"
+              name="emojiSearch"
+              aria-label="Search Emojis..."
               type="text"
               placeholder="Search Emojis..."
               value={emojiSearch}
@@ -228,6 +231,9 @@ export function EmojiPicker({
           <div className="flex-1 flex flex-col min-h-0">
             <div className="px-1 pt-1 pb-2 flex-shrink-0">
               <input
+                id="sticker-picker-search"
+                name="stickerSearch"
+                aria-label="Search stickers or emoticons..."
                 type="text"
                 placeholder="Search stickers or emoticons..."
                 value={stickerSearch}
@@ -384,6 +390,9 @@ export function EmojiPicker({
           <div className="flex-1 flex flex-col min-h-0">
             <div className="px-1 pt-1 pb-2 flex-shrink-0">
               <input
+                id="gif-picker-search"
+                name="gifSearch"
+                aria-label="Search GIFs..."
                 type="text"
                 placeholder="Search GIFs..."
                 value={gifSearch}

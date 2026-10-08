@@ -167,10 +167,10 @@ export default function InviteHistoryPage() {
               <TableBody className="divide-y divide-gray-100">
                 {jobs.map((job: InviteJob) => (
                   <TableRow key={job.id} className="hover:bg-gray-50/75 transition-colors">
-                    <TableCell className="px-4 py-3.5 text-xs text-gray-700 whitespace-nowrap">
+                    <TableCell className="px-4 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(job.created_at).toLocaleString()}
                     </TableCell>
-                    <TableCell className="px-4 py-3.5 text-xs font-semibold text-gray-900 truncate max-w-48">
+                    <TableCell className="px-4 py-3.5 text-xs font-semibold text-foreground truncate max-w-48">
                       {job.destination_group}
                     </TableCell>
                     <TableCell className="px-4 py-3.5 whitespace-normal">
@@ -186,31 +186,31 @@ export default function InviteHistoryPage() {
                             ? "warning"
                             : "secondary"
                         }
-                        className="text-xs font-semibold uppercase tracking-wider"
+                        className="text-xs font-bold uppercase tracking-wider"
                       >
                         {job.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3.5 whitespace-normal">
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden border border-border/40">
                           <div
                             className={cn(
                               "h-1.5 rounded-full transition-all",
-                              job.status === "failed" ? "bg-rose-500" : "bg-primary-600"
+                              job.status === "failed" ? "bg-rose-500" : "bg-primary"
                             )}
                             style={{ width: `${Math.min(100, Math.max(0, job.progress || 0))}%` }}
                           />
                         </div>
-                        <span className="text-xs font-mono text-gray-500">{job.progress}%</span>
+                        <span className="text-xs font-mono text-muted-foreground">{job.progress}%</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3.5 text-xs font-mono whitespace-normal">
-                      <span className="text-green-700 dark:text-green-400 font-bold">{job.invited_count}</span>
-                      <span className="text-gray-400"> / </span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">{job.invited_count}</span>
+                      <span className="text-muted-foreground/60"> / </span>
                       <span className="text-rose-700 dark:text-rose-400 font-bold">{job.fail_count}</span>
                       {job.skip_count > 0 && (
-                        <span className="text-amber-600 dark:text-amber-400 text-xs ml-1">
+                        <span className="text-amber-700 dark:text-amber-400 font-semibold text-xs ml-1">
                           (+{job.skip_count} skip)
                         </span>
                       )}

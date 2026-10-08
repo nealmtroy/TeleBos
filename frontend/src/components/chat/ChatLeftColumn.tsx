@@ -572,6 +572,9 @@ export function ChatLeftColumn({
         <div className="tg-search">
           <Search className="tg-search-icon" />
           <input
+            id="chat-list-search"
+            name="search"
+            aria-label={t("chats.search") || "Search chats"}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

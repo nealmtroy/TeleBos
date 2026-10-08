@@ -261,6 +261,7 @@ function AccountPricesContent() {
               <Hash className="h-4 w-4 text-gray-400 shrink-0" />
               <input
                 id="new-prefix"
+                name="newPrefix"
                 type="text"
                 value={newPrefix}
                 onChange={(e) => setNewPrefix(e.target.value.replace(/[^0-9]/g, ""))}
@@ -275,6 +276,7 @@ function AccountPricesContent() {
             </label>
             <input
               id="new-sell-price"
+              name="newSellPrice"
               type="text"
               inputMode="numeric"
               value={newSellPrice}
@@ -289,6 +291,7 @@ function AccountPricesContent() {
             </label>
             <input
               id="new-buy-price"
+              name="newBuyPrice"
               type="text"
               inputMode="numeric"
               value={newBuyPrice}
@@ -303,6 +306,7 @@ function AccountPricesContent() {
             </label>
             <input
               id="new-note"
+              name="newNote"
               type="text"
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
@@ -386,6 +390,8 @@ function AccountPricesContent() {
                         <TableCell className="py-3 px-4 whitespace-normal">
                           <div className="flex items-center justify-center gap-1.5">
                             <input
+                              id={`desktop-sell-${rule.id_prefix}`}
+                              name={`desktop_sell_${rule.id_prefix}`}
                               type="text"
                               inputMode="numeric"
                               aria-label={`New sell price for prefix ${rule.id_prefix}`}
@@ -401,6 +407,8 @@ function AccountPricesContent() {
                             />
                             <span className="text-gray-300 text-xs">/</span>
                             <input
+                              id={`desktop-buy-${rule.id_prefix}`}
+                              name={`desktop_buy_${rule.id_prefix}`}
                               type="text"
                               inputMode="numeric"
                               aria-label={`New buy price for prefix ${rule.id_prefix}`}
@@ -505,6 +513,9 @@ function AccountPricesContent() {
                       <label className="flex-1 min-w-0">
                         <span className="sr-only">New sell price for prefix {rule.id_prefix}</span>
                         <input
+                          id={`mobile-sell-${rule.id_prefix}`}
+                          name={`mobile_sell_${rule.id_prefix}`}
+                          aria-label={`New sell price for prefix ${rule.id_prefix}`}
                           type="text"
                           inputMode="numeric"
                           value={draft.sell}
@@ -521,6 +532,9 @@ function AccountPricesContent() {
                       <label className="flex-1 min-w-0">
                         <span className="sr-only">New buy price for prefix {rule.id_prefix}</span>
                         <input
+                          id={`mobile-buy-${rule.id_prefix}`}
+                          name={`mobile_buy_${rule.id_prefix}`}
+                          aria-label={`New buy price for prefix ${rule.id_prefix}`}
                           type="text"
                           inputMode="numeric"
                           value={draft.buy}

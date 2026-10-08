@@ -428,11 +428,13 @@ export default function AdminSystemConfigPage() {
             </div>
             <CardContent className="p-5 space-y-4">
               <div className="max-w-xs space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                <label htmlFor="global-markup" className="text-xs font-semibold text-gray-700 dark:text-slate-300">
                   Markup Global (%)
                 </label>
                 <div className="relative flex items-center">
                   <input
+                    id="global-markup"
+                    name="globalMarkup"
                     type="number"
                     min={0}
                     max={1000}
@@ -478,10 +480,12 @@ export default function AdminSystemConfigPage() {
           <form onSubmit={handleSavePaymentGateway} className="p-5 sm:p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
+                <label htmlFor="qris-merchant-name" className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
                   Nama Merchant QRIS
                 </label>
                 <input
+                  id="qris-merchant-name"
+                  name="merchantName"
                   type="text"
                   value={merchantName}
                   onChange={(e) => setMerchantName(e.target.value)}
@@ -492,10 +496,12 @@ export default function AdminSystemConfigPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
+                <label htmlFor="qris-nmid" className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
                   NMID QRIS Nasional
                 </label>
                 <input
+                  id="qris-nmid"
+                  name="nmid"
                   type="text"
                   value={nmid}
                   onChange={(e) => setNmid(e.target.value)}
@@ -506,10 +512,12 @@ export default function AdminSystemConfigPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
+                <label htmlFor="bank-name" className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
                   Bank Penampung Cadangan
                 </label>
                 <input
+                  id="bank-name"
+                  name="bankName"
                   type="text"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
@@ -520,10 +528,12 @@ export default function AdminSystemConfigPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
+                <label htmlFor="bank-account-number" className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
                   Nomor Rekening Penampung
                 </label>
                 <input
+                  id="bank-account-number"
+                  name="bankAccountNumber"
                   type="text"
                   value={bankAccountNumber}
                   onChange={(e) => setBankAccountNumber(e.target.value)}
@@ -534,10 +544,12 @@ export default function AdminSystemConfigPage() {
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
+                <label htmlFor="bank-account-holder" className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300">
                   Nama Pemilik Rekening Penampung
                 </label>
                 <input
+                  id="bank-account-holder"
+                  name="bankAccountHolder"
                   type="text"
                   value={bankAccountHolder}
                   onChange={(e) => setBankAccountHolder(e.target.value)}
@@ -574,12 +586,14 @@ export default function AdminSystemConfigPage() {
             <CardContent className="p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                  <label htmlFor="account-buy-price" className="text-xs font-semibold text-gray-700 dark:text-slate-300">
                     Harga Beli Akun (Pengguna Membeli)
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 text-xs font-bold text-gray-400">Rp</span>
                     <input
+                      id="account-buy-price"
+                      name="accountBuyPrice"
                       type="number"
                       value={accountBuyPrice}
                       onChange={(e) => setAccountBuyPrice(e.target.value)}
@@ -589,12 +603,14 @@ export default function AdminSystemConfigPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                  <label htmlFor="account-sell-price" className="text-xs font-semibold text-gray-700 dark:text-slate-300">
                     Harga Jual Akun (Pengguna Menjual ke Platform)
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 text-xs font-bold text-gray-400">Rp</span>
                     <input
+                      id="account-sell-price"
+                      name="accountSellPrice"
                       type="number"
                       value={accountSellPrice}
                       onChange={(e) => setAccountSellPrice(e.target.value)}
@@ -623,10 +639,12 @@ export default function AdminSystemConfigPage() {
             <CardContent className="p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                  <label htmlFor="free-daily-hours" className="text-xs font-semibold text-gray-700 dark:text-slate-300">
                     Kuota Siaran Harian Paket Gratis (Jam)
                   </label>
                   <input
+                    id="free-daily-hours"
+                    name="freeDailyHours"
                     type="number"
                     step="0.5"
                     min={0}
@@ -638,10 +656,12 @@ export default function AdminSystemConfigPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+                  <label htmlFor="watermark-text" className="text-xs font-semibold text-gray-700 dark:text-slate-300">
                     Teks Watermark Siaran
                   </label>
                   <input
+                    id="watermark-text"
+                    name="watermarkText"
                     type="text"
                     value={watermarkText}
                     onChange={(e) => setWatermarkText(e.target.value)}

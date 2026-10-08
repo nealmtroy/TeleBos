@@ -150,12 +150,14 @@ export default function RedeemPage() {
         <CardContent className="p-5 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="voucher-code" className="block text-sm font-medium text-foreground mb-2">
                 {_("redeem.codeLabel")}
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <input
+                    id="voucher-code"
+                    name="voucherCode"
                     type="text"
                     value={code}
                     onChange={(e) => setCode(e.target.value.toUpperCase())}

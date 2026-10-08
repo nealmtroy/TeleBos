@@ -328,7 +328,8 @@
   html.dark .text-rose-700,
   html.dark .text-red-700,
   html.dark .text-rose-800,
-  html.dark .text-red-800 {
+  html.dark .text-red-800,
+  html.dark .text-destructive {
     color: rgb(253 164 175) !important;
   }
   html.dark .bg-purple-50 {
@@ -339,15 +340,21 @@
   html.dark .text-purple-700 {
     color: rgb(216 180 254) !important;
   }
-  html.dark .bg-indigo-50 {
+  html.dark .bg-indigo-50,
+  html.dark .bg-indigo-100 {
     background-color: rgb(49 46 129 / 0.35) !important;
     border-color: rgb(55 48 163 / 0.5) !important;
   }
+  html.dark .border-indigo-200 {
+    border-color: rgb(55 48 163 / 0.5) !important;
+  }
   html.dark .text-indigo-600,
-  html.dark .text-indigo-700 {
+  html.dark .text-indigo-700,
+  html.dark .text-indigo-800 {
     color: rgb(199 210 254) !important;
   }
-  html.dark .bg-primary-50 {
+  html.dark .bg-primary-50,
+  html.dark .bg-primary-100 {
     background-color: rgb(30 58 138 / 0.35) !important;
     border-color: rgb(30 64 175 / 0.5) !important;
   }
@@ -355,6 +362,10 @@
   html.dark .text-primary-700,
   html.dark .text-primary-800 {
     color: rgb(147 197 253) !important;
+  }
+  html.dark .text-primary-900,
+  html.dark .text-primary-950 {
+    color: rgb(219 234 254) !important;
   }
   /* text-primary (DEFAULT) resolves to --primary, which is a mid-blue built
      for a filled background. As body text on a dark card it lands at 2.8:1,

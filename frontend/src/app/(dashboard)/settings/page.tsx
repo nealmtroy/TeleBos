@@ -598,6 +598,7 @@ export default function SettingsPage() {
                     <div className="relative">
                       <input
                         id="current-password"
+                        name="currentPassword"
                         type={showCurrent ? "text" : "password"}
                         value={currentPassword}
                         onChange={(e) => {
@@ -628,6 +629,7 @@ export default function SettingsPage() {
                     <div className="relative">
                       <input
                         id="new-password"
+                        name="newPassword"
                         type={showNew ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => {
@@ -709,6 +711,7 @@ export default function SettingsPage() {
                     <div className="relative">
                       <input
                         id="confirm-password"
+                        name="confirmPassword"
                         type={showConfirm ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => {
@@ -847,11 +850,13 @@ export default function SettingsPage() {
 
                   <form onSubmit={handleEnable2FAStart} className="space-y-4 max-w-md">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="enable-twofa-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Kata Sandi Akun
                       </label>
                       <div className="relative">
                         <input
+                          id="enable-twofa-password"
+                          name="twoFaPassword"
                           type={showTwoFaPassword ? "text" : "password"}
                           value={twoFaPassword}
                           onChange={(e) => {
@@ -973,13 +978,15 @@ export default function SettingsPage() {
                     {/* Form to enter 6-digit verification code */}
                     <form onSubmit={handleVerify2FACode} className="space-y-5">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                        <label htmlFor="totp-code" className="text-xs font-semibold uppercase tracking-wider text-foreground">
                           {_("settings.enterCode")}
                         </label>
                         <p className="text-xs text-muted-foreground">
                           Buka aplikasi Google Authenticator atau Bitwarden Anda, lalu masukkan 6-digit kode verifikasi yang muncul.
                         </p>
                         <input
+                          id="totp-code"
+                          name="totpCode"
                           type="text"
                           inputMode="numeric"
                           pattern="[0-9]*"
@@ -1126,11 +1133,13 @@ export default function SettingsPage() {
                     className="space-y-4 max-w-md"
                   >
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="disable-twofa-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Kata Sandi Akun
                       </label>
                       <div className="relative">
                         <input
+                          id="disable-twofa-password"
+                          name="twoFaPassword"
                           type={showTwoFaPassword ? "text" : "password"}
                           value={twoFaPassword}
                           onChange={(e) => {
@@ -1417,6 +1426,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       id="api-key-name"
+                      name="apiKeyName"
                       value={apiKeyName}
                       onChange={(e) => setApiKeyName(e.target.value)}
                       placeholder={_("settings.apiKeyNamePlaceholder")}
@@ -1715,10 +1725,12 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="new-account-number" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         {_("settings.accountNumber")}
                       </label>
                       <input
+                        id="new-account-number"
+                        name="accountNumber"
                         type="text"
                         value={newAccountNumber}
                         onChange={(e) => setNewAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
@@ -1729,10 +1741,12 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="new-account-holder" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         {_("settings.accountHolder")}
                       </label>
                       <input
+                        id="new-account-holder"
+                        name="accountHolder"
                         type="text"
                         value={newAccountHolder}
                         onChange={(e) => setNewAccountHolder(e.target.value)}

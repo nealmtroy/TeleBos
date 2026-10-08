@@ -307,7 +307,7 @@ export function TransferAccountsDialog({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* 1. Recipient Email Search */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-900 dark:text-slate-200 flex items-center gap-1.5">
+            <label htmlFor="recipient-target-email" className="text-sm font-semibold text-gray-900 dark:text-slate-200 flex items-center gap-1.5">
               <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               {_("transferAccounts.recipientEmailLabel")}
               <span className="text-red-500">*</span>
@@ -316,6 +316,8 @@ export function TransferAccountsDialog({
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
                 <input
+                  id="recipient-target-email"
+                  name="targetEmail"
                   type="email"
                   value={targetEmail}
                   onChange={(e) => {
@@ -447,6 +449,9 @@ export function TransferAccountsDialog({
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                 <input
+                  id="transfer-accounts-search"
+                  name="accountSearch"
+                  aria-label="Cari nomor telepon atau nama akun..."
                   type="text"
                   value={accountSearch}
                   onChange={(e) => setAccountSearch(e.target.value)}

@@ -72,10 +72,12 @@ export function PollDialog({ accountId, chatId, isOpen, onClose }: PollDialogPro
         
         <div className="flex-1 overflow-y-auto p-4 custom-scroll space-y-4 text-left">
           <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            <label htmlFor="poll-question" className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
               Question
             </label>
             <input
+              id="poll-question"
+              name="pollQuestion"
               type="text"
               placeholder="Ask a question..."
               value={pollQuestion}
@@ -92,6 +94,9 @@ export function PollDialog({ accountId, chatId, isOpen, onClose }: PollDialogPro
               {pollOptions.map((opt, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <input
+                    id={`poll-opt-${idx}`}
+                    name={`pollOpt_${idx}`}
+                    aria-label={`Option ${idx + 1}`}
                     type="text"
                     placeholder={`Option ${idx + 1}`}
                     value={opt}

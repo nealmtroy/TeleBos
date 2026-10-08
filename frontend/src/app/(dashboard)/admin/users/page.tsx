@@ -405,6 +405,9 @@ function UsersContent() {
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
+              id="admin-users-search"
+              name="search"
+              aria-label={_("admin.searchUsers") || "Search by email or name..."}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -862,6 +865,9 @@ function UsersContent() {
             </DialogHeader>
 
             <input
+              id="admin-balance-amount"
+              name="balanceAmount"
+              aria-label={_("admin.amountPlaceholder") || "Enter amount..."}
               type="number"
               value={balanceAmount}
               onChange={(e) => setBalanceAmount(e.target.value)}
@@ -959,10 +965,12 @@ function UsersContent() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="admin-suspend-reason" className="block text-xs font-semibold text-gray-700 mb-1">
                   Alasan Penangguhan <span className="text-rose-500">*</span>
                 </label>
                 <textarea
+                  id="admin-suspend-reason"
+                  name="suspendReason"
                   value={suspendReason}
                   onChange={(e) => setSuspendReason(e.target.value)}
                   placeholder="Contoh: Terdeteksi aktivitas spam berlebih / Melanggar TOS..."

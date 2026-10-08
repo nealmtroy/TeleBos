@@ -396,6 +396,8 @@ function ContactsContent() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
             <input
+              id="contacts-search"
+              name="search"
               type="text"
               value={search}
               onChange={(e) => {
@@ -403,6 +405,7 @@ function ContactsContent() {
                 setPage(1);
               }}
               placeholder={_("contacts.search")}
+              aria-label={_("contacts.search")}
               className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
@@ -712,7 +715,7 @@ function ContactsContent() {
           {importTab === "manual" ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-gray-700 dark:text-slate-200">
+                <label htmlFor="contacts-import-text" className="text-xs font-semibold text-gray-700 dark:text-slate-200">
                   Masukkan Nomor & Nama (1 per baris):
                 </label>
                 <span className="text-[11px] font-mono text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
@@ -720,6 +723,8 @@ function ContactsContent() {
                 </span>
               </div>
               <textarea
+                id="contacts-import-text"
+                name="importText"
                 rows={6}
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
@@ -729,12 +734,15 @@ function ContactsContent() {
             </div>
           ) : (
             <div className="space-y-3">
-              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-200">Pilih File Kontak</label>
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-primary-400 bg-gray-50/50 hover:bg-primary-50/20 rounded-xl p-6 cursor-pointer transition">
+              <label htmlFor="contacts-file-upload" className="block text-xs font-semibold text-gray-700 dark:text-slate-200">Pilih File Kontak</label>
+              <label htmlFor="contacts-file-upload" className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-primary-400 bg-gray-50/50 hover:bg-primary-50/20 rounded-xl p-6 cursor-pointer transition">
                 <Upload className="h-8 w-8 text-gray-400 mb-2" />
                 <span className="text-xs font-medium text-gray-700 dark:text-slate-200">Klik untuk memilih file kontak</span>
                 <span className="text-[11px] text-gray-400 mt-1">Mendukung format .CSV, .VCF (vCard), .TXT</span>
                 <input
+                  id="contacts-file-upload"
+                  name="contactsFile"
+                  aria-label="Upload file kontak"
                   type="file"
                   accept=".csv,.vcf,.txt"
                   onChange={handleFileUpload}

@@ -208,9 +208,12 @@ export default function GroupListsPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <input
+              id="new-group-list-name"
+              name="newName"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder={_("groupLists.listName")}
+              aria-label={_("groupLists.listName")}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               autoFocus
             />
@@ -352,10 +355,13 @@ export default function GroupListsPage() {
 
                       <div className="space-y-4 py-2">
                         <Textarea
+                          id="bulk-import-text"
+                          name="bulkText"
                           value={bulkText}
                           onChange={(e) => setBulkText(e.target.value)}
                           rows={8}
                           placeholder={`👉 WANANDA 33\nhttps://t.me/WANANDA33OFC\n\n👉 BIRAHIHUB OFFICIAL\nhttps://t.me/birahihub_official\n\n@somegroup\n@anothergroup`}
+                          aria-label={_("groupLists.bulkImport")}
                           className="resize-none text-sm border-gray-200 focus-visible:ring-primary-500"
                         />
 
@@ -432,9 +438,18 @@ export default function GroupListsPage() {
                   </SelectContent>
                 </Select>
                 <input
+                  id={`new-item-${list.id}`}
+                  name={`newItem_${list.id}`}
                   value={newItemValue}
                   onChange={(e) => setNewItemValue(e.target.value)}
                   placeholder={
+                    newItemType === "username"
+                      ? _("groupLists.placeholderUsername")
+                      : newItemType === "link"
+                        ? _("groupLists.placeholderLink")
+                        : _("groupLists.placeholderGroupId")
+                  }
+                  aria-label={
                     newItemType === "username"
                       ? _("groupLists.placeholderUsername")
                       : newItemType === "link"

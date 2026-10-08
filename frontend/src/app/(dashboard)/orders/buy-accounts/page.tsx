@@ -384,9 +384,12 @@ export default function BuyAccountsPage() {
           <div className="relative flex-1 min-w-[240px] max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
+              id="buy-accounts-search"
+              name="search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search accounts by country, ID, or prefix"
               placeholder="Search by ID, country name, or dial prefix..."
               className="w-full h-9 rounded-lg border border-border/90 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 pl-10 pr-8 text-xs font-medium text-foreground placeholder:text-muted-foreground/80 outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150"
             />

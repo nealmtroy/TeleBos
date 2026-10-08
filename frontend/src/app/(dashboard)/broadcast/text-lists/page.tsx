@@ -153,9 +153,14 @@ export default function TextListsPage() {
                   </button>
                 </div>
                 <input
+                  id="new-text-list-name"
+                  name="newName"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder={
+                    _("textLists.listNamePlaceholder") || "Nama daftar..."
+                  }
+                  aria-label={
                     _("textLists.listNamePlaceholder") || "Nama daftar..."
                   }
                   className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition"
@@ -290,6 +295,9 @@ export default function TextListsPage() {
                 <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-700/80 bg-gray-50/50 dark:bg-slate-800/40 space-y-2">
                   <div className="flex items-end gap-2">
                     <Textarea
+                      id={`add-text-${list.id}`}
+                      name={`itemText_${list.id}`}
+                      aria-label={_("textLists.addTextPlaceholder")}
                       value={newItemTexts[list.id] || ""}
                       onChange={(e) => {
                         const val = e.target.value;

@@ -38,13 +38,13 @@ import {
 } from "@/components/ui/select";
 
 const STATUS_COLORS: Record<string, string> = {
-  Pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  Processing: "bg-blue-100 text-blue-700 border-blue-200",
-  "In progress": "bg-indigo-100 text-indigo-700 border-indigo-200",
-  Partial: "bg-orange-100 text-orange-700 border-orange-200",
-  Success: "bg-green-100 text-green-700 border-green-200",
-  Error: "bg-red-100 text-red-700 border-red-200",
-  Failed: "bg-red-100 text-red-700 border-red-200",
+  Pending: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
+  Processing: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50",
+  "In progress": "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50",
+  Partial: "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800/50",
+  Success: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50",
+  Error: "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
+  Failed: "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
 };
 
 export default function SmmOrdersPage() {
@@ -129,6 +129,9 @@ export default function SmmOrdersPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
+            id="admin-smm-orders-search"
+            name="search"
+            aria-label="Search by email or target..."
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

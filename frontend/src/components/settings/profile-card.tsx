@@ -183,6 +183,7 @@ export function ProfileCard() {
             </label>
             <input
               id="settings-full-name"
+              name="fullName"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder={t("settings.fullNamePlaceholder")}

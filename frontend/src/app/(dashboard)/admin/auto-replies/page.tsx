@@ -246,6 +246,9 @@ function AutoReplyManagementContent() {
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <Input
+              id="admin-auto-replies-search"
+              name="search"
+              aria-label="Search phone, user email, or text..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search phone, user email, or text..."

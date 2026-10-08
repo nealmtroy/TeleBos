@@ -204,6 +204,9 @@ export function AccountSwitcher({
           <div className="tg-search">
             <Search className="tg-search-icon" />
             <input
+              id="chat-account-search"
+              name="accountSearch"
+              aria-label="Search accounts..."
               ref={searchInputRef}
               type="text"
               value={search}

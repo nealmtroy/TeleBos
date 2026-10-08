@@ -103,6 +103,8 @@ interface PhoneInputWithCountryProps {
   className?: string;
   placeholder?: string;
   id?: string;
+  name?: string;
+  ariaLabel?: string;
 }
 
 export function PhoneInputWithCountry({
@@ -113,6 +115,8 @@ export function PhoneInputWithCountry({
   className,
   placeholder,
   id = "phone-input",
+  name = "phone",
+  ariaLabel = "Nomor Telepon",
 }: PhoneInputWithCountryProps) {
   const [countries, setCountries] = useState<TelegramCountry[]>(
     globalCachedCountries || FALLBACK_COUNTRIES
@@ -293,6 +297,8 @@ export function PhoneInputWithCountry({
         <div className="flex-1 relative flex items-center">
           <input
             id={id}
+            name={name}
+            aria-label={ariaLabel}
             ref={nationalInputRef}
             type="tel"
             disabled={disabled}
@@ -335,6 +341,9 @@ export function PhoneInputWithCountry({
             <div className="relative flex items-center">
               <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
               <input
+                id="country-search"
+                name="countrySearch"
+                aria-label="Search country or code"
                 ref={searchInputRef}
                 type="text"
                 value={search}

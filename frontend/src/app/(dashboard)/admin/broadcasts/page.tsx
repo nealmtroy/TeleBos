@@ -594,6 +594,9 @@ function BroadcastManagementContent() {
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
+            id="admin-broadcasts-search"
+            name="search"
+            aria-label="Search by User Email, Full Name, or Job ID..."
             type="text"
             placeholder="Search by User Email, Full Name, or Job ID..."
             value={search}

@@ -294,10 +294,13 @@ function GroupsChannelsContent() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
           <input
+            id="groups-channels-search"
+            name="search"
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
+            aria-label={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
             className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary-500 outline-none"
           />
         </div>
@@ -474,12 +477,14 @@ function GroupsChannelsContent() {
 
           <div className="px-5 pb-5 pt-2 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1.5">
+              <label htmlFor="join-identifier" className="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1.5">
                 {_("groupsChannels.identifier")}
               </label>
               <div className="relative">
                 <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
                 <input
+                  id="join-identifier"
+                  name="joinIdentifier"
                   type="text"
                   value={joinIdentifier}
                   onChange={(e) => { setJoinIdentifier(e.target.value); setJoinError(""); setJoinSuccess(""); setJoinResult(null); }}

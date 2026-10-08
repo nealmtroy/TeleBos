@@ -377,8 +377,10 @@ export default function NewBroadcastPage() {
           </div>
         ) : (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.messageText")}</label>
+            <label htmlFor="broadcast-custom-text" className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.messageText")}</label>
             <Textarea
+              id="broadcast-custom-text"
+              name="customText"
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               rows={3}
@@ -406,10 +408,12 @@ export default function NewBroadcastPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="broadcast-delay-per-group" className="block text-sm font-medium text-gray-700 mb-1">
                 {_("newBroadcast.delayPerGroup")}
               </label>
               <input
+                id="broadcast-delay-per-group"
+                name="delayPerGroup"
                 type="text"
                 inputMode="numeric"
                 disabled={delayRandomized}
@@ -424,10 +428,12 @@ export default function NewBroadcastPage() {
               <p className="text-xs text-gray-400 mt-1">{_("newBroadcast.delayPerGroupSuffix")}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="broadcast-delay-after-all" className="block text-sm font-medium text-gray-700 mb-1">
                 {_("newBroadcast.delayAfterAll")}
               </label>
               <input
+                id="broadcast-delay-after-all"
+                name="delayAfterAll"
                 type="text"
                 inputMode="numeric"
                 value={delayAfterAll}
@@ -445,7 +451,7 @@ export default function NewBroadcastPage() {
 
         {/* Cycle log destination */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
+          <label htmlFor="broadcast-log-destination" className="block text-sm font-medium text-gray-700">
             Cycle Log Destination
           </label>
           <div className="flex items-center gap-2">
@@ -459,6 +465,9 @@ export default function NewBroadcastPage() {
             </label>
           </div>
           <input
+            id="broadcast-log-destination"
+            name="logDestination"
+            aria-label="Cycle Log Destination"
             type="text"
             disabled={logWebOnly}
             value={logDestination}
@@ -472,14 +481,14 @@ export default function NewBroadcastPage() {
         </div>
 
         {/* Loop info banner */}
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <div className="bg-blue-50/80 border border-blue-200/80 dark:bg-blue-950/40 dark:border-blue-800/60 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-primary-100 text-primary-700">
+            <div className="p-2 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 shrink-0">
               <RefreshCw className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-primary-900">{_("newBroadcast.loopTitle")}</p>
-              <p className="text-xs text-primary-700 mt-0.5">
+              <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">{_("newBroadcast.loopTitle")}</p>
+              <p className="text-xs text-blue-800 dark:text-blue-300/90 mt-0.5 leading-relaxed">
                 {_("newBroadcast.loopDesc")}
               </p>
             </div>
@@ -611,21 +620,21 @@ export default function NewBroadcastPage() {
 
           {/* Live log feed (merged: REST logs + WebSocket live logs) */}
           {historicalLogs.length > 0 || wsLogs.length > 0 ? (
-            <div className="border border-gray-100 rounded-lg max-h-60 overflow-y-auto divide-y divide-gray-100">
+            <div className="border border-border/80 rounded-lg max-h-60 overflow-y-auto divide-y divide-border/60">
               {/* Show REST logs (historical) */}
               {historicalLogs.slice(-30).reverse().map((log) => (
                 <div key={log.id} className="px-3 py-2 text-sm flex items-center gap-2">
-                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium font-mono">
+                  <span className="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 px-1.5 py-0.5 rounded font-semibold font-mono">
                     C{log.cycle_number || "?"}
                   </span>
                   {log.status === "success" ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 flex-shrink-0" />
                   )}
-                  <span className="text-gray-700 truncate">{log.group_identifier}</span>
+                  <span className="text-foreground truncate">{log.group_identifier}</span>
                   {log.error_type && (
-                    <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
+                    <span className="text-xs bg-rose-50 text-rose-800 border border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60 px-1.5 py-0.5 rounded font-medium">
                       {log.error_type}
                     </span>
                   )}
@@ -633,14 +642,14 @@ export default function NewBroadcastPage() {
               ))}
               {/* Show live WS logs */}
               {wsLogs.slice(-10).reverse().map((log: any, i: number) => (
-                <div key={`live-${i}`} className="px-3 py-2 text-sm flex items-center gap-2 bg-green-50/50">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse flex-shrink-0" />
-                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium font-mono">
+                <div key={`live-${i}`} className="px-3 py-2 text-sm flex items-center gap-2 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0" />
+                  <span className="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 px-1.5 py-0.5 rounded font-semibold font-mono">
                     C{log.cycle || "?"}
                   </span>
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span className="text-gray-700 truncate">{log.group || "..."}</span>
-                  <span className="text-xs text-green-600 ml-auto">live</span>
+                  <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                  <span className="text-foreground truncate">{log.group || "..."}</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold ml-auto">live</span>
                 </div>
               ))}
             </div>

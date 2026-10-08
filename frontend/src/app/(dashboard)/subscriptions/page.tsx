@@ -604,10 +604,12 @@ export default function SubscriptionPage() {
 
             <div className="py-4 space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label htmlFor="subscription-voucher-code" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Kode Voucher / Redeem Code
                 </label>
                 <input
+                  id="subscription-voucher-code"
+                  name="voucherCode"
                   type="text"
                   required
                   value={voucherCode}

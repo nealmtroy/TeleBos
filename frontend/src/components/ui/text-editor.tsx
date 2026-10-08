@@ -35,6 +35,9 @@ export interface TextEditorProps {
   disabled?: boolean;
   className?: string;
   maxLength?: number;
+  id?: string;
+  name?: string;
+  ariaLabel?: string;
 }
 
 export function TextEditor({
@@ -45,6 +48,9 @@ export function TextEditor({
   disabled = false,
   className,
   maxLength = 4096,
+  id = "text-editor-content",
+  name = "messageContent",
+  ariaLabel,
 }: TextEditorProps) {
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -285,6 +291,9 @@ export function TextEditor({
                   <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700/60 px-2 py-1 rounded-lg text-xs w-full">
                     <Search className="h-3 w-3 text-gray-400" />
                     <input
+                      id="text-editor-emoji-search"
+                      name="emojiSearch"
+                      aria-label="Cari emoji..."
                       type="text"
                       placeholder="Cari emoji..."
                       value={emojiSearch}
@@ -391,6 +400,8 @@ export function TextEditor({
         <div className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/80 px-3 py-2.5 space-y-2">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
+              id="text-editor-link-url"
+              name="linkUrl"
               type="url"
               inputMode="url"
               autoFocus
@@ -407,6 +418,8 @@ export function TextEditor({
               className="w-full sm:flex-1 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
             />
             <input
+              id="text-editor-link-text"
+              name="linkText"
               type="text"
               value={linkDraft.text}
               onChange={(e) => setLinkDraft((d) => ({ ...d, text: e.target.value }))}
@@ -438,6 +451,9 @@ export function TextEditor({
       {/* Editor Body */}
       {activeTab === "edit" ? (
         <textarea
+          id={id}
+          name={name}
+          aria-label={ariaLabel || placeholder || "Ketik template pesan..."}
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}

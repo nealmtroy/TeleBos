@@ -571,13 +571,15 @@ export default function AutoJoinPage() {
               {sourceMode === "bulk" ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-700 dark:text-slate-200">{_("autoJoin.pasteLabel")}</span>
+                    <label htmlFor="auto-join-bulk-text" className="font-semibold text-gray-700 dark:text-slate-200">{_("autoJoin.pasteLabel")}</label>
                     <span className="text-gray-400 dark:text-slate-400 font-mono">
                       {_("autoJoin.targetsDetected", { count: parsedTargets.length })}
                     </span>
                   </div>
 
                   <Textarea
+                    id="auto-join-bulk-text"
+                    name="bulkText"
                     value={bulkText}
                     onChange={(e) => setBulkText(e.target.value)}
                     disabled={isRunning}
@@ -631,10 +633,13 @@ export default function AutoJoinPage() {
                       </div>
                       <div className="flex gap-2">
                         <input
+                          id="new-list-name"
+                          name="newListName"
                           type="text"
                           value={newListName}
                           onChange={(e) => setNewListName(e.target.value)}
                           placeholder={_("autoJoin.saveListPlaceholder")}
+                          aria-label={_("autoJoin.saveListPlaceholder")}
                           className="flex-1 px-3 py-1.5 bg-white border border-primary-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-primary-500"
                         />
                         <Button
@@ -741,10 +746,12 @@ export default function AutoJoinPage() {
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-gray-700 dark:text-slate-200">{_("autoJoin.joinDelayLabel")}</span>
+                  <label htmlFor="auto-join-delay" className="font-semibold text-gray-700 dark:text-slate-200 cursor-pointer">{_("autoJoin.joinDelayLabel")}</label>
                   <span className="font-bold text-primary-600 dark:text-primary-400 font-mono">{delaySeconds}s</span>
                 </div>
                 <input
+                  id="auto-join-delay"
+                  name="delaySeconds"
                   type="range"
                   min="2"
                   max="30"

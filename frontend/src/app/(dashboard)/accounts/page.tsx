@@ -185,10 +185,13 @@ export default function AccountsListPage() {
           <div className="relative w-full md:w-72 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
             <input
+              id="accounts-search"
+              name="search"
               type="text"
               placeholder={_("accountsList.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label={_("accountsList.searchPlaceholder") || "Cari akun Telegram"}
               className="w-full pl-9 pr-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
             />
           </div>

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-08
+- **[20821872](https://github.com/nealmtroy/TeleBos/commit/20821872)**: feat(i18n): harmonize EN/ID translations and migrate hardcoded strings
 - **[e96f9fd2](https://github.com/nealmtroy/TeleBos/commit/e96f9fd2)**: fix(ui): improve search input alignment, padding, placeholder, and matching logic in AccountSelector
 - **[d1c3f208](https://github.com/nealmtroy/TeleBos/commit/d1c3f208)**: feat(ui): standardize AccountSelector across invite, broadcast, and auto-join pages
 - **[86a56e8a](https://github.com/nealmtroy/TeleBos/commit/86a56e8a)**: feat(ui): complete Phase 3 - standardize Badge, Avatar, Tooltip and cleanup dead code

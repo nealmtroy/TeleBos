@@ -368,6 +368,8 @@ function OTPLoginForm() {
               <input
                 key={index}
                 id={`otp-input-${index}`}
+                name={`otp_${index}`}
+                aria-label={`Digit OTP ${index + 1}`}
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
@@ -458,11 +460,13 @@ function OTPLoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            <label htmlFor="twofa-password" className="block text-sm font-semibold text-gray-700 mb-1.5">
               {_("addAccount.twoFaLabel")}
             </label>
             <div className="relative">
               <input
+                id="twofa-password"
+                name="twofaPassword"
                 type={showPassword ? "text" : "password"}
                 value={twofaPassword}
                 onChange={(e) => setTwofaPassword(e.target.value)}
@@ -593,10 +597,12 @@ function UploadSessionForm() {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="session-string" className="block text-sm font-medium text-gray-700 mb-1">
           {_("addAccount.sessionLabel")}
         </label>
         <textarea
+          id="session-string"
+          name="sessionString"
           value={sessionString}
           onChange={(e) => setSessionString(e.target.value)}
           rows={6}
@@ -822,11 +828,13 @@ function QRLoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            <label htmlFor="tdlib-twofa-password" className="block text-sm font-semibold text-gray-700 mb-1.5">
               Password 2FA
             </label>
             <div className="relative">
               <input
+                id="tdlib-twofa-password"
+                name="tdlibTwofaPassword"
                 type={showPassword ? "text" : "password"}
                 value={twofaPassword}
                 onChange={(e) => setTwofaPassword(e.target.value)}

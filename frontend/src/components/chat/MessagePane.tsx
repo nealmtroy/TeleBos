@@ -1135,6 +1135,9 @@ export function MessagePane({
                   <TooltipContent>{t("chats.attachFile")}</TooltipContent>
                 </Tooltip>
                 <input
+                  id="chat-file-upload"
+                  name="chatFile"
+                  aria-label={t("chats.attachFile") || "Attach File"}
                   type="file"
                   ref={fileInputRef}
                   onChange={(e) => {
@@ -1159,6 +1162,9 @@ export function MessagePane({
                 </Tooltip>
 
                 <textarea
+                  id="chat-message-input"
+                  name="messageText"
+                  aria-label={attachedFile ? t("chats.addCaption") : t("chats.typeMessage")}
                   ref={inputRef}
                   value={messageText}
                   onChange={(e) => handleInputChange(e.target.value)}

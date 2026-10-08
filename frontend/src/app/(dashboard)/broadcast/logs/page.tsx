@@ -238,10 +238,13 @@ export default function BroadcastLogsPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
+                id="broadcast-logs-search"
+                name="search"
                 type="text"
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder={_("broadcastLogs.searchGroup")}
+                aria-label={_("broadcastLogs.searchGroup")}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
@@ -328,43 +331,43 @@ export default function BroadcastLogsPage() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colCycle")}</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colGroup")}</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">Account</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colStatus")}</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colErrorType")}</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colMessage")}</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colSentText")}</TableHead>
-                          <TableHead className="px-4 py-3 font-medium text-gray-500">{_("broadcastLogs.colTime")}</TableHead>
+                        <TableRow className="bg-muted/50 border-b border-border hover:bg-muted/50">
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colCycle")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colGroup")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">Account</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colStatus")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colErrorType")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colMessage")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colSentText")}</TableHead>
+                          <TableHead className="px-4 py-3 font-medium text-muted-foreground">{_("broadcastLogs.colTime")}</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody className="divide-y divide-gray-100">
+                      <TableBody className="divide-y divide-border/60">
                         {logs.map((log, idx) => {
                           const accountName = log.account_name || (log.account_id_used
                             ? accountMap.get(log.account_id_used) || "Deleted Account"
                             : "—");
                           return (
-                            <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-gray-50 transition">
+                            <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-muted/40 transition">
                               <TableCell className="px-4 py-3 whitespace-normal">
-                                <Badge variant="secondary" className="gap-1 bg-indigo-100 text-indigo-700 border-indigo-200">
+                                <Badge variant="secondary" className="gap-1 bg-indigo-50 text-indigo-800 border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 font-semibold font-mono">
                                   <Layers className="h-3 w-3" />
                                   C{expandedCycle}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate">
+                              <TableCell className="px-4 py-3 font-medium text-foreground max-w-[150px] truncate">
                                 {log.group_identifier}
                               </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-700 max-w-[150px] truncate" title={accountName}>
+                              <TableCell className="px-4 py-3 text-muted-foreground max-w-[150px] truncate" title={accountName}>
                                 {accountName}
                               </TableCell>
                               <TableCell className="px-4 py-3 whitespace-normal">
                                 {log.status === "success" ? (
-                                  <span className="inline-flex items-center gap-1 text-green-700">
+                                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
                                     <CheckCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.success")}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-red-700">
+                                  <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-medium">
                                     <XCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.error")}
                                   </span>
                                 )}
@@ -373,29 +376,29 @@ export default function BroadcastLogsPage() {
                                 {log.error_type ? (
                                   <span
                                     className={cn(
-                                      "px-2 py-0.5 rounded-full text-xs font-medium",
-                                      log.error_type === "flood" && "bg-orange-100 text-orange-800",
-                                      log.error_type === "banned" && "bg-red-100 text-red-800",
-                                      log.error_type === "admin_only" && "bg-yellow-100 text-yellow-800",
-                                      log.error_type === "slowmode" && "bg-blue-100 text-blue-800",
-                                      log.error_type === "invalid_username" && "bg-purple-100 text-purple-800",
-                                      log.error_type === "invalid_link" && "bg-purple-100 text-purple-800",
-                                      !log.error_type && "bg-gray-100 text-gray-600"
+                                      "px-2 py-0.5 rounded-full text-xs font-medium border",
+                                      log.error_type === "flood" && "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800/50",
+                                      log.error_type === "banned" && "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
+                                      log.error_type === "admin_only" && "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
+                                      log.error_type === "slowmode" && "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50",
+                                      log.error_type === "invalid_username" && "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/50",
+                                      log.error_type === "invalid_link" && "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/50",
+                                      !log.error_type && "bg-muted text-muted-foreground border-border"
                                     )}
                                   >
                                     {log.error_type || "—"}
                                   </span>
                                 ) : (
-                                  <span className="text-gray-300">—</span>
+                                  <span className="text-muted-foreground/60">—</span>
                                 )}
                               </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                              <TableCell className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
                                 {log.error_message || "—"}
                               </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                              <TableCell className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
                                 {log.sent_text || "—"}
                               </TableCell>
-                              <TableCell className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                              <TableCell className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
                                 {formatDate(log.sent_at)}
                               </TableCell>
                             </TableRow>

@@ -69,6 +69,9 @@ export function ChatSearchBar({
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <input
+            id="chat-messages-search"
+            name="searchQuery"
+            aria-label="Search messages..."
             type="text"
             placeholder="Search messages..."
             value={searchQuery}

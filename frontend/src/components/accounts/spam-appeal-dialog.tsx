@@ -328,10 +328,12 @@ export function SpamAppealDialog({ open, onOpenChange, accountId }: SpamAppealDi
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase text-slate-400">
+              <label htmlFor="appeal-custom-reason" className="text-xs font-semibold uppercase text-slate-400">
                 {_("accountDetail.appealCustomReasonLabel")}
               </label>
               <textarea
+                id="appeal-custom-reason"
+                name="appealCustomReason"
                 value={reason}
                 onChange={(e) => {
                   setReason(e.target.value);

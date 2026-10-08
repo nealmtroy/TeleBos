@@ -4,17 +4,15 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
-import { useOrderHistory, useRefreshAllOrders, useRefreshOrderStatus } from "@/hooks/use-orders";
+import { useOrderHistory } from "@/hooks/use-orders";
 import { useMarketplaceHistory } from "@/hooks/use-marketplace";
 import {
-  RefreshCw,
   AlertCircle,
   Wallet,
   ClipboardList,
   ShoppingCart,
   User,
   Search,
-  Download,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -93,7 +91,6 @@ interface UnifiedOrder {
   priceRaw: number;
   status: StatusType;
   statusRaw: string;
-  progressPercent: number;
   dateRaw: Date;
   dateStr: string;
   timeStr: string;
@@ -117,7 +114,6 @@ const STATUS_CONFIG: Record<
     labelEn: string;
     bgBadge: string;
     dotColor: string;
-    progressColor: string;
   }
 > = {
   Selesai: {
@@ -126,7 +122,6 @@ const STATUS_CONFIG: Record<
     labelEn: "Completed",
     bgBadge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
     dotColor: "bg-emerald-500",
-    progressColor: "bg-emerald-500",
   },
   Proses: {
     tone: "accent",
@@ -134,7 +129,6 @@ const STATUS_CONFIG: Record<
     labelEn: "Processing",
     bgBadge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
     dotColor: "bg-blue-500",
-    progressColor: "bg-blue-500",
   },
   Menunggu: {
     tone: "caution",
@@ -142,7 +136,6 @@ const STATUS_CONFIG: Record<
     labelEn: "Pending",
     bgBadge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
     dotColor: "bg-amber-500",
-    progressColor: "bg-amber-400",
   },
   Dibatalkan: {
     tone: "negative",
@@ -150,7 +143,6 @@ const STATUS_CONFIG: Record<
     labelEn: "Cancelled",
     bgBadge: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20",
     dotColor: "bg-rose-500",
-    progressColor: "bg-rose-500",
   },
 };
 
@@ -232,8 +224,6 @@ export default function OrderHistoryPage() {
   // Fetch data from real backend endpoints
   const { data: orders, isLoading: isSmmLoading, error: smmError } = useOrderHistory();
   const { data: logs, isLoading: isLogsLoading, error: logsError } = useMarketplaceHistory();
-  const refreshOrder = useRefreshOrderStatus();
-  const refreshAll = useRefreshAllOrders();
 
   // Map and unify SMM orders, account audit transactions, and wallet transactions
   const unifiedItems = useMemo(() => {
@@ -243,27 +233,6 @@ export default function OrderHistoryPage() {
     if (orders) {
       for (const order of orders) {
         const displayId = `#TB-${order.id.toString().substring(0, 8).toUpperCase()}`;
-
-        // Calculate progress percentage
-        let progress = 0;
-        if (order.status === "Success") {
-          progress = 100;
-        } else if (order.status === "Pending") {
-          progress = 0;
-        } else if (
-          order.status === "Failed" ||
-          order.status === "Error" ||
-          order.status === "Canceled"
-        ) {
-          progress = 0;
-        } else if (order.status === "Processing" || order.status === "In progress") {
-          if (order.quantity && order.remains !== null && order.remains !== undefined) {
-            const completed = order.quantity - order.remains;
-            progress = Math.min(100, Math.max(0, Math.round((completed / order.quantity) * 100)));
-          } else {
-            progress = 50;
-          }
-        }
 
         // Map status to Indonesian localized terms
         let statusLabel: StatusType = "Menunggu";
@@ -303,7 +272,6 @@ export default function OrderHistoryPage() {
           priceRaw: order.total_price || 0,
           status: statusLabel,
           statusRaw: order.status,
-          progressPercent: progress,
           dateRaw: new Date(order.created_at),
           dateStr: formatWIBDate(order.created_at, locale),
           timeStr: formatWIBTime(order.created_at),
@@ -348,9 +316,6 @@ export default function OrderHistoryPage() {
         if (log.action === "list_for_sale") statusLabel = "Proses";
         else if (log.action === "cancel_sale") statusLabel = "Dibatalkan";
 
-        let progress = 100;
-        if (log.action === "cancel_sale") progress = 0;
-
         const phoneDisplay = log.phone ? `+${log.phone.replace(/^\+/, "")}` : "-";
 
         items.push({
@@ -368,7 +333,6 @@ export default function OrderHistoryPage() {
           priceRaw: log.price || 0,
           status: statusLabel,
           statusRaw: log.action,
-          progressPercent: progress,
           dateRaw: new Date(log.created_at),
           dateStr: formatWIBDate(log.created_at, locale),
           timeStr: formatWIBTime(log.created_at),
@@ -419,7 +383,6 @@ export default function OrderHistoryPage() {
             priceRaw: tx.amount,
             status: statusLabel,
             statusRaw: tx.status,
-            progressPercent: isDone ? 100 : isPending ? 50 : 0,
             dateRaw: txDate,
             dateStr,
             timeStr,
@@ -454,7 +417,6 @@ export default function OrderHistoryPage() {
             priceRaw: tx.amount,
             status: statusLabel,
             statusRaw: tx.status,
-            progressPercent: isDone ? 100 : isPending ? 50 : 0,
             dateRaw: txDate,
             dateStr,
             timeStr,
@@ -481,7 +443,6 @@ export default function OrderHistoryPage() {
             priceRaw: tx.amount,
             status: "Selesai",
             statusRaw: "approved",
-            progressPercent: 100,
             dateRaw: txDate,
             dateStr,
             timeStr,
@@ -514,7 +475,6 @@ export default function OrderHistoryPage() {
             priceRaw: tx.amount,
             status: "Selesai",
             statusRaw: "approved",
-            progressPercent: 100,
             dateRaw: txDate,
             dateStr,
             timeStr,
@@ -661,56 +621,7 @@ export default function OrderHistoryPage() {
     [locale, toast]
   );
 
-  const handleExport = () => {
-    const headers = [
-      "Order ID",
-      "Tipe Order",
-      "Layanan",
-      "Kategori",
-      "Detail Target",
-      "Jumlah",
-      "Total Biaya",
-      "Status",
-      "Progress (%)",
-      "Tanggal",
-      "Waktu (WIB)",
-    ];
-    const rows = filteredItems.map((item) => [
-      item.orderIdDisplay,
-      item.typeName,
-      `"${item.serviceName.replace(/"/g, '""')}"`,
-      `"${item.serviceSublabel.replace(/"/g, '""')}"`,
-      `"${item.detail.replace(/"/g, '""')}"`,
-      item.quantityDisplay,
-      item.priceRaw,
-      item.status,
-      item.progressPercent,
-      item.dateStr,
-      item.timeStr,
-    ]);
-    const csvContent =
-      "data:text/csv;charset=utf-8,\uFEFF" +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `telebos_order_history_${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
 
-    toast({
-      variant: "success",
-      title: locale === "id" ? "Export Berhasil" : "Export Completed",
-      description:
-        locale === "id"
-          ? `${filteredItems.length} baris riwayat telah diunduh.`
-          : `${filteredItems.length} order history rows downloaded.`,
-    });
-  };
 
   const toggleSort = (field: "date" | "status" | "price") => {
     if (sortBy === field) {
@@ -752,8 +663,8 @@ export default function OrderHistoryPage() {
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             {locale === "id"
-              ? "Pantau status, progres pengerjaan, dan catatan transaksi seluruh layanan Anda secara real-time."
-              : "Monitor status, fulfillment progress, and transaction records for all your services in real-time."}
+              ? "Pantau status dan catatan transaksi seluruh layanan Anda secara real-time."
+              : "Monitor status and transaction records for all your services in real-time."}
           </p>
         </div>
 
@@ -784,45 +695,6 @@ export default function OrderHistoryPage() {
             </Link>
           </div>
 
-          {/* Quick Export Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExport}
-                disabled={filteredItems.length === 0}
-                className="h-9 rounded-xl border-border/80 bg-card text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted"
-              >
-                <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Export CSV</TooltipContent>
-          </Tooltip>
-
-          {/* Refresh All Orders */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refreshAll.mutate()}
-                disabled={refreshAll.isPending}
-                className="h-9 w-9 p-0 rounded-xl border-border/80 bg-card shadow-2xs hover:bg-muted"
-              >
-                <RefreshCw
-                  className={cn(
-                    "h-3.5 w-3.5 text-muted-foreground",
-                    refreshAll.isPending && "animate-spin text-primary"
-                  )}
-                />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {locale === "id" ? "Perbarui Status Semua Pesanan" : "Refresh All Orders"}
-            </TooltipContent>
-          </Tooltip>
         </div>
       </div>
 
@@ -970,12 +842,19 @@ export default function OrderHistoryPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
+            id="orders-search"
+            name="ordersSearch"
             type="text"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
+            aria-label={
+              locale === "id"
+                ? "Cari ID Order, Layanan, atau Target"
+                : "Search Order ID, Service, or Target"
+            }
             placeholder={
               locale === "id"
                 ? "Cari ID Order / Layanan / Target..."
@@ -1191,9 +1070,7 @@ export default function OrderHistoryPage() {
                       <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="py-3 px-4 text-center font-bold uppercase tracking-wider text-muted-foreground w-[100px]">
-                    {locale === "id" ? "Progres" : "Progress"}
-                  </TableHead>
+
                   <TableHead
                     className="py-3 px-4 font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground w-[120px]"
                     onClick={() => toggleSort("date")}
@@ -1375,24 +1252,6 @@ export default function OrderHistoryPage() {
                         </Badge>
                       </TableCell>
 
-                      {/* Progres */}
-                      <TableCell className="py-3.5 px-4 w-[100px]">
-                        <div className="flex flex-col items-center justify-center gap-1 w-full">
-                          <span className="font-mono text-[10px] font-bold text-foreground">
-                            {item.progressPercent}%
-                          </span>
-                          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden border border-border/40">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-[width] duration-300 ease-out",
-                                statusConf.progressColor
-                              )}
-                              style={{ width: `${item.progressPercent}%` }}
-                            />
-                          </div>
-                        </div>
-                      </TableCell>
-
                       {/* Waktu WIB */}
                       <TableCell className="py-3.5 px-4 whitespace-nowrap text-muted-foreground w-[120px]">
                         <div className="flex flex-col leading-tight">
@@ -1407,7 +1266,7 @@ export default function OrderHistoryPage() {
 
                       {/* Aksi */}
                       <TableCell className="py-3.5 px-4 text-center whitespace-nowrap w-[95px]">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center">
                           <Button
                             variant="outline"
                             size="xs"
@@ -1416,26 +1275,6 @@ export default function OrderHistoryPage() {
                           >
                             Detail
                           </Button>
-                          {item.type === "smm" && item.originalItem.smm_order_id && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => refreshOrder.mutate(item.id)}
-                                  disabled={refreshOrder.isPending}
-                                  className="p-1.5 text-muted-foreground hover:text-primary border border-border/80 rounded-lg hover:bg-muted transition-colors shadow-2xs"
-                                >
-                                  <RefreshCw
-                                    className={cn(
-                                      "h-3 w-3",
-                                      refreshOrder.isPending && "animate-spin text-primary"
-                                    )}
-                                  />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("orders.refreshStatus") || "Refresh"}</TooltipContent>
-                            </Tooltip>
-                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1593,43 +1432,8 @@ export default function OrderHistoryPage() {
                       </div>
                     </div>
 
-                    {/* Progress Track */}
-                    <div className="space-y-1 pt-1 border-t border-border/40">
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span>{locale === "id" ? "Progres Pengiriman" : "Fulfillment Progress"}</span>
-                        <span className="font-mono font-bold text-foreground">
-                          {item.progressPercent}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden border border-border/40">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-500 ease-out",
-                            statusConf.progressColor
-                          )}
-                          style={{ width: `${item.progressPercent}%` }}
-                        />
-                      </div>
-                    </div>
-
                     {/* Card Actions */}
                     <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
-                      {item.type === "smm" && item.originalItem.smm_order_id && (
-                        <button
-                          type="button"
-                          onClick={() => refreshOrder.mutate(item.id)}
-                          disabled={refreshOrder.isPending}
-                          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-border/80 bg-card text-xs font-semibold text-foreground hover:bg-muted"
-                        >
-                          <RefreshCw
-                            className={cn(
-                              "h-3 w-3",
-                              refreshOrder.isPending && "animate-spin text-primary"
-                            )}
-                          />
-                          <span>Refresh</span>
-                        </button>
-                      )}
                       <Button
                         variant="outline"
                         size="xs"
@@ -1760,46 +1564,28 @@ export default function OrderHistoryPage() {
                 )}
               </div>
 
-              {/* Progress Bar inside Hero */}
-              <div className="space-y-1.5 pt-2 border-t border-border/40">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground font-medium">
-                    {locale === "id" ? "Status Progres" : "Progress Status"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-foreground">
-                      {selectedDetail.progressPercent}%
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "gap-1 text-[10px] font-semibold border",
-                        STATUS_CONFIG[selectedDetail.status]?.bgBadge
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          STATUS_CONFIG[selectedDetail.status]?.dotColor
-                        )}
-                      />
-                      <span>
-                        {locale === "id"
-                          ? STATUS_CONFIG[selectedDetail.status]?.labelId
-                          : STATUS_CONFIG[selectedDetail.status]?.labelEn}
-                      </span>
-                    </Badge>
-                  </div>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
-                  <div
+              {/* Status inside Hero */}
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-border/40">
+                <span className="text-muted-foreground font-medium">Status</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "gap-1 text-[10px] font-semibold border",
+                    STATUS_CONFIG[selectedDetail.status]?.bgBadge
+                  )}
+                >
+                  <span
                     className={cn(
-                      "h-full rounded-full transition-all duration-500 ease-out",
-                      STATUS_CONFIG[selectedDetail.status]?.progressColor
+                      "h-1.5 w-1.5 rounded-full",
+                      STATUS_CONFIG[selectedDetail.status]?.dotColor
                     )}
-                    style={{ width: `${selectedDetail.progressPercent}%` }}
                   />
-                </div>
+                  <span>
+                    {locale === "id"
+                      ? STATUS_CONFIG[selectedDetail.status]?.labelId
+                      : STATUS_CONFIG[selectedDetail.status]?.labelEn}
+                  </span>
+                </Badge>
               </div>
             </div>
 

@@ -232,7 +232,7 @@ export default function InvitePage() {
               </Select>
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-dest-group" className="block text-xs font-medium text-gray-500 mb-1">
                 {destType === "username"
                   ? _("invite.destUsernameLabel")
                   : destType === "link"
@@ -240,6 +240,8 @@ export default function InvitePage() {
                   : _("invite.destGroupIdLabel")}
               </label>
               <input
+                id="invite-dest-group"
+                name="destGroup"
                 type="text"
                 placeholder={
                   destType === "username"
@@ -283,6 +285,15 @@ export default function InvitePage() {
               </SelectContent>
             </Select>
             <input
+              id="invite-new-source-value"
+              name="newSourceValue"
+              aria-label={
+                newSourceType === "username"
+                  ? "@sourcegroup"
+                  : newSourceType === "link"
+                  ? "https://t.me/joinchat/..."
+                  : "-1009876543210"
+              }
               type="text"
               placeholder={
                 newSourceType === "username"
@@ -343,11 +354,13 @@ export default function InvitePage() {
           <h2 className="font-semibold text-gray-900">{_("invite.delaysConfig")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-delay-per-invite" className="block text-xs font-medium text-gray-500 mb-1">
                 {_("invite.delayPerInvite")}
               </label>
               <div className="flex items-center gap-2">
                 <input
+                  id="invite-delay-per-invite"
+                  name="delayPerInvite"
                   type="number"
                   min="5"
                   max="3600"
@@ -360,10 +373,12 @@ export default function InvitePage() {
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.delayPerInviteSuffix")}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-batch-size" className="block text-xs font-medium text-gray-500 mb-1">
                 {_("invite.batchSize")}
               </label>
               <input
+                id="invite-batch-size"
+                name="batchSize"
                 type="number"
                 min="1"
                 max="50"
@@ -374,11 +389,13 @@ export default function InvitePage() {
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.batchSizeSuffix")}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-delay-per-batch" className="block text-xs font-medium text-gray-500 mb-1">
                 {_("invite.delayPerBatch")}
               </label>
               <div className="flex items-center gap-2">
                 <input
+                  id="invite-delay-per-batch"
+                  name="delayPerBatch"
                   type="number"
                   min="0"
                   max="3600"

@@ -280,7 +280,7 @@ export default function BroadcastHistoryPage() {
                           return (
                             <span
                               key={accId}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-semibold border border-blue-100 whitespace-nowrap"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 text-[11px] font-semibold border border-blue-200/80 dark:border-blue-800/60 whitespace-nowrap"
                               title={acc ? `${acc.first_name || ""} (${acc.phone})` : accId}
                             >
                               <User className="h-3 w-3 shrink-0" />
@@ -291,7 +291,7 @@ export default function BroadcastHistoryPage() {
                           );
                         })}
                         {job.account_ids.length === 0 && (
-                          <span className="text-xs text-gray-400 italic">—</span>
+                          <span className="text-xs text-muted-foreground/60 italic">—</span>
                         )}
                       </div>
                     </TableCell>
@@ -308,41 +308,41 @@ export default function BroadcastHistoryPage() {
                             ? "warning"
                             : "secondary"
                         }
-                        className="capitalize font-medium text-xs"
+                        className="capitalize font-semibold text-xs"
                       >
                         {job.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div className="w-24 bg-muted rounded-full h-2 overflow-hidden border border-border/40">
                           <div
                             className={cn(
                               "h-2 rounded-full",
                               job.status === "completed"
-                                ? "bg-green-500"
+                                ? "bg-emerald-500"
                                 : job.status === "failed"
-                                ? "bg-red-500"
-                                : "bg-primary-600"
+                                ? "bg-rose-500"
+                                : "bg-primary"
                             )}
                             style={{ width: `${job.progress}%` }}
                           />
                         </div>
-                        <span className="text-gray-500 text-xs w-8">
+                        <span className="text-muted-foreground font-mono text-xs w-8">
                           {job.progress}%
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-green-700 font-medium">
+                      <div className="flex items-center gap-2 text-sm font-mono">
+                        <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                           {job.sent_count}
                         </span>
-                        <span className="text-gray-300">/</span>
-                        <span className="text-red-700 font-medium">
+                        <span className="text-muted-foreground/60">/</span>
+                        <span className="text-rose-700 dark:text-rose-400 font-bold">
                           {job.fail_count}
                         </span>
-                        <span className="text-gray-400">
+                        <span className="text-muted-foreground text-xs font-sans">
                           ({_("broadcastHistory.of")} {job.total_groups})
                         </span>
                       </div>
