@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-08
+- **[f492ccc1](https://github.com/nealmtroy/TeleBos/commit/f492ccc1)**: fix(help): use dynamic rendering for help slug layout to eliminate headers bailout error
 - **[62658eea](https://github.com/nealmtroy/TeleBos/commit/62658eea)**: fix(a11y): fix form field labels, ids, and names across all dashboard pages and components
 - **[20821872](https://github.com/nealmtroy/TeleBos/commit/20821872)**: feat(i18n): harmonize EN/ID translations and migrate hardcoded strings
 - **[e96f9fd2](https://github.com/nealmtroy/TeleBos/commit/e96f9fd2)**: fix(ui): improve search input alignment, padding, placeholder, and matching logic in AccountSelector

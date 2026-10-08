@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SupportChatWidget } from "@/components/help/support-chat-widget";
 
 export const metadata: Metadata = {
   title: {
@@ -14,5 +15,10 @@ export default function HelpLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      {children}
+      <SupportChatWidget />
+    </>
+  );
 }

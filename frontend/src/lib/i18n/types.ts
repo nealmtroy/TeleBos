@@ -27,6 +27,7 @@ export interface Dict {
     redeem: string;
     smm: string;
     ageChecker: string;
+    tickets: string;
   };
 
   // Account Folders
@@ -1305,6 +1306,25 @@ export interface Dict {
     authWarningTitle: string;
     authWarningDesc: string;
     serverExample: string;
+    aiSupport: string;
+    aiSupportTitle: string;
+    aiSupportOnline: string;
+    aiSupportOffline: string;
+    aiSupportGuest: string;
+    aiSupportGuestDesc: string;
+    aiSupportUser: string;
+    aiSupportPlaceholder: string;
+    aiSupportSend: string;
+    aiSupportEscalate: string;
+    aiSupportEscalateDesc: string;
+    aiSupportEscalateBtn: string;
+    aiSupportEscalateSuccess: string;
+    aiSupportRecentOrders: string;
+    aiSupportOrderDetails: string;
+    aiSupportNeedHelp: string;
+    aiSupportDisclaimer: string;
+    aiSupportClearChat: string;
+    aiSupportTicketCreated: string;
   };
 
   // Landing Page

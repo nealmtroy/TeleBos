@@ -851,6 +851,39 @@ def run_migrations(connection):
             except Exception as e:
                 logger.warning("Could not add chk_user_balance_positive constraint: %s", e)
 
+    # Ensure support_tickets table exists if not created by create_all
+    if "support_tickets" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS support_tickets (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        ticket_number VARCHAR(30) UNIQUE NOT NULL,
+                        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                        guest_name VARCHAR(100),
+                        guest_contact VARCHAR(150),
+                        category VARCHAR(50) NOT NULL DEFAULT 'general',
+                        status VARCHAR(20) NOT NULL DEFAULT 'open',
+                        priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+                        subject VARCHAR(255) NOT NULL,
+                        summary TEXT,
+                        transcript JSONB NOT NULL DEFAULT '[]'::jsonb,
+                        related_order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+                        escalation_reason TEXT,
+                        admin_notes TEXT,
+                        resolved_at TIMESTAMPTZ,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_user_id ON support_tickets(user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_status ON support_tickets(status)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_created_at ON support_tickets(created_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_ticket_number ON support_tickets(ticket_number)"))
+        except Exception as e:
+            logger.warning("Could not create support_tickets table: %s", e)
+
     # Ensure performance indexes exist (idempotent)
     for idx_sql in [
         "CREATE INDEX IF NOT EXISTS ix_orders_smm_order_id ON orders (smm_order_id)",

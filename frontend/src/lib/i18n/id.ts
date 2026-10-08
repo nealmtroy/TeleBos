@@ -27,6 +27,7 @@ const id: Dict = {
     redeem: "Redeem",
     smm: "SMM",
     ageChecker: "Cek Umur ID",
+    tickets: "Tiket Bantuan",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────
@@ -1359,6 +1360,25 @@ const id: Dict = {
     authWarningTitle: "Peringatan autentikasi",
     authWarningDesc: "Aplikasi web TeleBos menggunakan header sesi Better Auth untuk permintaan pihak pertama. Token tersebut mewakili sesi web Anda dan tidak boleh disalin ke skrip browser, plugin, atau layanan pihak ketiga. Gunakan API key integrasi saat pengelolaan API key tersedia untuk akun Anda.",
     serverExample: "Contoh cepat server-ke-server",
+    aiSupport: "AI Support TeleBos",
+    aiSupportTitle: "Bantuan AI TeleBos",
+    aiSupportOnline: "Online • Respons Cepat",
+    aiSupportOffline: "Offline",
+    aiSupportGuest: "Mode Tamu (Belum Login)",
+    aiSupportGuestDesc: "Login untuk memeriksa status pesanan dan saldo akun Anda.",
+    aiSupportUser: "Akun Terhubung: {name}",
+    aiSupportPlaceholder: "Tanyakan kendala, pesanan, atau fitur...",
+    aiSupportSend: "Kirim pesan",
+    aiSupportEscalate: "Hubungi Admin",
+    aiSupportEscalateDesc: "Pertanyaan belum terselesaikan? Teruskan percakapan ini ke tim admin manusia.",
+    aiSupportEscalateBtn: "Kirim Tiket ke Admin",
+    aiSupportEscalateSuccess: "Tiket bantuan #{ticket} telah dibuat! Tim admin akan segera meninjau kendala Anda.",
+    aiSupportRecentOrders: "Riwayat Pesanan Terbaru",
+    aiSupportOrderDetails: "Detail Pesanan",
+    aiSupportNeedHelp: "Butuh bantuan langsung?",
+    aiSupportDisclaimer: "AI TeleBos dapat membuat kesalahan. Data pesanan diverifikasi langsung dari sistem.",
+    aiSupportClearChat: "Hapus Riwayat Chat",
+    aiSupportTicketCreated: "Tiket Berhasil Dibuat",
   },
 
   // ── Halaman Beranda ──────────────────────────────────────────────────────

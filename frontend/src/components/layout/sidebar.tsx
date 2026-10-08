@@ -23,6 +23,7 @@ import {
   Bot,
   UserPlus,
   HelpCircle,
+  LifeBuoy,
   ShoppingCart,
   Shield,
   Package,
@@ -113,6 +114,7 @@ const administrationsSubItems: SubItem[] = [
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
   { href: "/admin/auto-replies", exact: false, labelKey: "admin.manageAutoReplies", icon: Bot },
   { href: "/admin/account-prices", exact: false, labelKey: "admin.accountPrices", icon: Tag },
+  { href: "/admin/tickets", exact: false, labelKey: "nav.tickets", icon: LifeBuoy },
   { href: "/admin/settings", exact: false, labelKey: "admin.systemConfig", icon: Settings },
 ];
 

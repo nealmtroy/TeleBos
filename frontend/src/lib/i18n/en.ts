@@ -27,6 +27,7 @@ const en: Dict = {
     redeem: "Redeem",
     smm: "SMM",
     ageChecker: "Age Checker",
+    tickets: "Support Tickets",
   },
 
   // ── Account Folders ──────────────────────────────────────────────────────
@@ -1359,6 +1360,25 @@ const en: Dict = {
     authWarningTitle: "Authentication warning",
     authWarningDesc: "The TeleBos web app uses a Better Auth session header for first-party requests. That token represents your web session and must not be copied into browser scripts, plugins, or third-party services. Use an integration API key instead when API-key management is enabled for your account.",
     serverExample: "Quick server-to-server example",
+    aiSupport: "TeleBos AI Support",
+    aiSupportTitle: "TeleBos AI Support",
+    aiSupportOnline: "Online • Fast Response",
+    aiSupportOffline: "Offline",
+    aiSupportGuest: "Guest Mode (Not Logged In)",
+    aiSupportGuestDesc: "Log in to check your order status and account balance.",
+    aiSupportUser: "Connected Account: {name}",
+    aiSupportPlaceholder: "Ask about issues, orders, or features...",
+    aiSupportSend: "Send message",
+    aiSupportEscalate: "Contact Admin",
+    aiSupportEscalateDesc: "Issue unresolved? Escalate this conversation to our human support team.",
+    aiSupportEscalateBtn: "Submit Ticket to Admin",
+    aiSupportEscalateSuccess: "Support ticket #{ticket} created! Our admin team will review your issue shortly.",
+    aiSupportRecentOrders: "Recent Order History",
+    aiSupportOrderDetails: "Order Details",
+    aiSupportNeedHelp: "Need direct assistance?",
+    aiSupportDisclaimer: "TeleBos AI may make mistakes. Order data is verified directly from the system.",
+    aiSupportClearChat: "Clear Chat History",
+    aiSupportTicketCreated: "Ticket Successfully Created",
   },
 
   // ── Landing Page ─────────────────────────────────────────────────────────

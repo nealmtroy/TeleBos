@@ -24,6 +24,7 @@ from .telegram_chat import TelegramChat
 from .notification import Notification
 from .telegram_registration_datapoint import TelegramRegistrationDatapoint
 from .wallet_transaction import WalletTransaction
+from .support_ticket import SupportTicket
 
 __all__ = [
     "User",
@@ -52,4 +53,5 @@ __all__ = [
     "Notification",
     "TelegramRegistrationDatapoint",
     "WalletTransaction",
+    "SupportTicket",
 ]

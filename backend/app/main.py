@@ -82,6 +82,7 @@ from app.api import (
     notifications,
     telegram_reg_date,
     wallet,
+    support,
 )
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
@@ -649,6 +650,7 @@ app.include_router(public.router)
 app.include_router(api_keys.router)
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(telegram_reg_date.router, prefix="/api/v1")
+app.include_router(support.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

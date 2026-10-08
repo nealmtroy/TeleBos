@@ -57,6 +57,10 @@ erDiagram
     %% Monetization & Marketplace
     REDEEM_CODES["redeem_codes"] ||--o{ REDEEM_LOGS : "tracks"
     ORDERS }o--o| SMM_SERVICES["smm_services"] : "references"
+
+    %% Support & Escalation
+    USERS ||--o{ SUPPORT_TICKETS["support_tickets"] : "creates"
+    SUPPORT_TICKETS }o--o| ORDERS : "references"
 ```
 
 ---

@@ -133,6 +133,54 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Optionally validate Better Auth session. Returns User if authenticated, else None."""
+    token = request.headers.get("x-better-auth-token")
+    if not token:
+        token = request.cookies.get("better-auth.session_token") or request.cookies.get("__Secure-better-auth.session_token")
+    if not token:
+        return None
+
+    try:
+        hashed_token = hash_session_token(token)
+        result = await db.execute(
+            text("""
+                SELECT s."userId" AS user_id, s."expiresAt" AS expires_at
+                FROM session s
+                WHERE s.token_hash = :hashed_token
+                   OR (s.token_hash IS NULL AND s.token = :token)
+                LIMIT 1
+            """),
+            {"hashed_token": hashed_token, "token": token},
+        )
+        row = result.one_or_none()
+        if row is None:
+            return None
+
+        from datetime import datetime, timezone
+        from app.utils.timezone import ensure_utc
+
+        expires_at = ensure_utc(row.expires_at)
+        if expires_at < datetime.now(timezone.utc):
+            return None
+
+        from uuid import UUID as PyUUID
+        user_uuid = PyUUID(row.user_id)
+        user_result = await db.execute(
+            select(User).where(User.id == user_uuid)
+        )
+        user = user_result.scalar_one_or_none()
+        if user is None or not user.is_active:
+            return None
+
+        return user
+    except Exception:
+        return None
+
+
 async def get_current_user_from_token_or_header(
     request: Request,
     token: str | None = Query(None),
