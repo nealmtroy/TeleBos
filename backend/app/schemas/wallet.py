@@ -11,14 +11,40 @@ class WalletTransactionResponse(BaseModel):
     user_email: str | None = None
     type: str  # topup, withdraw, redeem, admin_adjustment
     amount: int
+    total_amount: int | None = None
     method: str
     note: str | None = None
     status: str  # pending, approved, rejected
+    qris_url: str | None = None
+    qris_image: str | None = None
+    expired_at: datetime | None = None
     admin_note: str | None = None
     created_at: datetime
     processed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class TopupStatusCheckResponse(BaseModel):
+    id: str
+    status: str
+    amount: int
+    total_amount: int
+    is_paid: bool
+    processed_at: datetime | None = None
+
+
+class KlikQrisWebhookPayload(BaseModel):
+    order_id: str
+    status: str
+    amount: float | int | str | None = None
+    total_amount: float | int | str | None = None
+    payment_date: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    keterangan: str | None = None
+    direct_url: str | None = None
+    signature: str | None = None
 
 
 class WalletTransactionListResponse(BaseModel):

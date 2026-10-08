@@ -7,11 +7,39 @@ export interface WalletTransactionItem {
   user_email?: string | null;
   type: "topup" | "withdraw" | "redeem" | "admin_adjustment";
   amount: number;
+  total_amount?: number | null;
   method: string;
   note?: string | null;
   status: "pending" | "approved" | "rejected";
+  qris_url?: string | null;
+  qris_image?: string | null;
+  expired_at?: string | null;
   admin_note?: string | null;
   created_at: string;
+  processed_at?: string | null;
+}
+
+export interface TopupResponse {
+  id: string;
+  amount: number;
+  total_amount?: number;
+  method: string;
+  note: string;
+  status: string;
+  qr_string?: string;
+  qris_url?: string;
+  qris_image?: string;
+  created_at: string;
+  expires_at: number;
+  expired_at?: string;
+}
+
+export interface TopupStatusResponse {
+  id: string;
+  status: string;
+  amount: number;
+  total_amount: number;
+  is_paid: boolean;
   processed_at?: string | null;
 }
 
@@ -121,3 +149,20 @@ export function useAdminUpdateTransactionStatus() {
     },
   });
 }
+
+export function useCheckTopupStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: string): Promise<TopupStatusResponse> => {
+      const { data } = await api.get(`/wallet/topup/${orderId}/status`);
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.is_paid) {
+        queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      }
+    },
+  });
+}
+

@@ -29,6 +29,7 @@ import {
   ExternalLink,
   ShieldCheck,
   XCircle,
+  RefreshCw,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -44,6 +45,7 @@ import {
   useWalletTransactions,
   useRequestTopup,
   useRequestWithdraw,
+  useCheckTopupStatus,
 } from "@/hooks/use-wallet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,10 +70,13 @@ import { cn } from "@/lib/utils";
 interface ActivePayment {
   id: string;
   amount: number;
+  totalAmount?: number;
   note: string;
   createdAt: string;
   expiresAt: string;
-  qrString: string;
+  qrString?: string;
+  qrisUrl?: string;
+  qrisImage?: string;
 }
 
 /** Preset top-up amounts, in IDR. */
@@ -144,6 +149,7 @@ export default function WalletPage() {
   const { data: walletData, isLoading: isTxLoading, refetch: refetchTxs } = useWalletTransactions({ limit: 100 });
   const requestTopup = useRequestTopup();
   const requestWithdraw = useRequestWithdraw();
+  const checkTopupStatus = useCheckTopupStatus();
 
   // Bank account store integration
   const accounts = useBankAccountStore((s) => s.accounts);
@@ -183,10 +189,14 @@ export default function WalletPage() {
           id: t.id,
           type: t.type,
           amount: t.amount,
+          totalAmount: t.total_amount,
           method: t.method,
           note: t.note || "",
           createdAt: t.created_at,
           status: t.status,
+          qrisUrl: t.qris_url,
+          qrisImage: t.qris_image,
+          expiredAt: t.expired_at,
           adminNote: t.admin_note || undefined,
           userId: t.user_id,
           userEmail: t.user_email || undefined,
@@ -210,6 +220,24 @@ export default function WalletPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [activePayment]);
+
+  // Auto-poll status every 5 seconds when payment is active
+  useEffect(() => {
+    if (!activePayment) return;
+    const pollTimer = setInterval(async () => {
+      try {
+        const res = await checkTopupStatus.mutateAsync(activePayment.id);
+        if (res.is_paid) {
+          toast.success("Pembayaran Berhasil! Saldo telah masuk ke akun Anda.");
+          setActivePayment(null);
+          refetchTxs();
+        }
+      } catch {
+        // Silently ignore network poll errors during background interval
+      }
+    }, 5000);
+    return () => clearInterval(pollTimer);
+  }, [activePayment, checkTopupStatus, refetchTxs]);
 
   const presets = tab === "topup" ? TOPUP_PRESETS : WITHDRAW_PRESETS;
 
@@ -244,7 +272,8 @@ export default function WalletPage() {
   async function handleCopyAmount() {
     if (!activePayment) return;
     try {
-      await navigator.clipboard.writeText(String(activePayment.amount));
+      const amt = activePayment.totalAmount ?? activePayment.amount;
+      await navigator.clipboard.writeText(String(amt));
       setCopiedAmount(true);
       toast.success(_("wallet.copied"));
       setTimeout(() => setCopiedAmount(false), 2000);
@@ -266,9 +295,23 @@ export default function WalletPage() {
   }
 
   function handleDownloadQR() {
+    if (!activePayment) return;
     try {
+      // If KlikQRIS provided a base64 image or direct image URL, download immediately
+      if (activePayment.qrisImage || activePayment.qrisUrl) {
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `QRIS-${activePayment.id}.png`;
+        downloadLink.href = activePayment.qrisImage || activePayment.qrisUrl || "";
+        downloadLink.target = "_blank";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        toast.success(_("wallet.downloadQrSuccess"));
+        return;
+      }
+
       const svgElement = document.getElementById("qris-qr-code") as SVGSVGElement | null;
-      if (!svgElement || !activePayment) {
+      if (!svgElement) {
         toast.error(_("wallet.copyFailed") || "Gagal mengunduh QR Code");
         return;
       }
@@ -354,7 +397,7 @@ export default function WalletPage() {
         // Amount & instructions at bottom
         ctx.fillStyle = "#0f172a";
         ctx.font = "bold 20px monospace";
-        ctx.fillText(formatIDR(activePayment.amount), cardWidth / 2, 480);
+        ctx.fillText(formatIDR(activePayment.totalAmount ?? activePayment.amount), cardWidth / 2, 480);
 
         ctx.fillStyle = "#64748b";
         ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -384,16 +427,25 @@ export default function WalletPage() {
     }
   }
 
-  function handleConfirmPayment() {
+  async function handleConfirmPayment() {
     if (!activePayment) return;
     setVerifying(true);
 
-    window.setTimeout(() => {
-      refetchTxs();
-      toast.success(_("wallet.paymentRecordedToast"));
-      setActivePayment(null);
+    try {
+      const res = await checkTopupStatus.mutateAsync(activePayment.id);
+      if (res.is_paid) {
+        refetchTxs();
+        toast.success("Pembayaran Berhasil! Saldo telah ditambahkan ke akun Anda.");
+        setActivePayment(null);
+      } else {
+        toast.info("Pembayaran belum terdeteksi. Sistem mengecek status setiap 5 detik, atau coba periksa kembali sebentar lagi.");
+        refetchTxs();
+      }
+    } catch {
+      toast.error("Gagal memeriksa status pembayaran. Silakan coba beberapa saat lagi.");
+    } finally {
       setVerifying(false);
-    }, 800);
+    }
   }
 
   async function handleSubmit() {
@@ -412,14 +464,17 @@ export default function WalletPage() {
         const newPayment: ActivePayment = {
           id: res.id,
           amount: res.amount,
+          totalAmount: res.total_amount ?? res.amount,
           note: res.note || "QRIS",
           createdAt: res.created_at || new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          expiresAt: res.expired_at || (res.expires_at ? new Date(res.expires_at * 1000).toISOString() : new Date(Date.now() + 60 * 60 * 1000).toISOString()),
           qrString: res.qr_string,
+          qrisUrl: res.qris_url,
+          qrisImage: res.qris_image,
         };
 
         setActivePayment(newPayment);
-        setTimeLeft(15 * 60);
+        setTimeLeft(60 * 60);
         setAmount("");
         setNote("");
         setSubmitting(false);
@@ -558,6 +613,11 @@ export default function WalletPage() {
               <TabsList className="bg-gray-100 dark:bg-slate-800 p-1 rounded-xl h-auto gap-1">
                 <TabsTrigger
                   value="topup"
+                  onClick={() => {
+                    setTab("topup");
+                    setAmount("");
+                    setNotice(null);
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-gray-900 dark:data-[state=active]:text-slate-50 data-[state=active]:shadow-sm"
                 >
                   <ArrowDownToLine className="h-4 w-4" />
@@ -565,6 +625,12 @@ export default function WalletPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="withdraw"
+                  onClick={() => {
+                    setTab("withdraw");
+                    setActivePayment(null);
+                    setAmount("");
+                    setNotice(null);
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-gray-900 dark:data-[state=active]:text-slate-50 data-[state=active]:shadow-sm"
                 >
                   <ArrowUpFromLine className="h-4 w-4" />
@@ -652,27 +718,37 @@ export default function WalletPage() {
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-primary-50/60 dark:bg-primary-950/30 border border-primary-200 dark:border-primary-900/60 space-y-1">
-                    <span className="text-[11px] font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wider">
-                      Total Pembayaran
-                    </span>
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 dark:border-amber-900/60 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                        Total Tagihan Transfer
+                      </span>
+                      {activePayment.totalAmount && activePayment.totalAmount !== activePayment.amount && (
+                        <span className="text-[10px] font-bold bg-amber-500/20 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-md">
+                          Termasuk Kode Unik
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-sm font-bold text-primary-900 dark:text-primary-100">
-                        {formatIDR(activePayment.amount)}
+                      <span className="font-mono text-base sm:text-lg font-black text-amber-950 dark:text-amber-100 tabular-nums">
+                        {formatIDR(activePayment.totalAmount ?? activePayment.amount)}
                       </span>
                       <button
                         type="button"
                         onClick={handleCopyAmount}
-                        className="p-1 rounded hover:bg-primary-100 dark:hover:bg-primary-900/50 text-primary-700 dark:text-primary-300 transition cursor-pointer"
-                        title="Copy amount"
+                        className="p-1.5 rounded hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 transition cursor-pointer"
+                        title="Salin nominal transfer"
                       >
                         {copiedAmount ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         ) : (
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-4 w-4" />
                         )}
                       </button>
                     </div>
+                    <p className="text-[10px] text-amber-800/90 dark:text-amber-300/80 leading-tight pt-0.5">
+                      Wajib transfer <strong>tepat hingga 3 digit terakhir</strong> agar saldo otomatis masuk.
+                    </p>
                   </div>
                 </div>
 
@@ -688,19 +764,35 @@ export default function WalletPage() {
                     </span>
                   </div>
 
-                  {/* The QR Code itself */}
+                  {/* The QR Code / KlikQRIS Image itself */}
                   <div
                     id="qris-qr-container"
                     data-keep-white="true"
-                    className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs"
+                    className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-center min-h-[220px]"
                   >
-                    <QRCode
-                      id="qris-qr-code"
-                      value={activePayment.qrString}
-                      size={200}
-                      level="M"
-                      className="h-auto max-w-full"
-                    />
+                    {activePayment.qrisImage ? (
+                      <img
+                        id="qris-image-el"
+                        src={activePayment.qrisImage}
+                        alt={`QRIS ${activePayment.id}`}
+                        className="w-56 h-56 object-contain rounded-md"
+                      />
+                    ) : activePayment.qrisUrl ? (
+                      <img
+                        id="qris-image-el"
+                        src={activePayment.qrisUrl}
+                        alt={`QRIS ${activePayment.id}`}
+                        className="w-56 h-56 object-contain rounded-md"
+                      />
+                    ) : (
+                      <QRCode
+                        id="qris-qr-code"
+                        value={activePayment.qrString || ""}
+                        size={200}
+                        level="M"
+                        className="h-auto max-w-full"
+                      />
+                    )}
                   </div>
 
                   <div className="text-center space-y-1">
@@ -708,7 +800,7 @@ export default function WalletPage() {
                       TELEBOS
                     </p>
                     <p className="text-[11px] text-slate-400 font-mono">
-                      NMID: ID1020042918290
+                      NMID: ID1020042918290 • {activePayment.id}
                     </p>
                   </div>
 
@@ -750,40 +842,46 @@ export default function WalletPage() {
                     <span>{_("wallet.paymentStepsTitle")}</span>
                   </div>
                   <ol className="list-decimal list-inside space-y-1 text-xs text-blue-800 dark:text-blue-300/90 leading-relaxed">
-                    <li>{_("wallet.paymentStep1")}</li>
-                    <li>{_("wallet.paymentStep2")}</li>
-                    <li>{_("wallet.paymentStep3")}</li>
+                    <li>Buka aplikasi m-Banking atau E-Wallet pilihan Anda (BCA, Mandiri, BRI, DANA, GoPay, OVO, dll).</li>
+                    <li>Scan kode QR di atas atau unduh gambar QRIS.</li>
+                    <li>Pastikan total nominal transfer sama persis dengan yang tertera (termasuk kode unik).</li>
+                    <li>Sistem otomatis mendeteksi dan menambah saldo akun Anda tanpa perlu konfirmasi manual.</li>
                   </ol>
                 </div>
 
                 {/* Final Actions */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setActivePayment(null)}
-                    className="w-full sm:w-auto flex-1 order-2 sm:order-1 cursor-pointer"
-                  >
-                    {_("wallet.changeAmount")}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleConfirmPayment}
-                    disabled={verifying}
-                    className="w-full sm:w-auto flex-1 order-1 sm:order-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
-                  >
-                    {verifying ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        <span>{_("wallet.verifyingPayment")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        <span>{_("wallet.iHavePaid")}</span>
-                      </>
-                    )}
-                  </Button>
+                <div className="space-y-2 pt-2">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActivePayment(null)}
+                      className="w-full sm:w-auto flex-1 order-2 sm:order-1 cursor-pointer"
+                    >
+                      {_("wallet.changeAmount")}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleConfirmPayment}
+                      disabled={verifying}
+                      className="w-full sm:w-auto flex-1 order-1 sm:order-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          <span>Mengecek Status...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          <span>Cek Status Pembayaran</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-center text-slate-500 dark:text-slate-400">
+                    Status pembayaran otomatis diperiksa setiap 5 detik. Saldo langsung bertambah setelah transfer berhasil.
+                  </p>
                 </div>
               </div>
             ) : (
@@ -1371,6 +1469,11 @@ export default function WalletPage() {
                 <p className="font-mono text-2xl font-bold text-gray-900 dark:text-slate-100">
                   {selectedTransaction.type === "topup" ? "+" : "-"} {formatIDR(selectedTransaction.amount)}
                 </p>
+                {selectedTransaction.totalAmount && selectedTransaction.totalAmount !== selectedTransaction.amount && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold pt-0.5">
+                    Tagihan Transfer: {formatIDR(selectedTransaction.totalAmount)} (termasuk kode unik)
+                  </p>
+                )}
                 <div className="pt-1">
                   <Badge
                     variant={
@@ -1474,12 +1577,35 @@ export default function WalletPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+            <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              {selectedTransaction.type === "topup" && selectedTransaction.status === "pending" && (selectedTransaction.qrisImage || selectedTransaction.qrisUrl) ? (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setActivePayment({
+                      id: selectedTransaction.id,
+                      amount: selectedTransaction.amount,
+                      totalAmount: selectedTransaction.totalAmount ?? selectedTransaction.amount,
+                      note: selectedTransaction.note,
+                      createdAt: selectedTransaction.createdAt,
+                      expiresAt: selectedTransaction.expiredAt || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                      qrisUrl: selectedTransaction.qrisUrl || undefined,
+                      qrisImage: selectedTransaction.qrisImage || undefined,
+                    });
+                    setSelectedTransaction(null);
+                  }}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 cursor-pointer order-2 sm:order-1"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>Buka QRIS Pembayaran</span>
+                </Button>
+              ) : <div className="hidden sm:block" />}
+
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setSelectedTransaction(null)}
-                className="w-full sm:w-auto px-5 cursor-pointer"
+                className="w-full sm:w-auto px-5 cursor-pointer order-1 sm:order-2"
               >
                 {_("wallet.close")}
               </Button>

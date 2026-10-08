@@ -156,7 +156,8 @@ describe("WalletPage — amount validation", () => {
 describe("WalletPage — withdraw guardrails", () => {
   it("rejects a withdrawal above the available balance", () => {
     const { container, amount } = renderWallet(500_000);
-    fireEvent.click(within(container).getByRole("tab", { name: /Withdraw/ }));
+    const withdrawTab = within(container).getByRole("tab", { name: /^Withdraw$/ });
+    fireEvent.click(withdrawTab);
     fireEvent.change(amount(), { target: { value: "600000" } });
 
     expect(container.textContent).toContain("Amount exceeds your available balance");
@@ -165,7 +166,8 @@ describe("WalletPage — withdraw guardrails", () => {
 
   it("allows a withdrawal equal to the full balance", () => {
     const { container, amount } = renderWallet(500_000);
-    fireEvent.click(within(container).getByRole("tab", { name: /Withdraw/ }));
+    const withdrawTab = within(container).getByRole("tab", { name: /^Withdraw$/ });
+    fireEvent.click(withdrawTab);
     fireEvent.change(amount(), { target: { value: "500000" } });
 
     expect(submitButton(container)).toBeEnabled();
@@ -191,7 +193,8 @@ describe("WalletPage — top-up flow with QRIS", () => {
     const { container } = renderWallet();
     expect(container.textContent).toContain("BCA");
 
-    fireEvent.click(within(container).getByRole("tab", { name: /Withdraw/ }));
+    const withdrawTab = within(container).getByRole("tab", { name: /^Withdraw$/ });
+    fireEvent.click(withdrawTab);
     expect(container.textContent).not.toContain("BCA");
   });
 

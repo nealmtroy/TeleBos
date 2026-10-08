@@ -26,10 +26,14 @@ export interface WalletTransaction {
   id: string;
   type: TransactionType;
   amount: number;
+  totalAmount?: number | null;
   method: string;
   note: string;
   createdAt: string;
   status: TransactionStatus;
+  qrisUrl?: string | null;
+  qrisImage?: string | null;
+  expiredAt?: string | null;
   userId?: string;
   userEmail?: string;
   adminNote?: string;

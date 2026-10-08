@@ -118,6 +118,13 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
     SENTRY_PROFILES_SAMPLE_RATE: float = 0.1
 
+    # KlikQRIS Payment Gateway
+    KLIKQRIS_API_KEY: str | None = None
+    KLIKQRIS_ID_MERCHANT: str | None = None
+    KLIKQRIS_BASE_URL: str = "https://klikqris.com/api"
+    KLIKQRIS_CALLBACK_URL: str | None = None
+    NEXT_PUBLIC_URL: str = "https://tele.t-me.site"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

@@ -30,14 +30,21 @@ class WalletTransaction(Base):
         String(32), nullable=False, index=True
     )  # "topup", "withdraw", "redeem", "admin_adjustment"
     amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    total_amount: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     method: Mapped[str] = mapped_column(String(64), nullable=False, default="QRIS")
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="pending", index=True
     )  # "pending", "approved", "rejected"
+    signature: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    qris_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    qris_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expired_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     processed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
