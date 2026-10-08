@@ -152,7 +152,8 @@ async def test_resolve_destination_entity_prefers_telethon_cache():
     mock_client.get_input_entity = AsyncMock(return_value=cached_peer)
     mock_client.get_entity = AsyncMock(side_effect=AssertionError("get_entity must not be called when cached"))
 
-    entity = await _resolve_destination_entity(mock_client, "@teleboslogging_bot", me_id=123)
+    me = SimpleNamespace(id=123, phone="123456")
+    entity = await _resolve_destination_entity(mock_client, "@teleboslogging_bot", me=me)
     assert entity == cached_peer
     mock_client.get_input_entity.assert_awaited_once_with("teleboslogging_bot")
     mock_client.get_entity.assert_not_called()
@@ -172,15 +173,50 @@ async def test_resolve_destination_entity_prefers_db_cache():
 
     db_row = (8433414493, -1132153227385084420, "bot")
     mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=SimpleNamespace(first=lambda: db_row))
+    mock_acc_res = SimpleNamespace(scalar_one_or_none=lambda: "acc-uuid-1")
+    mock_chat_res = SimpleNamespace(first=lambda: db_row)
+    mock_session.execute = AsyncMock(side_effect=[mock_acc_res, mock_chat_res])
+
     mock_session_ctx = AsyncMock()
     mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
 
+    me = SimpleNamespace(id=456, phone="628123456")
     with patch("app.database.async_session_factory", return_value=mock_session_ctx):
-        entity = await _resolve_destination_entity(mock_client, "@teleboslogging_bot", me_id=456)
+        entity = await _resolve_destination_entity(mock_client, "@teleboslogging_bot", me=me)
         assert isinstance(entity, InputPeerUser)
         assert entity.user_id == 8433414493
         assert entity.access_hash == -1132153227385084420
         mock_client.get_entity.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_message_safe_recovers_from_peer_id_invalid():
+    """Verify that _send_message_safe recovers and retries when an invalid peer error occurs."""
+    from telethon.errors import PeerIdInvalidError
+    from telethon.tl.types import InputPeerUser
+    from app.services.broadcast_log_sender import _send_message_safe, _resolved_dest_cache
+
+    _resolved_dest_cache.clear()
+
+    stale_peer = InputPeerUser(user_id=8433414493, access_hash=999999)
+    fresh_peer = InputPeerUser(user_id=8433414493, access_hash=111111)
+
+    mock_client = AsyncMock()
+    mock_client.get_me = AsyncMock(return_value=SimpleNamespace(id=789, phone="12345"))
+    mock_client.get_input_entity = AsyncMock(return_value=stale_peer)
+    mock_client.get_entity = AsyncMock(return_value=fresh_peer)
+
+    # First send_message fails with PeerIdInvalidError (invalid peer), second succeeds
+    mock_client.send_message = AsyncMock(side_effect=[
+        PeerIdInvalidError(request=None),
+        None,
+    ])
+
+    await _send_message_safe(mock_client, "@teleboslogging_bot", "Cycle summary")
+
+    assert mock_client.send_message.await_count == 2
+    mock_client.get_entity.assert_awaited_with("@teleboslogging_bot")
+    assert _resolved_dest_cache[(789, "@teleboslogging_bot")] == fresh_peer
+
 

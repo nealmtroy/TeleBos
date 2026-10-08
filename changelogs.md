@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[7cf22441](https://github.com/nealmtroy/TeleBos/commit/7cf22441)**: fix(broadcast): utilize Telethon session and DB entity cache before network resolution
 - **[e4ae7619](https://github.com/nealmtroy/TeleBos/commit/e4ae7619)**: fix(sentry): resolve queuepool timeouts, missing greenlet, spambot unblock, and help hydration errors
 
 ## 2026-10-08

@@ -111,18 +111,16 @@ def _format_cycle_summary(
     return formatted
 
 
-async def _resolve_destination_entity(client: TelegramClient, target, me_id: int):
+async def _resolve_destination_entity(client: TelegramClient, target, me):
     """Resolve destination entity using Telethon cache, DB cache, and network fallback.
 
-    Avoids triggering contacts.ResolveUsername FloodWait by checking:
-    1. In-memory resolved destination cache
-    2. Telethon's internal session/entity cache (client.get_input_entity)
-    3. Local database cache (telegram_chats table with access_hash)
-    4. Network query (client.get_entity) only as last resort
+    Properly scopes DB lookup to the current account to ensure access_hash is valid
+    for this specific account session.
     """
     from telethon.errors import FloodWaitError
     import time
 
+    me_id = me.id
     cache_key = (me_id, str(target))
     now_ts = time.time()
     if cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
@@ -149,42 +147,58 @@ async def _resolve_destination_entity(client: TelegramClient, target, me_id: int
         pass
 
     # 3. Local database cache (telegram_chats table containing chat_id & access_hash)
+    # Strictly scoped to this specific account to guarantee access_hash validity
     try:
         from app.database import async_session_factory
         from app.models.telegram_chat import TelegramChat
+        from app.models.telegram_account import TelegramAccount
         from sqlalchemy import select
         import telethon.tl.types as tl_types
 
         is_num = clean_target.lstrip("-").isdigit()
+        phone_val = str(getattr(me, "phone", "") or "")
 
         async with async_session_factory() as db:
-            if is_num:
-                cond = (TelegramChat.chat_id == int(clean_target))
-            else:
-                cond = (TelegramChat.username.ilike(clean_target))
+            acc_stmt = select(TelegramAccount.id).where(
+                (TelegramAccount.telegram_id == me_id) |
+                (TelegramAccount.phone == phone_val) |
+                (TelegramAccount.phone == f"+{phone_val}")
+            ).limit(1)
+            acc_res = await db.execute(acc_stmt)
+            account_db_id = acc_res.scalar_one_or_none()
 
-            res = await db.execute(
-                select(TelegramChat.chat_id, TelegramChat.access_hash, TelegramChat.type)
-                .where(cond, TelegramChat.access_hash.isnot(None))
-                .limit(1)
-            )
-            row = res.first()
-            if row:
-                chat_id = getattr(row, "chat_id", row[0])
-                access_hash = getattr(row, "access_hash", row[1])
-                chat_type = getattr(row, "type", row[2])
+            if account_db_id:
+                if is_num:
+                    cond = (TelegramChat.chat_id == int(clean_target))
+                else:
+                    cond = (TelegramChat.username.ilike(clean_target))
 
-                if access_hash is not None:
-                    if chat_type in ("user", "bot"):
-                        entity = tl_types.InputPeerUser(user_id=chat_id, access_hash=access_hash)
-                    elif chat_type in ("channel", "supergroup"):
-                        entity = tl_types.InputPeerChannel(channel_id=chat_id, access_hash=access_hash)
-                    elif chat_type == "group":
-                        entity = tl_types.InputPeerChat(chat_id=chat_id)
+                res = await db.execute(
+                    select(TelegramChat.chat_id, TelegramChat.access_hash, TelegramChat.type)
+                    .where(
+                        TelegramChat.account_id == account_db_id,
+                        cond,
+                        TelegramChat.access_hash.isnot(None),
+                    )
+                    .limit(1)
+                )
+                row = res.first()
+                if row:
+                    chat_id = getattr(row, "chat_id", row[0])
+                    access_hash = getattr(row, "access_hash", row[1])
+                    chat_type = getattr(row, "type", row[2])
 
-                    if entity is not None:
-                        _resolved_dest_cache[cache_key] = entity
-                        return entity
+                    if access_hash is not None:
+                        if chat_type in ("user", "bot"):
+                            entity = tl_types.InputPeerUser(user_id=chat_id, access_hash=access_hash)
+                        elif chat_type in ("channel", "supergroup"):
+                            entity = tl_types.InputPeerChannel(channel_id=chat_id, access_hash=access_hash)
+                        elif chat_type == "group":
+                            entity = tl_types.InputPeerChat(chat_id=chat_id)
+
+                        if entity is not None:
+                            _resolved_dest_cache[cache_key] = entity
+                            return entity
     except Exception as db_err:
         logger.debug("Database entity cache lookup failed for %s: %s", target, db_err)
 
@@ -224,7 +238,7 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
     if cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
         return
 
-    entity = await _resolve_destination_entity(client, target, me.id)
+    entity = await _resolve_destination_entity(client, target, me)
     if entity is None and cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
         return
 
@@ -240,6 +254,19 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
     except (PeerIdInvalidError, ValueError, YouBlockedUserError) as exc:
         _resolved_dest_cache.pop(cache_key, None)
         is_bot = bool(getattr(entity, "bot", False)) or str(target).lower().lstrip("@").endswith("bot")
+
+        # If PeerIdInvalidError, the cached peer was invalid or mismatched for this account session.
+        # Attempt immediate recovery by fetching the entity directly from network.
+        if isinstance(exc, PeerIdInvalidError) or "invalid peer" in str(exc).lower():
+            try:
+                entity = await client.get_entity(target)
+                _resolved_dest_cache[cache_key] = entity
+                await client.send_message(entity, message, **kwargs)
+                return
+            except Exception as peer_retry_err:
+                logger.debug("Direct retry after PeerIdInvalidError failed: %s", peer_retry_err)
+                if not is_bot:
+                    raise exc
 
         # If the target is blocked, attempt to unblock first
         if isinstance(exc, YouBlockedUserError) or "you blocked this user" in str(exc).lower():
@@ -268,9 +295,11 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
         try:
             # Telegram only permits a user account to message a bot after it has
             # started that bot. Sending /start creates the required dialog.
-            await client.send_message(entity or target, "/start")
+            # Use raw target username here to avoid re-using an invalid peer!
+            await client.send_message(target, "/start")
             logger.info("Started log bot %s, retrying cycle log delivery", target)
-            entity = await _resolve_destination_entity(client, target, me.id) or target
+            entity = await client.get_entity(target)
+            _resolved_dest_cache[cache_key] = entity
             await client.send_message(entity, message, **kwargs)
         except FloodWaitError as fw:
             logger.warning(
