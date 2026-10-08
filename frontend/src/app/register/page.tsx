@@ -36,7 +36,7 @@ export default function RegisterPage() {
     setError(""); setSuccess(""); setLoading(true);
     try {
       await register(email, password, name);
-      if (useAuthStore.getState().isAuthenticated) { setSuccess(_("register.accountCreated")); setTimeout(() => router.push("/dashboard"), 1500); }
+      if (useAuthStore.getState().isAuthenticated) { setSuccess(_("register.accountCreated")); setTimeout(() => router.push("/onboarding"), 1500); }
       else { setSuccess(_("register.verificationRequired")); setTimeout(() => router.push("/login"), 4000); }
     } catch (err: any) { setError(err?.message || _("register.registrationFailed")); }
     finally { setLoading(false); }

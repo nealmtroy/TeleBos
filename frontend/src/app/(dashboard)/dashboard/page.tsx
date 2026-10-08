@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAccountsPaginated, useAccountsSummary, type Account } from "@/hooks/use-accounts";
 import { useT } from "@/lib/i18n";
+import { useAuthStore } from "@/store/auth-store";
 import {
   Smartphone,
   Send,
@@ -11,6 +13,8 @@ import {
   Activity,
   Radio,
   BarChart3,
+  Sparkles,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -23,6 +27,25 @@ const RECENT_ACCOUNTS_LIMIT = 5;
 
 export default function DashboardPage() {
   const _ = useT();
+  const user = useAuthStore((s) => s.user);
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      const isComplete = localStorage.getItem(`telebos_onboarding_completed_${user.id}`);
+      const isDismissed = sessionStorage.getItem(`telebos_onboarding_dismissed_${user.id}`);
+      if (!isComplete && !isDismissed) {
+        setShowOnboardingBanner(true);
+      }
+    }
+  }, [user]);
+
+  const dismissOnboardingBanner = () => {
+    setShowOnboardingBanner(false);
+    if (user?.id) {
+      sessionStorage.setItem(`telebos_onboarding_dismissed_${user.id}`, "true");
+    }
+  };
   const { data: accountsSummary } = useAccountsSummary();
   // Only the top 5 accounts are rendered below, so fetch 5 rather than the
   // full unpaginated list the widget used to request.
@@ -68,6 +91,41 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 max-w-[1400px] mx-auto">
+      {/* Onboarding Welcome Callout */}
+      {showOnboardingBanner && (
+        <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="p-2.5 rounded-xl bg-primary/20 text-primary flex-shrink-0">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-semibold text-foreground truncate">
+                {_("onboarding.welcomeBannerTitle")}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-2">
+                {_("onboarding.welcomeBannerDesc")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-shrink-0">
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition shadow-xs w-full sm:w-auto whitespace-nowrap"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> {_("onboarding.welcomeBannerCta")}
+            </Link>
+            <button
+              type="button"
+              onClick={dismissOnboardingBanner}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition cursor-pointer"
+              aria-label="Dismiss banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Banner */}
       <div className="relative rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 sm:p-5 text-white border border-border/40 shadow-xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
@@ -269,12 +327,20 @@ export default function DashboardPage() {
               <p className="text-muted-foreground text-xs mb-4 leading-relaxed">
                 {_("dashboard.noAccountsDesc")}
               </p>
-              <Link
-                href="/accounts/add"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> {_("dashboard.addFirstAccount")}
-              </Link>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                <Link
+                  href="/accounts/add"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition w-full sm:w-auto justify-center"
+                >
+                  <Plus className="h-3.5 w-3.5" /> {_("dashboard.addFirstAccount")}
+                </Link>
+                <Link
+                  href="/onboarding"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-border bg-card text-foreground rounded-lg text-xs font-semibold hover:bg-muted transition w-full sm:w-auto justify-center"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> {_("onboarding.welcomeBannerCta")}
+                </Link>
+              </div>
             </div>
           )}
         </CardContent>
