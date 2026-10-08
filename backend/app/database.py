@@ -12,14 +12,15 @@ settings = get_settings()
 # and surfaced as "sorry, too many clients already" (PYTHON-FASTAPI-4).
 # docker-compose.yml raises max_connections to 300 to match; 20/20 keeps the
 # worst case at 120 and leaves headroom for migrations and admin sessions.
-POOL_SIZE = 20
-MAX_OVERFLOW = 20
+POOL_SIZE = 30
+MAX_OVERFLOW = 30
 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     pool_size=POOL_SIZE,
     max_overflow=MAX_OVERFLOW,
+    pool_timeout=60.0,
     pool_recycle=1800,  # Recycle connections after 30 min to avoid stale connections
     pool_pre_ping=True,  # Verify connections before use
 )

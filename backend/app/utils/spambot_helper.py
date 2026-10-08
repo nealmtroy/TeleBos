@@ -103,10 +103,12 @@ async def start_spambot_conversation(client, conv, log_identifier: str = "") -> 
             logger.info("SpamBot is blocked (%s). Unblocking...", log_identifier or "spambot")
             from telethon import functions
             try:
+                import asyncio
                 await client(functions.contacts.UnblockRequest(id="spambot"))
+                await asyncio.sleep(0.3)
                 await conv.send_message("/start")
             except Exception as unblock_err:
-                logger.error("Failed to unblock SpamBot (%s): %s", log_identifier or "spambot", unblock_err)
+                logger.warning("Could not unblock SpamBot (%s): %s", log_identifier or "spambot", unblock_err)
                 raise e
         else:
             raise e

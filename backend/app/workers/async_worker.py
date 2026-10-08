@@ -30,10 +30,13 @@ logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
 # Telethon logs its own transport-teardown races at exception level even though
 # it handles them (it disconnects the client itself). Demote those to warning
 # so ordinary disconnects do not surface as application errors.
-from app.utils.log_filters import TelethonTransportNoiseFilter
+from app.utils.log_filters import TelethonTransportNoiseFilter, AsyncioTransportNoiseFilter
 
 logging.getLogger("telethon.network.connection.connection").addFilter(
     TelethonTransportNoiseFilter()
+)
+logging.getLogger("asyncio").addFilter(
+    AsyncioTransportNoiseFilter()
 )
 
 logger = logging.getLogger("telebos.async_worker")

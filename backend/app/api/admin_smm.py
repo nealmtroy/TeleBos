@@ -127,6 +127,7 @@ async def update_service(
         raise HTTPException(status_code=404, detail="Service not found")
 
     await db.commit()
+    await db.refresh(service)
 
     settings = await admin_smm_service.get_global_settings(db)
     global_markup = settings.get("global_markup_percent", 0)

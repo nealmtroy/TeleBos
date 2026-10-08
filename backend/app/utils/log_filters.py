@@ -69,3 +69,24 @@ class TelethonTransportNoiseFilter(logging.Filter):
             record.levelno = logging.WARNING
             record.levelname = "WARNING"
         return True
+
+
+class AsyncioTransportNoiseFilter(logging.Filter):
+    """Demote known asyncio/asyncpg socket teardown noise from error to warning.
+
+    When an asyncpg connection or socket drops unexpectedly during teardown,
+    asyncio logs 'unexpected connection_lost() call' at ERROR level. This is
+    benign noise during worker restart/eviction and should not trigger Sentry.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno < logging.ERROR:
+            return True
+
+        message = record.getMessage()
+        if "unexpected connection_lost() call" in message:
+            record.levelno = logging.WARNING
+            record.levelname = "WARNING"
+            return True
+
+        return True

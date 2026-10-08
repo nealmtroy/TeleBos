@@ -642,15 +642,15 @@ async def _broadcast_entities_for_target(
 async def _get_broadcast_job_status(jid: uuid.UUID | str) -> str | None:
     """Helper to check and retrieve the current status of the job using a fresh session."""
     from app.database import async_session_factory
-    from sqlalchemy.exc import DBAPIError
-    for attempt in range(3):
+    from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+    for attempt in range(4):
         try:
             async with async_session_factory() as sdb:
                 res = await sdb.execute(select(BroadcastJob.status).where(BroadcastJob.id == jid))
                 return res.scalar_one_or_none()
-        except (DBAPIError, OSError) as db_err:
-            if attempt < 2:
-                await asyncio.sleep(0.5 * (attempt + 1))
+        except (SQLAlchemyError, DBAPIError, OSError, asyncio.TimeoutError) as db_err:
+            if attempt < 3:
+                await asyncio.sleep(1.0 * (attempt + 1))
                 continue
             logger.warning("Transient error retrieving broadcast job status for %s: %s", jid, db_err)
             return None
@@ -956,8 +956,13 @@ async def execute_broadcast(job_id: str):
                         "join_cooldown_until": 0.0,
                     }
                 )
+            except RuntimeError as connect_exc:
+                if "disconnected" in str(connect_exc).lower():
+                    logger.warning("Account %s is disconnected and excluded from broadcast: %s", acc_id_str, connect_exc)
+                else:
+                    logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
             except Exception as connect_exc:
-                logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
+                logger.warning("Could not connect account %s for broadcast: %s", acc_id_str, connect_exc)
 
         if not active_accounts:
             async with async_session_factory() as db:

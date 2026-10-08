@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { SupportChatWidget } from "@/components/help/support-chat-widget";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
     default: "Help Center",

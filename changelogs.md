@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-08
+- **[912192fe](https://github.com/nealmtroy/TeleBos/commit/912192fe)**: feat(support): add AI chatbot support widget to help page with order lookup, guardrails, and admin escalation
 - **[f492ccc1](https://github.com/nealmtroy/TeleBos/commit/f492ccc1)**: fix(help): use dynamic rendering for help slug layout to eliminate headers bailout error
 - **[62658eea](https://github.com/nealmtroy/TeleBos/commit/62658eea)**: fix(a11y): fix form field labels, ids, and names across all dashboard pages and components
 - **[20821872](https://github.com/nealmtroy/TeleBos/commit/20821872)**: feat(i18n): harmonize EN/ID translations and migrate hardcoded strings
