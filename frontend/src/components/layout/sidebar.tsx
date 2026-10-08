@@ -108,7 +108,7 @@ const servicesSubItems: SubItem[] = [
 ];
 
 const administrationsSubItems: SubItem[] = [
-  { href: "/admin", exact: true, labelKey: "admin.overview", icon: BarChart3 },
+  { href: "/admin/dashboard", exact: false, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
   { href: "/admin/transactions", exact: false, labelKey: "admin.transactions", icon: Wallet },
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
@@ -372,6 +372,7 @@ export function Sidebar() {
           hasSubItems: true,
           subItems: administrationsSubItems,
           matchPrefixes: [
+            "/admin/dashboard",
             "/admin/users",
             "/admin/broadcasts",
             "/admin/auto-replies",

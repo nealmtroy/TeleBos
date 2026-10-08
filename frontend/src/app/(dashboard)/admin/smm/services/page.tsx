@@ -161,7 +161,7 @@ export default function SmmServicesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Link href="/admin" className="p-2 hover:bg-muted rounded-lg transition shrink-0">
+          <Link href="/admin/dashboard" className="p-2 hover:bg-muted rounded-lg transition shrink-0">
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Link>
           <div>

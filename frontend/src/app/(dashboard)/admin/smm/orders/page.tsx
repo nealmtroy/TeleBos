@@ -101,8 +101,8 @@ export default function SmmOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg transition shrink-0">
-          <ArrowLeft className="h-5 w-5 text-gray-500" />
+        <Link href="/admin/dashboard" className="p-2 hover:bg-muted rounded-lg transition shrink-0">
+          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">SMM Orders</h1>
