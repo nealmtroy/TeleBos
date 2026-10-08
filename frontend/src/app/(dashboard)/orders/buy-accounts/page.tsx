@@ -126,7 +126,7 @@ export default function BuyAccountsPage() {
       await Promise.all([refetchCategories(), refetchAccounts()]);
       toast({
         variant: "success",
-        title: "Order Fulfilled",
+        title: _("orders.orderFulfilled") || "Order Fulfilled",
         description: _("orders.buySuccess") || "Account purchased successfully and transferred to your custody!",
       });
       setBuyConfirmOpen(false);
@@ -136,7 +136,7 @@ export default function BuyAccountsPage() {
       console.error(err);
       toast({
         variant: "error",
-        title: "Purchase Failed",
+        title: _("orders.purchaseFailed") || "Purchase Failed",
         description: err?.response?.data?.detail || "Failed to complete account purchase.",
       });
     }
@@ -226,8 +226,8 @@ export default function BuyAccountsPage() {
     navigator.clipboard.writeText(text);
     toast({
       variant: "success",
-      title: "Copied",
-      description: `${label} copied to clipboard!`,
+      title: _("orders.copied") || "Copied",
+      description: `${label} ${_("orders.copied") || "copied to clipboard"}!`,
     });
   };
 
@@ -239,21 +239,21 @@ export default function BuyAccountsPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Eyebrow>Marketplace // Escrow Exchange</Eyebrow>
+            <Eyebrow>{_("orders.escrowExchange") || "Marketplace // Escrow Exchange"}</Eyebrow>
             <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Live Custody Pool
+              {_("orders.liveCustodyPool") || "Live Custody Pool"}
             </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl text-balance">
             {_("orders.buyAccounts") || "Buy Telegram Accounts"}
           </h1>
           <p className="text-sm text-muted-foreground max-w-xl leading-relaxed text-pretty">
-            Acquire pre-warmed, non-restricted Telegram sessions with verified MTProto credentials and 30-minute automated escrow replacement warranty.
+            {_("orders.buyDesc") || "Acquire pre-warmed, non-restricted Telegram sessions with verified MTProto credentials and 30-minute automated escrow replacement warranty."}
           </p>
         </div>
 
-        {/* Balance Card & Wallet Top-up */}
+        {/* Unified Balance Card */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="rounded-xl border border-border/80 bg-card p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center gap-3">
@@ -265,13 +265,13 @@ export default function BuyAccountsPage() {
                   {_("orders.yourBalance") || "Available Balance"}
                 </p>
                 <p className="text-base font-bold tabular-nums text-foreground">
-                  Rp {balance.toLocaleString()}
+                  Rp {(user?.balance ?? 0).toLocaleString("id-ID")}
                 </p>
               </div>
               <Link href="/wallet">
                 <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs font-semibold">
                   <Plus className="h-3.5 w-3.5" />
-                  Top Up
+                  {_("orders.topUp") || "Top Up"}
                 </Button>
               </Link>
             </div>
@@ -282,29 +282,29 @@ export default function BuyAccountsPage() {
       {/* ── KPI & Escrow Readout Bar ─────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricReadout
-          label="Total Ready Stock"
-          value={totalStockCount.toLocaleString()}
-          subtext="Verified MTProto sessions"
+          label={_("orders.totalReadyStock") || "Total Ready Stock"}
+          value={totalStockCount.toLocaleString("id-ID")}
+          subtext={_("orders.verifiedSessions") || "Verified MTProto sessions"}
           icon={<ShoppingCart className="h-4 w-4 text-primary" />}
         />
         <MetricReadout
-          label="Starting From"
+          label={_("orders.startingFrom") || "Starting From"}
           value={<PriceTag value={lowestPrice} size="lg" />}
-          subtext="Regional tier pricing"
+          subtext={_("orders.regionalPricing") || "Regional tier pricing"}
           icon={<Sparkles className="h-4 w-4 text-muted-foreground" />}
         />
         <MetricReadout
-          label="Coverage"
+          label={_("orders.coverage") || "Coverage"}
           value={`${stockCategories?.length || 0} Regions`}
-          subtext="Global carrier prefixes"
+          subtext={_("orders.globalPrefixes") || "Global carrier prefixes"}
           icon={<Globe className="h-4 w-4 text-muted-foreground" />}
         />
         <MetricReadout
-          label="Escrow Protection"
-          value="30-Min Warranty"
-          subtext="Auto-replacement on login fail"
+          label={_("orders.escrowProtection") || "Escrow Protection"}
+          value={_("orders.escrowWarranty") || "30-Min Warranty"}
+          subtext={_("orders.autoReplacementDesc") || "Auto-replacement on login fail"}
           icon={<ShieldCheck className="h-4 w-4 text-muted-foreground" />}
-          badge={<Chip tone="neutral">Active</Chip>}
+          badge={<Chip tone="neutral">{_("orders.active") || "Active"}</Chip>}
         />
       </div>
 
@@ -314,7 +314,7 @@ export default function BuyAccountsPage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <span>Filter By Country / Region</span>
+              <span>{_("orders.filterByCountry") || "Filter By Country / Region"}</span>
               {stockCategories && (
                 <span className="text-muted-foreground font-mono text-xs font-normal">
                   ({stockCategories.length} available)
@@ -335,7 +335,7 @@ export default function BuyAccountsPage() {
               )}
             >
               <span className="text-sm">🌐</span>
-              <span>All Countries</span>
+              <span>{_("orders.allCountries") || "All Countries"}</span>
               <span
                 className={cn(
                   "ml-0.5 rounded-md px-1.5 py-0.5 font-mono text-xs",
@@ -389,8 +389,8 @@ export default function BuyAccountsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search accounts by country, ID, or prefix"
-              placeholder="Search by ID, country name, or dial prefix..."
+              aria-label={_("orders.searchBuyPlaceholder") || "Search accounts by country, ID, or prefix"}
+              placeholder={_("orders.searchBuyPlaceholder") || "Search by ID, country name, or dial prefix..."}
               className="w-full h-9 rounded-lg border border-border/90 dark:border-slate-700/80 bg-background dark:bg-slate-950/80 pl-10 pr-8 text-xs font-medium text-foreground placeholder:text-muted-foreground/80 outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150"
             />
             {searchQuery && (
@@ -417,7 +417,7 @@ export default function BuyAccountsPage() {
                   spamFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Spam: All
+                {_("orders.spamAll") || "Spam: All"}
               </button>
               <button
                 type="button"
@@ -428,7 +428,7 @@ export default function BuyAccountsPage() {
                 )}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Clean Only
+                {_("orders.cleanOnly") || "Clean Only"}
               </button>
             </div>
 
@@ -442,7 +442,7 @@ export default function BuyAccountsPage() {
                   twofaFilter === "all" ? "bg-muted text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                2FA: All
+                {_("orders.twofaAll") || "2FA: All"}
               </button>
               <button
                 type="button"
@@ -452,7 +452,7 @@ export default function BuyAccountsPage() {
                   twofaFilter === "disabled" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Disabled
+                {_("orders.twofaDisabled") || "Disabled"}
               </button>
             </div>
 
@@ -462,9 +462,9 @@ export default function BuyAccountsPage() {
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="price-asc">Price: Lowest First</SelectItem>
-                <SelectItem value="price-desc">Price: Highest First</SelectItem>
-                <SelectItem value="contacts-desc">Most Contacts</SelectItem>
+                <SelectItem value="price-asc">{_("orders.sortLowestPrice") || "Price: Lowest First"}</SelectItem>
+                <SelectItem value="price-desc">{_("orders.sortHighestPrice") || "Price: Highest First"}</SelectItem>
+                <SelectItem value="contacts-desc">{_("orders.sortMostContacts") || "Most Contacts"}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -476,7 +476,7 @@ export default function BuyAccountsPage() {
                 onClick={clearAllFilters}
                 className="h-9 text-xs text-muted-foreground hover:text-foreground"
               >
-                Reset
+                {_("orders.resetFilter") || "Reset"}
               </Button>
             )}
           </div>
@@ -486,8 +486,8 @@ export default function BuyAccountsPage() {
       {/* ── Active Status Count Bar ─────────────────────────────── */}
       <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
         <p>
-          Showing <strong className="text-foreground font-semibold">{filteredAccounts.length}</strong> available accounts
-          {selectedCountry !== "all" && ` in ${stockCategories?.find((s) => s.country_code === selectedCountry)?.country_name || selectedCountry}`}
+          {_("orders.showingAccounts", { count: filteredAccounts.length })}
+          {selectedCountry !== "all" && ` (${stockCategories?.find((s) => s.country_code === selectedCountry)?.country_name || selectedCountry})`}
         </p>
       </div>
 
@@ -502,8 +502,8 @@ export default function BuyAccountsPage() {
         <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <div className="space-y-0.5">
-            <p className="font-semibold">Unable to Load Accounts</p>
-            <p className="opacity-90">There was an error communicating with the marketplace inventory.</p>
+            <p className="font-semibold">{_("orders.unableToLoadAccounts") || "Unable to Load Accounts"}</p>
+            <p className="opacity-90">{_("orders.errorInventory") || "There was an error communicating with the marketplace inventory."}</p>
           </div>
         </div>
       ) : filteredAccounts.length === 0 ? (
@@ -513,12 +513,12 @@ export default function BuyAccountsPage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-foreground">
-              {hasActiveFilters ? "No accounts match current filters" : "No Ready Stock in this Category"}
+              {hasActiveFilters ? (_("orders.noMatchingAccounts") || "No accounts match current filters") : (_("orders.noStockCategory") || "No Ready Stock in this Category")}
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               {hasActiveFilters
-                ? "Try adjusting your search query, country selection, or spam filters to see more results."
-                : "All accounts in this category are currently sold out. Fresh sessions arrive continuously."}
+                ? (_("orders.adjustFiltersHint") || "Try adjusting your search query, country selection, or spam filters to see more results.")
+                : (_("orders.soldOutHint") || "All accounts in this category are currently sold out. Fresh sessions arrive continuously.")}
             </p>
           </div>
           {hasActiveFilters && (
@@ -528,7 +528,7 @@ export default function BuyAccountsPage() {
               onClick={clearAllFilters}
               className="rounded-lg text-xs font-semibold"
             >
-              Clear All Filters
+              {_("orders.clearFilters") || "Clear All Filters"}
             </Button>
           )}
         </div>
@@ -563,7 +563,7 @@ export default function BuyAccountsPage() {
                         <>
                           <span className="text-muted-foreground/60">•</span>
                           <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                            Resale Asset
+                            {_("orders.resaleAsset") || "Resale Asset"}
                           </span>
                         </>
                       )}
@@ -576,22 +576,22 @@ export default function BuyAccountsPage() {
                     {acc.spam_status === "normal" ? (
                       <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         <Check className="h-3 w-3 shrink-0" />
-                        Spam Clean
+                        {_("orders.cleanSpam") || "Spam Clean"}
                       </span>
                     ) : acc.spam_status === "limited" || acc.spam_status === "risk" ? (
                       <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                         <ThumbsDown className="h-3 w-3 shrink-0" />
-                        Spam Risk
+                        {_("orders.riskSpam") || "Spam Risk"}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-muted/80 text-muted-foreground border border-border/60">
-                        Unchecked
+                        {_("orders.uncheckedSpam") || "Unchecked"}
                       </span>
                     )}
 
                     {/* Account Age Chip */}
                     <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-foreground/[0.04] text-foreground border border-foreground/[0.08]">
-                      {acc.est_reg_date_age ? `Age: ${acc.est_reg_date_age}` : "New Session"}
+                      {acc.est_reg_date_age ? _("orders.accountAge", { age: acc.est_reg_date_age }) : (_("orders.newSession") || "New Session")}
                     </span>
 
                     {/* 2FA Status Chip */}
@@ -604,19 +604,19 @@ export default function BuyAccountsPage() {
                       )}
                     >
                       <Lock className="h-3 w-3 shrink-0 opacity-70" />
-                      {acc.twofa_enabled ? "2FA Required" : "2FA Disabled"}
+                      {acc.twofa_enabled ? (_("orders.twofaRequired") || "2FA Required") : (_("orders.twofaDisabled") || "2FA Disabled")}
                     </span>
 
                     {/* Category Type Chip */}
                     <span className="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium bg-foreground/[0.03] text-muted-foreground border border-foreground/[0.06]">
-                      {acc.is_resale ? "Resale" : "Personal"}
+                      {acc.is_resale ? (_("orders.resale") || "Resale") : (_("orders.personal") || "Personal")}
                     </span>
 
                     {/* Recovery Email Chip */}
                     {acc.recovery_email_available && (
                       <span className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                         <Mail className="h-3 w-3" />
-                        Recovery Email
+                        {_("orders.recoveryEmail") || "Recovery Email"}
                       </span>
                     )}
                   </div>
@@ -625,21 +625,21 @@ export default function BuyAccountsPage() {
                   <div className="flex flex-wrap items-center gap-3.5 text-xs text-muted-foreground/90 pt-0.5">
                     <span className="flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      <span>{acc.contacts_count || 0} contacts</span>
+                      <span>{_("orders.contactsCount", { count: acc.contacts_count || 0 })}</span>
                     </span>
 
                     <span className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground/70" />
                       <span>
                         {acc.est_reg_date
-                          ? `Registered ${new Date(acc.est_reg_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
-                          : "Verified MTProto"}
+                          ? _("orders.registeredDate", { date: new Date(acc.est_reg_date).toLocaleDateString("id-ID", { month: "short", year: "numeric" }) })
+                          : (_("orders.verifiedMtproto") || "Verified MTProto")}
                       </span>
                     </span>
 
                     <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                       <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                      <span>30-Min Warranty Escrow</span>
+                      <span>{_("orders.escrowWarranty") || "30-Min Warranty"} Escrow</span>
                     </span>
                   </div>
                 </div>
@@ -652,8 +652,8 @@ export default function BuyAccountsPage() {
                       <Check className="h-3 w-3" />
                     </div>
                     <div className="space-y-0 text-xs">
-                      <span className="font-semibold text-foreground block">TeleBos Escrow</span>
-                      <span className="text-xs text-muted-foreground block">Verified Seller Pool</span>
+                      <span className="font-semibold text-foreground block">{_("orders.telebosEscrow") || "TeleBos Escrow"}</span>
+                      <span className="text-xs text-muted-foreground block">{_("orders.verifiedSellerPool") || "Verified Seller Pool"}</span>
                     </div>
                   </div>
 
@@ -666,7 +666,7 @@ export default function BuyAccountsPage() {
                     />
                     {!canAfford && (
                       <p className="text-xs font-medium text-destructive">
-                        Needs Rp {(price - balance).toLocaleString()} more
+                        {_("orders.needsMoreBalance", { amount: (price - balance).toLocaleString("id-ID") })}
                       </p>
                     )}
                   </div>
@@ -698,7 +698,7 @@ export default function BuyAccountsPage() {
                       )}
                     >
                       <Zap className="h-3.5 w-3.5" />
-                      <span>{canAfford ? "Buy Now" : "Insufficient Balance"}</span>
+                      <span>{canAfford ? (_("orders.buyNow") || "Buy Now") : (_("orders.insufficientBalance") || "Insufficient Balance")}</span>
                     </Button>
                   </div>
                 </div>
@@ -713,11 +713,11 @@ export default function BuyAccountsPage() {
         open={buyConfirmOpen}
         onOpenChange={setBuyConfirmOpen}
         onConfirm={handleBuyConfirm}
-        title="Confirm Telegram Account Purchase"
+        title={_("orders.confirmBuyAccountTitle") || "Confirm Telegram Account Purchase"}
         message={
           <div className="space-y-4 text-left">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              You are acquiring permanent custody of this verified Telegram account. The session archive will be decrypted and delivered to your account vault immediately.
+              {_("orders.confirmBuyAccountSubtitle") || "You are acquiring permanent custody of this verified Telegram account. The session archive will be decrypted and delivered to your account vault immediately."}
             </p>
 
             {pendingBuyAccount && (
@@ -738,28 +738,28 @@ export default function BuyAccountsPage() {
                     tone={pendingBuyAccount.spam_status === "normal" ? "positive" : "neutral"}
                     dot={pendingBuyAccount.spam_status === "normal"}
                   >
-                    {pendingBuyAccount.spam_status === "normal" ? "Clean SpamBot" : "Standard"}
+                    {pendingBuyAccount.spam_status === "normal" ? (_("orders.cleanSpam") || "Clean SpamBot") : "Standard"}
                   </Chip>
                 </div>
 
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Unit Price:</span>
+                    <span className="text-muted-foreground">{_("orders.unitPrice") || "Unit Price:"}</span>
                     <PriceTag value={pendingBuyAccount.buy_price} size="sm" />
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Escrow Verification Fee:</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Rp 0 (Waived)</span>
+                    <span className="text-muted-foreground">{_("orders.verificationFee") || "Escrow Verification Fee:"}</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">{_("orders.feeWaived") || "Rp 0 (Waived)"}</span>
                   </div>
                   <div className="flex justify-between border-t border-border/50 pt-1.5 font-medium">
-                    <span className="text-foreground">Total Deducted:</span>
+                    <span className="text-foreground">{_("orders.totalDeducted") || "Total Deducted:"}</span>
                     <PriceTag value={pendingBuyAccount.buy_price} size="md" className="text-primary font-bold" />
                   </div>
                 </div>
 
                 {user && (
                   <div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] border border-border/40 px-2.5 py-1.5 text-xs">
-                    <span className="text-muted-foreground">Your Balance:</span>
+                    <span className="text-muted-foreground">{_("orders.yourBalance") || "Your Balance"}:</span>
                     <span
                       className={cn(
                         "font-semibold tabular-nums",
@@ -768,7 +768,7 @@ export default function BuyAccountsPage() {
                           : "text-emerald-600 dark:text-emerald-400"
                       )}
                     >
-                      Rp {user.balance.toLocaleString()}
+                      Rp {user.balance.toLocaleString("id-ID")}
                     </span>
                   </div>
                 )}
@@ -778,13 +778,13 @@ export default function BuyAccountsPage() {
             <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-700 dark:text-emerald-400">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
               <p className="leading-relaxed text-xs">
-                <strong>30-Minute Escrow Warranty:</strong> If session credentials or MTProto auth keys fail upon initial sync, your balance will be refunded immediately.
+                {_("orders.warrantyNotice") || "30-Minute Escrow Warranty: If session credentials or MTProto auth keys fail upon initial sync, your balance will be refunded immediately."}
               </p>
             </div>
           </div>
         }
-        confirmText="Confirm & Pay"
-        cancelText="Cancel"
+        confirmText={_("orders.confirmAndPay") || "Confirm & Pay"}
+        cancelText={_("orders.cancel") || "Cancel"}
         variant="info"
         loading={buyMutation.isPending}
       />
@@ -807,17 +807,17 @@ export default function BuyAccountsPage() {
 
             <DialogHeader className="space-y-1 text-center sm:text-center">
               <DialogTitle className="text-xl font-bold tracking-tight text-foreground text-center">
-                Account Custody Transferred!
+                {_("orders.purchaseSuccessTitle") || "Purchase Successful!"}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground leading-relaxed text-center">
-                The MTProto session has been bound to your workspace. Full credentials and session keys are ready.
+                {_("orders.accountTransferredTitle") || "The MTProto session has been bound to your workspace. Full credentials and session keys are ready."}
               </DialogDescription>
             </DialogHeader>
 
             {/* Credential Data Box */}
             <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5 text-left space-y-2.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Phone Number:</span>
+                <span className="text-muted-foreground">{_("orders.phoneNumber") || "Phone Number"}:</span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-bold text-foreground">
                     {boughtAccount.phone}
@@ -825,7 +825,7 @@ export default function BuyAccountsPage() {
                   <button
                     onClick={() => copyToClipboard(boughtAccount.phone, "Phone")}
                     className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
-                    title="Copy Phone"
+                    title={_("orders.copy") || "Copy Phone"}
                   >
                     <Copy className="h-3 w-3" />
                   </button>
@@ -844,7 +844,7 @@ export default function BuyAccountsPage() {
                         copyToClipboard(String(boughtAccount.telegram_id), "User ID")
                       }
                       className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
-                      title="Copy User ID"
+                      title={_("orders.copy") || "Copy User ID"}
                     >
                       <Copy className="h-3 w-3" />
                     </button>
@@ -854,7 +854,7 @@ export default function BuyAccountsPage() {
 
               {(boughtAccount.first_name || boughtAccount.last_name) && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Profile Name:</span>
+                  <span className="text-muted-foreground">{_("orders.fullName") || "Profile Name"}:</span>
                   <span className="font-medium text-foreground">
                     {boughtAccount.first_name || ""} {boughtAccount.last_name || ""}
                   </span>
@@ -863,7 +863,7 @@ export default function BuyAccountsPage() {
 
               {boughtAccount.username && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Username:</span>
+                  <span className="text-muted-foreground">{_("orders.username") || "Username"}:</span>
                   <span className="font-mono text-primary font-medium">
                     @{boughtAccount.username}
                   </span>
@@ -883,7 +883,7 @@ export default function BuyAccountsPage() {
                 }}
                 className="flex-1 justify-center gap-2 h-10 rounded-lg text-xs font-semibold cursor-pointer"
               >
-                <span>Manage in My Accounts</span>
+                <span>{_("orders.manageInMyAccounts") || "Manage in My Accounts"}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
 
@@ -896,7 +896,7 @@ export default function BuyAccountsPage() {
                 }}
                 className="h-10 rounded-lg text-xs font-semibold cursor-pointer"
               >
-                Continue Shopping
+                {_("orders.continueShopping") || "Continue Shopping"}
               </Button>
             </div>
           </DialogContent>

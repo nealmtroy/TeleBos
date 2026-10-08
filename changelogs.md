@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[9a64ecf6](https://github.com/nealmtroy/TeleBos/commit/9a64ecf6)**: feat(sidebar): show contextual admin sidebar only on /admin routes
 - **[7066c05a](https://github.com/nealmtroy/TeleBos/commit/7066c05a)**: feat(admin): add dedicated /admin/dashboard panel and redirect /admin
 - **[ca4d56d1](https://github.com/nealmtroy/TeleBos/commit/ca4d56d1)**: feat(onboarding): transform onboarding into interactive SaaS survey questionnaire for discovery, account scale, and feature preferences
 - **[861d0d0d](https://github.com/nealmtroy/TeleBos/commit/861d0d0d)**: feat(onboarding): add interactive multi-step onboarding wizard for new user registration and dashboard banner

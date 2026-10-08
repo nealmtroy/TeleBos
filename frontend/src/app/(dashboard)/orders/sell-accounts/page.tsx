@@ -117,7 +117,7 @@ export default function SellAccountsPage() {
       void fetchMe();
       toast({
         variant: "success",
-        title: "Accounts Listed For Sale",
+        title: _("orders.accountsListedSuccess") || "Accounts Listed For Sale",
         description: _("orders.sellSuccess") || `${selectedIds.length} account(s) submitted to marketplace escrow successfully!`,
       });
       setSelectedIds([]);
@@ -127,9 +127,11 @@ export default function SellAccountsPage() {
       const isUnknownOutcome = isMarketplaceSellUnknownOutcome(err);
       toast({
         variant: "error",
-        title: isUnknownOutcome ? "Sale status needs confirmation" : "Submission Failed",
+        title: isUnknownOutcome
+          ? (_("orders.saleStatusNeedsConfirmation") || "Sale status needs confirmation")
+          : (_("orders.submissionFailed") || "Submission Failed"),
         description: isUnknownOutcome
-          ? "Telegram may have finished updating this account. We refreshed your accounts—check its sale status before trying again."
+          ? (_("orders.saleStatusUnknownDesc") || "Telegram may have finished updating this account. We refreshed your accounts—check its sale status before trying again.")
           : err?.response?.data?.detail || "Failed to list account(s) for sale.",
       });
       if (isUnknownOutcome) {
@@ -159,25 +161,25 @@ export default function SellAccountsPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Eyebrow>Liquidation // OTC Desk</Eyebrow>
+            <Eyebrow>{_("orders.liquidationDesk") || "Liquidation // OTC Desk"}</Eyebrow>
             <span className="flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-              Automated Appraisal
+              {_("orders.automatedAppraisal") || "Automated Appraisal"}
             </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             {_("orders.sellAccounts") || "Sell Telegram Accounts"}
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            Monetize your verified Telegram sessions. Once listed, your accounts are presented to active buyers and settled directly into your platform wallet.
+            {_("orders.sellDesc") || "Monetize your verified Telegram sessions. Once listed, your accounts are presented to active buyers and settled directly into your platform wallet."}
           </p>
         </div>
 
-        {/* Balance Card */}
+        {/* Unified Balance Card */}
         <div className="flex items-center gap-3 shrink-0">
-          <DoubleBezelShell className="w-full sm:w-auto" innerClassName="p-3 sm:p-3.5">
+          <div className="rounded-xl border border-border/80 bg-card p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Wallet className="h-4 w-4" />
               </div>
               <div className="space-y-0.5 min-w-[120px]">
@@ -185,38 +187,38 @@ export default function SellAccountsPage() {
                   {_("orders.yourBalance") || "Available Balance"}
                 </p>
                 <p className="text-base font-bold tabular-nums text-foreground">
-                  Rp {(user?.balance ?? 0).toLocaleString()}
+                  Rp {(user?.balance ?? 0).toLocaleString("id-ID")}
                 </p>
               </div>
               <Link href="/wallet">
-                <Button variant="outline" size="sm" className="h-8 gap-1 rounded-lg text-xs font-semibold">
-                  <Plus className="h-3 w-3" />
-                  Wallet
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg text-xs font-semibold">
+                  <Plus className="h-3.5 w-3.5" />
+                  {_("orders.topUp") || "Top Up"}
                 </Button>
               </Link>
             </div>
-          </DoubleBezelShell>
+          </div>
         </div>
       </div>
 
       {/* ── KPI Readout Bar ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <MetricReadout
-          label="Eligible Accounts"
+          label={_("orders.eligibleAccounts") || "Eligible Accounts"}
           value={eligible?.length ?? 0}
-          subtext="Ready for instant marketplace listing"
+          subtext={_("orders.verifiedSessions") || "Ready for instant marketplace listing"}
           icon={<UserCheck className="h-4 w-4 text-primary" />}
         />
         <MetricReadout
-          label="Estimated Value"
+          label={_("orders.estimatedValue") || "Estimated Value"}
           value={<PriceTag value={totalPotentialValue} size="lg" />}
-          subtext="Total potential liquidation payout"
+          subtext={_("orders.potentialPayout") || "Total potential liquidation payout"}
           icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
         />
         <MetricReadout
-          label="Settlement Rail"
-          value="Instant Payout"
-          subtext="Direct wallet credit upon buyer checkout"
+          label={_("orders.settlementRail") || "Settlement Rail"}
+          value={_("orders.instantPayout") || "Instant Payout"}
+          subtext={_("orders.directWalletCredit") || "Direct wallet credit upon buyer checkout"}
           icon={<Sparkles className="h-4 w-4 text-amber-500" />}
           className="col-span-2 sm:col-span-1"
         />
@@ -234,33 +236,33 @@ export default function SellAccountsPage() {
           <div className="space-y-2 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-foreground">
-                Algorithmic Pricing & Escrow Settlement Rules
+                {_("orders.pricingNoticeTitle") || "Algorithmic Pricing & Escrow Settlement Rules"}
               </h3>
-              <Chip tone="caution" dot>Escrow Notice</Chip>
+              <Chip tone="caution" dot>{_("orders.escrowNoticeBadge") || "Escrow Notice"}</Chip>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs text-muted-foreground">
               <div className="space-y-1 rounded-xl bg-background/50 border border-border/40 p-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-amber-500">1.</span> Dynamic Prefix Appraisal
+                  <span className="text-amber-500">1.</span> {_("orders.ruleDynamicTitle") || "Dynamic Prefix Appraisal"}
                 </span>
                 <p className="text-[11px] leading-relaxed">
-                  Price is computed automatically based on carrier country prefix, account registration age, and SpamBot health status.
+                  {_("orders.ruleDynamicDesc") || "Price is computed automatically based on carrier country prefix, account registration age, and SpamBot health status."}
                 </p>
               </div>
               <div className="space-y-1 rounded-xl bg-background/50 border border-border/40 p-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-amber-500">2.</span> Deferred Settlement
+                  <span className="text-amber-500">2.</span> {_("orders.ruleDeferredTitle") || "Deferred Settlement"}
                 </span>
                 <p className="text-[11px] leading-relaxed">
-                  Funds are <strong>not</strong> credited immediately. Balance will be deposited the exact instant a buyer purchases your listed account.
+                  {_("orders.ruleDeferredDesc") || "Funds are not credited immediately. Balance will be deposited the exact instant a buyer purchases your listed account."}
                 </p>
               </div>
               <div className="space-y-1 rounded-xl bg-background/50 border border-border/40 p-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-amber-500">3.</span> Automated Custody
+                  <span className="text-amber-500">3.</span> {_("orders.ruleCustodyTitle") || "Automated Custody"}
                 </span>
                 <p className="text-[11px] leading-relaxed">
-                  Active broadcasts and auto-replies for the listed accounts will be paused to preserve session integrity for the buyer.
+                  {_("orders.ruleCustodyDesc") || "Active broadcasts and auto-replies for the listed accounts will be paused to preserve session integrity for the buyer."}
                 </p>
               </div>
             </div>
@@ -279,8 +281,8 @@ export default function SellAccountsPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <div className="space-y-0.5">
-            <p className="font-semibold">Unable to Load Eligible Accounts</p>
-            <p className="opacity-90">There was a network or server error fetching your accounts.</p>
+            <p className="font-semibold">{_("orders.unableToLoadEligible") || "Unable to Load Eligible Accounts"}</p>
+            <p className="opacity-90">{_("orders.errorFetchingEligible") || "There was a network or server error fetching your accounts."}</p>
           </div>
         </div>
       ) : !eligible || eligible.length === 0 ? (
@@ -291,10 +293,10 @@ export default function SellAccountsPage() {
             </div>
             <div className="space-y-1 max-w-md mx-auto">
               <h3 className="text-base font-bold text-foreground">
-                {_("orders.noEligibleAccounts") || "No Eligible Accounts For Sale"}
+                {_("orders.noSellableAccountsTitle") || "No Eligible Accounts For Sale"}
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                All your connected Telegram sessions are either currently listed in escrow, sold, or unverified. Connect fresh sessions to monetize them.
+                {_("orders.noSellableAccountsDesc") || "All your connected Telegram sessions are either currently listed in escrow, sold, or unverified. Connect fresh sessions to monetize them."}
               </p>
             </div>
             <Link href="/accounts">
@@ -303,7 +305,7 @@ export default function SellAccountsPage() {
                 icon={<ArrowRight className="h-3.5 w-3.5" />}
                 className="mx-auto"
               >
-                Go to Accounts Hub
+                {_("orders.goToAccountsHub") || "Go to Accounts Hub"}
               </ButtonInButton>
             </Link>
           </div>
@@ -320,8 +322,8 @@ export default function SellAccountsPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search by phone, name, or username"
-                placeholder="Search by phone, name, or username..."
+                aria-label={_("orders.searchSellPlaceholder") || "Search by phone, name, or username"}
+                placeholder={_("orders.searchSellPlaceholder") || "Search by phone, name, or username..."}
                 className="w-full h-9 rounded-xl border border-border/90 dark:border-slate-700/80 bg-card/60 dark:bg-slate-900/90 pl-9 pr-4 text-xs font-medium text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 focus:ring-offset-transparent focus:border-primary transition-[border-color,box-shadow] duration-150"
               />
             </div>
@@ -344,7 +346,7 @@ export default function SellAccountsPage() {
                     spamFilter === "clean" ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
                   )}
                 />
-                <span>Clean SpamBot Only</span>
+                <span>{_("orders.cleanSpamBotOnly") || "Clean SpamBot Only"}</span>
               </button>
 
               <button
@@ -365,11 +367,11 @@ export default function SellAccountsPage() {
               <div className="flex items-center gap-2.5">
                 <Eyebrow>Inventory</Eyebrow>
                 <span className="text-xs text-muted-foreground">
-                  {filteredEligible.length} of {eligible.length} accounts eligible
+                  {_("orders.accountsEligibleCount", { filtered: filteredEligible.length, total: eligible.length })}
                 </span>
                 {selectedIds.length > 0 && (
                   <Chip tone="accent">
-                    {selectedIds.length} selected
+                    {_("orders.selectedCount", { count: selectedIds.length })}
                   </Chip>
                 )}
               </div>
@@ -380,7 +382,7 @@ export default function SellAccountsPage() {
                 onClick={handleSelectAll}
                 className="h-8 rounded-lg text-xs font-semibold"
               >
-                {allFilteredSelected ? "Clear Selection" : "Select All Available"}
+                {allFilteredSelected ? (_("orders.clearSelection") || "Clear Selection") : (_("orders.selectAllAvailable") || "Select All Available")}
               </Button>
             </div>
 
@@ -396,12 +398,12 @@ export default function SellAccountsPage() {
                         aria-label="Select all eligible accounts"
                       />
                     </TableHead>
-                    <TableHead>Account Identity</TableHead>
-                    <TableHead className="w-28 text-center">Account Age</TableHead>
-                    <TableHead className="w-28 text-center">Spam Health</TableHead>
-                    <TableHead className="w-24 text-center">Contacts</TableHead>
-                    <TableHead className="w-36">Username</TableHead>
-                    <TableHead className="w-36 text-right">Appraised Payout</TableHead>
+                    <TableHead>{_("orders.accountIdentity") || "Account Identity"}</TableHead>
+                    <TableHead className="w-28 text-center">{_("orders.accountAgeCol") || "Account Age"}</TableHead>
+                    <TableHead className="w-28 text-center">{_("orders.spamHealthCol") || "Spam Health"}</TableHead>
+                    <TableHead className="w-24 text-center">{_("accountDetail.contacts") || "Contacts"}</TableHead>
+                    <TableHead className="w-36">{_("accountDetail.username") || "Username"}</TableHead>
+                    <TableHead className="w-36 text-right">{_("orders.appraisedPayout") || "Appraised Payout"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -437,10 +439,10 @@ export default function SellAccountsPage() {
                             <div className="min-w-0 space-y-0.5">
                               <div className="flex items-center gap-1.5">
                                 <p className="truncate text-sm font-semibold text-foreground">
-                                  {acc.first_name || "Unnamed Account"}{" "}
+                                  {acc.first_name || (_("orders.unnamedAccount") || "Unnamed Account")}{" "}
                                   {acc.last_name || ""}
                                 </p>
-                                {acc.is_resale && <Chip tone="accent">Resale</Chip>}
+                                {acc.is_resale && <Chip tone="accent">{_("orders.resale") || "Resale"}</Chip>}
                               </div>
                               <p className="font-mono text-xs font-medium text-muted-foreground">
                                 {acc.phone}
@@ -455,11 +457,11 @@ export default function SellAccountsPage() {
 
                         <TableCell className="text-center">
                           {acc.spam_status === "normal" ? (
-                            <Chip tone="positive" dot>Clean</Chip>
+                            <Chip tone="positive" dot>{_("orders.clean") || "Clean"}</Chip>
                           ) : acc.spam_status === "limited" ? (
-                            <Chip tone="negative" dot>Limited</Chip>
+                            <Chip tone="negative" dot>{_("orders.limited") || "Limited"}</Chip>
                           ) : (
-                            <Chip tone="neutral">Unchecked</Chip>
+                            <Chip tone="neutral">{_("orders.uncheckedSpam") || "Unchecked"}</Chip>
                           )}
                         </TableCell>
 
@@ -517,7 +519,7 @@ export default function SellAccountsPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="truncate text-sm font-semibold text-foreground">
-                            {acc.first_name || "Unnamed"} {acc.last_name || ""}
+                            {acc.first_name || (_("orders.unnamedAccount") || "Unnamed")} {acc.last_name || ""}
                           </p>
                           <p className="font-mono text-xs text-muted-foreground">{acc.phone}</p>
                         </div>
@@ -526,14 +528,14 @@ export default function SellAccountsPage() {
 
                       <div className="flex flex-wrap items-center gap-1.5 text-xs">
                         {acc.spam_status === "normal" ? (
-                          <Chip tone="positive" dot>Clean</Chip>
+                          <Chip tone="positive" dot>{_("orders.clean") || "Clean"}</Chip>
                         ) : acc.spam_status === "limited" ? (
-                          <Chip tone="negative" dot>Limited</Chip>
+                          <Chip tone="negative" dot>{_("orders.limited") || "Limited"}</Chip>
                         ) : (
-                          <Chip tone="neutral">Unchecked</Chip>
+                          <Chip tone="neutral">{_("orders.uncheckedSpam") || "Unchecked"}</Chip>
                         )}
                         <span className="text-[11px] text-muted-foreground">
-                          Age: {acc.est_reg_date_age || "—"}
+                          {_("orders.accountAgeCol") || "Age"}: {acc.est_reg_date_age || "—"}
                         </span>
                         {acc.username && (
                           <span className="font-mono text-[11px] text-muted-foreground">
@@ -558,7 +560,7 @@ export default function SellAccountsPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Selected For Liquidation
+                    {_("orders.selectedLabel") || "Selected"}
                   </span>
                   <p className="text-sm font-bold text-foreground">
                     {selectedIds.length} {selectedIds.length === 1 ? "Account" : "Accounts"}
@@ -567,7 +569,7 @@ export default function SellAccountsPage() {
 
                 <div className="text-right space-y-0.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Estimated Proceeds
+                    {_("orders.totalPayoutLabel") || "Total Payout:"}
                   </span>
                   <div className="text-emerald-600 dark:text-emerald-400">
                     <PriceTag value={totalReceive} size="lg" className="text-emerald-600 dark:text-emerald-400 font-bold" />
@@ -597,11 +599,11 @@ export default function SellAccountsPage() {
                 className="w-full justify-center gap-2 h-10 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs shadow-sm"
               >
                 <DollarSign className="h-4 w-4" />
-                <span>List {selectedIds.length} Account(s) For Sale</span>
+                <span>{_("orders.sellSelectedBtn") || `List ${selectedIds.length} Account(s) For Sale`}</span>
               </Button>
 
               <p className="text-center text-xs text-muted-foreground/80 leading-tight">
-                Funds settled into wallet immediately upon buyer purchase.
+                {_("orders.settledHint") || "Funds settled into wallet immediately upon buyer purchase."}
               </p>
             </div>
           </div>
@@ -613,17 +615,17 @@ export default function SellAccountsPage() {
         open={sellConfirmOpen}
         onOpenChange={setSellConfirmOpen}
         onConfirm={handleSellConfirm}
-        title="Confirm Marketplace Liquidation"
+        title={_("orders.confirmSellModalTitle") || "Confirm Marketplace Liquidation"}
         message={
           <div className="space-y-4 text-left">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to list these {selectedIds.length} Telegram account(s) for sale?
-              Active automation (broadcasting and auto-replies) will be suspended on these sessions to maintain buyer trust.
+              {_("orders.sellAgreementDialogNotice", { count: selectedIds.length }) ||
+                `Are you sure you want to list these ${selectedIds.length} Telegram account(s) for sale? Active automation (broadcasting and auto-replies) will be suspended on these sessions to maintain buyer trust.`}
             </p>
 
             <div className="rounded-xl border border-border/80 bg-card p-3.5 space-y-2.5">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Itemized Valuation Breakdown
+                {_("orders.itemizedValuation") || "Itemized Valuation Breakdown"}
               </p>
               <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs divide-y divide-border/40">
                 {selectedIds.map((id) => {
@@ -632,10 +634,10 @@ export default function SellAccountsPage() {
                     <div key={id} className="flex items-center justify-between pt-1.5 first:pt-0">
                       <div className="min-w-0 pr-2">
                         <p className="truncate font-semibold text-foreground">
-                          {acc?.first_name || "Unnamed"} ({acc?.phone})
+                          {acc?.first_name || (_("orders.unnamedAccount") || "Unnamed")} ({acc?.phone})
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Age: {acc?.est_reg_date_age || "—"} · Contacts: {acc?.contacts_count || 0}
+                          {_("orders.accountAgeCol") || "Age"}: {acc?.est_reg_date_age || "—"} · {_("accountDetail.contacts") || "Contacts"}: {acc?.contacts_count || 0}
                         </p>
                       </div>
                       <PriceTag value={getPriceForAccount(id)} size="sm" />
@@ -645,7 +647,7 @@ export default function SellAccountsPage() {
               </div>
 
               <div className="flex items-center justify-between border-t border-border/50 pt-2 font-medium">
-                <span className="text-foreground text-xs font-semibold">Total Estimated Payout:</span>
+                <span className="text-foreground text-xs font-semibold">{_("orders.estimatedPayoutTotal") || "Total Estimated Payout:"}</span>
                 <PriceTag value={totalReceive} size="lg" className="text-emerald-600 dark:text-emerald-400 font-bold" />
               </div>
             </div>
@@ -653,16 +655,17 @@ export default function SellAccountsPage() {
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-400 space-y-1">
               <p className="font-bold flex items-center gap-1.5">
                 <AlertCircle className="h-3.5 w-3.5" />
-                Deferred Wallet Settlement
+                {_("orders.ruleDeferredTitle") || "Deferred Wallet Settlement"}
               </p>
               <p className="text-[11px] leading-relaxed opacity-90">
-                Your wallet balance is credited automatically at the moment a buyer pays for your listed account. You can withdraw or use these credits immediately upon sale.
+                {_("orders.deferredSettlementDesc") ||
+                  "Your wallet balance is credited automatically at the moment a buyer pays for your listed account. You can withdraw or use these credits immediately upon sale."}
               </p>
             </div>
           </div>
         }
-        confirmText="Confirm & List For Sale"
-        cancelText="Cancel"
+        confirmText={_("orders.confirmListingBtn") || "Confirm & List For Sale"}
+        cancelText={_("orders.cancel") || "Cancel"}
         variant="warning"
         loading={selling}
       />
