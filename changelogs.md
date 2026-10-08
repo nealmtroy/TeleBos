@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[861d0d0d](https://github.com/nealmtroy/TeleBos/commit/861d0d0d)**: feat(onboarding): add interactive multi-step onboarding wizard for new user registration and dashboard banner
 - **[4f10edfa](https://github.com/nealmtroy/TeleBos/commit/4f10edfa)**: fix(broadcast): scope DB entity cache by account_id and handle PeerIdInvalidError recovery
 - **[7cf22441](https://github.com/nealmtroy/TeleBos/commit/7cf22441)**: fix(broadcast): utilize Telethon session and DB entity cache before network resolution
 - **[e4ae7619](https://github.com/nealmtroy/TeleBos/commit/e4ae7619)**: fix(sentry): resolve queuepool timeouts, missing greenlet, spambot unblock, and help hydration errors

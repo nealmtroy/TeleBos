@@ -2285,58 +2285,84 @@ export interface Dict {
     toggleTheme: string;
   };
 
-  // Onboarding
+  // Onboarding Survey
   onboarding: {
     skip: string;
     back: string;
     next: string;
     finish: string;
     stepIndicator: string;
+    // Step 1: Role / Use Case
     step1Badge: string;
     step1Title: string;
     step1Subtitle: string;
-    workspaceNameLabel: string;
-    workspaceNamePlaceholder: string;
-    selectGoalLabel: string;
-    goalBroadcastTitle: string;
-    goalBroadcastDesc: string;
-    goalScrapeTitle: string;
-    goalScrapeDesc: string;
-    goalMultiAccountTitle: string;
-    goalMultiAccountDesc: string;
-    goalSmmTitle: string;
-    goalSmmDesc: string;
+    roleSoloTitle: string;
+    roleSoloDesc: string;
+    roleAgencyTitle: string;
+    roleAgencyDesc: string;
+    roleCommunityTitle: string;
+    roleCommunityDesc: string;
+    roleDeveloperTitle: string;
+    roleDeveloperDesc: string;
+    roleExploreTitle: string;
+    roleExploreDesc: string;
+    // Step 2: Referral Source
     step2Badge: string;
     step2Title: string;
     step2Subtitle: string;
-    step1ConnectTitle: string;
-    step1ConnectDesc: string;
-    step2ProxyTitle: string;
-    step2ProxyDesc: string;
-    step3TaskTitle: string;
-    step3TaskDesc: string;
-    antiBanTipsTitle: string;
-    antiBanTipsDesc: string;
+    refFriendTitle: string;
+    refFriendDesc: string;
+    refTelegramTitle: string;
+    refTelegramDesc: string;
+    refSocialTitle: string;
+    refSocialDesc: string;
+    refSearchTitle: string;
+    refSearchDesc: string;
+    refForumTitle: string;
+    refForumDesc: string;
+    refAdsTitle: string;
+    refAdsDesc: string;
+    // Step 3: Account Volume
     step3Badge: string;
     step3Title: string;
     step3Subtitle: string;
-    featureChatTitle: string;
-    featureChatDesc: string;
-    featureAutoReplyTitle: string;
-    featureAutoReplyDesc: string;
-    featureLogBotTitle: string;
-    featureLogBotDesc: string;
-    featureWalletTitle: string;
-    featureWalletDesc: string;
+    vol1to5Title: string;
+    vol1to5Desc: string;
+    vol6to20Title: string;
+    vol6to20Desc: string;
+    vol21to50Title: string;
+    vol21to50Desc: string;
+    vol50PlusTitle: string;
+    vol50PlusDesc: string;
+    // Step 4: Features Looked For
     step4Badge: string;
     step4Title: string;
     step4Subtitle: string;
+    featBroadcastTitle: string;
+    featBroadcastDesc: string;
+    featScrapeTitle: string;
+    featScrapeDesc: string;
+    featWebChatTitle: string;
+    featWebChatDesc: string;
+    featProxyTitle: string;
+    featProxyDesc: string;
+    featAutoReplyTitle: string;
+    featAutoReplyDesc: string;
+    featSmmTitle: string;
+    featSmmDesc: string;
+    // Step 5: Completed
+    step5Badge: string;
+    step5Title: string;
+    step5Subtitle: string;
+    summaryRoleLabel: string;
+    summaryRefLabel: string;
+    summaryVolLabel: string;
+    summaryFeatLabel: string;
     addAccountCta: string;
     addAccountCtaDesc: string;
     goToDashboardCta: string;
     goToDashboardCtaDesc: string;
-    helpCta: string;
-    helpCtaDesc: string;
+    // Dashboard Welcome Banner
     welcomeBannerTitle: string;
     welcomeBannerDesc: string;
     welcomeBannerCta: string;

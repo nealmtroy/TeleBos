@@ -47,53 +47,57 @@ beforeEach(() => {
   });
 });
 
-describe("OnboardingPage", () => {
-  it("renders step 1 with personalized workspace name and goal choices", () => {
+describe("OnboardingPage Survey", () => {
+  it("renders question 1 (use case / role)", () => {
     render(<OnboardingPage />);
 
-    expect(screen.getByText("Selamat Datang di TeleBos!")).toBeDefined();
-    expect(screen.getByDisplayValue("Yudha Pratama's Workspace")).toBeDefined();
-    expect(screen.getByText("Broadcast Massal & Promosi")).toBeDefined();
-    expect(screen.getByText("Scraping & Group Growth")).toBeDefined();
+    expect(screen.getByText("Bagaimana kamu berencana menggunakan TeleBos?")).toBeDefined();
+    expect(screen.getByText("Solo Entrepreneur / Bisnis Pribadi")).toBeDefined();
+    expect(screen.getByText("Agensi & Tim Marketing")).toBeDefined();
   });
 
-  it("navigates forward through steps and updates progress", () => {
+  it("progresses through all 5 survey questions and saves survey responses", () => {
     render(<OnboardingPage />);
 
-    // Step 1 -> Step 2
-    const nextBtn = screen.getByText("Lanjutkan");
-    fireEvent.click(nextBtn);
-
-    expect(screen.getByText("Cara Kerja & Setup Akun")).toBeDefined();
-    expect(screen.getByText("1. Hubungkan Akun Telegram")).toBeDefined();
-
-    // Step 2 -> Step 3
+    // Q1 -> Q2: Referral
     fireEvent.click(screen.getByText("Lanjutkan"));
-    expect(screen.getByText("Alat Tempur Lengkap")).toBeDefined();
-    expect(screen.getByText("Live Chat Web Client")).toBeDefined();
+    expect(screen.getByText("Dari mana kamu mengetahui tentang TeleBos?")).toBeDefined();
+    expect(screen.getByText("Rekomendasi Teman / Partner")).toBeDefined();
+    expect(screen.getByText("Channel / Grup Telegram")).toBeDefined();
 
-    // Step 3 -> Step 4
+    // Q2 -> Q3: Account volume
     fireEvent.click(screen.getByText("Lanjutkan"));
-    expect(screen.getByText("Kamu Siap Memulai!")).toBeDefined();
+    expect(screen.getByText("Berapa banyak akun Telegram yang ingin kamu kelola?")).toBeDefined();
+    expect(screen.getByText("1 - 5 Akun Telegram")).toBeDefined();
+    expect(screen.getByText("6 - 20 Akun Telegram")).toBeDefined();
+
+    // Q3 -> Q4: Desired features
+    fireEvent.click(screen.getByText("Lanjutkan"));
+    expect(screen.getByText("Fitur apa yang paling kamu cari di TeleBos?")).toBeDefined();
+    expect(screen.getByText("Broadcast Massal Terjadwal")).toBeDefined();
+    expect(screen.getByText("Multi-Account Web Chat")).toBeDefined();
+
+    // Q4 -> Q5: Completion summary
+    fireEvent.click(screen.getByText("Lanjutkan"));
+    expect(screen.getByText("Workspace Kamu Sudah Siap! 🎉")).toBeDefined();
     expect(screen.getByText("Hubungkan Akun Telegram Pertama")).toBeDefined();
-  });
+    expect(screen.getByText("Langsung Masuk ke Dashboard")).toBeDefined();
 
-  it("marks onboarding as complete and redirects to dashboard when finished", () => {
-    render(<OnboardingPage />);
-
-    // Step 1 -> 2 -> 3 -> 4
-    fireEvent.click(screen.getByText("Lanjutkan"));
-    fireEvent.click(screen.getByText("Lanjutkan"));
-    fireEvent.click(screen.getByText("Lanjutkan"));
-
-    const finishBtn = screen.getByText("Selesai & Mulai");
-    fireEvent.click(finishBtn);
-
+    // Finish survey
+    fireEvent.click(screen.getByText("Selesai & Masuk Dashboard"));
     expect(localStorage.getItem("telebos_onboarding_completed_usr-123")).toBe("true");
+
+    const savedSurvey = JSON.parse(
+      localStorage.getItem("telebos_onboarding_survey_usr-123") || "{}"
+    );
+    expect(savedSurvey.role).toBe("solo");
+    expect(savedSurvey.referral).toBe("friend");
+    expect(savedSurvey.volume).toBe("6-20");
+    expect(savedSurvey.features).toContain("broadcast");
     expect(mockPush).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("allows skipping onboarding directly to dashboard", () => {
+  it("allows skipping survey directly to dashboard and marks completed", () => {
     render(<OnboardingPage />);
 
     const skipBtn = screen.getByText("Lewati ke Dashboard");
