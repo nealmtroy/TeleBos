@@ -48,6 +48,8 @@ import {
   Bug,
   Keyboard,
   Sliders,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
@@ -163,6 +165,7 @@ export function Sidebar() {
   const _ = useT();
   const locale = useI18nStore((s) => s.locale);
 
+  const isAdminPage = pathname.startsWith("/admin");
   const isAccountsPage = pathname.startsWith("/accounts");
   const isInvitePage = pathname.startsWith("/invite");
   const isBroadcastPage =
@@ -175,24 +178,12 @@ export function Sidebar() {
   const isServicesOpen = servicesSubItems.some((sub) =>
     sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
   );
-  const isAdministrationsOpen = administrationsSubItems.some((sub) =>
-    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
-  );
-  const isAdminRedeemOpen = adminRedeemSubItems.some((sub) =>
-    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
-  );
-  const isAdminSmmOpen = adminSmmSubItems.some((sub) =>
-    sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
-  );
 
   const [accountsOpen, setAccountsOpen] = useState(isAccountsPage);
   const [inviteOpen, setInviteOpen] = useState(isInvitePage);
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
   const [servicesOpen, setServicesOpen] = useState(isServicesOpen);
-  const [administrationsOpen, setAdministrationsOpen] = useState(isAdministrationsOpen);
-  const [adminRedeemOpen, setAdminRedeemOpen] = useState(isAdminRedeemOpen);
-  const [adminSmmOpen, setAdminSmmOpen] = useState(isAdminSmmOpen);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const logout = useAuthStore((s) => s.logout);
@@ -215,9 +206,6 @@ export function Sidebar() {
       setGroupsChannelsOpen(false);
     }
     if (isServicesOpen) setServicesOpen(true);
-    if (isAdministrationsOpen) setAdministrationsOpen(true);
-    if (isAdminRedeemOpen) setAdminRedeemOpen(true);
-    if (isAdminSmmOpen) setAdminSmmOpen(true);
   }, [
     pathname,
     isAccountsPage,
@@ -225,9 +213,6 @@ export function Sidebar() {
     isBroadcastPage,
     isGroupsChannelsPage,
     isServicesOpen,
-    isAdministrationsOpen,
-    isAdminRedeemOpen,
-    isAdminSmmOpen,
   ]);
 
   // Auto-open sidebar on desktop on first mount
@@ -359,48 +344,48 @@ export function Sidebar() {
     },
   ];
 
-  // Add admin group if owner
-  if (user?.role === "owner") {
-    navGroups.push({
-      id: "admin",
-      labelKey: locale === "id" ? "ADMINISTRASI" : "ADMINISTRATION",
+  // Admin dedicated navigation groups (only shown when on /admin/*)
+  const adminNavGroups: NavGroup[] = [
+    {
+      id: "admin-overview",
+      labelKey: locale === "id" ? "IKHTISAR" : "OVERVIEW",
       items: [
-        {
-          href: "/admin-administrations",
-          labelKey: "nav.administrations",
-          icon: Shield,
-          hasSubItems: true,
-          subItems: administrationsSubItems,
-          matchPrefixes: [
-            "/admin/dashboard",
-            "/admin/users",
-            "/admin/broadcasts",
-            "/admin/auto-replies",
-            "/admin/account-prices",
-          ],
-          minRole: 3,
-        },
-        {
-          href: "/admin-redeem",
-          labelKey: "nav.redeem",
-          icon: Ticket,
-          hasSubItems: true,
-          subItems: adminRedeemSubItems,
-          matchPrefixes: ["/admin/redeem-codes", "/admin/redeem-logs"],
-          minRole: 3,
-        },
-        {
-          href: "/admin-smm",
-          labelKey: "nav.smm",
-          icon: Package,
-          hasSubItems: true,
-          subItems: adminSmmSubItems,
-          matchPrefixes: ["/admin/smm/services", "/admin/smm/orders", "/admin/smm/settings"],
-          minRole: 3,
-        },
+        { href: "/admin/dashboard", labelKey: "admin.overview", icon: BarChart3, exact: true, minRole: 3 },
+        { href: "/admin/users", labelKey: "admin.users", icon: Users, exact: false, minRole: 3 },
+        { href: "/admin/transactions", labelKey: "admin.transactions", icon: Wallet, exact: false, minRole: 3 },
+        { href: "/admin/settings", labelKey: "admin.systemConfig", icon: Settings, exact: false, minRole: 3 },
       ],
-    });
-  }
+    },
+    {
+      id: "admin-telegram",
+      labelKey: locale === "id" ? "TELEGRAM & BOT" : "TELEGRAM & BOTS",
+      items: [
+        { href: "/admin/broadcasts", labelKey: "admin.manageBroadcasts", icon: Radio, exact: false, minRole: 3 },
+        { href: "/admin/auto-replies", labelKey: "admin.manageAutoReplies", icon: Bot, exact: false, minRole: 3 },
+        { href: "/admin/account-prices", labelKey: "admin.accountPrices", icon: Tag, exact: false, minRole: 3 },
+      ],
+    },
+    {
+      id: "admin-smm",
+      labelKey: locale === "id" ? "LAYANAN SMM" : "SMM SERVICES",
+      items: [
+        { href: "/admin/smm/services", labelKey: "adminSmm.services", icon: Package, exact: false, minRole: 3 },
+        { href: "/admin/smm/orders", labelKey: "adminSmm.allOrders", icon: ShoppingCart, exact: false, minRole: 3 },
+        { href: "/admin/smm/settings", labelKey: "adminSmm.settings", icon: Sliders, exact: false, minRole: 3 },
+      ],
+    },
+    {
+      id: "admin-voucher",
+      labelKey: locale === "id" ? "VOUCHER & DUKUNGAN" : "VOUCHERS & SUPPORT",
+      items: [
+        { href: "/admin/redeem-codes", labelKey: "adminRedeem.title", icon: Ticket, exact: false, minRole: 3 },
+        { href: "/admin/redeem-logs", labelKey: "adminRedeem.logs", icon: ClipboardList, exact: false, minRole: 3 },
+        { href: "/admin/tickets", labelKey: "nav.tickets", icon: LifeBuoy, exact: false, minRole: 3 },
+      ],
+    },
+  ];
+
+  const displayedNavGroups = isAdminPage ? adminNavGroups : navGroups;
 
   const getSubmenuState = (href: string) => {
     if (href.startsWith("/accounts")) return { isOpen: accountsOpen, setIsOpen: setAccountsOpen };
@@ -408,9 +393,6 @@ export function Sidebar() {
     if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
     if (href.startsWith("/groups-channels")) return { isOpen: groupsChannelsOpen, setIsOpen: setGroupsChannelsOpen };
     if (href === "/orders-services") return { isOpen: servicesOpen, setIsOpen: setServicesOpen };
-    if (href === "/admin-administrations") return { isOpen: administrationsOpen, setIsOpen: setAdministrationsOpen };
-    if (href === "/admin-redeem") return { isOpen: adminRedeemOpen, setIsOpen: setAdminRedeemOpen };
-    if (href === "/admin-smm") return { isOpen: adminSmmOpen, setIsOpen: setAdminSmmOpen };
     return { isOpen: false, setIsOpen: () => {} };
   };
 
@@ -445,13 +427,20 @@ export function Sidebar() {
           )}
         </button>
 
-        {/* Header (Title only) */}
+        {/* Header */}
         <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0 relative overflow-hidden">
           {sidebarOpen && (
-            <BrandLogo
-              size="md"
-              className="animate-in fade-in slide-in-from-left-2 duration-200"
-            />
+            <div className="flex items-center gap-2">
+              <BrandLogo
+                size="md"
+                className="animate-in fade-in slide-in-from-left-2 duration-200"
+              />
+              {isAdminPage && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/25 animate-in fade-in duration-200">
+                  Admin
+                </span>
+              )}
+            </div>
           )}
           {/* Close button (mobile) */}
           <button
@@ -462,26 +451,60 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Nav
+        {/* Nav */}
+        <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-4">
+          {/* Context Switcher: Admin Mode -> User App */}
+          {isAdminPage && (
+            <div className="pb-1">
+              <Link
+                href="/dashboard"
+                onClick={handleNavClick}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all group/back",
+                  !sidebarOpen && "justify-center px-0"
+                )}
+                title={locale === "id" ? "Kembali ke Aplikasi" : "Back to User App"}
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 group-hover/back:text-white transition-colors" />
+                {sidebarOpen && (
+                  <span className="truncate">
+                    {locale === "id" ? "Kembali ke Aplikasi" : "Back to User App"}
+                  </span>
+                )}
+              </Link>
+            </div>
+          )}
 
-                    min-h-0 is load-bearing: this nav is the flex child allowed to shrink
-                    inside the aside's flex column. Without it a flex item defaults to
-                    min-height:auto, so the nav grows to its content height instead of
-                    being capped at the viewport, overflow-y-auto never engages, and the
-                    lower groups become unreachable on short desktop viewports.
+          {/* Context Switcher: User App -> Admin Mode (Owner only) */}
+          {!isAdminPage && user?.role === "owner" && (
+            <div className="pb-1">
+              <Link
+                href="/admin/dashboard"
+                onClick={handleNavClick}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/25 transition-all group/admin",
+                  !sidebarOpen && "justify-center px-0"
+                )}
+                title={locale === "id" ? "Panel Admin" : "Admin Panel"}
+              >
+                <Shield className="h-4 w-4 shrink-0 text-rose-400" />
+                {sidebarOpen && (
+                  <>
+                    <span className="truncate">{locale === "id" ? "Panel Admin" : "Admin Panel"}</span>
+                    <ArrowRight className="h-3.5 w-3.5 ml-auto opacity-70 group-hover/admin:translate-x-0.5 transition-transform" />
+                  </>
+                )}
+              </Link>
+            </div>
+          )}
 
-                    The no-scrollbar utility was removed here on purpose. A hidden
-                    scrollbar gives no hint that the list continues below the fold, which
-                    is exactly what made this read as "there is no way to scroll".
-                    sidebar-scrollbar keeps it visible but out of the way. */}
-                <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-4">
-                  <TooltipProvider delayDuration={0}>
-                    {navGroups.map((group, groupIdx) => {
-                      // Filter items in the group by user role
-                      const visibleItems = group.items.filter((item) => {
-                        const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
-                        return userLevel >= (item.minRole ?? 0);
-                      });
+          <TooltipProvider delayDuration={0}>
+            {displayedNavGroups.map((group, groupIdx) => {
+              // Filter items in the group by user role
+              const visibleItems = group.items.filter((item) => {
+                const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
+                return userLevel >= (item.minRole ?? 0);
+              });
 
                       if (visibleItems.length === 0) return null;
 
@@ -499,6 +522,7 @@ export function Sidebar() {
                           {visibleItems.map((item) => {
                             const isActive = (() => {
                               if (item.href === "/dashboard") return pathname === "/dashboard";
+                              if (item.href === "/admin/dashboard") return pathname === "/admin" || pathname === "/admin/dashboard";
                               if (item.hasSubItems && item.subItems) {
                                 const hasActiveSub = item.subItems.some((sub) =>
                                   sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
@@ -793,6 +817,25 @@ export function Sidebar() {
                             : "Upgrade plan"}
                         </span>
                       </DropdownMenuItem>
+
+                      {/* Owner Admin Mode Toggle */}
+                      {userRole === "owner" && (
+                        <DropdownMenuItem
+                          onSelect={() => router.push(isAdminPage ? "/dashboard" : "/admin/dashboard")}
+                          className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-rose-300 focus:text-rose-200"
+                        >
+                          <Shield className="h-4 w-4 text-rose-400 shrink-0" />
+                          <span>
+                            {isAdminPage
+                              ? locale === "id"
+                                ? "Kembali ke Aplikasi User"
+                                : "Back to User App"
+                              : locale === "id"
+                              ? "Buka Panel Admin"
+                              : "Open Admin Panel"}
+                          </span>
+                        </DropdownMenuItem>
+                      )}
 
                       {/* 3. Personalization */}
                       <DropdownMenuItem
