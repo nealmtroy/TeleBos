@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 
-export async function generateStaticParams() {
-  // Return an empty array — params will be generated at runtime
-  return [];
-}
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   robots: "index, follow",
