@@ -168,10 +168,10 @@ export function AccountSelector({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
-                {title || _("invite.selectAccounts") || "Pilih Akun Telegram"}
+                {title || _("accountSelector.defaultTitle")}
               </h3>
               <Badge variant="secondary" className="text-[11px] font-semibold py-0.5 px-2">
-                {selectedSet.size} / {accounts.length} {_("invite.selected") || "dipilih"}
+                {selectedSet.size} / {accounts.length} {_("accountSelector.selectedBadge")}
               </Badge>
             </div>
             {description && (
@@ -191,8 +191,8 @@ export function AccountSelector({
             className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 disabled:opacity-50 transition"
           >
             {isAllFilteredSelected
-              ? _("invite.deselectAll") || "Batal Pilih"
-              : _("invite.selectAll") || "Pilih Semua"}
+              ? _("accountSelector.deselectAll")
+              : _("accountSelector.selectAll")}
           </button>
           <span className="text-gray-300 dark:text-slate-700">|</span>
           <button
@@ -201,7 +201,7 @@ export function AccountSelector({
             disabled={disabled || selectedSet.size === 0}
             className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 disabled:opacity-50 transition"
           >
-            {_("orders.clear") || "Bersihkan"}
+            {_("accountSelector.clear")}
           </button>
         </div>
       </div>
@@ -231,8 +231,7 @@ export function AccountSelector({
             disabled={disabled || accounts.length === 0}
             placeholder={
               searchPlaceholder ||
-              _("accountsList.searchPlaceholder") ||
-              "Cari nama, no hp, user ID, atau @username..."
+              _("accountSelector.searchPlaceholder")
             }
             className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 transition shadow-2xs"
           />
@@ -240,7 +239,7 @@ export function AccountSelector({
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              title="Hapus pencarian (Esc)"
+              title={_("accountSelector.clearSearchTooltip")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
             >
               <X className="h-3.5 w-3.5" />
@@ -252,7 +251,10 @@ export function AccountSelector({
         {(searchQuery.trim() !== "" || selectedFolderId !== null) && accounts.length > 0 && (
           <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 px-1 pt-0.5">
             <span>
-              Menampilkan <strong className="font-semibold text-gray-900 dark:text-slate-200">{filteredAccounts.length}</strong> dari {accounts.length} akun
+              {_("accountSelector.showingResults", {
+                filtered: filteredAccounts.length,
+                total: accounts.length,
+              })}
             </span>
             <div className="flex items-center gap-2 font-medium">
               {searchQuery && (
@@ -261,7 +263,7 @@ export function AccountSelector({
                   onClick={() => setSearchQuery("")}
                   className="text-primary-600 dark:text-primary-400 hover:underline"
                 >
-                  Reset kata kunci
+                  {_("accountSelector.resetSearch")}
                 </button>
               )}
               {selectedFolderId && (
@@ -270,7 +272,7 @@ export function AccountSelector({
                   onClick={() => setSelectedFolderId(null)}
                   className="text-gray-500 dark:text-slate-400 hover:underline"
                 >
-                  Semua folder
+                  {_("accountSelector.allFolders")}
                 </button>
               )}
             </div>
@@ -290,26 +292,30 @@ export function AccountSelector({
         {isLoading ? (
           <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-slate-500 text-xs">
             <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span>Memuat daftar akun...</span>
+            <span>{_("accountSelector.loading")}</span>
           </div>
         ) : accounts.length === 0 ? (
           <div className="py-10 text-center space-y-2">
             <Users className="h-8 w-8 text-gray-400 mx-auto opacity-40" />
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              {_("invite.noActiveAccounts") || "Tidak ada akun aktif yang tersedia."}
+              {_("accountSelector.noActiveAccounts")}
             </p>
           </div>
         ) : filteredAccounts.length === 0 ? (
           <div className="py-8 text-center space-y-2 text-xs text-gray-500 dark:text-slate-400">
-            <p className="font-semibold text-gray-700 dark:text-slate-300">Tidak ada akun yang sesuai pencarian atau filter</p>
-            <p className="text-[11px] text-gray-400">Coba ubah kata kunci pencarian atau ganti filter folder.</p>
+            <p className="font-semibold text-gray-700 dark:text-slate-300">
+              {_("accountSelector.noMatchingAccounts")}
+            </p>
+            <p className="text-[11px] text-gray-400">
+              {_("accountSelector.noMatchingDesc")}
+            </p>
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="mt-1 inline-flex items-center gap-1.5 px-3 py-1 bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-medium hover:bg-gray-300 dark:hover:bg-slate-700 transition"
               >
-                Hapus Pencarian
+                {_("accountSelector.clearSearchBtn")}
               </button>
             )}
           </div>

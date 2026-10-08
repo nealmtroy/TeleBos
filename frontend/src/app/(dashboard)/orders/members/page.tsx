@@ -8,12 +8,12 @@ export default function TelegramMembersPage() {
   const t = useT();
   return (
     <SmmOrderManager
-      title={t("nav.telegramMembers") || "Telegram Members & Subscribers"}
-      description="Pesan anggota grup dan subscriber channel Telegram berkualitas tinggi dengan proses cepat, stabil, dan bergaransi dari server TeleBos Cloud Gateway."
+      title={t("orderServices.members.title")}
+      description={t("orderServices.members.desc")}
       allowedServiceIds={TELEGRAM_MEMBERS_IDS}
       categoryKey="members"
-      targetPlaceholder="https://t.me/channel_name atau @channel_name"
-      targetHelperText="Pastikan channel atau grup bersifat publik saat proses pengisian, atau gunakan link tautan undangan resmi jika didukung."
+      targetPlaceholder={t("orderServices.members.targetPlaceholder")}
+      targetHelperText={t("orderServices.members.targetHelper")}
       targetExample="https://t.me/namachannel atau @namagrup"
     />
   );

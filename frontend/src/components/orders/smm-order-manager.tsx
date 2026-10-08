@@ -65,44 +65,6 @@ interface SmmOrderManagerProps {
   targetExample?: string;
 }
 
-const SMM_NAV_ITEMS = [
-  {
-    id: "members",
-    href: "/orders/members",
-    label: "Telegram Members",
-    icon: Users,
-    tag: "Channel & Group",
-  },
-  {
-    id: "reactions",
-    href: "/orders/reactions",
-    label: "Reactions",
-    icon: Heart,
-    tag: "Post Emojis",
-  },
-  {
-    id: "auto-reactions",
-    href: "/orders/auto-reactions",
-    label: "Auto Reactions",
-    icon: Zap,
-    tag: "Future Posts",
-  },
-  {
-    id: "post-views",
-    href: "/orders/post-views",
-    label: "Post Views",
-    icon: Eye,
-    tag: "Impressions",
-  },
-  {
-    id: "history",
-    href: "/orders",
-    label: "Riwayat Order",
-    icon: History,
-    tag: "Semua Pesanan",
-  },
-];
-
 export function SmmOrderManager({
   title,
   description,
@@ -115,6 +77,47 @@ export function SmmOrderManager({
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const { data: services, isLoading, error } = useTelegramServices();
+
+  const navItems = useMemo(
+    () => [
+      {
+        id: "members",
+        href: "/orders/members",
+        label: _("smmOrderManager.nav.members"),
+        icon: Users,
+        tag: _("smmOrderManager.nav.membersTag"),
+      },
+      {
+        id: "reactions",
+        href: "/orders/reactions",
+        label: _("smmOrderManager.nav.reactions"),
+        icon: Heart,
+        tag: _("smmOrderManager.nav.reactionsTag"),
+      },
+      {
+        id: "auto-reactions",
+        href: "/orders/auto-reactions",
+        label: _("smmOrderManager.nav.autoReactions"),
+        icon: Zap,
+        tag: _("smmOrderManager.nav.autoReactionsTag"),
+      },
+      {
+        id: "post-views",
+        href: "/orders/post-views",
+        label: _("smmOrderManager.nav.postViews"),
+        icon: Eye,
+        tag: _("smmOrderManager.nav.postViewsTag"),
+      },
+      {
+        id: "history",
+        href: "/orders",
+        label: _("smmOrderManager.nav.history"),
+        icon: History,
+        tag: _("smmOrderManager.nav.historyTag"),
+      },
+    ],
+    [_]
+  );
 
   const [selectedService, setSelectedService] = useState<SMMService | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,7 +158,7 @@ export function SmmOrderManager({
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* SMM Category Navigator Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-border/50">
-        {SMM_NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
           return (
@@ -188,7 +191,7 @@ export function SmmOrderManager({
                 <Zap className="h-3 w-3" />
                 TeleBos SMM Hub
               </span>
-              <span className="text-xs text-muted-foreground">• Server Aktif</span>
+              <span className="text-xs text-muted-foreground">• {_("smmOrderManager.serverActive")}</span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground text-balance">
               {title}
@@ -232,7 +235,7 @@ export function SmmOrderManager({
         <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Layanan Aktif
+              {_("smmOrderManager.activeServices")}
             </span>
             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
               <Layers className="h-3.5 w-3.5" />
@@ -240,10 +243,10 @@ export function SmmOrderManager({
           </div>
           <div className="text-xl font-bold text-foreground tabular-nums">
             {stats.total}{" "}
-            <span className="text-xs font-normal text-muted-foreground">Pilihan</span>
+            <span className="text-xs font-normal text-muted-foreground">{_("smmOrderManager.options")}</span>
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Semua teruji & terhubung
+            {_("smmOrderManager.allTestedConnected")}
           </div>
         </div>
 
@@ -251,7 +254,7 @@ export function SmmOrderManager({
         <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Harga Mulai
+              {_("smmOrderManager.startingPrice")}
             </span>
             <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
               <Tag className="h-3.5 w-3.5" />
@@ -268,7 +271,7 @@ export function SmmOrderManager({
             )}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Tarif termurah tersedia
+            {_("smmOrderManager.cheapestRate")}
           </div>
         </div>
 
@@ -276,7 +279,7 @@ export function SmmOrderManager({
         <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Kecepatan Rata-Rata
+              {_("smmOrderManager.averageSpeed")}
             </span>
             <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
               <Clock className="h-3.5 w-3.5" />
@@ -286,7 +289,7 @@ export function SmmOrderManager({
             {stats.fastestSpeed}
           </div>
           <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Diproses otomatis
+            <Zap className="h-3 w-3" /> {_("smmOrderManager.autoProcessed")}
           </div>
         </div>
 
@@ -294,7 +297,7 @@ export function SmmOrderManager({
         <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Status Sistem
+              {_("smmOrderManager.systemStatus")}
             </span>
             <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
               <ShieldCheck className="h-3.5 w-3.5" />
@@ -305,7 +308,7 @@ export function SmmOrderManager({
             Online
           </div>
           <div className="text-[11px] text-muted-foreground">
-            TeleBos Cloud Engine
+            {_("smmOrderManager.cloudEngine")}
           </div>
         </div>
       </div>
@@ -363,6 +366,7 @@ function ServicesListView({
   targetHelperText,
   targetExample,
 }: ServicesListViewProps) {
+  const _ = useT();
   const [search, setSearch] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("default");
@@ -447,9 +451,9 @@ function ServicesListView({
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-destructive flex items-center gap-3">
         <AlertCircle className="h-5 w-5 shrink-0" />
         <div>
-          <div className="font-bold text-sm">Gagal Memuat Layanan</div>
+          <div className="font-bold text-sm">{_("smmOrderManager.loadErrorTitle")}</div>
           <div className="text-xs opacity-90 mt-0.5">
-            Terjadi kendala saat menyinkronkan katalog layanan SMM. Silakan muat ulang halaman.
+            {_("smmOrderManager.loadErrorDesc")}
           </div>
         </div>
       </div>
@@ -462,9 +466,9 @@ function ServicesListView({
         <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mx-auto text-muted-foreground">
           <Search className="h-6 w-6" />
         </div>
-        <h3 className="text-base font-bold text-foreground">Tidak Ada Layanan</h3>
+        <h3 className="text-base font-bold text-foreground">{_("smmOrderManager.emptyTitle")}</h3>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          Layanan untuk kategori ini sedang diperbarui atau belum tersedia saat ini.
+          {_("smmOrderManager.emptyDesc")}
         </p>
       </div>
     );
@@ -481,7 +485,7 @@ function ServicesListView({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari ID, nama layanan, atau kata kunci..."
+            placeholder={_("smmOrderManager.searchPlaceholder")}
             className="w-full pl-9 pr-9 py-2 rounded-xl text-sm bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
           />
           {search && (
@@ -498,21 +502,21 @@ function ServicesListView({
         {/* Sort Select */}
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-            <ArrowUpDown className="h-3.5 w-3.5" /> Urutkan:
+            <ArrowUpDown className="h-3.5 w-3.5" /> {_("smmOrderManager.sortBy")}
           </span>
           <Select
             value={sortBy}
             onValueChange={(val) => setSortBy(val as SortOption)}
           >
             <SelectTrigger className="w-[160px] h-9 text-xs rounded-xl font-medium">
-              <SelectValue placeholder="Urutkan" />
+              <SelectValue placeholder={_("smmOrderManager.sortBy")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
-              <SelectItem value="price_asc">Harga: Termurah</SelectItem>
-              <SelectItem value="price_desc">Harga: Termahal</SelectItem>
-              <SelectItem value="speed">Kecepatan: Tercepat</SelectItem>
-              <SelectItem value="min_asc">Min Order: Terkecil</SelectItem>
+              <SelectItem value="default">{_("smmOrderManager.sortDefault")}</SelectItem>
+              <SelectItem value="price_asc">{_("smmOrderManager.sortPriceAsc")}</SelectItem>
+              <SelectItem value="price_desc">{_("smmOrderManager.sortPriceDesc")}</SelectItem>
+              <SelectItem value="speed">{_("smmOrderManager.sortSpeed")}</SelectItem>
+              <SelectItem value="min_asc">{_("smmOrderManager.sortMinAsc")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -530,7 +534,7 @@ function ServicesListView({
                 : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
             )}
           >
-            Semua Subkategori ({services.length})
+            {_("smmOrderManager.allSubcategories")} ({services.length})
           </button>
           {availableCategories.map((cat) => {
             const count = services.filter((s) => s.category === cat).length;
@@ -556,15 +560,18 @@ function ServicesListView({
       {/* Results Count */}
       <div className="text-xs text-muted-foreground flex items-center justify-between">
         <div>
-          Menampilkan <span className="font-bold text-foreground">{processedServices.length}</span> dari{" "}
-          <span className="font-bold text-foreground">{services.length}</span> layanan
+          {_("smmOrderManager.showingServices")}{" "}
+          <span className="font-bold text-foreground">{processedServices.length}</span>{" "}
+          {_("smmOrderManager.of")}{" "}
+          <span className="font-bold text-foreground">{services.length}</span>{" "}
+          {_("smmOrderManager.services")}
         </div>
         {search && (
           <button
             onClick={() => setSearch("")}
             className="text-primary hover:underline text-xs"
           >
-            Reset pencarian
+            {_("smmOrderManager.resetSearch")}
           </button>
         )}
       </div>
@@ -618,7 +625,7 @@ function ServicesListView({
                           title={`Rata-rata ${speedInfo.avgOrders} order berhasil diselesaikan`}
                         >
                           <CheckCircle2 className="h-3 w-3 shrink-0" />
-                          <span>{speedInfo.avgOrders} Selesai</span>
+                          <span>{speedInfo.avgOrders} {_("smmOrderManager.completedBadge")}</span>
                         </div>
                       )}
 
@@ -641,7 +648,7 @@ function ServicesListView({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 py-2.5 px-3 rounded-lg bg-muted/30 border border-border/30 text-xs">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                      Min Order
+                      {_("smmOrderManager.minOrder")}
                     </span>
                     <span className="font-bold text-foreground tabular-nums">
                       {service.min.toLocaleString("id-ID")}
@@ -649,7 +656,7 @@ function ServicesListView({
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                      Max Order
+                      {_("smmOrderManager.maxOrder")}
                     </span>
                     <span className="font-bold text-foreground tabular-nums">
                       {service.max.toLocaleString("id-ID")}
@@ -657,7 +664,7 @@ function ServicesListView({
                   </div>
                   <div className="col-span-2 sm:col-span-1">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                      Kecepatan Proses
+                      {_("smmOrderManager.processingSpeed")}
                     </span>
                     <span className="font-bold text-foreground truncate block" title={speedInfo?.tooltip || "Otomatis"}>
                       {speedInfo?.avgSpeed || speedInfo?.displayText || "Instan"}
@@ -675,7 +682,7 @@ function ServicesListView({
                     >
                       <span className="flex items-center gap-1.5">
                         <Info className="h-3.5 w-3.5 text-primary" />
-                        {isNoteExpanded ? "Sembunyikan Petunjuk Layanan" : "Lihat Petunjuk & Keterangan"}
+                        {isNoteExpanded ? _("smmOrderManager.hideInstructions") : _("smmOrderManager.showInstructions")}
                       </span>
                       {isNoteExpanded ? (
                         <ChevronUp className="h-3.5 w-3.5" />
@@ -689,7 +696,7 @@ function ServicesListView({
                         {service.note}
                         {targetExample && (
                           <div className="mt-2 pt-2 border-t border-border/40 text-[11px]">
-                            <span className="font-bold text-foreground">Format Target:</span>{" "}
+                            <span className="font-bold text-foreground">{_("smmOrderManager.targetFormat")}</span>{" "}
                             <code className="px-1.5 py-0.5 rounded bg-background border border-border/50 text-primary font-mono text-[10px]">
                               {targetExample}
                             </code>
@@ -704,7 +711,7 @@ function ServicesListView({
                 <div className="pt-3 border-t border-border/40 flex items-center justify-between gap-3">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Harga / 1.000
+                      {_("smmOrderManager.pricePerThousand")}
                     </span>
                     <span className="text-lg md:text-xl font-extrabold text-primary tabular-nums">
                       Rp {service.price.toLocaleString("id-ID")}
@@ -717,7 +724,7 @@ function ServicesListView({
                     onClick={() => onOrderSelect(service)}
                     className="h-10 px-4 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-xs group/btn flex items-center transition-all"
                   >
-                    <span>Order Sekarang</span>
+                    <span>{_("smmOrderManager.orderNow")}</span>
                     <span className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center ml-2 group-hover/btn:translate-x-0.5 transition-transform">
                       <ShoppingCart className="h-3.5 w-3.5 text-white" />
                     </span>
@@ -807,8 +814,8 @@ function OrderModal({
         if (parsed === null || parsed < service.min) {
           toast({
             variant: "error",
-            title: _("orders.orderFailed") || "Gagal Membuat Pesanan",
-            description: `Jumlah pemesanan minimal adalah ${service.min.toLocaleString("id-ID")}.`,
+            title: _("orders.orderFailed"),
+            description: _("smmOrderManager.minOrderToast", { min: service.min.toLocaleString("id-ID") }),
           });
           commitQuantity(quantityInput);
           return;
@@ -816,8 +823,8 @@ function OrderModal({
         if (parsed > service.max) {
           toast({
             variant: "error",
-            title: _("orders.orderFailed") || "Gagal Membuat Pesanan",
-            description: `Jumlah pemesanan maksimal adalah ${service.max.toLocaleString("id-ID")}.`,
+            title: _("orders.orderFailed"),
+            description: _("smmOrderManager.maxOrderToast", { max: service.max.toLocaleString("id-ID") }),
           });
           commitQuantity(quantityInput);
           return;
@@ -833,16 +840,19 @@ function OrderModal({
 
       toast({
         variant: "success",
-        title: _("orders.orderPlaced") || "Pesanan Berhasil Dibuat!",
-        description: `Order untuk ${service.name} sebanyak ${quantity.toLocaleString("id-ID")} berhasil dikirim.`,
+        title: _("orders.orderPlaced"),
+        description: _("smmOrderManager.orderSuccessToast", {
+          name: service.name,
+          quantity: quantity.toLocaleString("id-ID"),
+        }),
       });
       onClose();
     } catch (err: any) {
       toast({
         variant: "error",
-        title: _("orders.orderFailed") || "Gagal Membuat Pesanan",
+        title: _("orders.orderFailed"),
         description:
-          err?.response?.data?.detail || "Terjadi kesalahan saat memproses pesanan.",
+          err?.response?.data?.detail || _("smmOrderManager.orderErrorFallback"),
       });
     }
   };
@@ -898,7 +908,7 @@ function OrderModal({
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div>
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                  Min Limit
+                  {_("smmOrderManager.minLimit")}
                 </span>
                 <span className="font-bold text-foreground tabular-nums">
                   {service.min.toLocaleString("id-ID")}
@@ -906,7 +916,7 @@ function OrderModal({
               </div>
               <div>
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                  Max Limit
+                  {_("smmOrderManager.maxLimit")}
                 </span>
                 <span className="font-bold text-foreground tabular-nums">
                   {service.max.toLocaleString("id-ID")}
@@ -914,7 +924,7 @@ function OrderModal({
               </div>
               <div>
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
-                  Tarif / 1k
+                  {_("smmOrderManager.ratePer1k")}
                 </span>
                 <span className="font-bold text-primary tabular-nums">
                   Rp {service.price.toLocaleString("id-ID")}
@@ -926,7 +936,7 @@ function OrderModal({
             <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs flex-wrap gap-2">
               <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
                 <Zap className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                <span>Kecepatan Rata-Rata:</span>
+                <span>{_("smmOrderManager.averageSpeed")}:</span>
                 <span className="font-bold text-foreground">
                   {speedInfo?.avgSpeed || speedInfo?.displayText || "Instan / Otomatis"}
                 </span>
@@ -934,7 +944,7 @@ function OrderModal({
               {speedInfo?.avgOrders && (
                 <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span>Selesai:</span>
+                  <span>{_("smmOrderManager.completedBadge")}:</span>
                   <span className="font-bold text-foreground">
                     {speedInfo.avgOrders} Order
                   </span>
@@ -989,7 +999,7 @@ function OrderModal({
                   {_("orders.quantity") || "Jumlah Pemesanan"}
                 </label>
                 <span className="text-[11px] text-muted-foreground">
-                  Batas: {service.min.toLocaleString("id-ID")} - {service.max.toLocaleString("id-ID")}
+                  {_("smmOrderManager.quantityLimit")} {service.min.toLocaleString("id-ID")} - {service.max.toLocaleString("id-ID")}
                 </span>
               </div>
 
@@ -1069,13 +1079,13 @@ function OrderModal({
             {/* Optional Comments */}
             <div>
               <label className="block text-xs font-bold text-foreground mb-1.5">
-                Komentar Tambahan <span className="text-muted-foreground font-normal">(Opsional)</span>
+                {_("smmOrderManager.commentsOptional")}
               </label>
               <textarea
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
-                placeholder="Khusus layanan custom comments: satu komentar per baris..."
+                placeholder={_("smmOrderManager.commentsPlaceholder")}
                 className="w-full px-3.5 py-2 rounded-xl text-xs bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary resize-none"
               />
             </div>
@@ -1083,19 +1093,19 @@ function OrderModal({
             {/* Live Price & Wallet Gauge Summary */}
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2.5">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-muted-foreground">Tarif Satuan:</span>
+                <span className="text-muted-foreground">{_("smmOrderManager.unitRate")}</span>
                 <span className="font-semibold text-foreground tabular-nums">
                   Rp {service.price.toLocaleString("id-ID")} / 1.000
                 </span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-muted-foreground">Kuantitas:</span>
+                <span className="text-muted-foreground">{_("smmOrderManager.quantityLabel")}</span>
                 <span className="font-semibold text-foreground tabular-nums">
                   {quantity.toLocaleString("id-ID")}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm font-bold border-t border-border/50 pt-2">
-                <span className="text-foreground">Total Estimasi Biaya:</span>
+                <span className="text-foreground">{_("smmOrderManager.estimatedTotal")}</span>
                 <span className="text-base text-primary tabular-nums">
                   Rp {estimatedPrice.toLocaleString("id-ID")}
                 </span>
@@ -1115,9 +1125,9 @@ function OrderModal({
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>
                       {hasSufficientBalance ? (
-                        <>Saldo cukup. Sisa saldo: Rp {balanceRemaining.toLocaleString("id-ID")}</>
+                        <>{_("smmOrderManager.sufficientBalance")} Rp {balanceRemaining.toLocaleString("id-ID")}</>
                       ) : (
-                        <>Saldo kurang. Dibutuhkan Rp {estimatedPrice.toLocaleString("id-ID")} (Saldo Anda: Rp {userBalance.toLocaleString("id-ID")})</>
+                        <>{_("smmOrderManager.insufficientBalanceMsg")} Rp {estimatedPrice.toLocaleString("id-ID")} ({_("smmOrderManager.yourBalance")} Rp {userBalance.toLocaleString("id-ID")})</>
                       )}
                     </span>
                   </div>
@@ -1142,7 +1152,7 @@ function OrderModal({
                 disabled={placeOrder.isPending}
                 className="flex-1 rounded-xl h-11 text-xs font-semibold"
               >
-                Batal
+                {_("smmOrderManager.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -1153,11 +1163,11 @@ function OrderModal({
               >
                 {placeOrder.isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Memproses...
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> {_("smmOrderManager.processing")}
                   </>
                 ) : (
                   <>
-                    <ShoppingCart className="h-4 w-4 mr-2" /> Konfirmasi Order
+                    <ShoppingCart className="h-4 w-4 mr-2" /> {_("smmOrderManager.confirmOrder")}
                   </>
                 )}
               </Button>

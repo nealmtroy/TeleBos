@@ -247,6 +247,58 @@ export interface Dict {
     deleteConfirm: string;
   };
 
+  // Account Selector Component
+  accountSelector: {
+    defaultTitle: string;
+    selectedBadge: string;
+    selectAll: string;
+    deselectAll: string;
+    clear: string;
+    searchPlaceholder: string;
+    clearSearchTooltip: string;
+    showingResults: string;
+    resetSearch: string;
+    allFolders: string;
+    loading: string;
+    noActiveAccounts: string;
+    noMatchingAccounts: string;
+    noMatchingDesc: string;
+    clearSearchBtn: string;
+  };
+
+  // Transfer Accounts Dialog
+  transferAccounts: {
+    dialogTitle: string;
+    ownerOnly: string;
+    dialogDesc: string;
+    recipientEmailLabel: string;
+    searchEmailPlaceholder: string;
+    noUserFound: string;
+    searchingUser: string;
+    quotaWarningTitle: string;
+    quotaWarningDesc: string;
+    quotaExceededTitle: string;
+    quotaExceededDesc: string;
+    overrideQuotaLabel: string;
+    selectAccountsLabel: string;
+    selectAll: string;
+    deselectAll: string;
+    selectedCount: string;
+    noAccountsAvailable: string;
+    cancel: string;
+    transferBtn: string;
+    transferBtnCount: string;
+    transferring: string;
+    toastSelectWarningTitle: string;
+    toastSelectWarningDesc: string;
+    toastEmailWarningTitle: string;
+    toastEmailWarningDesc: string;
+    toastSuccessTitle: string;
+    toastSuccessDesc: string;
+    toastFailedTitle: string;
+    toastFailedDesc: string;
+  };
+
   // Add Account (OTP / Upload)
   addAccount: {
     title: string;
@@ -1026,6 +1078,57 @@ export interface Dict {
     success: string;
     already: string;
     failed: string;
+    breadcrumb: string;
+    pageTitle: string;
+    pageSubtitle: string;
+    manageGroupLists: string;
+    viewMyChats: string;
+    targetTitle: string;
+    targetSubtitle: string;
+    modeBulk: string;
+    modeGroupLists: string;
+    pasteLabel: string;
+    targetsDetected: string;
+    formatHint: string;
+    clear: string;
+    saveAsGroupList: string;
+    saveListPlaceholder: string;
+    save: string;
+    selectSavedListLabel: string;
+    selectListPlaceholder: string;
+    targetsCount: string;
+    noListSelected: string;
+    selectAccountsTitle: string;
+    selectAccountsDesc: string;
+    executionTitle: string;
+    joinDelayLabel: string;
+    delayFast: string;
+    delayRecommended: string;
+    delaySafe: string;
+    jitterTitle: string;
+    jitterSubtitle: string;
+    distributionTitle: string;
+    distributeAll: string;
+    distributeAllDesc: string;
+    distributeRoundRobin: string;
+    distributeRoundRobinDesc: string;
+    startBtn: string;
+    pauseBtn: string;
+    resumeBtn: string;
+    stopBtn: string;
+    emptyJobLogs: string;
+    emptyLiveLogs: string;
+    loading: string;
+    toastListSavedTitle: string;
+    toastListSavedDesc: string;
+    toastSaveFailedTitle: string;
+    toastSaveFailedDesc: string;
+    toastEmptyTargetsTitle: string;
+    toastEmptyTargetsDesc: string;
+    toastNoAccountTitle: string;
+    toastNoAccountDesc: string;
+    toastStartedTitle: string;
+    toastStartedDesc: string;
   };
 
   // 404 Not Found
@@ -1671,6 +1774,108 @@ export interface Dict {
     settings: string;
   };
 
+  // SMM Order Manager
+  smmOrderManager: {
+    nav: {
+      members: string;
+      membersTag: string;
+      reactions: string;
+      reactionsTag: string;
+      autoReactions: string;
+      autoReactionsTag: string;
+      postViews: string;
+      postViewsTag: string;
+      history: string;
+      historyTag: string;
+    };
+    serverActive: string;
+    activeServices: string;
+    options: string;
+    allTestedConnected: string;
+    startingPrice: string;
+    cheapestRate: string;
+    averageSpeed: string;
+    autoProcessed: string;
+    systemStatus: string;
+    cloudEngine: string;
+    searchPlaceholder: string;
+    sortBy: string;
+    sortDefault: string;
+    sortPriceAsc: string;
+    sortPriceDesc: string;
+    sortSpeed: string;
+    sortMinAsc: string;
+    allSubcategories: string;
+    showingServices: string;
+    of: string;
+    services: string;
+    resetSearch: string;
+    loadErrorTitle: string;
+    loadErrorDesc: string;
+    emptyTitle: string;
+    emptyDesc: string;
+    minOrder: string;
+    maxOrder: string;
+    processingSpeed: string;
+    completedBadge: string;
+    showInstructions: string;
+    hideInstructions: string;
+    targetFormat: string;
+    pricePerThousand: string;
+    orderNow: string;
+    minLimit: string;
+    maxLimit: string;
+    ratePer1k: string;
+    quantityLimit: string;
+    commentsOptional: string;
+    commentsPlaceholder: string;
+    unitRate: string;
+    quantityLabel: string;
+    estimatedTotal: string;
+    sufficientBalance: string;
+    insufficientBalanceMsg: string;
+    yourBalance: string;
+    cancel: string;
+    confirmOrder: string;
+    processing: string;
+    minOrderToast: string;
+    maxOrderToast: string;
+    orderSuccessToast: string;
+    orderErrorFallback: string;
+  };
+
+  // Order Services Pages
+  orderServices: {
+    autoReactions: {
+      title: string;
+      desc: string;
+      targetPlaceholder: string;
+      targetHelper: string;
+      targetExample: string;
+    };
+    postViews: {
+      title: string;
+      desc: string;
+      targetPlaceholder: string;
+      targetHelper: string;
+      targetExample: string;
+    };
+    members: {
+      title: string;
+      desc: string;
+      targetPlaceholder: string;
+      targetHelper: string;
+      targetExample: string;
+    };
+    reactions: {
+      title: string;
+      desc: string;
+      targetPlaceholder: string;
+      targetHelper: string;
+      targetExample: string;
+    };
+  };
+
   // Admin
   admin: {
     title: string;
@@ -1814,6 +2019,25 @@ export interface Dict {
     totalWithdrawals: string;
     noMatchingTransactions: string;
     close: string;
+    depositAmount: string;
+    withdrawAmount: string;
+    transactionId: string;
+    transactionType: string;
+    depositType: string;
+    withdrawType: string;
+    methodProvider: string;
+    noteAccount: string;
+    adminFee: string;
+    adminFeeFree: string;
+    transactionTime: string;
+    statusExplanationPending: string;
+    statusExplanationApproved: string;
+    statusExplanationRejected: string;
+    qrProcessError: string;
+    qrDownloadError: string;
+    paymentRecordedToast: string;
+    topupFailedToast: string;
+    withdrawFailedToast: string;
   };
   pricing: {
     kicker: string;

@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 const ROLE_LIMITS: Record<string, number> = {
   basic: 1,
@@ -58,6 +59,7 @@ export function TransferAccountsDialog({
   onOpenChange,
   initialSelectedAccounts = [],
 }: TransferAccountsDialogProps) {
+  const _ = useT();
   const currentUser = useAuthStore((s) => s.user);
   const isOwner = currentUser?.role === "owner";
   const { toast } = useToast();
@@ -222,8 +224,8 @@ export function TransferAccountsDialog({
     if (selectedIds.size === 0) {
       toast({
         variant: "warning",
-        title: "Pilih akun",
-        description: "Pilih setidaknya 1 akun Telegram untuk dipindahkan.",
+        title: _("transferAccounts.toastSelectWarningTitle"),
+        description: _("transferAccounts.toastSelectWarningDesc"),
       });
       return;
     }
@@ -232,8 +234,8 @@ export function TransferAccountsDialog({
     if (!email) {
       toast({
         variant: "warning",
-        title: "Email tujuan diperlukan",
-        description: "Masukkan email user tujuan penerima akun.",
+        title: _("transferAccounts.toastEmailWarningTitle"),
+        description: _("transferAccounts.toastEmailWarningDesc"),
       });
       return;
     }
@@ -247,8 +249,12 @@ export function TransferAccountsDialog({
 
       toast({
         variant: "success",
-        title: "Transfer Berhasil",
-        description: `Berhasil memindahkan ${res.transferred_count} akun ke ${res.target_email} (${res.target_name}).`,
+        title: _("transferAccounts.toastSuccessTitle"),
+        description: _("transferAccounts.toastSuccessDesc", {
+          count: res.transferred_count,
+          email: res.target_email,
+          name: res.target_name,
+        }),
       });
 
       onOpenChange(false);
@@ -256,10 +262,10 @@ export function TransferAccountsDialog({
       const detail =
         err?.response?.data?.detail ||
         err?.message ||
-        "Gagal memindahkan akun. Silakan periksa kembali.";
+        _("transferAccounts.toastFailedDesc");
       toast({
         variant: "error",
-        title: "Gagal Transfer Akun",
+        title: _("transferAccounts.toastFailedTitle"),
         description: detail,
       });
     }
@@ -284,14 +290,14 @@ export function TransferAccountsDialog({
             <div>
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100">
-                  Transfer Akun Telegram
+                  {_("transferAccounts.dialogTitle")}
                 </DialogTitle>
                 <Badge variant="secondary" className="text-[11px] font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-                  Owner Only
+                  {_("transferAccounts.ownerOnly")}
                 </Badge>
               </div>
               <DialogDescription className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                Pindahkan kepemilikan akun Telegram ke pengguna lain melalui alamat email
+                {_("transferAccounts.dialogDesc")}
               </DialogDescription>
             </div>
           </div>
@@ -303,7 +309,7 @@ export function TransferAccountsDialog({
           <div className="space-y-2">
             <label className="text-sm font-semibold text-gray-900 dark:text-slate-200 flex items-center gap-1.5">
               <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Email Pengguna Tujuan (Penerima)
+              {_("transferAccounts.recipientEmailLabel")}
               <span className="text-red-500">*</span>
             </label>
             <div className="relative" ref={dropdownRef}>
@@ -318,7 +324,7 @@ export function TransferAccountsDialog({
                     setSelectedTargetUser(null);
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  placeholder="Masukkan atau cari email penerima (contoh: user@gmail.com)..."
+                  placeholder={_("transferAccounts.searchEmailPlaceholder")}
                   disabled={transferMutation.isPending}
                   className="w-full pl-9 pr-10 py-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
@@ -411,9 +417,9 @@ export function TransferAccountsDialog({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <label className="text-sm font-semibold text-gray-900 dark:text-slate-200 flex items-center gap-1.5">
                 <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                Pilih Akun yang Akan Dipindahkan
+                {_("transferAccounts.selectAccountsLabel")}
                 <Badge variant="info" className="text-xs font-semibold">
-                  {selectedIds.size} dipilih
+                  {selectedIds.size} {_("accountSelector.selectedBadge")}
                 </Badge>
               </label>
 
@@ -423,7 +429,7 @@ export function TransferAccountsDialog({
                   onClick={handleSelectAll}
                   className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                 >
-                  Pilih Semua ({transferableAccounts.length})
+                  {_("transferAccounts.selectAll")} ({transferableAccounts.length})
                 </button>
                 <span className="text-gray-300 dark:text-slate-700">•</span>
                 <button
@@ -431,7 +437,7 @@ export function TransferAccountsDialog({
                   onClick={handleDeselectAll}
                   className="text-gray-500 dark:text-slate-400 hover:underline"
                 >
-                  Batal Pilih
+                  {_("transferAccounts.deselectAll")}
                 </button>
               </div>
             </div>
@@ -601,7 +607,7 @@ export function TransferAccountsDialog({
             disabled={transferMutation.isPending}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
           >
-            Batal
+            {_("transferAccounts.cancel")}
           </button>
 
           <button
@@ -626,12 +632,16 @@ export function TransferAccountsDialog({
             {transferMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Memindahkan...</span>
+                <span>{_("transferAccounts.transferring")}</span>
               </>
             ) : (
               <>
                 <ArrowRightLeft className="h-4 w-4" />
-                <span>Transfer {selectedIds.size > 0 ? `${selectedIds.size} Akun` : "Akun"}</span>
+                <span>
+                  {selectedIds.size > 0
+                    ? _("transferAccounts.transferBtnCount", { count: selectedIds.size })
+                    : _("transferAccounts.transferBtn")}
+                </span>
               </>
             )}
           </button>

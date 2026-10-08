@@ -2,6 +2,7 @@
 
 import { FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { AccountFolder } from "@/hooks/use-account-folders";
 
 interface FolderFilterBarProps {
@@ -11,6 +12,7 @@ interface FolderFilterBarProps {
 }
 
 export function FolderFilterBar({ folders, selectedFolderId, onSelect }: FolderFilterBarProps) {
+  const _ = useT();
   if (folders.length === 0) return null;
 
   return (
@@ -25,7 +27,7 @@ export function FolderFilterBar({ folders, selectedFolderId, onSelect }: FolderF
         )}
       >
         <FolderOpen className="h-3.5 w-3.5" />
-        All Accounts
+        {_("accountFolders.allAccounts") || "All Accounts"}
       </button>
       {folders.map((folder) => (
         <button

@@ -375,12 +375,12 @@ export default function WalletPage() {
 
       image.onerror = () => {
         URLObj.revokeObjectURL(blobURL);
-        toast.error("Gagal memproses gambar QR");
+        toast.error(_("wallet.qrProcessError"));
       };
 
       image.src = blobURL;
     } catch {
-      toast.error("Gagal mengunduh QR Code");
+      toast.error(_("wallet.qrDownloadError"));
     }
   }
 
@@ -390,7 +390,7 @@ export default function WalletPage() {
 
     window.setTimeout(() => {
       refetchTxs();
-      toast.success("Invoice pembayaran telah dicatat. Mohon tunggu verifikasi otomatis/admin.");
+      toast.success(_("wallet.paymentRecordedToast"));
       setActivePayment(null);
       setVerifying(false);
     }, 800);
@@ -430,7 +430,7 @@ export default function WalletPage() {
         refetchTxs();
       } catch (err: any) {
         setSubmitting(false);
-        toast.error(err?.response?.data?.detail || "Gagal membuat invoice top up");
+        toast.error(err?.response?.data?.detail || _("wallet.topupFailedToast"));
       }
     } else {
       const chosenAcc = selectedAccountId !== "manual" ? accounts.find((a) => a.id === selectedAccountId) : null;
@@ -455,7 +455,7 @@ export default function WalletPage() {
         refetchTxs();
       } catch (err: any) {
         setSubmitting(false);
-        toast.error(err?.response?.data?.detail || "Gagal mengajukan penarikan");
+        toast.error(err?.response?.data?.detail || _("wallet.withdrawFailedToast"));
       }
     }
   }
@@ -1361,7 +1361,7 @@ export default function WalletPage() {
               {/* Amount Highlight Banner */}
               <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
                 <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider block">
-                  {selectedTransaction.type === "topup" ? "Nominal Deposit" : "Nominal Penarikan"}
+                  {selectedTransaction.type === "topup" ? _("wallet.depositAmount") : _("wallet.withdrawAmount")}
                 </span>
                 <p className="font-mono text-2xl font-bold text-gray-900 dark:text-slate-100">
                   {selectedTransaction.type === "topup" ? "+" : "-"} {formatIDR(selectedTransaction.amount)}
@@ -1385,7 +1385,7 @@ export default function WalletPage() {
               {/* Data Table */}
               <div className="space-y-3 text-xs divide-y divide-gray-100 dark:divide-slate-800">
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-gray-500 dark:text-slate-400">ID Transaksi</span>
+                  <span className="text-gray-500 dark:text-slate-400">{_("wallet.transactionId")}</span>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-semibold text-gray-900 dark:text-slate-100">
                       {selectedTransaction.id}
@@ -1404,35 +1404,35 @@ export default function WalletPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3">
-                  <span className="text-gray-500 dark:text-slate-400">Jenis Transaksi</span>
+                  <span className="text-gray-500 dark:text-slate-400">{_("wallet.transactionType")}</span>
                   <span className="font-semibold text-gray-900 dark:text-slate-100">
-                    {selectedTransaction.type === "topup" ? "Deposit Saldo" : "Penarikan Dana"}
+                    {selectedTransaction.type === "topup" ? _("wallet.depositType") : _("wallet.withdrawType")}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-3">
-                  <span className="text-gray-500 dark:text-slate-400">Metode / Provider</span>
+                  <span className="text-gray-500 dark:text-slate-400">{_("wallet.methodProvider")}</span>
                   <span className="font-semibold text-gray-900 dark:text-slate-100">
                     {selectedTransaction.method}
                   </span>
                 </div>
 
                 <div className="flex items-start justify-between pt-3 gap-2">
-                  <span className="text-gray-500 dark:text-slate-400 shrink-0">Catatan / Rekening</span>
+                  <span className="text-gray-500 dark:text-slate-400 shrink-0">{_("wallet.noteAccount")}</span>
                   <span className="font-semibold text-gray-900 dark:text-slate-100 text-right truncate max-w-[220px]">
                     {selectedTransaction.note}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-3">
-                  <span className="text-gray-500 dark:text-slate-400">Biaya Admin</span>
+                  <span className="text-gray-500 dark:text-slate-400">{_("wallet.adminFee")}</span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    Rp 0 (Gratis)
+                    {_("wallet.adminFeeFree")}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-3">
-                  <span className="text-gray-500 dark:text-slate-400">Waktu Transaksi</span>
+                  <span className="text-gray-500 dark:text-slate-400">{_("wallet.transactionTime")}</span>
                   <span className="font-mono text-gray-900 dark:text-slate-100">
                     {formatDate(selectedTransaction.createdAt)}
                   </span>
@@ -1445,7 +1445,7 @@ export default function WalletPage() {
                   <p className="flex items-start gap-2">
                     <Clock className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                     <span>
-                      Transaksi ini sedang dalam antrean verifikasi otomatis/manual. Saldo akan otomatis bertambah/berkurang setelah disetujui.
+                      {_("wallet.statusExplanationPending")}
                     </span>
                   </p>
                 )}
@@ -1453,7 +1453,7 @@ export default function WalletPage() {
                   <p className="flex items-start gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>
-                      Transaksi telah berhasil diselesaikan. Saldo akun Anda telah diperbarui sesuai nominal transaksi ini.
+                      {_("wallet.statusExplanationApproved")}
                     </span>
                   </p>
                 )}
@@ -1461,7 +1461,7 @@ export default function WalletPage() {
                   <p className="flex items-start gap-2">
                     <XCircle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
                     <span>
-                      Transaksi ini ditolak oleh sistem atau admin. Silakan periksa kembali detail pembayaran atau hubungi pusat bantuan.
+                      {_("wallet.statusExplanationRejected")}
                     </span>
                   </p>
                 )}

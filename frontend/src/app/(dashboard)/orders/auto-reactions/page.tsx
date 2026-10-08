@@ -8,12 +8,12 @@ export default function TelegramAutoReactionsPage() {
   const t = useT();
   return (
     <SmmOrderManager
-      title={t("nav.telegramAutoReactions") || "Telegram Auto Reactions"}
-      description="Otomasi reaksi emoji untuk setiap postingan baru di channel Telegram Anda secara terjadwal dan konsisten 24/7 tanpa perlu order manual setiap post."
+      title={t("orderServices.autoReactions.title")}
+      description={t("orderServices.autoReactions.desc")}
       allowedServiceIds={TELEGRAM_AUTO_REACTIONS_IDS}
       categoryKey="auto-reactions"
-      targetPlaceholder="https://t.me/channel_name atau @channel_name"
-      targetHelperText="Masukkan username atau link channel publik Anda. Sistem akan memantau postingan baru dan memberikan reaksi otomatis sesuai kuota."
+      targetPlaceholder={t("orderServices.autoReactions.targetPlaceholder")}
+      targetHelperText={t("orderServices.autoReactions.targetHelper")}
       targetExample="https://t.me/namachannel"
     />
   );
