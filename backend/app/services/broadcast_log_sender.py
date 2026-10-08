@@ -111,9 +111,107 @@ def _format_cycle_summary(
     return formatted
 
 
+async def _resolve_destination_entity(client: TelegramClient, target, me_id: int):
+    """Resolve destination entity using Telethon cache, DB cache, and network fallback.
+
+    Avoids triggering contacts.ResolveUsername FloodWait by checking:
+    1. In-memory resolved destination cache
+    2. Telethon's internal session/entity cache (client.get_input_entity)
+    3. Local database cache (telegram_chats table with access_hash)
+    4. Network query (client.get_entity) only as last resort
+    """
+    from telethon.errors import FloodWaitError
+    import time
+
+    cache_key = (me_id, str(target))
+    now_ts = time.time()
+    if cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
+        return None
+
+    # 1. In-memory resolved destination cache
+    entity = _resolved_dest_cache.get(cache_key)
+    if entity is not None:
+        return entity
+
+    # 2. Telethon built-in session/entity cache (fastest, 0 network calls)
+    clean_target = str(target).lstrip("@").strip()
+    if clean_target.lstrip("-").isdigit():
+        target_entity_key = int(clean_target)
+    else:
+        target_entity_key = clean_target
+
+    try:
+        entity = await client.get_input_entity(target_entity_key)
+        if entity is not None:
+            _resolved_dest_cache[cache_key] = entity
+            return entity
+    except Exception:
+        pass
+
+    # 3. Local database cache (telegram_chats table containing chat_id & access_hash)
+    try:
+        from app.database import async_session_factory
+        from app.models.telegram_chat import TelegramChat
+        from sqlalchemy import select
+        import telethon.tl.types as tl_types
+
+        is_num = clean_target.lstrip("-").isdigit()
+
+        async with async_session_factory() as db:
+            if is_num:
+                cond = (TelegramChat.chat_id == int(clean_target))
+            else:
+                cond = (TelegramChat.username.ilike(clean_target))
+
+            res = await db.execute(
+                select(TelegramChat.chat_id, TelegramChat.access_hash, TelegramChat.type)
+                .where(cond, TelegramChat.access_hash.isnot(None))
+                .limit(1)
+            )
+            row = res.first()
+            if row:
+                chat_id = getattr(row, "chat_id", row[0])
+                access_hash = getattr(row, "access_hash", row[1])
+                chat_type = getattr(row, "type", row[2])
+
+                if access_hash is not None:
+                    if chat_type in ("user", "bot"):
+                        entity = tl_types.InputPeerUser(user_id=chat_id, access_hash=access_hash)
+                    elif chat_type in ("channel", "supergroup"):
+                        entity = tl_types.InputPeerChannel(channel_id=chat_id, access_hash=access_hash)
+                    elif chat_type == "group":
+                        entity = tl_types.InputPeerChat(chat_id=chat_id)
+
+                    if entity is not None:
+                        _resolved_dest_cache[cache_key] = entity
+                        return entity
+    except Exception as db_err:
+        logger.debug("Database entity cache lookup failed for %s: %s", target, db_err)
+
+    # 4. Fallback to network resolution via client.get_entity(target)
+    try:
+        entity = await client.get_entity(target)
+        if entity is not None:
+            _resolved_dest_cache[cache_key] = entity
+            return entity
+    except FloodWaitError as fw:
+        _dest_flood_cooldown[cache_key] = now_ts + fw.seconds
+        logger.warning(
+            "FloodWait (%ds) resolving log destination %s for account %s. Skipping log dispatch for %ds.",
+            fw.seconds, target, me_id, fw.seconds,
+        )
+        return None
+    except Exception as exc:
+        logger.debug("Network entity resolution failed for %s: %s", target, exc)
+        return None
+
+    return None
+
+
 async def _send_message_safe(client: TelegramClient, target, message: str, **kwargs) -> None:
     """Send a message to target, starting a configured log bot when needed."""
     from telethon.errors import PeerIdInvalidError, YouBlockedUserError, FloodWaitError
+    import time
 
     # Hard guard: Ensure message length does not exceed Telegram 4096 limit
     if len(message) > 4000:
@@ -121,28 +219,14 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
 
     me = await client.get_me()
     cache_key = (me.id, str(target))
-
-    import time
     now_ts = time.time()
+
     if cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
         return
 
-    # Try using cached entity first
-    entity = _resolved_dest_cache.get(cache_key)
-
-    if not entity:
-        try:
-            entity = await client.get_entity(target)
-            _resolved_dest_cache[cache_key] = entity
-        except FloodWaitError as fw:
-            _dest_flood_cooldown[cache_key] = now_ts + fw.seconds
-            logger.warning(
-                "FloodWait (%ds) resolving log destination %s for account %s. Skipping log dispatch for %ds.",
-                fw.seconds, target, me.id, fw.seconds,
-            )
-            return
-        except Exception:
-            pass
+    entity = await _resolve_destination_entity(client, target, me.id)
+    if entity is None and cache_key in _dest_flood_cooldown and now_ts < _dest_flood_cooldown[cache_key]:
+        return
 
     try:
         await client.send_message(entity or target, message, **kwargs)
@@ -184,10 +268,9 @@ async def _send_message_safe(client: TelegramClient, target, message: str, **kwa
         try:
             # Telegram only permits a user account to message a bot after it has
             # started that bot. Sending /start creates the required dialog.
-            await client.send_message(target, "/start")
+            await client.send_message(entity or target, "/start")
             logger.info("Started log bot %s, retrying cycle log delivery", target)
-            entity = await client.get_entity(target)
-            _resolved_dest_cache[cache_key] = entity
+            entity = await _resolve_destination_entity(client, target, me.id) or target
             await client.send_message(entity, message, **kwargs)
         except FloodWaitError as fw:
             logger.warning(

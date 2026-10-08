@@ -138,3 +138,49 @@ async def test_send_message_safe_handles_flood_wait():
     # Should not raise exception
     await _send_message_safe(mock_client, "@teleboslogging_bot", "Test log message")
 
+
+@pytest.mark.asyncio
+async def test_resolve_destination_entity_prefers_telethon_cache():
+    """Verify that _resolve_destination_entity uses Telethon session cache without calling get_entity."""
+    from telethon.tl.types import InputPeerUser
+    from app.services.broadcast_log_sender import _resolve_destination_entity, _resolved_dest_cache
+
+    _resolved_dest_cache.clear()
+    cached_peer = InputPeerUser(user_id=8433414493, access_hash=123456789)
+
+    mock_client = AsyncMock()
+    mock_client.get_input_entity = AsyncMock(return_value=cached_peer)
+    mock_client.get_entity = AsyncMock(side_effect=AssertionError("get_entity must not be called when cached"))
+
+    entity = await _resolve_destination_entity(mock_client, "@teleboslogging_bot", me_id=123)
+    assert entity == cached_peer
+    mock_client.get_input_entity.assert_awaited_once_with("teleboslogging_bot")
+    mock_client.get_entity.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_destination_entity_prefers_db_cache():
+    """Verify that when Telethon input cache misses, DB cache is used without calling get_entity."""
+    from telethon.tl.types import InputPeerUser
+    from app.services.broadcast_log_sender import _resolve_destination_entity, _resolved_dest_cache
+
+    _resolved_dest_cache.clear()
+
+    mock_client = AsyncMock()
+    mock_client.get_input_entity = AsyncMock(side_effect=ValueError("cache miss"))
+    mock_client.get_entity = AsyncMock(side_effect=AssertionError("get_entity must not be called when DB cached"))
+
+    db_row = (8433414493, -1132153227385084420, "bot")
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(return_value=SimpleNamespace(first=lambda: db_row))
+    mock_session_ctx = AsyncMock()
+    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.database.async_session_factory", return_value=mock_session_ctx):
+        entity = await _resolve_destination_entity(mock_client, "@teleboslogging_bot", me_id=456)
+        assert isinstance(entity, InputPeerUser)
+        assert entity.user_id == 8433414493
+        assert entity.access_hash == -1132153227385084420
+        mock_client.get_entity.assert_not_called()
+

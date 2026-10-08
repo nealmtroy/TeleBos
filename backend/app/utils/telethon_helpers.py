@@ -117,10 +117,11 @@ async def join_and_resolve_chat(client: TelegramClient, target: str, job_id_str:
                     raise
     else:
         public = parse_public_target(target)
-        if public.lstrip("-").isdigit():
-            entity = await client.get_entity(int(public))
-        else:
-            entity = await client.get_entity(public)
+        target_key = int(public) if public.lstrip("-").isdigit() else public
+        try:
+            entity = await client.get_input_entity(target_key)
+        except Exception:
+            entity = await client.get_entity(target_key)
 
         for attempt in range(2):
             try:

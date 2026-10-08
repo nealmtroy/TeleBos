@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-09
+- **[e4ae7619](https://github.com/nealmtroy/TeleBos/commit/e4ae7619)**: fix(sentry): resolve queuepool timeouts, missing greenlet, spambot unblock, and help hydration errors
+
 ## 2026-10-08
 - **[912192fe](https://github.com/nealmtroy/TeleBos/commit/912192fe)**: feat(support): add AI chatbot support widget to help page with order lookup, guardrails, and admin escalation
 - **[f492ccc1](https://github.com/nealmtroy/TeleBos/commit/f492ccc1)**: fix(help): use dynamic rendering for help slug layout to eliminate headers bailout error
