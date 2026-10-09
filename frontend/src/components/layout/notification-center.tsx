@@ -33,6 +33,22 @@ function notificationParam(notification: AppNotification, key: string, fallback:
   return typeof value === "string" || typeof value === "number" ? value : fallback;
 }
 
+function formatCurrency(val: unknown): string {
+  const num = typeof val === "number" ? val : typeof val === "string" ? Number(val) : 0;
+  return `Rp ${isNaN(num) ? "0" : Math.abs(num).toLocaleString("id-ID")}`;
+}
+
+function getAccountIdentifier(data: Record<string, unknown>): string {
+  if (data.telegram_id) {
+    return `User ID ${data.telegram_id}`;
+  }
+  if (data.phone) {
+    const p = String(data.phone);
+    return p.startsWith("+") ? p : `+${p}`;
+  }
+  return "Telegram";
+}
+
 export function getNotificationContent(notification: AppNotification, translate: Translate) {
   switch (notification.event) {
     case "order.created":
@@ -57,35 +73,141 @@ export function getNotificationContent(notification: AppNotification, translate:
           status: notificationParam(notification, "status", "Updated"),
         }),
       };
-    case "marketplace.listed":
+    case "marketplace.listed": {
+      const count = Number(notificationParam(notification, "count", 1));
+      const hasSingle = count === 1 || Boolean(notification.data.telegram_id) || Boolean(notification.data.phone);
+      if (hasSingle && (notification.data.telegram_id || notification.data.phone)) {
+        const identifier = getAccountIdentifier(notification.data);
+        const hasPrice = notification.data.price !== undefined && notification.data.price !== null;
+        const priceDetail = hasPrice ? ` seharga ${formatCurrency(notification.data.price)}` : "";
+        return {
+          title: translate("orders.notificationSellListedSingleTitle"),
+          message: translate("orders.notificationSellListedSingleMessage", {
+            identifier,
+            priceDetail,
+          }),
+        };
+      }
       return {
         title: translate("orders.notificationSellListedTitle"),
         message: translate("orders.notificationSellListedMessage", {
-          count: notificationParam(notification, "count", 0),
+          count,
         }),
       };
-    case "marketplace.purchase_completed":
+    }
+    case "marketplace.purchase_completed": {
+      const identifier = getAccountIdentifier(notification.data);
+      const hasAmount = notification.data.price !== undefined && notification.data.price !== null;
       return {
         title: translate("orders.notificationBuySuccessTitle"),
-        message: translate("orders.notificationBuySuccessMessage"),
+        message: hasAmount
+          ? translate("orders.notificationBuySuccessDetailedMessage", {
+              identifier,
+              amount: formatCurrency(notification.data.price),
+            })
+          : translate("orders.notificationBuySuccessMessage", {
+              identifier,
+            }),
       };
-    case "marketplace.sale_completed":
+    }
+    case "marketplace.sale_completed": {
+      const identifier = getAccountIdentifier(notification.data);
+      const hasAmount = notification.data.price !== undefined && notification.data.price !== null;
       return {
         title: translate("orders.notificationSaleSuccessTitle"),
-        message: translate("orders.notificationSaleSuccessMessage", {
-          phone: notificationParam(notification, "phone", "Account"),
-        }),
+        message: hasAmount
+          ? translate("orders.notificationSaleSuccessWithAmountMessage", {
+              identifier,
+              amount: formatCurrency(notification.data.price),
+            })
+          : translate("orders.notificationSaleSuccessMessage", {
+              identifier,
+            }),
       };
-    case "marketplace.listing_cancelled":
+    }
+    case "marketplace.listing_cancelled": {
+      const identifier = getAccountIdentifier(notification.data);
       return {
         title: translate("orders.notificationSellCanceledTitle"),
-        message: translate("orders.notificationSellCanceledMessage"),
+        message: translate("orders.notificationSellCanceledMessage", {
+          identifier,
+        }),
       };
-    case "marketplace.listing_invalid":
+    }
+    case "marketplace.listing_invalid": {
+      const identifier = getAccountIdentifier(notification.data);
       return {
         title: translate("orders.notificationListingInvalidTitle"),
         message: translate("orders.notificationListingInvalidMessage", {
-          phone: notificationParam(notification, "phone", "Account"),
+          identifier,
+        }),
+      };
+    }
+    case "wallet.topup_created":
+      return {
+        title: translate("wallet.notificationTopupCreatedTitle"),
+        message: translate("wallet.notificationTopupCreatedMessage", {
+          amount: formatCurrency(notification.data.amount),
+          method: notificationParam(notification, "method", "QRIS"),
+        }),
+      };
+    case "wallet.topup_approved":
+      return {
+        title: translate("wallet.notificationTopupApprovedTitle"),
+        message: translate("wallet.notificationTopupApprovedMessage", {
+          amount: formatCurrency(notification.data.amount),
+        }),
+      };
+    case "wallet.topup_rejected":
+      return {
+        title: translate("wallet.notificationTopupRejectedTitle"),
+        message: translate("wallet.notificationTopupRejectedMessage", {
+          amount: formatCurrency(notification.data.amount),
+        }),
+      };
+    case "wallet.withdraw_created":
+      return {
+        title: translate("wallet.notificationWithdrawCreatedTitle"),
+        message: translate("wallet.notificationWithdrawCreatedMessage", {
+          amount: formatCurrency(notification.data.amount),
+          method: notificationParam(notification, "method", "Bank"),
+        }),
+      };
+    case "wallet.withdraw_approved":
+      return {
+        title: translate("wallet.notificationWithdrawApprovedTitle"),
+        message: translate("wallet.notificationWithdrawApprovedMessage", {
+          amount: formatCurrency(notification.data.amount),
+        }),
+      };
+    case "wallet.withdraw_rejected":
+      return {
+        title: translate("wallet.notificationWithdrawRejectedTitle"),
+        message: translate("wallet.notificationWithdrawRejectedMessage", {
+          amount: formatCurrency(notification.data.amount),
+        }),
+      };
+    case "wallet.admin_adjustment":
+      return {
+        title: translate("wallet.notificationAdminAdjustmentTitle"),
+        message: translate("wallet.notificationAdminAdjustmentMessage", {
+          amount: formatCurrency(notification.data.amount),
+          action: notificationParam(notification, "action", "penyesuaian"),
+        }),
+      };
+    case "wallet.redeem_success":
+      return {
+        title: translate("wallet.notificationRedeemSuccessTitle"),
+        message: translate("wallet.notificationRedeemSuccessMessage", {
+          code: notificationParam(notification, "code", "Voucher"),
+        }),
+      };
+    case "support_ticket_created":
+      return {
+        title: translate("notifications.supportTicketTitle"),
+        message: translate("notifications.supportTicketMessage", {
+          ticket_number: notificationParam(notification, "ticket_number", ""),
+          sender: notificationParam(notification, "sender", "User"),
         }),
       };
     default:
@@ -139,9 +261,39 @@ export function NotificationCenter() {
 
   const handleNotificationClick = (notification: AppNotification) => {
     if (!notification.read_at) markRead.mutate(notification.id);
-    if (notification.href) {
-      setOpen(false);
-      router.push(notification.href);
+    setOpen(false);
+
+    let targetHref = notification.href;
+    if (targetHref) {
+      if (targetHref === "/orders" || targetHref.startsWith("/orders")) {
+        try {
+          const url = new URL(targetHref, "https://telebos.local");
+          if (!url.searchParams.has("tab")) {
+            if (notification.event.startsWith("marketplace.")) {
+              url.searchParams.set("tab", "accounts");
+            } else if (notification.event.startsWith("order.")) {
+              url.searchParams.set("tab", "smm");
+            } else if (notification.event.startsWith("wallet.")) {
+              const ev = notification.event;
+              if (ev.includes("topup")) url.searchParams.set("tab", "deposits");
+              else if (ev.includes("withdraw")) url.searchParams.set("tab", "withdrawals");
+              else url.searchParams.set("tab", "balance");
+            }
+          }
+          const orderId = notification.data.order_id || notification.data.account_id || notification.data.id;
+          if (orderId && !url.searchParams.has("order_id")) {
+            url.searchParams.set("order_id", String(orderId));
+          }
+          const phoneOrTg = notification.data.phone || notification.data.telegram_id;
+          if (phoneOrTg && !url.searchParams.has("search")) {
+            url.searchParams.set("search", String(phoneOrTg));
+          }
+          targetHref = `${url.pathname}${url.search}`;
+        } catch {
+          // fallback
+        }
+      }
+      router.push(targetHref);
     }
   };
 
@@ -163,106 +315,123 @@ export function NotificationCenter() {
       </button>
 
       {open && (
-        <section
-          aria-label={_("notifications.title")}
-          className="fixed inset-x-3 top-[4.5rem] z-50 flex max-h-[calc(100dvh-5.25rem)] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg dark:shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[min(32rem,calc(100dvh-6rem))] sm:w-96"
-        >
-          <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-100">{_("notifications.title")}</h2>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                {unreadCount > 0 ? _("notifications.unreadCount", { count: unreadCount }) : _("notifications.allCaughtUp")}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => markAllRead.mutate()}
-                  disabled={markAllRead.isPending}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary-700 dark:text-primary-400 transition-colors hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
-                >
-                  <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                  {_("notifications.markAllRead")}
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => clear.mutate()}
-                  disabled={clear.isPending}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-700 dark:hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
-                  aria-label={_("notifications.clearAll")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          </header>
+        <>
+          {/* Mobile backdrop overlay */}
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs sm:hidden"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
 
-          {isLoading ? (
-            <div className="flex min-h-44 items-center justify-center px-6 text-sm text-slate-500 dark:text-slate-400">
-              {_("notifications.loading")}
-            </div>
-          ) : isError && !data ? (
-            <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{_("notifications.loadError")}</p>
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="mt-3 rounded-lg px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-              >
-                {_("notifications.retry")}
-              </button>
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                <Bell className="h-5 w-5" aria-hidden="true" />
+          <section
+            aria-label={_("notifications.title")}
+            className="fixed top-16 right-3 left-3 sm:left-auto sm:right-0 sm:top-full sm:mt-2 z-50 flex max-h-[calc(100dvh-5.25rem)] sm:max-h-[min(32rem,calc(100dvh-6rem))] w-auto sm:w-96 max-w-sm sm:max-w-none ml-auto flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl"
+          >
+            <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3 shrink-0">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-100">{_("notifications.title")}</h2>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {unreadCount > 0 ? _("notifications.unreadCount", { count: unreadCount }) : _("notifications.allCaughtUp")}
+                </p>
               </div>
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{_("notifications.emptyTitle")}</p>
-              <p className="mt-1 max-w-56 text-xs leading-5 text-slate-500 dark:text-slate-400">{_("notifications.emptyDescription")}</p>
-            </div>
-          ) : (
-            <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-live="polite">
-              {notifications.map((notification) => {
-                const Icon = notificationIcons[notification.kind];
-                const content = getNotificationContent(notification, _);
-                return (
-                  <li key={notification.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
-                    <div className={cn("group flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60", !notification.read_at && "bg-primary-50/50 dark:bg-primary-950/20")}>
-                      <button
-                        type="button"
-                        onClick={() => handleNotificationClick(notification)}
-                        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none cursor-pointer"
-                      >
-                        <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", notificationStyles[notification.kind])}>
-                          <Icon className="h-4 w-4" aria-hidden="true" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-start justify-between gap-3">
-                            <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{content.title}</span>
-                            <time className="shrink-0 pt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{formatNotificationTime(notification.created_at, locale)}</time>
+              <div className="flex items-center gap-1">
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllRead.mutate()}
+                    disabled={markAllRead.isPending}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary-700 dark:text-primary-400 transition-colors hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="hidden sm:inline">{_("notifications.markAllRead")}</span>
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clear.mutate()}
+                    disabled={clear.isPending}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-700 dark:hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
+                    aria-label={_("notifications.clearAll")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="flex h-8 w-8 sm:hidden items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  aria-label={_("common.close")}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </header>
+
+            {isLoading ? (
+              <div className="flex min-h-44 items-center justify-center px-6 text-sm text-slate-500 dark:text-slate-400">
+                {_("notifications.loading")}
+              </div>
+            ) : isError && !data ? (
+              <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{_("notifications.loadError")}</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-3 rounded-lg px-3 py-1.5 text-xs font-medium text-primary-700 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                >
+                  {_("notifications.retry")}
+                </button>
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="flex min-h-44 flex-col items-center justify-center px-6 text-center">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <Bell className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{_("notifications.emptyTitle")}</p>
+                <p className="mt-1 max-w-56 text-xs leading-5 text-slate-500 dark:text-slate-400">{_("notifications.emptyDescription")}</p>
+              </div>
+            ) : (
+              <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar sidebar-scrollbar" aria-live="polite">
+                {notifications.map((notification) => {
+                  const Icon = notificationIcons[notification.kind];
+                  const content = getNotificationContent(notification, _);
+                  return (
+                    <li key={notification.id} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
+                      <div className={cn("group flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60", !notification.read_at && "bg-primary-50/50 dark:bg-primary-950/20")}>
+                        <button
+                          type="button"
+                          onClick={() => handleNotificationClick(notification)}
+                          className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none cursor-pointer"
+                        >
+                          <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", notificationStyles[notification.kind])}>
+                            <Icon className="h-4 w-4" aria-hidden="true" />
                           </span>
-                          {content.message && <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">{content.message}</span>}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remove.mutate(notification.id)}
-                        disabled={remove.isPending}
-                        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-6 sm:w-6 sm:text-slate-400 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100 cursor-pointer"
-                        aria-label={_("notifications.dismiss")}
-                      >
-                        <X className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-start justify-between gap-3">
+                              <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{content.title}</span>
+                              <time className="shrink-0 pt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{formatNotificationTime(notification.created_at, locale)}</time>
+                            </span>
+                            {content.message && <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">{content.message}</span>}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => remove.mutate(notification.id)}
+                          disabled={remove.isPending}
+                          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-6 sm:w-6 sm:text-slate-400 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100 cursor-pointer"
+                          aria-label={_("notifications.dismiss")}
+                        >
+                          <X className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </>
       )}
     </div>
   );

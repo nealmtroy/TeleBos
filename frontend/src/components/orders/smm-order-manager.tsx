@@ -773,7 +773,6 @@ function OrderModal({
     // the number input then held a value below its min, discarding whatever was
     // typed next.
     const [quantityInput, setQuantityInput] = useState(String(service.min));
-    const [comments, setComments] = useState("");
 
     const commitQuantity = (raw: string) => {
       setQuantityInput(String(clampQuantity(raw, service.min, service.max)));
@@ -838,7 +837,6 @@ function OrderModal({
         service_id: Number(service.id),
         data_target: dataTarget.trim(),
         quantity,
-        comments: comments.trim() || undefined,
       });
 
       toast({
@@ -881,7 +879,7 @@ function OrderModal({
           animation: "modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 overflow-y-auto space-y-5">
+        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 min-h-0 flex-1 overflow-y-auto custom-scrollbar sidebar-scrollbar overscroll-contain space-y-5">
           {/* Header */}
           <div className="flex items-start justify-between border-b border-border/50 pb-4">
             <div>
@@ -1026,7 +1024,7 @@ function OrderModal({
                   min={service.min}
                   max={service.max}
                   aria-label={_("orders.quantity") || "Jumlah Pemesanan"}
-                  className="w-full text-center py-2.5 rounded-xl text-base font-bold bg-background border border-input text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums"
+                  className="w-full text-center py-2.5 rounded-xl text-base font-bold bg-background border border-input text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums no-spin-button [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0"
                 />
                 <button
                   type="button"
@@ -1082,22 +1080,6 @@ function OrderModal({
                   Max ({service.max.toLocaleString("id-ID")})
                 </button>
               </div>
-            </div>
-
-            {/* Optional Comments */}
-            <div>
-              <label htmlFor="smm-order-comments" className="block text-xs font-bold text-foreground mb-1.5">
-                {_("smmOrderManager.commentsOptional")}
-              </label>
-              <textarea
-                id="smm-order-comments"
-                name="comments"
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={2}
-                placeholder={_("smmOrderManager.commentsPlaceholder")}
-                className="w-full px-3.5 py-2 rounded-xl text-xs bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary resize-none"
-              />
             </div>
 
             {/* Live Price & Wallet Gauge Summary */}

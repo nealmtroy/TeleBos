@@ -163,7 +163,7 @@ export function useSellAccounts() {
       reconcileMarketplaceState();
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       reconcileMarketplaceState();
       if (isMarketplaceSellUnknownOutcome(error)) {
         toast.warning(t("orders.notificationSellPendingTitle"), {
@@ -171,8 +171,17 @@ export function useSellAccounts() {
         });
         return;
       }
+      const rawDetail = error?.response?.data?.detail;
+      let message = t("orders.notificationSellFailedMessage");
+      if (typeof rawDetail === "string" && rawDetail.trim()) {
+        if (rawDetail.toLowerCase().includes("inactive account")) {
+          message = t("orders.accountExpiredCannotSell");
+        } else {
+          message = rawDetail;
+        }
+      }
       toast.error(t("orders.notificationSellFailedTitle"), {
-        description: t("orders.notificationSellFailedMessage"),
+        description: message,
       });
     },
   });

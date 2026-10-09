@@ -81,6 +81,7 @@ export function useRequestTopup() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
       queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
@@ -95,6 +96,7 @@ export function useRequestWithdraw() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
       queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
@@ -146,6 +148,7 @@ export function useAdminUpdateTransactionStatus() {
       queryClient.invalidateQueries({ queryKey: ["admin", "wallet-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
@@ -161,6 +164,7 @@ export function useCheckTopupStatus() {
       if (data.is_paid) {
         queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
         queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
       }
     },
   });

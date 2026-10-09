@@ -291,6 +291,7 @@ async def test_webhook_paid_success_credits_user():
         "signature": "correct_sig",
     })
     mock_db = AsyncMock()
+    mock_db.add = MagicMock()
     
     # First execute is for WalletTransaction, second is for User
     tx_result = MagicMock()
@@ -324,6 +325,7 @@ async def test_webhook_expired_marks_rejected():
         "signature": "correct_sig",
     })
     mock_db = AsyncMock()
+    mock_db.add = MagicMock()
     tx_result = MagicMock()
     tx_result.scalar_one_or_none.return_value = tx
     mock_db.execute.return_value = tx_result

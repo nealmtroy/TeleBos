@@ -1,7 +1,7 @@
 """Wallet transaction model — tracks deposits, withdrawals, redeems, and admin adjustments."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -41,7 +41,10 @@ class WalletTransaction(Base):
     qris_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
     )
     expired_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

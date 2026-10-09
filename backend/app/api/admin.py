@@ -29,6 +29,7 @@ from app.schemas.redeem import (
     RedeemLogListResponse,
 )
 from app.services import broadcast_service
+from app.services.notification_service import create_notification
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -527,6 +528,18 @@ async def update_user_balance(
         processed_at=datetime.now(),
     )
     db.add(tx)
+    create_notification(
+        db,
+        user.id,
+        "wallet.admin_adjustment",
+        kind="info",
+        data={
+            "amount": payload.amount,
+            "new_balance": user.balance,
+            "action": "penambahan" if payload.amount >= 0 else "pengurangan",
+        },
+        href="/wallet",
+    )
 
     await db.flush()
     return BalanceHistoryResponse(

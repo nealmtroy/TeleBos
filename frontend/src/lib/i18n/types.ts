@@ -85,6 +85,8 @@ export interface Dict {
     retry: string;
     unknownTitle: string;
     unknownDescription: string;
+    supportTicketTitle: string;
+    supportTicketMessage: string;
   };
 
   // Account Switcher
@@ -1812,6 +1814,8 @@ export interface Dict {
     ruleDeferredDesc: string;
     ruleCustodyTitle: string;
     ruleCustodyDesc: string;
+    accountExpiredCannotSell: string;
+    accountExpiredCannotSellDesc: string;
     accountsEligibleCount: string;
     selectedCount: string;
     selectAllAvailable: string;
@@ -1892,13 +1896,16 @@ export interface Dict {
     notificationRefreshFailedTitle: string;
     notificationRefreshFailedMessage: string;
     notificationSellListedTitle: string;
+    notificationSellListedSingleTitle: string;
     notificationSellListedMessage: string;
+    notificationSellListedSingleMessage: string;
     notificationSellPendingTitle: string;
     notificationSellPendingMessage: string;
     notificationSellFailedTitle: string;
     notificationSellFailedMessage: string;
     notificationBuySuccessTitle: string;
     notificationBuySuccessMessage: string;
+    notificationBuySuccessDetailedMessage: string;
     notificationBuyFailedTitle: string;
     notificationBuyFailedMessage: string;
     notificationSellCanceledTitle: string;
@@ -1907,6 +1914,7 @@ export interface Dict {
     notificationSellCancelFailedMessage: string;
     notificationSaleSuccessTitle: string;
     notificationSaleSuccessMessage: string;
+    notificationSaleSuccessWithAmountMessage: string;
     notificationListingInvalidTitle: string;
     notificationListingInvalidMessage: string;
   };
@@ -2197,6 +2205,22 @@ export interface Dict {
     paymentRecordedToast: string;
     topupFailedToast: string;
     withdrawFailedToast: string;
+    notificationTopupCreatedTitle: string;
+    notificationTopupCreatedMessage: string;
+    notificationTopupApprovedTitle: string;
+    notificationTopupApprovedMessage: string;
+    notificationTopupRejectedTitle: string;
+    notificationTopupRejectedMessage: string;
+    notificationWithdrawCreatedTitle: string;
+    notificationWithdrawCreatedMessage: string;
+    notificationWithdrawApprovedTitle: string;
+    notificationWithdrawApprovedMessage: string;
+    notificationWithdrawRejectedTitle: string;
+    notificationWithdrawRejectedMessage: string;
+    notificationAdminAdjustmentTitle: string;
+    notificationAdminAdjustmentMessage: string;
+    notificationRedeemSuccessTitle: string;
+    notificationRedeemSuccessMessage: string;
   };
   pricing: {
     kicker: string;

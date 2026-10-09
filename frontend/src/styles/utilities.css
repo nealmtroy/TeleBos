@@ -10,6 +10,17 @@
     scrollbar-width: none;  /* Firefox */
   }
 
+  /* Hide number input spinners / arrows */
+  .no-spin-button {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .no-spin-button::-webkit-outer-spin-button,
+  .no-spin-button::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   /* A visible but unobtrusive scrollbar.
      Used by the sidebar nav and main content areas instead of default OS scrollbars.
      Supports both light and dark mode, and horizontal/vertical scroll. */

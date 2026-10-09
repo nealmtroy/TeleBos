@@ -26,6 +26,7 @@ from app.services.klikqris_service import (
     is_klikqris_configured,
     verify_signature,
 )
+from app.services.notification_service import create_notification
 from app.utils.rate_limiter import rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,19 @@ async def request_topup(
             expired_at=expired_at,
         )
         db.add(tx)
+        create_notification(
+            db,
+            current_user.id,
+            "wallet.topup_created",
+            kind="info",
+            data={
+                "tx_id": tx.id,
+                "amount": tx.amount,
+                "total_amount": tx.total_amount or tx.amount,
+                "method": tx.method,
+            },
+            href=f"/wallet/invoice/{tx.id}",
+        )
         await db.flush()
 
         return {
@@ -197,6 +211,19 @@ async def request_topup(
         status="pending",
     )
     db.add(tx)
+    create_notification(
+        db,
+        current_user.id,
+        "wallet.topup_created",
+        kind="info",
+        data={
+            "tx_id": tx.id,
+            "amount": tx.amount,
+            "total_amount": tx.total_amount or tx.amount,
+            "method": tx.method,
+        },
+        href=f"/wallet/invoice/{tx.id}",
+    )
     await db.flush()
 
     return {
@@ -246,6 +273,18 @@ async def request_withdraw(
         status="pending",
     )
     db.add(tx)
+    create_notification(
+        db,
+        locked_user.id,
+        "wallet.withdraw_created",
+        kind="info",
+        data={
+            "tx_id": tx.id,
+            "amount": tx.amount,
+            "method": tx.method,
+        },
+        href="/wallet",
+    )
     await db.flush()
 
     return WalletTransactionResponse(
@@ -258,7 +297,7 @@ async def request_withdraw(
         note=tx.note,
         status=tx.status,
         admin_note=tx.admin_note,
-        created_at=tx.created_at,
+        created_at=tx.created_at or datetime.now(timezone.utc),
         processed_at=tx.processed_at,
     )
 
@@ -364,10 +403,63 @@ async def admin_update_transaction_status(
     if tx.type == "topup":
         if payload.status == "approved":
             user.balance += tx.amount
+            create_notification(
+                db,
+                user.id,
+                "wallet.topup_approved",
+                kind="success",
+                data={
+                    "tx_id": tx.id,
+                    "amount": tx.amount,
+                    "method": tx.method,
+                },
+                href="/wallet",
+            )
+        elif payload.status == "rejected":
+            create_notification(
+                db,
+                user.id,
+                "wallet.topup_rejected",
+                kind="warning",
+                data={
+                    "tx_id": tx.id,
+                    "amount": tx.amount,
+                    "method": tx.method,
+                    "reason": payload.admin_note or "Dibatalkan oleh Admin",
+                },
+                href="/wallet",
+            )
     elif tx.type == "withdraw":
-        if payload.status == "rejected":
+        if payload.status == "approved":
+            create_notification(
+                db,
+                user.id,
+                "wallet.withdraw_approved",
+                kind="success",
+                data={
+                    "tx_id": tx.id,
+                    "amount": tx.amount,
+                    "method": tx.method,
+                    "note": payload.admin_note or "",
+                },
+                href="/wallet",
+            )
+        elif payload.status == "rejected":
             # Refund balance back to user
             user.balance += tx.amount
+            create_notification(
+                db,
+                user.id,
+                "wallet.withdraw_rejected",
+                kind="error",
+                data={
+                    "tx_id": tx.id,
+                    "amount": tx.amount,
+                    "method": tx.method,
+                    "reason": payload.admin_note or "Ditolak oleh Admin",
+                },
+                href="/wallet",
+            )
 
     tx.status = payload.status
     tx.admin_note = payload.admin_note
@@ -389,7 +481,7 @@ async def admin_update_transaction_status(
         qris_image=tx.qris_image,
         expired_at=tx.expired_at,
         admin_note=tx.admin_note,
-        created_at=tx.created_at,
+        created_at=tx.created_at or datetime.now(timezone.utc),
         processed_at=tx.processed_at,
     )
 
@@ -472,6 +564,18 @@ async def klikqris_webhook(
         tx.processed_at = now_utc
         total_paid = payload.get("total_amount") or tx.total_amount or tx.amount
         tx.admin_note = f"Auto-approved via KlikQRIS webhook (total: Rp {int(float(total_paid)):,})"
+        create_notification(
+            db,
+            user.id,
+            "wallet.topup_approved",
+            kind="success",
+            data={
+                "tx_id": tx.id,
+                "amount": tx.amount,
+                "method": tx.method,
+            },
+            href="/wallet",
+        )
 
         await db.commit()
         logger.info(
@@ -486,6 +590,19 @@ async def klikqris_webhook(
         tx.status = "rejected"
         tx.processed_at = now_utc
         tx.admin_note = "Expired by KlikQRIS webhook"
+        create_notification(
+            db,
+            tx.user_id,
+            "wallet.topup_rejected",
+            kind="warning",
+            data={
+                "tx_id": tx.id,
+                "amount": tx.amount,
+                "method": tx.method,
+                "reason": "Pembayaran kedaluwarsa",
+            },
+            href="/wallet",
+        )
         await db.commit()
         logger.info("KlikQRIS webhook: Marked invoice %s as rejected (expired)", order_id)
         return {"status": "ok", "message": "Payment marked as expired"}
@@ -534,12 +651,37 @@ async def check_topup_status(
                     tx.processed_at = now_utc
                     total_paid = gateway_data.get("total_amount") or tx.total_amount or tx.amount
                     tx.admin_note = f"Auto-approved via KlikQRIS status check (total: Rp {int(float(total_paid)):,})"
+                    create_notification(
+                        db,
+                        user.id,
+                        "wallet.topup_approved",
+                        kind="success",
+                        data={
+                            "tx_id": tx.id,
+                            "amount": tx.amount,
+                            "method": tx.method,
+                        },
+                        href="/wallet",
+                    )
                     await db.commit()
                     logger.info("Topup %s auto-approved via status check", order_id)
             elif gw_status == "EXPIRED":
                 tx.status = "rejected"
                 tx.processed_at = now_utc
                 tx.admin_note = "Expired via KlikQRIS status check"
+                create_notification(
+                    db,
+                    tx.user_id,
+                    "wallet.topup_rejected",
+                    kind="warning",
+                    data={
+                        "tx_id": tx.id,
+                        "amount": tx.amount,
+                        "method": tx.method,
+                        "reason": "Pembayaran kedaluwarsa",
+                    },
+                    href="/wallet",
+                )
                 await db.commit()
 
     return TopupStatusCheckResponse(

@@ -13,6 +13,7 @@ from app.models.redeem_code import RedeemCode
 from app.models.redeem_log import RedeemLog
 from app.models.wallet_transaction import WalletTransaction
 from app.schemas.redeem import RedeemCodeCreate
+from app.services.notification_service import create_notification
 
 
 def generate_code(*, prefix: str | None = None) -> str:
@@ -181,6 +182,19 @@ async def redeem_code(
 
     # Increment usage
     redeem.used_count += 1
+    create_notification(
+        db,
+        user.id,
+        "wallet.redeem_success",
+        kind="success",
+        data={
+            "code": redeem.code,
+            "code_type": redeem.code_type,
+            "amount": redeem.amount or 0,
+            "plan": plan or "",
+        },
+        href="/wallet" if redeem.code_type == "balance" else "/subscriptions",
+    )
     await db.flush()
 
     return {

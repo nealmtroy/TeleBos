@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { useOrderHistory } from "@/hooks/use-orders";
@@ -94,6 +95,8 @@ interface UnifiedOrder {
   dateRaw: Date;
   dateStr: string;
   timeStr: string;
+  telegramId?: number | string | null;
+  phone?: string | null;
   smmOrderId?: string | null;
   remains?: number | null;
   startCount?: number | null;
@@ -169,20 +172,39 @@ const formatWIBTime = (dateString: string) => {
   );
 };
 
-export default function OrderHistoryPage() {
+function OrderHistoryContent() {
   const _ = useT();
   const locale = useI18nStore((s) => s.locale);
   const user = useAuthStore((s) => s.user);
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<HistoryTab>("all");
-  const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const orderIdParam = searchParams.get("order_id") || searchParams.get("id");
+  const searchParam = searchParams.get("search");
+
+  const [activeTab, setActiveTab] = useState<HistoryTab>(
+    tabParam && ["all", "smm", "accounts", "deposits", "withdrawals", "balance"].includes(tabParam)
+      ? (tabParam as HistoryTab)
+      : "all"
+  );
+  const [search, setSearch] = useState(searchParam || "");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
   });
   const [page, setPage] = useState(1);
+
+  // Sync tab & search whenever URL params change
+  useEffect(() => {
+    if (tabParam && ["all", "smm", "accounts", "deposits", "withdrawals", "balance"].includes(tabParam)) {
+      setActiveTab(tabParam as HistoryTab);
+    }
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+  }, [tabParam, searchParam]);
 
   // Sorting
   const [sortBy, setSortBy] = useState<"date" | "status" | "price">("date");
@@ -336,6 +358,8 @@ export default function OrderHistoryPage() {
           dateRaw: new Date(log.created_at),
           dateStr: formatWIBDate(log.created_at, locale),
           timeStr: formatWIBTime(log.created_at),
+          telegramId: log.telegram_id,
+          phone: log.phone,
           originalItem: log,
         });
       }
@@ -488,6 +512,31 @@ export default function OrderHistoryPage() {
 
     return items;
   }, [orders, logs, allWalletTxs, user?.id, locale]);
+
+  // Auto-select and open order detail dialog if requested via URL
+  useEffect(() => {
+    if (!orderIdParam || unifiedItems.length === 0) return;
+    const cleanId = orderIdParam.trim().toLowerCase();
+    const found = unifiedItems.find((it) => {
+      const idMatch = it.id.toLowerCase() === cleanId;
+      const displayMatch = it.orderIdDisplay.toLowerCase().includes(cleanId);
+      const smmMatch = it.smmOrderId && String(it.smmOrderId).toLowerCase() === cleanId;
+      const origAccountMatch = it.originalItem?.account_id && String(it.originalItem.account_id).toLowerCase() === cleanId;
+      const phoneMatch = it.phone && it.phone.toLowerCase().includes(cleanId);
+      const tgMatch = it.telegramId && String(it.telegramId).toLowerCase() === cleanId;
+      return idMatch || displayMatch || smmMatch || origAccountMatch || phoneMatch || tgMatch;
+    });
+
+    if (found) {
+      setSelectedDetail(found);
+      if (!tabParam) {
+        if (found.type === "telegram_account") setActiveTab("accounts");
+        else if (found.type === "smm") setActiveTab("smm");
+        else if (found.type === "deposit") setActiveTab("deposits");
+        else if (found.type === "withdraw") setActiveTab("withdrawals");
+      }
+    }
+  }, [orderIdParam, unifiedItems, tabParam]);
 
   // Executive metrics calculations
   const metrics = useMemo(() => {
@@ -1172,30 +1221,37 @@ export default function OrderHistoryPage() {
 
                       {/* Detail Target */}
                       <TableCell className="py-3.5 px-4 w-[180px]">
-                        <div className="flex items-center gap-1.5 overflow-hidden">
-                          <p
-                            className="text-[11px] font-mono text-muted-foreground truncate select-all"
-                            title={item.detail}
-                          >
-                            {item.detail}
-                          </p>
-                          {item.detail !== "-" && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopy(item.detail, `target-${item.id}`)}
-                                  className="text-muted-foreground/50 hover:text-foreground p-0.5 shrink-0"
-                                >
-                                  {copiedId === `target-${item.id}` ? (
-                                    <Check className="h-3 w-3 text-emerald-500" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Copy Target</TooltipContent>
-                            </Tooltip>
+                        <div className="flex flex-col gap-0.5 overflow-hidden">
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <p
+                              className="text-[11px] font-mono text-muted-foreground truncate select-all"
+                              title={item.detail}
+                            >
+                              {item.detail}
+                            </p>
+                            {item.detail !== "-" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(item.detail, `target-${item.id}`)}
+                                    className="text-muted-foreground/50 hover:text-foreground p-0.5 shrink-0"
+                                  >
+                                    {copiedId === `target-${item.id}` ? (
+                                      <Check className="h-3 w-3 text-emerald-500" />
+                                    ) : (
+                                      <Copy className="h-3 w-3" />
+                                    )}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copy Target</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                          {item.telegramId && (
+                            <span className="text-[10px] font-mono text-muted-foreground/75 truncate select-all">
+                              UID: {item.telegramId}
+                            </span>
                           )}
                         </div>
                       </TableCell>
@@ -1383,6 +1439,11 @@ export default function OrderHistoryPage() {
                         <p className="font-mono text-[11px] text-foreground truncate">
                           {item.detail}
                         </p>
+                        {item.telegramId && (
+                          <p className="font-mono text-[10px] text-muted-foreground/75 truncate select-all">
+                            UID: {item.telegramId}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-0.5 text-right">
@@ -1627,6 +1688,33 @@ export default function OrderHistoryPage() {
                 </div>
               </div>
 
+              {selectedDetail.telegramId && (
+                <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
+                  <span className="font-semibold text-muted-foreground">
+                    Telegram User ID
+                  </span>
+                  <div className="col-span-2 flex items-center justify-between gap-2">
+                    <span className="font-mono text-foreground font-semibold select-all">
+                      {selectedDetail.telegramId}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(String(selectedDetail.telegramId), "modal-uid")
+                      }
+                      className="p-1 text-muted-foreground hover:text-foreground shrink-0 rounded hover:bg-muted"
+                      title="Copy User ID"
+                    >
+                      {copiedId === "modal-uid" ? (
+                        <Check className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-2 py-1.5 border-b border-border/40">
                 <span className="font-semibold text-muted-foreground">
                   {locale === "id" ? "Kuantitas" : "Quantity"}
@@ -1697,15 +1785,21 @@ export default function OrderHistoryPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const summary = [
+                  const summaryParts = [
                     `Order ID: ${selectedDetail.orderIdDisplay}`,
                     `Layanan: ${selectedDetail.serviceName}`,
                     `Target: ${selectedDetail.detail}`,
+                  ];
+                  if (selectedDetail.telegramId) {
+                    summaryParts.push(`Telegram UID: ${selectedDetail.telegramId}`);
+                  }
+                  summaryParts.push(
                     `Jumlah: ${selectedDetail.quantityDisplay}`,
                     `Total: ${selectedDetail.priceDisplay}`,
                     `Status: ${selectedDetail.status}`,
-                    `Waktu: ${selectedDetail.dateStr} ${selectedDetail.timeStr}`,
-                  ].join("\n");
+                    `Waktu: ${selectedDetail.dateStr} ${selectedDetail.timeStr}`
+                  );
+                  const summary = summaryParts.join("\n");
                   handleCopy(summary, "modal-summary");
                 }}
                 className="h-9 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
@@ -1729,5 +1823,13 @@ export default function OrderHistoryPage() {
         )}
       </Dialog>
     </div>
+  );
+}
+
+export default function OrderHistoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrderHistoryContent />
+    </Suspense>
   );
 }

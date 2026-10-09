@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
+import { DataPagination } from "@/components/ui/pagination";
 import {
   DollarSign,
   AlertCircle,
@@ -57,6 +58,8 @@ export default function SellAccountsPage() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { data: eligible, isLoading, error, refetch, isRefetching } = useSellEligibleAccounts();
 
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sellConfirmOpen, setSellConfirmOpen] = useState(false);
   const [selling, setSelling] = useState(false);
@@ -71,6 +74,11 @@ export default function SellAccountsPage() {
     return acc?.sell_price || 0;
   };
 
+  // Reset pagination on search or filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, spamFilter]);
+
   // Filtered accounts
   const filteredEligible = useMemo(() => {
     if (!eligible) return [];
@@ -83,7 +91,8 @@ export default function SellAccountsPage() {
           acc.phone.toLowerCase().includes(q) ||
           (acc.first_name && acc.first_name.toLowerCase().includes(q)) ||
           (acc.last_name && acc.last_name.toLowerCase().includes(q)) ||
-          (acc.username && acc.username.toLowerCase().includes(q))
+          (acc.username && acc.username.toLowerCase().includes(q)) ||
+          (acc.telegram_id && String(acc.telegram_id).includes(q))
       );
     }
 
@@ -94,23 +103,76 @@ export default function SellAccountsPage() {
     return list;
   }, [eligible, searchQuery, spamFilter]);
 
+  // Only active (non-expired) accounts can be selected and listed
+  const sellableAccounts = useMemo(() => {
+    return filteredEligible.filter((acc) => acc.is_active !== false);
+  }, [filteredEligible]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEligible.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedEligible = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredEligible.slice(start, start + PAGE_SIZE);
+  }, [filteredEligible, currentPage]);
+
+  const allFilteredSelected =
+    sellableAccounts.length > 0 &&
+    sellableAccounts.every((acc) => selectedIds.includes(acc.id));
+
+  const someFilteredSelected =
+    selectedIds.length > 0 &&
+    !allFilteredSelected &&
+    sellableAccounts.some((acc) => selectedIds.includes(acc.id));
+
   const handleSelectAll = () => {
-    if (!filteredEligible) return;
-    if (selectedIds.length === filteredEligible.length) {
+    if (sellableAccounts.length === 0) return;
+    if (allFilteredSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredEligible.map((acc) => acc.id));
+      setSelectedIds(sellableAccounts.map((acc) => acc.id));
     }
   };
 
-  const handleToggleSelect = (id: string) => {
+  const handleToggleSelect = (acc: Account) => {
+    if (acc.is_active === false) {
+      toast({
+        variant: "warning",
+        title: _("orders.accountExpiredCannotSell") || "Akun Kedaluwarsa",
+        description:
+          _("orders.accountExpiredCannotSellDesc") ||
+          "Akun kedaluwarsa tidak dapat dijual. Silakan hubungkan ulang akun terlebih dahulu.",
+      });
+      return;
+    }
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(acc.id) ? prev.filter((item) => item !== acc.id) : [...prev, acc.id]
     );
   };
 
   const handleSellConfirm = async () => {
     if (selectedIds.length === 0) return;
+
+    // Guard against expired / inactive accounts
+    const expiredSelected = eligible?.find(
+      (a) => selectedIds.includes(a.id) && a.is_active === false
+    );
+    if (expiredSelected) {
+      toast({
+        variant: "error",
+        title: _("orders.submissionFailed") || "Submission Failed",
+        description:
+          _("orders.accountExpiredCannotSell") ||
+          "Akun kedaluwarsa tidak dapat dijual. Periksa status akun lalu coba lagi.",
+      });
+      return;
+    }
+
     setSelling(true);
     try {
       await sellMutation.mutateAsync(selectedIds);
@@ -118,13 +180,20 @@ export default function SellAccountsPage() {
       toast({
         variant: "success",
         title: _("orders.accountsListedSuccess") || "Accounts Listed For Sale",
-        description: _("orders.sellSuccess") || `${selectedIds.length} account(s) submitted to marketplace escrow successfully!`,
+        description:
+          _("orders.sellSuccess") ||
+          `${selectedIds.length} account(s) submitted to marketplace escrow successfully!`,
       });
       setSelectedIds([]);
       setSellConfirmOpen(false);
     } catch (err: any) {
       console.error(err);
       const isUnknownOutcome = isMarketplaceSellUnknownOutcome(err);
+      const rawDetail = err?.response?.data?.detail;
+      let errorDesc = rawDetail;
+      if (typeof rawDetail === "string" && rawDetail.toLowerCase().includes("inactive account")) {
+        errorDesc = _("orders.accountExpiredCannotSell") || "Akun kedaluwarsa tidak dapat dijual";
+      }
       toast({
         variant: "error",
         title: isUnknownOutcome
@@ -132,7 +201,7 @@ export default function SellAccountsPage() {
           : (_("orders.submissionFailed") || "Submission Failed"),
         description: isUnknownOutcome
           ? (_("orders.saleStatusUnknownDesc") || "Telegram may have finished updating this account. We refreshed your accounts—check its sale status before trying again.")
-          : err?.response?.data?.detail || "Failed to list account(s) for sale.",
+          : errorDesc || (_("orders.accountExpiredCannotSell") || "Failed to list account(s) for sale."),
       });
       if (isUnknownOutcome) {
         setSelectedIds([]);
@@ -147,8 +216,6 @@ export default function SellAccountsPage() {
     (sum, id) => sum + getPriceForAccount(id),
     0
   );
-  const allFilteredSelected =
-    filteredEligible.length > 0 && selectedIds.length === filteredEligible.length;
 
   const totalPotentialValue = useMemo(() => {
     if (!eligible) return 0;
@@ -243,7 +310,7 @@ export default function SellAccountsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs text-muted-foreground">
               <div className="space-y-1 rounded-xl bg-background/50 border border-border/40 p-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-amber-500">1.</span> {_("orders.ruleDynamicTitle") || "Dynamic Prefix Appraisal"}
+                  <span className="text-amber-500 font-bold">1.</span> {_("orders.ruleDynamicTitle") || "Dynamic Prefix Appraisal"}
                 </span>
                 <p className="text-[11px] leading-relaxed">
                   {_("orders.ruleDynamicDesc") || "Price is computed automatically based on carrier country prefix, account registration age, and SpamBot health status."}
@@ -251,7 +318,7 @@ export default function SellAccountsPage() {
               </div>
               <div className="space-y-1 rounded-xl bg-background/50 border border-border/40 p-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-amber-500">2.</span> {_("orders.ruleDeferredTitle") || "Deferred Settlement"}
+                  <span className="text-amber-500 font-bold">2.</span> {_("orders.ruleDeferredTitle") || "Deferred Settlement"}
                 </span>
                 <p className="text-[11px] leading-relaxed">
                   {_("orders.ruleDeferredDesc") || "Funds are not credited immediately. Balance will be deposited the exact instant a buyer purchases your listed account."}
@@ -259,7 +326,7 @@ export default function SellAccountsPage() {
               </div>
               <div className="space-y-1 rounded-xl bg-background/50 border border-border/40 p-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <span className="text-amber-500">3.</span> {_("orders.ruleCustodyTitle") || "Automated Custody"}
+                  <span className="text-amber-500 font-bold">3.</span> {_("orders.ruleCustodyTitle") || "Session Custody & Integrity"}
                 </span>
                 <p className="text-[11px] leading-relaxed">
                   {_("orders.ruleCustodyDesc") || "Active broadcasts and auto-replies for the listed accounts will be paused to preserve session integrity for the buyer."}
@@ -381,6 +448,7 @@ export default function SellAccountsPage() {
                 size="sm"
                 onClick={handleSelectAll}
                 className="h-8 rounded-lg text-xs font-semibold"
+                disabled={sellableAccounts.length === 0}
               >
                 {allFilteredSelected ? (_("orders.clearSelection") || "Clear Selection") : (_("orders.selectAllAvailable") || "Select All Available")}
               </Button>
@@ -393,8 +461,9 @@ export default function SellAccountsPage() {
                   <TableRow className="border-b border-border/60 bg-muted/10">
                     <TableHead className="w-12 text-center">
                       <Checkbox
-                        checked={allFilteredSelected}
+                        checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
                         onCheckedChange={handleSelectAll}
+                        disabled={sellableAccounts.length === 0}
                         aria-label="Select all eligible accounts"
                       />
                     </TableHead>
@@ -407,18 +476,22 @@ export default function SellAccountsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEligible.map((acc) => {
+                  {paginatedEligible.map((acc) => {
                     const isSelected = selectedIds.includes(acc.id);
+                    const isExpired = acc.is_active === false;
                     const price = acc.sell_price || 0;
 
                     return (
                       <TableRow
                         key={acc.id}
                         className={cn(
-                          "cursor-pointer transition-colors hover:bg-muted/30",
+                          "transition-colors",
+                          isExpired
+                            ? "opacity-60 bg-muted/20 cursor-not-allowed"
+                            : "cursor-pointer hover:bg-muted/30",
                           isSelected && "bg-primary/[0.04]"
                         )}
-                        onClick={() => handleToggleSelect(acc.id)}
+                        onClick={() => handleToggleSelect(acc)}
                       >
                         <TableCell
                           className="text-center"
@@ -426,8 +499,10 @@ export default function SellAccountsPage() {
                         >
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={() => handleToggleSelect(acc.id)}
+                            disabled={isExpired}
+                            onCheckedChange={() => handleToggleSelect(acc)}
                             aria-label={`Select account ${acc.phone}`}
+                            title={isExpired ? (_("orders.accountExpiredCannotSell") || "Akun kedaluwarsa tidak dapat dijual") : undefined}
                           />
                         </TableCell>
 
@@ -437,16 +512,23 @@ export default function SellAccountsPage() {
                               {acc.first_name ? acc.first_name[0].toUpperCase() : "U"}
                             </div>
                             <div className="min-w-0 space-y-0.5">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="truncate text-sm font-semibold text-foreground">
                                   {acc.first_name || (_("orders.unnamedAccount") || "Unnamed Account")}{" "}
                                   {acc.last_name || ""}
                                 </p>
                                 {acc.is_resale && <Chip tone="accent">{_("orders.resale") || "Resale"}</Chip>}
+                                {isExpired && (
+                                  <Chip tone="negative">{_("accountsList.expired") || "Kedaluwarsa"}</Chip>
+                                )}
                               </div>
-                              <p className="font-mono text-xs font-medium text-muted-foreground">
-                                {acc.phone}
-                              </p>
+                              <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground flex-wrap">
+                                <span>{acc.phone}</span>
+                                <span>•</span>
+                                <span className="font-semibold text-foreground/80">
+                                  User ID: {acc.telegram_id ? acc.telegram_id : "—"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </TableCell>
@@ -456,7 +538,9 @@ export default function SellAccountsPage() {
                         </TableCell>
 
                         <TableCell className="text-center">
-                          {acc.spam_status === "normal" ? (
+                          {isExpired ? (
+                            <Chip tone="negative" dot>{_("accountsList.expired") || "Kedaluwarsa"}</Chip>
+                          ) : acc.spam_status === "normal" ? (
                             <Chip tone="positive" dot>{_("orders.clean") || "Clean"}</Chip>
                           ) : acc.spam_status === "limited" ? (
                             <Chip tone="negative" dot>{_("orders.limited") || "Limited"}</Chip>
@@ -485,8 +569,9 @@ export default function SellAccountsPage() {
 
             {/* Mobile List View */}
             <div className="divide-y divide-border/60 sm:hidden">
-              {filteredEligible.map((acc) => {
+              {paginatedEligible.map((acc) => {
                 const isSelected = selectedIds.includes(acc.id);
+                const isExpired = acc.is_active === false;
                 const price = acc.sell_price || 0;
 
                 return (
@@ -495,39 +580,53 @@ export default function SellAccountsPage() {
                     role="checkbox"
                     aria-checked={isSelected}
                     tabIndex={0}
-                    onClick={() => handleToggleSelect(acc.id)}
+                    onClick={() => handleToggleSelect(acc)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        handleToggleSelect(acc.id);
+                        handleToggleSelect(acc);
                       }
                     }}
                     className={cn(
-                      "flex cursor-pointer items-start gap-3 p-4 transition-colors",
+                      "flex items-start gap-3 p-4 transition-colors",
+                      isExpired
+                        ? "opacity-60 bg-muted/20 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-muted/30",
                       isSelected && "bg-primary/[0.04]"
                     )}
                   >
                     <Checkbox
                       checked={isSelected}
-                      onCheckedChange={() => handleToggleSelect(acc.id)}
+                      disabled={isExpired}
+                      onCheckedChange={() => handleToggleSelect(acc)}
                       onClick={(e) => e.stopPropagation()}
                       aria-label={`Select account ${acc.phone}`}
                       className="mt-1"
+                      title={isExpired ? (_("orders.accountExpiredCannotSell") || "Akun kedaluwarsa tidak dapat dijual") : undefined}
                     />
 
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {acc.first_name || (_("orders.unnamedAccount") || "Unnamed")} {acc.last_name || ""}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              {acc.first_name || (_("orders.unnamedAccount") || "Unnamed")} {acc.last_name || ""}
+                            </p>
+                            {isExpired && (
+                              <Chip tone="negative">{_("accountsList.expired") || "Kedaluwarsa"}</Chip>
+                            )}
+                          </div>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {acc.phone} • <span className="font-semibold text-foreground/80">User ID: {acc.telegram_id ? acc.telegram_id : "—"}</span>
                           </p>
-                          <p className="font-mono text-xs text-muted-foreground">{acc.phone}</p>
                         </div>
                         <PriceTag value={price} size="md" />
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                        {acc.spam_status === "normal" ? (
+                        {isExpired ? (
+                          <Chip tone="negative" dot>{_("accountsList.expired") || "Kedaluwarsa"}</Chip>
+                        ) : acc.spam_status === "normal" ? (
                           <Chip tone="positive" dot>{_("orders.clean") || "Clean"}</Chip>
                         ) : acc.spam_status === "limited" ? (
                           <Chip tone="negative" dot>{_("orders.limited") || "Limited"}</Chip>
@@ -548,6 +647,34 @@ export default function SellAccountsPage() {
                 );
               })}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60 bg-muted/10 px-4 py-3 sm:px-6">
+                <div className="text-xs text-muted-foreground">
+                  {_("accountsList.showingAccounts", {
+                    start: (currentPage - 1) * PAGE_SIZE + 1,
+                    end: Math.min(currentPage * PAGE_SIZE, filteredEligible.length),
+                    total: filteredEligible.length,
+                  }) || `Menampilkan ${(currentPage - 1) * PAGE_SIZE + 1} - ${Math.min(currentPage * PAGE_SIZE, filteredEligible.length)} dari ${filteredEligible.length} akun`}
+                </div>
+                <div className="hidden sm:block">
+                  <DataPagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+                <div className="sm:hidden">
+                  <DataPagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    compact
+                  />
+                </div>
+              </div>
+            )}
           </DoubleBezelShell>
         </div>
       )}
@@ -635,6 +762,7 @@ export default function SellAccountsPage() {
                       <div className="min-w-0 pr-2">
                         <p className="truncate font-semibold text-foreground">
                           {acc?.first_name || (_("orders.unnamedAccount") || "Unnamed")} ({acc?.phone})
+                          {acc?.telegram_id ? ` • UID: ${acc.telegram_id}` : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {_("orders.accountAgeCol") || "Age"}: {acc?.est_reg_date_age || "—"} · {_("accountDetail.contacts") || "Contacts"}: {acc?.contacts_count || 0}

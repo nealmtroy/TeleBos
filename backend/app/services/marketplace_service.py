@@ -228,24 +228,32 @@ async def sell_accounts(
         await invalidate_auto_reply_config(str(account.id))
         account.sale_listed_at = datetime.now(timezone.utc)
 
-        db.add(
-            AccountAuditLog(
-                user_id=user.id,
-                account_id=account.id,
-                action="list_for_sale",
-                price=sell_price,
-                phone=account.phone,
-                telegram_id=account.telegram_id,
-            )
+        audit = AccountAuditLog(
+            user_id=user.id,
+            account_id=account.id,
+            action="list_for_sale",
+            price=sell_price,
+            phone=account.phone,
+            telegram_id=account.telegram_id,
         )
+        db.add(audit)
+        last_audit = audit
 
+    first_acc = accounts[0]
+    single = len(accounts) == 1
     create_notification(
         db,
         user.id,
         "marketplace.listed",
         kind="success",
-        data={"count": len(accounts)},
-        href="/orders",
+        data={
+            "count": len(accounts),
+            "phone": first_acc.phone if single else None,
+            "telegram_id": first_acc.telegram_id if single else None,
+            "price": prices.get(first_acc.id) if single else None,
+            "order_id": str(last_audit.id) if single and last_audit else None,
+        },
+        href=f"/orders?tab=accounts&order_id={last_audit.id}&search={first_acc.phone}" if single and last_audit else "/orders?tab=accounts",
     )
     await db.flush()
 
@@ -348,8 +356,12 @@ async def cancel_invalid_listing(db: AsyncSession, account_id: str) -> bool:
         seller_id,
         "marketplace.listing_invalid",
         kind="warning",
-        data={"account_id": str(account.id), "phone": account.phone},
-        href="/orders",
+        data={
+            "account_id": str(account.id),
+            "phone": account.phone,
+            "telegram_id": account.telegram_id,
+        },
+        href=f"/orders?tab=accounts&search={account.phone}" if account.phone else "/orders?tab=accounts",
     )
     await db.flush()
     logger.warning(
@@ -568,16 +580,28 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
             seller_id,
             "marketplace.sale_completed",
             kind="success",
-            data={"account_id": str(account.id), "phone": account.phone},
-            href="/orders",
+            data={
+                "account_id": str(account.id),
+                "phone": account.phone,
+                "telegram_id": account.telegram_id,
+                "price": sell_price,
+                "order_id": str(audit_seller.id),
+            },
+            href=f"/orders?tab=accounts&order_id={audit_seller.id}&search={account.phone}" if account.phone else f"/orders?tab=accounts&order_id={audit_seller.id}",
         )
     create_notification(
         db,
         buyer_id,
         "marketplace.purchase_completed",
         kind="success",
-        data={"account_id": str(account.id), "phone": account.phone},
-        href="/orders",
+        data={
+            "account_id": str(account.id),
+            "phone": account.phone,
+            "telegram_id": account.telegram_id,
+            "price": buy_price,
+            "order_id": str(audit_buyer.id),
+        },
+        href=f"/orders?tab=accounts&order_id={audit_buyer.id}&search={account.phone}" if account.phone else f"/orders?tab=accounts&order_id={audit_buyer.id}",
     )
 
     await db.flush()
@@ -656,8 +680,13 @@ async def cancel_sell_account(db: AsyncSession, user: User, account_id: str) -> 
         user.id,
         "marketplace.listing_cancelled",
         kind="info",
-        data={"account_id": str(account.id), "phone": account.phone},
-        href="/orders",
+        data={
+            "account_id": str(account.id),
+            "phone": account.phone,
+            "telegram_id": account.telegram_id,
+            "order_id": str(audit.id),
+        },
+        href=f"/orders?tab=accounts&order_id={audit.id}&search={account.phone}" if account.phone else f"/orders?tab=accounts&order_id={audit.id}",
     )
 
     await db.flush()

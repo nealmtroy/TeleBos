@@ -57,7 +57,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -599,48 +598,54 @@ export default function WalletPage() {
         {/* ── Request form / QRIS Payment Card (Col 1-3) ── */}
         <Card className="lg:col-span-3 border-border shadow-xs">
           <div className="p-5 pb-0">
-            {/* Tabs */}
-            <Tabs
-              value={tab}
-              onValueChange={(val) => {
-                const nextTab = val as "topup" | "withdraw";
-                setTab(nextTab);
-                if (nextTab === "withdraw") {
+            {/* Tabs Navigation Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-4 border-b border-border/50 no-scrollbar">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "topup"}
+                onClick={() => {
+                  setTab("topup");
+                  setAmount("");
+                  setNotice(null);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
+                  tab === "topup"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+                )}
+              >
+                <ArrowDownToLine className={cn("h-4 w-4", tab === "topup" ? "text-white" : "text-muted-foreground")} />
+                <span>{_("wallet.topUp")}</span>
+                {tab === "topup" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                )}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "withdraw"}
+                onClick={() => {
+                  setTab("withdraw");
                   setActivePayment(null);
-                }
-                setAmount("");
-                setNotice(null);
-              }}
-              className="w-auto inline-block"
-            >
-              <TabsList className="bg-muted p-1 rounded-xl h-auto gap-1">
-                <TabsTrigger
-                  value="topup"
-                  onClick={() => {
-                    setTab("topup");
-                    setAmount("");
-                    setNotice(null);
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                >
-                  <ArrowDownToLine className="h-4 w-4" />
-                  {_("wallet.topUp")}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="withdraw"
-                  onClick={() => {
-                    setTab("withdraw");
-                    setActivePayment(null);
-                    setAmount("");
-                    setNotice(null);
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                >
-                  <ArrowUpFromLine className="h-4 w-4" />
-                  {_("wallet.withdraw")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+                  setAmount("");
+                  setNotice(null);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
+                  tab === "withdraw"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+                )}
+              >
+                <ArrowUpFromLine className={cn("h-4 w-4", tab === "withdraw" ? "text-white" : "text-muted-foreground")} />
+                <span>{_("wallet.withdraw")}</span>
+                {tab === "withdraw" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                )}
+              </button>
+            </div>
           </div>
 
           <CardContent className="p-5 space-y-5">
@@ -964,36 +969,55 @@ export default function WalletPage() {
         {/* Filter and Search Bar */}
         <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Type Filter Tabs */}
-          <Tabs
-            value={historyTypeFilter}
-            onValueChange={(val) =>
-              setHistoryTypeFilter(val as "all" | "topup" | "withdraw")
-            }
-            className="w-auto self-start"
-          >
-            <TabsList className="bg-gray-200/70 dark:bg-slate-800 p-1 rounded-xl h-auto gap-1">
-              <TabsTrigger
-                value="all"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-gray-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-2xs"
-              >
-                {_("wallet.allTransactions")}
-              </TabsTrigger>
-              <TabsTrigger
-                value="topup"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-300 data-[state=active]:shadow-2xs"
-              >
-                <ArrowDownToLine className="h-3.5 w-3.5" />
-                <span>{_("wallet.deposits")}</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="withdraw"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 data-[state=active]:shadow-2xs"
-              >
-                <ArrowUpFromLine className="h-3.5 w-3.5" />
-                <span>{_("wallet.withdrawals")}</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setHistoryTypeFilter("all")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
+                historyTypeFilter === "all"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+              )}
+            >
+              <span>{_("wallet.allTransactions")}</span>
+              {historyTypeFilter === "all" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryTypeFilter("topup")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
+                historyTypeFilter === "topup"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+              )}
+            >
+              <ArrowDownToLine className={cn("h-3.5 w-3.5", historyTypeFilter === "topup" ? "text-white" : "text-muted-foreground")} />
+              <span>{_("wallet.deposits")}</span>
+              {historyTypeFilter === "topup" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryTypeFilter("withdraw")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
+                historyTypeFilter === "withdraw"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
+              )}
+            >
+              <ArrowUpFromLine className={cn("h-3.5 w-3.5", historyTypeFilter === "withdraw" ? "text-white" : "text-muted-foreground")} />
+              <span>{_("wallet.withdrawals")}</span>
+              {historyTypeFilter === "withdraw" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </button>
+          </div>
 
           {/* Right: Status selector and Search input */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">

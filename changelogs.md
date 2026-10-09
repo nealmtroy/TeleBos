@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[5f5ebc74](https://github.com/nealmtroy/TeleBos/commit/5f5ebc74)**: feat(wallet): update invoice layout styling and qr code display
 - **[8f26c230](https://github.com/nealmtroy/TeleBos/commit/8f26c230)**: Fix invoice page layout: simplify UI, remove big cards, match theme for button
 - **[ea18662d](https://github.com/nealmtroy/TeleBos/commit/ea18662d)**: Refactor: backend generates TRX- IDs directly, removed frontend mapping hacks
 - **[31fb2701](https://github.com/nealmtroy/TeleBos/commit/31fb2701)**: Fix wallet styling, transaction ids, and remove note input
