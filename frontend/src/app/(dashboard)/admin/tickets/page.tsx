@@ -68,7 +68,7 @@ export default function AdminTicketsPage() {
       if (statusFilter !== "all") {
         params.status = statusFilter;
       }
-      const res = await api.get("/admin/tickets", { params });
+      const res = await api.get("/support/admin/tickets", { params });
       setTickets(res.data);
     } catch (err) {
       console.error("Failed to load tickets", err);
@@ -92,7 +92,7 @@ export default function AdminTicketsPage() {
     if (!selectedTicket) return;
     setSaving(true);
     try {
-      const res = await api.patch(`/admin/tickets/${selectedTicket.id}`, {
+      const res = await api.patch(`/support/admin/tickets/${selectedTicket.id}`, {
         status: newStatus,
         priority: newPriority,
         admin_notes: adminNotes,
