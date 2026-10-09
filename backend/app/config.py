@@ -123,7 +123,7 @@ class Settings(BaseSettings):
     KLIKQRIS_ID_MERCHANT: str | None = None
     KLIKQRIS_BASE_URL: str = "https://klikqris.com/api"
     KLIKQRIS_CALLBACK_URL: str | None = None
-    NEXT_PUBLIC_URL: str = "https://tele.t-me.site"
+    NEXT_PUBLIC_URL: str = "https://telebos.app"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

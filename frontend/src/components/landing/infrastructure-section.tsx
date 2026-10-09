@@ -9,7 +9,7 @@ import { PublicCode } from "@/components/public/public-ui";
 import { useT } from "@/lib/i18n";
 
 // Hosts this deployment actually serves.
-const DOMAINS = ["tele.t-me.site", "t.me.site", "api.t-me.site", "manage.t-me.site"];
+const DOMAINS = ["telebos.app", "api.telebos.app", "tele.t-me.site", "t.me.site"];
 
 // Long-lived services on the same box.
 const SERVICES = ["Docker (TeleBos)", "TelegramBot (backend)", "SocialBuzz-Pay", "TBot"];

@@ -185,7 +185,7 @@ def login_start_keyboard():
     """InlineKeyboardMarkup to start login flow."""
     return [
         [Button.inline("🔑 Hubungkan Akun TeleBos", data="login_start")],
-        [Button.url("📝 Daftar Akun TeleBos", url="https://tele.t-me.site/register")]
+        [Button.url("📝 Daftar Akun TeleBos", url="https://telebos.app/register")]
     ]
 
 

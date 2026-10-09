@@ -54,7 +54,7 @@ def register_base_handlers(client):
                     "Silakan hubungkan akun website TeleBos Anda terlebih dahulu untuk menggunakan bot ini.\n\n"
                     "⚠️ **Belum punya akun TeleBos?**\n"
                     "Silakan register/daftar terlebih dahulu di:\n"
-                    "🔗 https://tele.t-me.site/register\n\n"
+                    "🔗 https://telebos.app/register\n\n"
                     "Jika sudah memiliki akun, silakan klik tombol di bawah ini untuk menghubungkan akun secara interaktif:",
                     buttons=login_start_keyboard()
                 )

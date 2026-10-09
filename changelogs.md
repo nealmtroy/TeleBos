@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[7625665f](https://github.com/nealmtroy/TeleBos/commit/7625665f)**: chore: gitignore and untrack docs/, align legal routes, llms.txt, and sitemap
 - **[6589f580](https://github.com/nealmtroy/TeleBos/commit/6589f580)**: feat(notifications): add notification dispatch for wallet and orders, and enhance notification center UI
 - **[5f5ebc74](https://github.com/nealmtroy/TeleBos/commit/5f5ebc74)**: feat(wallet): update invoice layout styling and qr code display
 - **[8f26c230](https://github.com/nealmtroy/TeleBos/commit/8f26c230)**: Fix invoice page layout: simplify UI, remove big cards, match theme for button

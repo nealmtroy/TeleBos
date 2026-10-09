@@ -16,7 +16,7 @@ describe("InfrastructureSection", () => {
     const text = container.textContent ?? "";
 
     // These are the real values from the deployment, not placeholders.
-    expect(text).toContain("tele.t-me.site");
+    expect(text).toContain("telebos.app");
     expect(text).toContain("Docker (TeleBos)");
     expect(text).toContain("gateway 18789");
   });

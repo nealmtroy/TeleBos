@@ -49,7 +49,7 @@ def auth_required(func):
                 "secara interaktif.\n\n"
                 "📌 **Belum punya akun TeleBos?**\n"
                 "Silakan register/daftar terlebih dahulu di:\n"
-                "🔗 https://tele.t-me.site/register\n\n"
+                "🔗 https://telebos.app/register\n\n"
                 "Silakan klik tombol di bawah ini untuk menghubungkan akun:",
                 buttons=login_start_keyboard()
             )
