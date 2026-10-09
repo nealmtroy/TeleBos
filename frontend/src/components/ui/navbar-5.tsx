@@ -26,7 +26,7 @@ export const Navbar5 = () => {
       [_("landing.navFeatures"), "/#features"],
       [_("landing.navWorkflow"), "/#workflow"],
       [_(`nav.help`), "/help"],
-      [_("landing.navPrivacy"), "/privacy"],
+      [_("landing.navPrivacy"), "/privacy-policy"],
     ] as const;
 
   return (

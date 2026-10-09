@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
-import { PublicInput, publicButtonClass } from "@/components/public/public-ui";
+import { PublicInput, publicButtonClass, publicPrimaryButtonClass } from "@/components/public/public-ui";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { authClient } from "@/lib/auth-client";
 import { useT } from "@/lib/i18n";
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
               <div role="status" aria-live="polite" className="rounded-[6px] border border-[var(--public-success)] p-4 text-sm leading-6 text-[var(--public-success)]">
                 {_("forgotPassword.success")}
               </div>
-              <Link href="/login" className={`${publicButtonClass} w-full border-white`}>
+              <Link href="/login" className={`${publicButtonClass} w-full`}>
                 {_("forgotPassword.backToLogin")}
               </Link>
             </div>
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              <button type="submit" disabled={loading} aria-busy={loading} className={`${publicButtonClass} w-full border-white`}>
+              <button type="submit" disabled={loading} aria-busy={loading} className={`${publicPrimaryButtonClass} w-full`}>
                 {loading ? _("forgotPassword.sending") : _("forgotPassword.sendLink")}
               </button>
 

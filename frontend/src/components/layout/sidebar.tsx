@@ -23,6 +23,7 @@ import {
   Bot,
   UserPlus,
   HelpCircle,
+  BookOpen,
   LifeBuoy,
   ShoppingCart,
   Shield,
@@ -340,6 +341,7 @@ export function Sidebar() {
       labelKey: locale === "id" ? "DUKUNGAN" : "SUPPORT",
       items: [
         { href: "/help", labelKey: "nav.help", icon: HelpCircle, minRole: 0 },
+        { href: "/help/api", labelKey: "help.apiTitle", icon: BookOpen, minRole: 0 },
       ],
     },
   ];
@@ -881,7 +883,7 @@ export function Sidebar() {
                             <span>{locale === "id" ? "Pusat Bantuan" : "Help center"}</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => router.push("/privacy")}
+                            onSelect={() => router.push("/privacy-policy")}
                             className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
                           >
                             <Shield className="h-4 w-4 text-neutral-400 shrink-0" />
@@ -910,14 +912,14 @@ export function Sidebar() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="border-neutral-800 my-1" />
                           <DropdownMenuItem
-                            onSelect={() => router.push("/tos")}
+                            onSelect={() => router.push("/terms-of-service")}
                             className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
                           >
                             <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
                             <span>{locale === "id" ? "Ketentuan Layanan" : "Terms of Service"}</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => router.push("/privacy")}
+                            onSelect={() => router.push("/privacy-policy")}
                             className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
                           >
                             <Info className="h-4 w-4 text-neutral-400 shrink-0" />

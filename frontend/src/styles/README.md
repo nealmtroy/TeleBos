@@ -40,7 +40,7 @@ src/styles/
 - Defines Radix UI `data-[state=open]` and `data-[state=closed]` transition classes.
 
 ### 5. `public-theme.css`
-- Encapsulates styles for public marketing pages (`/`, `/privacy`, `/tos`).
+- Encapsulates styles for public marketing pages (`/`, `/privacy-policy`, `/terms-of-service`).
 - Configures `--public-*` custom tokens, serif/mono editorial typography, and 3D kinetic cube sculpture animations.
 - Handles responsive scaling and `prefers-reduced-motion` compliance.
 

@@ -101,46 +101,51 @@ export function FeatureOutcomes() {
           </p>
         </LandingReveal>
 
-        {/* Cards. Two columns on a phone, three from lg. A five-item grid in three
-            columns always leaves a hole in the last row, so the fourth and fifth
-            cards widen to close it instead of leaving dead space. */}
+        {/* Cards. Two columns on a phone, 3 equal columns in row 1 (2 cols each in 6-col grid)
+            and 2 wider columns in row 2 (3 cols each) on desktop to fill the grid proportionally without dead space. */}
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           {outcomes.map((item, index) => (
             <LandingReveal
               key={item.goal}
               delay={0.04 * index}
-              className={cn(index >= 3 && "lg:col-span-3")}
+              className={cn(
+                "h-full",
+                index < 3 ? "lg:col-span-2" : "lg:col-span-3",
+                index === 4 && "sm:col-span-2 lg:col-span-3"
+              )}
             >
-              <article className="group h-full rounded-[var(--public-radius-card)] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-5 transition-colors duration-200 hover:border-[var(--public-accent)]">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.7rem] border border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-accent)]">
-                    <item.icon className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
-                  </span>
-                  {/* The one number per card. Real figures only. */}
-                  <span className="shrink-0 text-right">
-                    <span className="public-display block text-[1.5rem] font-bold leading-none text-[var(--public-text)]">
-                      {item.stat}
+              <article className="group flex h-full flex-col justify-between rounded-[var(--public-radius-card)] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-5 sm:p-6 transition-all duration-200 hover:border-[var(--public-accent)] hover:shadow-[0_0_30px_rgba(37,99,235,0.08)]">
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.7rem] border border-[var(--public-border)] bg-[var(--public-canvas)] text-[var(--public-accent)] transition-colors group-hover:border-[var(--public-accent)] group-hover:bg-[var(--public-accent)]/10">
+                      <item.icon className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
                     </span>
-                    <span className="public-mono mt-1 block text-[9px] uppercase tracking-[0.12em] text-[var(--public-subtle)]">
-                      {item.statLabel}
+                    {/* The one number per card. Real figures only. */}
+                    <span className="shrink-0 text-right">
+                      <span className="public-display block text-[1.5rem] font-bold leading-none text-[var(--public-text)]">
+                        {item.stat}
+                      </span>
+                      <span className="public-mono mt-1 block text-[9px] uppercase tracking-[0.12em] text-[var(--public-subtle)]">
+                        {item.statLabel}
+                      </span>
                     </span>
-                  </span>
+                  </div>
+
+                  <h3 className="mt-5 text-base font-semibold leading-snug text-[var(--public-text)]">
+                    {item.goal}
+                  </h3>
+                  <p className="mt-2.5 text-sm leading-6 text-[var(--public-muted)]">
+                    {item.outcome}
+                  </p>
                 </div>
 
-                <h3 className="mt-5 text-base font-semibold leading-snug text-[var(--public-text)]">
-                  {item.goal}
-                </h3>
-                <p className="mt-2.5 text-sm leading-6 text-[var(--public-muted)]">
-                  {item.outcome}
-                </p>
-
                 {/* Mechanism as supporting evidence rather than the headline. */}
-                <p className="mt-5 border-t border-[var(--public-border)] pt-4 text-xs leading-5 text-[var(--public-subtle)]">
-                  <span className="text-[var(--public-body)]">{item.capability}</span>
+                <p className="mt-6 border-t border-[var(--public-border)] pt-4 text-xs leading-5 text-[var(--public-subtle)]">
+                  <span className="text-[var(--public-body)] font-medium">{item.capability}</span>
                   <span className="mx-1.5" aria-hidden="true">
                     ·
                   </span>
-                  {item.proof}
+                  <span>{item.proof}</span>
                 </p>
               </article>
             </LandingReveal>

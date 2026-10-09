@@ -145,6 +145,8 @@ const en: Dict = {
     useBackupCode: "Use a backup code",
     useTotp: "Use authenticator app",
     backToLogin: "Back to sign in",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
   },
 
   // ── Register ────────────────────────────────────────────────────────────
@@ -156,7 +158,13 @@ const en: Dict = {
     emailLabel: "Email",
     emailPlaceholder: "you@example.com",
     passwordLabel: "Password",
-    passwordPlaceholder: "Min. 6 characters",
+    passwordPlaceholder: "Min. 8 characters",
+    confirmPasswordLabel: "Confirm Password",
+    confirmPasswordPlaceholder: "Confirm your password",
+    passwordsDoNotMatch: "Passwords do not match.",
+    passwordTooShort: "Password must be at least 8 characters.",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     creatingAccount: "Creating account...",
     createAccountBtn: "Create account",
     accountCreated: "Account created! Redirecting to login...",
@@ -1556,7 +1564,7 @@ const en: Dict = {
     footerProduct: "Product",
     footerHelp: "Help",
     footerLegal: "Legal",
-    footerTelegram: "@telebos_official",
+    footerTelegram: "Join TeleBos Telegram Channel!",
     footerCopyright: "© 2026 TeleBos. All rights reserved.",
   },
 

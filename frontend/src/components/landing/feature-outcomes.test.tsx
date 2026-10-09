@@ -54,4 +54,21 @@ describe("FeatureOutcomes", () => {
     const { container } = render(<FeatureOutcomes />);
     expect(container.textContent).toContain("Cara pakainya");
   });
+
+  it("applies proportional responsive grid column spans to all cards", () => {
+    const { container } = render(<FeatureOutcomes />);
+    const gridWrapper = container.querySelector(".lg\\:grid-cols-6");
+    expect(gridWrapper).not.toBeNull();
+
+    const items = gridWrapper?.children;
+    expect(items).toHaveLength(5);
+    // Row 1: 3 cards taking 2 columns each in a 6-col grid (3 x 2 = 6 columns = 100% width)
+    expect(items?.[0].className).toContain("lg:col-span-2");
+    expect(items?.[1].className).toContain("lg:col-span-2");
+    expect(items?.[2].className).toContain("lg:col-span-2");
+    // Row 2: 2 cards taking 3 columns each (2 x 3 = 6 columns = 100% width)
+    expect(items?.[3].className).toContain("lg:col-span-3");
+    expect(items?.[4].className).toContain("lg:col-span-3");
+    expect(items?.[4].className).toContain("sm:col-span-2");
+  });
 });

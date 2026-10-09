@@ -70,8 +70,8 @@ tsconfig.tsbuildinfo
 # Temporary/Local services config
 buzzerpanel_services.txt
 
-# SMM Docs
-docs/smm/
+# Development, Audit & Scratch Docs
+docs/
 
 # Backups
 backup/

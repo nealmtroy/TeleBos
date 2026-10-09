@@ -43,6 +43,8 @@ export const auth = betterAuth({
   })(),
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
     autoSignIn: true,
     requireEmailVerification: true,
     // Notify existing users when someone tries to re-register their email.

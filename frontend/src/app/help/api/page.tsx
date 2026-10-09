@@ -25,8 +25,14 @@ export default function ApiDocumentationPage() {
           <h1 className="public-display mt-5 text-5xl leading-none text-[var(--public-text)] sm:text-7xl">{_("help.apiHeroTitle")}</h1>
           <p className="mt-6 text-lg leading-8 text-[var(--public-muted)]">{_("help.apiHeroDesc")}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/api/docs" className={`${publicButtonClass} border-white`}>{_("help.openDocs")}<ExternalLink className="h-4 w-4" aria-hidden="true" /></Link>
-            <Link href="/api/openapi.json" className={publicButtonClass}>{_("help.downloadOpenApi")}<BookOpen className="h-4 w-4" aria-hidden="true" /></Link>
+            <a href="/api/docs" target="_blank" rel="noopener noreferrer" className={`${publicButtonClass} border-white`}>
+              {_("help.openDocs")}
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            </a>
+            <a href="/api/openapi.json" target="_blank" rel="noopener noreferrer" className={publicButtonClass}>
+              {_("help.downloadOpenApi")}
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+            </a>
           </div>
         </div>
 

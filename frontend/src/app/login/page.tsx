@@ -4,10 +4,12 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { Eye, EyeOff } from "lucide-react";
+
 import { PublicCheckbox } from "@/components/public/public-checkbox";
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
-import { PublicInput, publicButtonClass } from "@/components/public/public-ui";
+import { PublicInput, publicPrimaryButtonClass } from "@/components/public/public-ui";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { authClient } from "@/lib/auth-client";
 import { useT } from "@/lib/i18n";
@@ -23,6 +25,7 @@ function LoginForm() {
   const _ = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [retryAfterMinutes, setRetryAfterMinutes] = useState<number | null>(null);
@@ -171,17 +174,31 @@ function LoginForm() {
               <label htmlFor="password" className="mb-2 block text-sm font-medium text-[var(--public-body)]">
                 {_("login.passwordLabel")}
               </label>
-              <PublicInput
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={_("login.passwordPlaceholder")}
-              />
+              <div className="relative">
+                <PublicInput
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={_("login.passwordPlaceholder")}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? _("login.hidePassword") : _("login.showPassword")}
+                  className="public-focus absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--public-muted)] hover:text-[var(--public-text)] transition-colors focus:outline-none"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-4 text-sm">
@@ -194,7 +211,7 @@ function LoginForm() {
               </Link>
             </div>
 
-            <button type="submit" disabled={loading} aria-busy={loading} className={`${publicButtonClass} w-full border-white`}>
+            <button type="submit" disabled={loading} aria-busy={loading} className={`${publicPrimaryButtonClass} w-full`}>
               {loading ? _("login.signingIn") : _("login.signIn")}
             </button>
             <p className="text-center text-sm text-[var(--public-muted)]">

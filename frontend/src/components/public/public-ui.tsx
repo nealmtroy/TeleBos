@@ -3,7 +3,10 @@ import type { HTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const publicButtonClass =
-  "public-focus inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] border border-[var(--public-border)] bg-transparent px-4 py-2.5 text-sm font-medium text-[var(--public-text)] transition-[border-color,color,background-color] duration-150 ease-out hover:border-[var(--public-accent-strong)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50";
+  "public-focus inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] px-4 py-2.5 text-sm font-medium text-[var(--public-text)] transition-[border-color,color,background-color] duration-150 ease-out hover:border-[var(--public-accent)] hover:bg-[var(--public-border)] disabled:cursor-not-allowed disabled:opacity-50";
+
+export const publicPrimaryButtonClass =
+  "public-focus inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-[var(--public-accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-150 ease-out hover:bg-[var(--public-accent-strong)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 shadow-sm";
 
 export const publicInputClass =
   "public-focus h-11 w-full rounded-[6px] border border-[var(--public-border)] bg-[var(--public-canvas)] px-3 text-sm text-[var(--public-text)] placeholder:text-[var(--public-subtle)] transition-[border-color,box-shadow] duration-150 aria-[invalid=true]:border-[var(--public-danger)]";

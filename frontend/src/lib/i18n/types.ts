@@ -145,6 +145,8 @@ export interface Dict {
     useBackupCode: string;
     useTotp: string;
     backToLogin: string;
+    showPassword: string;
+    hidePassword: string;
   };
 
   // Auth — Register
@@ -157,6 +159,12 @@ export interface Dict {
     emailPlaceholder: string;
     passwordLabel: string;
     passwordPlaceholder: string;
+    confirmPasswordLabel: string;
+    confirmPasswordPlaceholder: string;
+    passwordsDoNotMatch: string;
+    passwordTooShort: string;
+    showPassword: string;
+    hidePassword: string;
     creatingAccount: string;
     createAccountBtn: string;
     accountCreated: string;

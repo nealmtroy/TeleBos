@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { PublicCheckbox } from "@/components/public/public-checkbox";
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
-import { PublicInput, publicButtonClass } from "@/components/public/public-ui";
+import { PublicInput, publicPrimaryButtonClass } from "@/components/public/public-ui";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { authClient } from "@/lib/auth-client";
 import { useT } from "@/lib/i18n";
@@ -125,7 +125,7 @@ export default function TwoFactorPage() {
               </div>
             )}
 
-            <button type="submit" disabled={loading} className={`${publicButtonClass} w-full border-white`}>
+            <button type="submit" disabled={loading} className={`${publicPrimaryButtonClass} w-full`}>
               {loading ? _("login.verifying") : _("login.verify")}
             </button>
 

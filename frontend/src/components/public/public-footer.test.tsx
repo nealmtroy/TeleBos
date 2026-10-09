@@ -15,7 +15,15 @@ describe("PublicFooter", () => {
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/help");
-    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
-    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/tos");
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy-policy");
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms-of-service");
+  });
+
+  it("renders the Telegram channel link in full footer mode", () => {
+    render(<PublicFooter compact={false} />);
+
+    const tgLink = screen.getByRole("link", { name: /Join TeleBos Telegram Channel!/i });
+    expect(tgLink).toHaveAttribute("href", "https://t.me/telebos_official");
+    expect(tgLink).toHaveAttribute("target", "_blank");
   });
 });

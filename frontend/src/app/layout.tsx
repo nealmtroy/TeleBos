@@ -135,6 +135,7 @@ export default function RootLayout({
           httpEquiv="Content-Security-Policy"
           content={`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com${process.env.NODE_ENV === 'development' ? ' http://localhost:8400' : ''}; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.qrserver.com ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')}; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')} ws: wss:${process.env.NODE_ENV === 'development' ? ' ws://localhost:8400 http://localhost:8400' : ''}; base-uri 'self'; form-action 'self'`}
         />
+        <link rel="describedby" href="/llms.txt" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers>{children}</Providers>
