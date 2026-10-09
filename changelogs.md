@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[ea18662d](https://github.com/nealmtroy/TeleBos/commit/ea18662d)**: Refactor: backend generates TRX- IDs directly, removed frontend mapping hacks
 - **[31fb2701](https://github.com/nealmtroy/TeleBos/commit/31fb2701)**: Fix wallet styling, transaction ids, and remove note input
 - **[0b09d112](https://github.com/nealmtroy/TeleBos/commit/0b09d112)**: Fix admin tickets api url and redesign wallet page with invoice view
 - **[4dbfc3e2](https://github.com/nealmtroy/TeleBos/commit/4dbfc3e2)**: fix(i18n): sync initial locale from server to prevent hydration error
