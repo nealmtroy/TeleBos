@@ -308,57 +308,6 @@ export default function InvoicePage() {
           )}
         </div>
 
-        {/* Amount Box */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-muted border space-y-1.5">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              {_("wallet.invoiceId")}
-            </span>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-sm font-bold text-foreground">
-                {tx.id}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyInvoice}
-                className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground transition"
-              >
-                {copiedInvoice ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 dark:border-amber-900/60 space-y-1.5 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
-                Total Tagihan Transfer
-              </span>
-              {(tx.total_amount && tx.total_amount !== tx.amount) ? (
-                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-md">
-                  + Kode Unik
-                </span>
-              ) : null}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-2xl font-black text-amber-950 dark:text-amber-100 tabular-nums">
-                {formatIDR(tx.total_amount ?? tx.amount)}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyAmount}
-                className="p-1.5 rounded-md hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 transition"
-              >
-                {copiedAmount ? <Check className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
-              </button>
-            </div>
-            {isPending && (
-              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/80 leading-tight pt-1">
-                Wajib transfer <strong>tepat hingga 3 digit terakhir</strong> agar saldo otomatis masuk.
-              </p>
-            )}
-          </div>
-        </div>
-
         {/* QR Code Presentation Box */}
         {isPending && (
           <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-card border-2 shadow-sm space-y-5">
@@ -401,17 +350,42 @@ export default function InvoicePage() {
               )}
             </div>
 
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-foreground">TELEBOS</p>
-              <p className="text-xs text-muted-foreground font-mono">NMID: ID1020042918290 • {tx.id}</p>
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground font-mono">
+                  {tx.id}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyInvoice}
+                  className="p-1 rounded-md hover:bg-muted text-muted-foreground transition"
+                >
+                  {copiedInvoice ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              <p className="text-3xl font-black text-foreground tabular-nums flex items-center justify-center gap-2">
+                {formatIDR(tx.total_amount ?? tx.amount)}
+                <button
+                  type="button"
+                  onClick={handleCopyAmount}
+                  className="p-1 rounded-md hover:bg-muted text-muted-foreground transition"
+                >
+                  {copiedAmount ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </p>
+              
+              {isPending && (tx.total_amount && tx.total_amount !== tx.amount) && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium pt-1">
+                  *Wajib transfer sesuai nominal hingga 3 digit terakhir.
+                </p>
+              )}
             </div>
 
-            <div className="w-full max-w-xs pt-2">
+            <div className="w-full max-w-xs pt-3">
               <Button
                 type="button"
-                variant="outline"
                 onClick={handleDownloadQR}
-                className="w-full flex items-center justify-center gap-2 border bg-card hover:bg-muted text-foreground"
+                className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Download className="h-4 w-4" />
                 <span>Simpan Kode QR</span>
