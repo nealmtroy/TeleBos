@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[0dfc2fea](https://github.com/nealmtroy/TeleBos/commit/0dfc2fea)**: feat(payment): integrate KlikQRIS payment gateway for dynamic QRIS top-up
 - **[471d18ad](https://github.com/nealmtroy/TeleBos/commit/471d18ad)**: fix(orders): harmonize balance card display and complete i18n localization on buy and sell account pages
 - **[9a64ecf6](https://github.com/nealmtroy/TeleBos/commit/9a64ecf6)**: feat(sidebar): show contextual admin sidebar only on /admin routes
 - **[7066c05a](https://github.com/nealmtroy/TeleBos/commit/7066c05a)**: feat(admin): add dedicated /admin/dashboard panel and redirect /admin

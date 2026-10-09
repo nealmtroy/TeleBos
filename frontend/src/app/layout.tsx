@@ -99,13 +99,24 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Resolved once here so the <html lang> attribute and the inline script
+  // below can never disagree about what the server rendered.
+  const requestLocale = getRequestLocale();
+
   return (
     <html
-      lang={getRequestLocale() ?? "en"}
+      lang={requestLocale ?? "en"}
       suppressHydrationWarning
       className={`${inter.variable} ${publicSans.variable} ${publicMono.variable}`}
     >
       <head>
+        {/* Hydration parity: publish the negotiated locale so the i18n store's
+            initial state matches the markup React is about to hydrate. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__TELEBOS_LOCALE__=${JSON.stringify(requestLocale ?? "en")};`,
+          }}
+        />
         {/* Anti-FOUC: resolve dark/light theme before paint */}
         <script
           dangerouslySetInnerHTML={{

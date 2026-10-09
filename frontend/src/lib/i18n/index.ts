@@ -58,7 +58,10 @@ interface I18nState {
 
 function getInitialLocale(): Locale {
   if (typeof window !== "undefined") {
-    // Read the lang attribute rendered by the server to guarantee 100% matching hydration!
+    // Read the server-rendered locale to guarantee 100% matching hydration!
+    const fromServer = (window as any).__TELEBOS_LOCALE__;
+    if (fromServer === "id" || fromServer === "en") return fromServer;
+
     const htmlLang = document.documentElement?.lang;
     if (htmlLang === "id" || htmlLang === "en") {
       return htmlLang as Locale;
