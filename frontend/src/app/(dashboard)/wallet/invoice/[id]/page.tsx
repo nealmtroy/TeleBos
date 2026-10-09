@@ -46,6 +46,8 @@ const QRIS_SUPPORTED_CHANNELS = [
   "BCA", "Mandiri", "BRI", "BNI", "GoPay", "OVO", "DANA", "ShopeePay"
 ];
 
+const displayTxId = (id: string) => `#TRX-${id.replace("wrn_", "").toUpperCase()}`;
+
 export default function InvoicePage() {
   const params = useParams();
   const invoiceId = params.id as string;
@@ -271,7 +273,7 @@ export default function InvoicePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Invoice #{tx.id.split('-')[0]}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{displayTxId(tx.id)}</h1>
           <p className="text-muted-foreground text-sm">Selesaikan pembayaran untuk menambah saldo Anda.</p>
         </div>
       </div>
@@ -314,7 +316,7 @@ export default function InvoicePage() {
             </span>
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono text-sm font-bold text-foreground">
-                {tx.id}
+                {displayTxId(tx.id)}
               </span>
               <button
                 type="button"
@@ -401,7 +403,7 @@ export default function InvoicePage() {
 
             <div className="text-center space-y-1">
               <p className="text-sm font-semibold text-foreground">TELEBOS</p>
-              <p className="text-xs text-muted-foreground font-mono">NMID: ID1020042918290 • {tx.id.slice(0,8)}</p>
+              <p className="text-xs text-muted-foreground font-mono">NMID: ID1020042918290 • {displayTxId(tx.id)}</p>
             </div>
 
             <div className="w-full max-w-xs pt-2">
