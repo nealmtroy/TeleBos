@@ -1111,7 +1111,7 @@ export default function WalletPage() {
                       </p>
 
                       <p className="text-[11px] text-gray-400 dark:text-slate-500 font-mono">
-                        {displayTxId(request.id)} · {formatDate(request.createdAt)}
+                        {request.id} · {formatDate(request.createdAt)}
                       </p>
                     </div>
                   </div>

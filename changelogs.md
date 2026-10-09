@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-09
+- **[31fb2701](https://github.com/nealmtroy/TeleBos/commit/31fb2701)**: Fix wallet styling, transaction ids, and remove note input
 - **[0b09d112](https://github.com/nealmtroy/TeleBos/commit/0b09d112)**: Fix admin tickets api url and redesign wallet page with invoice view
 - **[4dbfc3e2](https://github.com/nealmtroy/TeleBos/commit/4dbfc3e2)**: fix(i18n): sync initial locale from server to prevent hydration error
 - **[0dfc2fea](https://github.com/nealmtroy/TeleBos/commit/0dfc2fea)**: feat(payment): integrate KlikQRIS payment gateway for dynamic QRIS top-up

@@ -11,7 +11,7 @@ from app.database import Base
 
 
 def generate_wallet_tx_id() -> str:
-    return f"wrn_{uuid.uuid4().hex[:8]}"
+    return f"TRX-{uuid.uuid4().hex[:8].upper()}"
 
 
 class WalletTransaction(Base):
@@ -52,3 +52,4 @@ class WalletTransaction(Base):
 
     # Relationships
     user: Mapped["User"] = relationship("User", backref="wallet_transactions")
+
