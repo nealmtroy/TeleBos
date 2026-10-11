@@ -16,6 +16,11 @@ depends_on = None
 
 
 def upgrade():
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if "wallet_transactions" in inspector.get_table_names():
+        return
+
     op.create_table(
         "wallet_transactions",
         sa.Column("id", sa.String(length=64), nullable=False),

@@ -27,7 +27,7 @@ async def start_auto_join(
     request: Request,
     payload: AutoJoinJobCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     ip = request.client.host
     if not await rate_limiter.check(f"autojoin:ip:{ip}"):
@@ -60,7 +60,7 @@ async def start_auto_join(
 async def auto_join_history(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     return await auto_join_service.get_auto_join_jobs(db, str(user.id), limit)
 
@@ -69,7 +69,7 @@ async def auto_join_history(
 async def get_auto_join(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     job = await auto_join_service.get_auto_join_job(db, job_id, str(user.id))
     if job is None:
@@ -81,7 +81,7 @@ async def get_auto_join(
 async def pause_auto_join(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     job = await auto_join_service.get_auto_join_job(db, job_id, str(user.id))
     if job is None:
@@ -100,7 +100,7 @@ async def pause_auto_join(
 async def resume_auto_join(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     job = await auto_join_service.get_auto_join_job(db, job_id, str(user.id))
     if job is None:
@@ -120,7 +120,7 @@ async def resume_auto_join(
 async def stop_auto_join(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     job = await auto_join_service.get_auto_join_job(db, job_id, str(user.id))
     if job is None:
@@ -139,7 +139,7 @@ async def stop_auto_join(
 async def delete_auto_join(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     try:
         await auto_join_service.delete_auto_join_job(db, job_id, str(user.id))
@@ -153,7 +153,7 @@ async def auto_join_logs(
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(["pro", "premium", "owner"])),
+    user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
     job = await auto_join_service.get_auto_join_job(db, job_id, str(user.id))
     if job is None:

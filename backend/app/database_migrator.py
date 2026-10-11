@@ -435,14 +435,37 @@ def run_migrations(connection):
     if "user" in tables and "users" in tables:
         connection.execute(
             text("""
-                INSERT INTO users (id, email, full_name, is_active, role, balance, created_at, updated_at)
-                SELECT u.id::uuid, u.email, u.name, true, 'basic', 0, COALESCE(u."createdAt", NOW()), NOW()
+                INSERT INTO users (id, email, full_name, is_active, role, balance, subscription_expires_at, created_at, updated_at)
+                SELECT u.id::uuid, u.email, u.name, true,
+                       CASE WHEN u.role IS NOT NULL AND u.role != '' AND u.role != 'user' THEN u.role ELSE 'freetrial' END,
+                       0,
+                       CASE WHEN COALESCE(NULLIF(u.role, ''), 'freetrial') IN ('freetrial', 'user')
+                            THEN COALESCE(u."createdAt", NOW()) + INTERVAL '5 hours'
+                            ELSE NULL END,
+                       COALESCE(u."createdAt", NOW()), NOW()
                 FROM "user" u
                 WHERE NOT EXISTS (SELECT 1 FROM users us WHERE us.id = u.id::uuid)
                 ON CONFLICT (id) DO NOTHING
             """)
         )
-        logger.info("Synced existing Better Auth users into legacy users table")
+        # Sync any mismatched roles from Better Auth into legacy users
+        connection.execute(
+            text("""
+                UPDATE users us
+                SET role = u.role
+                FROM "user" u
+                WHERE us.id = u.id::uuid AND u.role IS NOT NULL AND u.role != '' AND u.role != 'user' AND us.role != u.role;
+            """)
+        )
+        # Ensure freetrial users have 5-hour expiry set
+        connection.execute(
+            text("""
+                UPDATE users
+                SET subscription_expires_at = created_at + INTERVAL '5 hours'
+                WHERE role = 'freetrial' AND subscription_expires_at IS NULL;
+            """)
+        )
+        logger.info("Synced existing Better Auth users into legacy users table with role and trial expiry")
 
     # ── Better Auth: sync legacy users into BA "user" + "account" tables ──
     # This handles the reverse direction: users who were registered before the
@@ -898,5 +921,42 @@ def run_migrations(connection):
             connection.execute(text(idx_sql))
         except Exception as e:
             logger.warning("Could not create index %s: %s", idx_sql, e)
+
+    # Ensure onboarding_completed column exists on users table
+    try:
+        user_cols = [c["name"] for c in inspector.get_columns("users")]
+        if "onboarding_completed" not in user_cols:
+            connection.execute(
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE")
+            )
+    except Exception as e:
+        logger.warning("Could not add onboarding_completed column: %s", e)
+
+    # Ensure onboarding_surveys table exists if not created by create_all
+    if "onboarding_surveys" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS onboarding_surveys (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        role VARCHAR(50),
+                        referral VARCHAR(50),
+                        volume VARCHAR(50),
+                        features JSONB NOT NULL DEFAULT '[]'::jsonb,
+                        is_skipped BOOLEAN NOT NULL DEFAULT FALSE,
+                        completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT uq_onboarding_surveys_user_id UNIQUE (user_id)
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_user_id ON onboarding_surveys(user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_created_at ON onboarding_surveys(created_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_role ON onboarding_surveys(role)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_referral ON onboarding_surveys(referral)"))
+        except Exception as e:
+            logger.warning("Could not create onboarding_surveys table: %s", e)
 
 

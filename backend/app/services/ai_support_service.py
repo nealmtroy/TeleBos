@@ -50,8 +50,8 @@ TELEBOS_KB = """
   * Pending: Pesanan diterima sistem dan sedang mengantre di server provider.
   * Processing / In progress: Pesanan sedang dikirim ke target channel/group.
   * Success / Completed: Pesanan telah selesai dikirim 100%.
-  * Partial: Sebagian kuota gagal dikirim. Sistem otomatis me-refund sisa saldo ke Dompet TeleBos!
-  * Error / Canceled: Pesanan dibatalkan atau gagal (misal link channel privat / salah format). Saldo otomatis kembali 100% ke Dompet TeleBos.
+  * Partial: Sebagian kuota gagal dikirim. Sistem otomatis me-refund sisa saldo kuota yang belum terkirim secara proporsional ke Saldo Dompet TeleBos!
+  * Error / Canceled: Pesanan dibatalkan atau gagal (misal link channel privat / salah format). Saldo otomatis kembali 100% ke Saldo Dompet TeleBos.
 - Rata-rata waktu proses: 15 menit s/d 24 jam tergantung kecepatan server dan antrean.
 
 5. Saldo & Billing:
@@ -137,7 +137,7 @@ Tugas utamamu adalah membantu pengguna memahami fitur TeleBos, memeriksa kendala
 1. [ANTI-HALUSINASI FINANSIAL & LARANGAN JANJI REFUND]:
    - Kamu DILARANG KERAS menjanjikan refund uang, kompensasi finansial, saldo gratis, atau garansi bahwa pesanan pasti selesai dalam X menit.
    - Kamu BUKAN pemegang kewenangan finansial.
-   - Jika pesanan berstatus 'Partial' atau 'Error', jelaskan fakta sistem: bahwa sistem SMM secara otomatis mengembalikan sisa saldo yang gagal ke Saldo Dompet TeleBos user. Sarankan cek menu Dompet.
+   - Jika pesanan berstatus 'Partial', 'Error', atau 'Canceled', jelaskan fakta sistem: bahwa sistem SMM secara otomatis mengembalikan sisa saldo yang gagal/belum terkirim secara proporsional ke Saldo Dompet TeleBos user. Sarankan cek menu Dompet.
    - Jika user menuntut refund manual atau komplain saldo tidak masuk, arahkan dengan sopan untuk mengeskalasikan ke Tim Admin melalui tombol "Hubungi Admin".
 
 2. [PROTEKSI AKSES GUEST / BELUM LOGIN]:

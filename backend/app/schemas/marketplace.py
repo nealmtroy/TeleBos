@@ -41,11 +41,14 @@ class MarketplaceAccountSummary(BaseModel):
 class MarketplaceBuyResponse(BaseModel):
     id: UUID
     telegram_id: int | None = None
-    phone: str = Field(..., description="Full phone number (revealed after purchase)")
+    phone: str | None = Field(None, description="Full phone number (revealed after purchase)")
     first_name: str | None = None
     last_name: str | None = None
     username: str | None = None
-    created_at: datetime
+    created_at: datetime | None = None
+    invoice_id: str | None = None
+    payment_required: bool = False
+    amount: int | None = None
 
 
 class MarketplacePricingResponse(BaseModel):

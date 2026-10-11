@@ -1,9 +1,10 @@
-"""Order endpoints — services list, place orders, history, status."""
-
+import json
 import logging
-
 from uuid import UUID
+from datetime import datetime, timezone, timedelta
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status, Request
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -18,18 +19,11 @@ from app.schemas.order import (
     MassOrderCreate,
     MassOrderItem as MassOrderItemSchema,
 )
-# Imported rather than redeclared: the allowlist lives in app/smm_service_ids.py
-# so this layer and app/services/order_service.py can never disagree about which
-# services are sellable.
 from app.smm_service_ids import ALLOWED_SMM_SERVICE_IDS  # noqa: F401
-from app.services import order_service, smm_service
+from app.services import order_service, smm_service, admin_smm_service
 from app.utils.rate_limiter import rate_limiter
+from app.utils.redis import redis_client
 from app.utils.sanitize import sanitize_exception
-
-import logging
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func
-from app.services import admin_smm_service
 
 logger = logging.getLogger(__name__)
 
@@ -159,16 +153,38 @@ async def place_single_order(
             detail=f"Service ID {payload.service_id} is not supported or unavailable.",
         )
 
-    # Idempotency check
-    from app.utils.redis import redis_client
+    # SEC-09 Idempotency check with fail-closed semantics and concurrent in-flight lock
     cache_key = None
+    lock_acquired = False
     if x_idempotency_key and x_idempotency_key.strip():
-        cache_key = f"idempotency:order:{user.id}:{x_idempotency_key.strip()}"
-        cached_order_id = await redis_client.get(cache_key)
-        if cached_order_id:
-            existing_order = await order_service.get_order_by_id(db, cached_order_id, str(user.id))
-            if existing_order:
-                return existing_order
+        clean_key = x_idempotency_key.strip()
+        cache_key = f"idempotency:order:{user.id}:{clean_key}"
+        try:
+            # 1. Atomic SET NX with 60s TTL acting as in-flight processing mutex
+            lock_acquired = await redis_client.set(cache_key, "PROCESSING", ex=60, nx=True)
+            if not lock_acquired:
+                # Key already exists: check if currently in-flight or completed
+                cached_order_id = await redis_client.get(cache_key)
+                if cached_order_id == "PROCESSING":
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Permintaan pesanan dengan idempotency key ini sedang diproses. Mohon tunggu.",
+                    )
+                elif cached_order_id:
+                    existing_order = await order_service.get_order_by_id(db, cached_order_id, str(user.id))
+                    if existing_order:
+                        return existing_order
+                    logger.warning("Cached order ID %s not found in DB for user %s", cached_order_id, user.id)
+        except HTTPException:
+            raise
+        except Exception as redis_exc:
+            logger.error("Redis idempotency failure on single order (key=%s): %s", cache_key, redis_exc)
+            # SEC-09: Fail-closed to prevent double deduction when client requested deduplication
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Layanan verifikasi idempotency sedang tidak tersedia. Silakan coba beberapa saat lagi.",
+                headers={"Retry-After": "5"},
+            )
 
     try:
         order = await order_service.place_order(
@@ -181,11 +197,29 @@ async def place_single_order(
             payload.usernames,
         )
         await db.commit()
-        if cache_key:
-            await redis_client.setex(cache_key, 120, str(order.id))
+        if cache_key and lock_acquired:
+            try:
+                # Store successful order ID with 24 hours TTL
+                await redis_client.setex(cache_key, 86400, str(order.id))
+            except Exception as store_exc:
+                logger.warning("Failed to store idempotency result in Redis: %s", store_exc)
         return order
+    except HTTPException:
+        raise
     except ValueError as exc:
+        if cache_key and lock_acquired:
+            try:
+                await redis_client.delete(cache_key)
+            except Exception:
+                pass
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    except Exception:
+        if cache_key and lock_acquired:
+            try:
+                await redis_client.delete(cache_key)
+            except Exception:
+                pass
+        raise
 
 
 @router.post("/orders/mass", response_model=list[OrderResponse], status_code=status.HTTP_201_CREATED)
@@ -217,42 +251,76 @@ async def place_mass_order(
                 detail=f"Service ID {item.service_id} is not supported or unavailable.",
             )
 
-    # Idempotency check for mass orders
-    import json
-    from app.utils.redis import redis_client
+    # SEC-09 Idempotency check with fail-closed semantics and concurrent in-flight lock
     cache_key = None
+    lock_acquired = False
     if x_idempotency_key and x_idempotency_key.strip():
-        cache_key = f"idempotency:order_mass:{user.id}:{x_idempotency_key.strip()}"
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            try:
-                order_ids = json.loads(cached_data)
-                existing_orders = []
-                for oid in order_ids:
-                    ord_rec = await order_service.get_order_by_id(db, oid, str(user.id))
-                    if ord_rec:
-                        existing_orders.append(ord_rec)
-                if existing_orders:
-                    return existing_orders
-            except Exception as cache_exc:
-                # Idempotency is best-effort. Falling through would let a retry
-                # create duplicate orders, so make the miss visible in logs.
-                logger.warning(
-                    "Idempotency cache lookup failed (key=%s); proceeding "
-                    "without deduplication: %s",
-                    cache_key,
-                    cache_exc,
-                )
+        clean_key = x_idempotency_key.strip()
+        cache_key = f"idempotency:order_mass:{user.id}:{clean_key}"
+        try:
+            # 1. Atomic SET NX with 60s TTL acting as in-flight processing mutex
+            lock_acquired = await redis_client.set(cache_key, "PROCESSING", ex=60, nx=True)
+            if not lock_acquired:
+                cached_data = await redis_client.get(cache_key)
+                if cached_data == "PROCESSING":
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Permintaan mass order dengan idempotency key ini sedang diproses. Mohon tunggu.",
+                    )
+                elif cached_data:
+                    try:
+                        order_ids = json.loads(cached_data)
+                        existing_orders = []
+                        for oid in order_ids:
+                            ord_rec = await order_service.get_order_by_id(db, oid, str(user.id))
+                            if ord_rec:
+                                existing_orders.append(ord_rec)
+                        if existing_orders:
+                            return existing_orders
+                    except Exception as parse_exc:
+                        logger.error("Failed to parse cached mass orders: %s", parse_exc)
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Gagal membaca riwayat idempotency pesanan massal.",
+                        )
+        except HTTPException:
+            raise
+        except Exception as redis_exc:
+            logger.error("Redis idempotency failure on mass order (key=%s): %s", cache_key, redis_exc)
+            # SEC-09: Fail-closed to prevent double deduction when client requested deduplication
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Layanan verifikasi idempotency sedang tidak tersedia. Silakan coba beberapa saat lagi.",
+                headers={"Retry-After": "5"},
+            )
 
     orders_data = [o.model_dump() for o in payload.orders]
     try:
         orders = await order_service.place_mass_orders(db, user, orders_data)
         await db.commit()
-        if cache_key:
-            await redis_client.setex(cache_key, 120, json.dumps([str(o.id) for o in orders]))
+        if cache_key and lock_acquired:
+            try:
+                # Store successful mass order IDs with 24 hours TTL
+                await redis_client.setex(cache_key, 86400, json.dumps([str(o.id) for o in orders]))
+            except Exception as store_exc:
+                logger.warning("Failed to store mass order idempotency result: %s", store_exc)
         return orders
+    except HTTPException:
+        raise
     except ValueError as exc:
+        if cache_key and lock_acquired:
+            try:
+                await redis_client.delete(cache_key)
+            except Exception:
+                pass
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    except Exception:
+        if cache_key and lock_acquired:
+            try:
+                await redis_client.delete(cache_key)
+            except Exception:
+                pass
+        raise
 
 
 @router.get("/orders", response_model=list[OrderResponse])

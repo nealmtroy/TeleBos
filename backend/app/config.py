@@ -123,7 +123,18 @@ class Settings(BaseSettings):
     KLIKQRIS_ID_MERCHANT: str | None = None
     KLIKQRIS_BASE_URL: str = "https://klikqris.com/api"
     KLIKQRIS_CALLBACK_URL: str | None = None
+    KLIKQRIS_ALLOWED_IPS: str = ""  # Comma-separated IP whitelist; empty allows all (KlikQRIS uses dynamic IPs)
     NEXT_PUBLIC_URL: str = "https://telebos.app"
+    # Email / SMTP Service (Withdrawal OTP & Security Notifications)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@telebos.app"
+    SMTP_FROM_NAME: str = "TeleBos Security"
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
+    RESEND_API_KEY: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

@@ -10,6 +10,23 @@ class RedeemRequest(BaseModel):
     code: str = Field(..., min_length=1, max_length=50)
 
 
+class CheckoutRequest(BaseModel):
+    plan_id: str = Field(..., pattern="^(basic|pro|premium)$")
+    billing_cycle: str = Field(..., pattern="^(monthly|yearly)$")
+    payment_method: str = Field("auto", pattern="^(auto|balance|qris)$")
+
+
+class CheckoutResponse(BaseModel):
+    invoice_id: str
+    qris_url: str | None = None
+    qris_image: str | None = None
+    amount: int
+    payment_method: str = "qris"  # "balance" or "qris"
+    success: bool = True
+    message: str | None = None
+
+
+
 class RedeemResponse(BaseModel):
     success: bool
     message: str
@@ -75,3 +92,4 @@ class SubscriptionInfoResponse(BaseModel):
     expires_at: datetime | None
     is_active: bool
     days_remaining: int | None
+    seconds_remaining: int | None = None

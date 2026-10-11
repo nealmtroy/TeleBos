@@ -31,6 +31,7 @@ class TopupStatusCheckResponse(BaseModel):
     amount: int
     total_amount: int
     is_paid: bool
+    type: str | None = None
     processed_at: datetime | None = None
 
 
@@ -58,12 +59,56 @@ class TopupCreateRequest(BaseModel):
     note: str | None = Field(default=None, description="Optional note")
 
 
-class WithdrawCreateRequest(BaseModel):
+class WithdrawOtpRequest(BaseModel):
     amount: int = Field(..., ge=10_000, description="Withdrawal amount in IDR (min 10,000)")
     method: str = Field(..., description="Destination provider/bank")
     note: str = Field(..., description="Destination account details")
 
 
+class WithdrawOtpResponse(BaseModel):
+    message: str
+    email_masked: str
+    expires_in_seconds: int
+    cooldown_seconds: int
+
+
+class WithdrawCreateRequest(BaseModel):
+    amount: int = Field(..., ge=10_000, description="Withdrawal amount in IDR (min 10,000)")
+    method: str = Field(..., description="Destination provider/bank")
+    note: str = Field(..., description="Destination account details")
+    otp_code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code sent to email")
+
+
 class AdminTransactionStatusUpdate(BaseModel):
     status: str = Field(..., description="approved or rejected")
     admin_note: str | None = Field(default=None, description="Reason or approval note")
+
+
+class WalletLedgerEntryResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    entry_type: str  # DEBIT or CREDIT
+    amount: int
+    balance_before: int
+    balance_after: int
+    category: str
+    reference_id: str | None = None
+    description: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class WalletLedgerListResponse(BaseModel):
+    entries: list[WalletLedgerEntryResponse]
+    total: int
+
+
+class BalanceReconciliationResponse(BaseModel):
+    user_id: str
+    actual_balance: int
+    total_credits: int
+    total_debits: int
+    computed_balance: int
+    discrepancy: int
+    is_reconciled: bool

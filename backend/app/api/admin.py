@@ -21,6 +21,11 @@ from app.models.redeem_code import RedeemCode
 from app.models.redeem_log import RedeemLog
 from app.models.auto_reply_log import AutoReplyLog
 from app.models.wallet_transaction import WalletTransaction
+from app.models.onboarding_survey import OnboardingSurvey
+from app.schemas.onboarding import (
+    OnboardingAnalyticsResponse,
+    OnboardingRecentSurveyItem,
+)
 from app.schemas.redeem import (
     RedeemCodeCreate as RedeemCodeCreateSchema,
     RedeemCodeResponse,
@@ -29,6 +34,7 @@ from app.schemas.redeem import (
     RedeemLogListResponse,
 )
 from app.services import broadcast_service
+from app.services.ledger_service import record_ledger_entry
 from app.services.notification_service import create_notification
 from pydantic import BaseModel, Field
 
@@ -185,6 +191,10 @@ class AdminStatsResponse(BaseModel):
     auto_reply_running: int = 0
     auto_reply_stopped: int = 0
     total_auto_reply_sent: int = 0
+
+    # Onboarding Breakdown
+    onboarding_completed_count: int = 0
+    onboarding_completion_rate: float = 0.0
 
 
 
@@ -346,6 +356,15 @@ async def get_admin_stats(
     ar_sent_result = await db.execute(select(func.count(AutoReplyLog.id)))
     total_auto_reply_sent = ar_sent_result.scalar() or 0
 
+    # Onboarding stats
+    ob_count_result = await db.execute(
+        select(func.count(User.id)).where(User.onboarding_completed.is_(True))
+    )
+    onboarding_completed_count = ob_count_result.scalar() or 0
+    onboarding_completion_rate = (
+        round((onboarding_completed_count / total_users * 100), 1) if total_users > 0 else 0.0
+    )
+
     return AdminStatsResponse(
         total_users=total_users,
         total_broadcast_jobs=total_broadcast_jobs,
@@ -371,6 +390,107 @@ async def get_admin_stats(
         auto_reply_running=auto_reply_running,
         auto_reply_stopped=auto_reply_stopped,
         total_auto_reply_sent=total_auto_reply_sent,
+        onboarding_completed_count=onboarding_completed_count,
+        onboarding_completion_rate=onboarding_completion_rate,
+    )
+
+
+@router.get("/onboarding/analytics", response_model=OnboardingAnalyticsResponse)
+async def get_onboarding_analytics(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(["owner"])),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Retrieve comprehensive onboarding survey analytics and recent responses. Owner only."""
+    # Total users
+    total_users_res = await db.execute(select(func.count(User.id)))
+    total_users = total_users_res.scalar() or 0
+
+    # Users who completed onboarding
+    completed_res = await db.execute(
+        select(func.count(User.id)).where(User.onboarding_completed.is_(True))
+    )
+    completed_count = completed_res.scalar() or 0
+
+    # Surveys marked as skipped
+    skipped_res = await db.execute(
+        select(func.count(OnboardingSurvey.id)).where(OnboardingSurvey.is_skipped.is_(True))
+    )
+    skipped_count = skipped_res.scalar() or 0
+
+    pending_count = max(0, total_users - completed_count)
+    completion_rate = (
+        round((completed_count / total_users * 100), 1) if total_users > 0 else 0.0
+    )
+
+    # Roles breakdown
+    role_res = await db.execute(
+        select(OnboardingSurvey.role, func.count(OnboardingSurvey.id))
+        .where(OnboardingSurvey.role.is_not(None))
+        .group_by(OnboardingSurvey.role)
+    )
+    roles_breakdown = {str(row[0]): int(row[1]) for row in role_res.all() if row[0]}
+
+    # Referrals breakdown
+    ref_res = await db.execute(
+        select(OnboardingSurvey.referral, func.count(OnboardingSurvey.id))
+        .where(OnboardingSurvey.referral.is_not(None))
+        .group_by(OnboardingSurvey.referral)
+    )
+    referrals_breakdown = {str(row[0]): int(row[1]) for row in ref_res.all() if row[0]}
+
+    # Volume breakdown
+    vol_res = await db.execute(
+        select(OnboardingSurvey.volume, func.count(OnboardingSurvey.id))
+        .where(OnboardingSurvey.volume.is_not(None))
+        .group_by(OnboardingSurvey.volume)
+    )
+    volumes_breakdown = {str(row[0]): int(row[1]) for row in vol_res.all() if row[0]}
+
+    # Features breakdown
+    feat_res = await db.execute(select(OnboardingSurvey.features))
+    features_breakdown: dict[str, int] = {}
+    for (feats,) in feat_res.all():
+        if isinstance(feats, list):
+            for f in feats:
+                if isinstance(f, str) and f:
+                    features_breakdown[f] = features_breakdown.get(f, 0) + 1
+
+    # Recent surveys
+    recent_surveys_res = await db.execute(
+        select(OnboardingSurvey, User.email, User.full_name)
+        .join(User, OnboardingSurvey.user_id == User.id)
+        .order_by(OnboardingSurvey.created_at.desc())
+        .limit(limit)
+    )
+    recent_surveys = []
+    for survey, email, full_name in recent_surveys_res.all():
+        recent_surveys.append(
+            OnboardingRecentSurveyItem(
+                id=survey.id,
+                user_id=survey.user_id,
+                user_email=email,
+                user_full_name=full_name,
+                role=survey.role,
+                referral=survey.referral,
+                volume=survey.volume,
+                features=survey.features or [],
+                is_skipped=survey.is_skipped,
+                created_at=survey.created_at,
+            )
+        )
+
+    return OnboardingAnalyticsResponse(
+        total_users=total_users,
+        completed_count=completed_count,
+        skipped_count=skipped_count,
+        pending_count=pending_count,
+        completion_rate=completion_rate,
+        roles_breakdown=roles_breakdown,
+        referrals_breakdown=referrals_breakdown,
+        volumes_breakdown=volumes_breakdown,
+        features_breakdown=features_breakdown,
+        recent_surveys=recent_surveys,
     )
 
 
@@ -510,13 +630,40 @@ async def update_user_balance(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.balance += payload.amount
-    if user.balance < 0:
-        user.balance = 0  # Don't allow negative balance
+    if payload.amount == 0:
+        raise HTTPException(status_code=400, detail="Jumlah perubahan saldo tidak boleh 0.")
 
-    action = "added to" if payload.amount >= 0 else "deducted from"
+    action = "added to" if payload.amount > 0 else "deducted from"
 
-    # Persist wallet transaction in ledger
+    # Persist immutable double-entry ledger mutation and update user balance
+    if payload.amount > 0:
+        await record_ledger_entry(
+            db=db,
+            user=user,
+            amount=payload.amount,
+            entry_type="CREDIT",
+            category="admin_adjustment",
+            reference_id=str(current_user.id),
+            description=f"Admin credit adjustment by {current_user.email}",
+        )
+    else:
+        debit_amount = abs(payload.amount)
+        if user.balance < debit_amount:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Saldo user ({user.balance}) tidak mencukupi untuk pengurangan {debit_amount}.",
+            )
+        await record_ledger_entry(
+            db=db,
+            user=user,
+            amount=debit_amount,
+            entry_type="DEBIT",
+            category="admin_adjustment",
+            reference_id=str(current_user.id),
+            description=f"Admin debit adjustment by {current_user.email}",
+        )
+
+    # Persist legacy wallet transaction record for UI transaction history
     tx = WalletTransaction(
         user_id=user.id,
         type="admin_adjustment",

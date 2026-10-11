@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select, desc, asc, delete
+from sqlalchemy import func, select, desc, asc, delete, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order
@@ -411,7 +411,10 @@ async def refresh_all_pending(db: AsyncSession) -> int:
         Number of orders refreshed.
     """
     query = select(Order).where(
-        Order.status.in_(["Pending", "Processing", "Partial", "In progress"])
+        or_(
+            Order.status.in_(["Pending", "Processing", "In progress"]),
+            and_(Order.status == "Partial", Order.is_refunded.is_(False)),
+        )
     )
     result = await db.execute(query)
     orders = list(result.scalars().all())
@@ -422,6 +425,11 @@ async def refresh_all_pending(db: AsyncSession) -> int:
 
     import asyncio
     from app.services.smm_service import check_order_status
+    from app.services.order_service import (
+        process_order_refund_if_eligible,
+        notification_kind_for_status,
+    )
+    from app.services.notification_service import create_notification
 
     tasks = [check_order_status(o.smm_order_id) for o in orders_to_check]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -433,9 +441,27 @@ async def refresh_all_pending(db: AsyncSession) -> int:
             continue
         if res.get("status"):
             data = res.get("data", {})
-            order.status = data.get("status", order.status)
+            new_status = data.get("status", order.status)
+            previous_status = order.status
+            order.status = new_status
             order.start_count = _parse_int(data.get("start_count"), order.start_count)
             order.remains = _parse_int(data.get("remains"), order.remains)
+
+            await process_order_refund_if_eligible(db, order, new_status)
+
+            if new_status != previous_status:
+                create_notification(
+                    db,
+                    order.user_id,
+                    "order.status_changed",
+                    kind=notification_kind_for_status(new_status),
+                    data={
+                        "order_id": str(order.id),
+                        "service": order.service_name,
+                        "status": new_status,
+                    },
+                    href="/orders",
+                )
             updated += 1
 
     if updated:
@@ -455,8 +481,17 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     import asyncio
     from app.services.smm_service import check_order_status
 
+    from app.services.order_service import (
+        process_order_refund_if_eligible,
+        notification_kind_for_status,
+    )
+    from app.services.notification_service import create_notification
+
     query = select(Order).where(
-        Order.status.in_(["Pending", "Processing", "Partial", "In progress"])
+        or_(
+            Order.status.in_(["Pending", "Processing", "In progress"]),
+            and_(Order.status == "Partial", Order.is_refunded.is_(False)),
+        )
     )
     result = await db.execute(query)
     orders = list(result.scalars().all())
@@ -517,9 +552,27 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
             continue
         if res.get("status"):
             data = res.get("data", {})
-            order.status = data.get("status", order.status)
+            new_status = data.get("status", order.status)
+            previous_status = order.status
+            order.status = new_status
             order.start_count = _parse_int(data.get("start_count"), order.start_count)
             order.remains = _parse_int(data.get("remains"), order.remains)
+
+            await process_order_refund_if_eligible(db, order, new_status)
+
+            if new_status != previous_status:
+                create_notification(
+                    db,
+                    order.user_id,
+                    "order.status_changed",
+                    kind=notification_kind_for_status(new_status),
+                    data={
+                        "order_id": str(order.id),
+                        "service": order.service_name,
+                        "status": new_status,
+                    },
+                    href="/orders",
+                )
             updated += 1
 
     if updated:

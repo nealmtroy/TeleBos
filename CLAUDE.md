@@ -14,7 +14,7 @@ Use one detailed owner per topic; do not copy long specifications between docume
 | How money enters, pricing, margins, entitlements, and verified revenue bugs | `BUSSINESS_LOGIC.md` |
 | Authentication, secrets, encryption, authorization, upload, WebSocket, or deployment security | `SECURITY.md` |
 | UI/product positioning | `PRODUCT.md` |
-| UI components, tokens, accessibility, and visual decisions | `DESIGN.md` and `.impeccable/design.json` |
+| UI components, tokens, accessibility, and visual decisions | `DESIGN.md`, `.impeccable/design.json`, and `docs/ui-audit.md` |
 | Cross-agent compatibility | `AGENTS.md` |
 | Full request/response API contract | `/api/docs` and `/api/openapi.json` on a running backend |
 | Database schema, tables, constraints, and relationships | `docs/database_schema.md` |

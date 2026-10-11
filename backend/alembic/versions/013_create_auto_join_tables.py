@@ -20,7 +20,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_tables = inspector.get_table_names()
+
+    if "auto_join_jobs" not in existing_tables:
+        op.create_table(
         "auto_join_jobs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column(
@@ -65,42 +70,43 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
     )
-    op.create_index("ix_auto_join_jobs_user_id", "auto_join_jobs", ["user_id"])
+        op.create_index("ix_auto_join_jobs_user_id", "auto_join_jobs", ["user_id"])
 
-    op.create_table(
-        "auto_join_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("job_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("target", sa.String(500), nullable=False),
-        sa.Column("target_type", sa.String(20), nullable=True),
-        sa.Column("chat_id", sa.BigInteger, nullable=True),
-        sa.Column("chat_title", sa.String(500), nullable=True),
-        sa.Column("chat_username", sa.String(255), nullable=True),
-        sa.Column("chat_type", sa.String(20), nullable=True),
-        sa.Column("status", sa.String(20), nullable=False),
-        sa.Column("error_type", sa.String(50), nullable=True),
-        sa.Column("error_message", sa.Text, nullable=True),
-        sa.Column(
-            "joined_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
-        ),
-        sa.Column("account_id_used", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("account_name", sa.String(255), nullable=True),
-        sa.ForeignKeyConstraint(["job_id"], ["auto_join_jobs.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["account_id_used"], ["telegram_accounts.id"], ondelete="SET NULL"
-        ),
-    )
-    op.create_index("ix_auto_join_logs_job_id", "auto_join_logs", ["job_id"])
-    op.create_index("ix_auto_join_logs_account_id_used", "auto_join_logs", ["account_id_used"])
-    op.create_index(
-        "ix_auto_join_logs_job_joined", "auto_join_logs", ["job_id", "joined_at"]
-    )
-    op.create_index(
-        "ix_auto_join_logs_job_status", "auto_join_logs", ["job_id", "status"]
-    )
+    if "auto_join_logs" not in existing_tables:
+        op.create_table(
+            "auto_join_logs",
+            sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+            sa.Column("job_id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("target", sa.String(500), nullable=False),
+            sa.Column("target_type", sa.String(20), nullable=True),
+            sa.Column("chat_id", sa.BigInteger, nullable=True),
+            sa.Column("chat_title", sa.String(500), nullable=True),
+            sa.Column("chat_username", sa.String(255), nullable=True),
+            sa.Column("chat_type", sa.String(20), nullable=True),
+            sa.Column("status", sa.String(20), nullable=False),
+            sa.Column("error_type", sa.String(50), nullable=True),
+            sa.Column("error_message", sa.Text, nullable=True),
+            sa.Column(
+                "joined_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.func.now(),
+            ),
+            sa.Column("account_id_used", postgresql.UUID(as_uuid=True), nullable=True),
+            sa.Column("account_name", sa.String(255), nullable=True),
+            sa.ForeignKeyConstraint(["job_id"], ["auto_join_jobs.id"], ondelete="CASCADE"),
+            sa.ForeignKeyConstraint(
+                ["account_id_used"], ["telegram_accounts.id"], ondelete="SET NULL"
+            ),
+        )
+        op.create_index("ix_auto_join_logs_job_id", "auto_join_logs", ["job_id"])
+        op.create_index("ix_auto_join_logs_account_id_used", "auto_join_logs", ["account_id_used"])
+        op.create_index(
+            "ix_auto_join_logs_job_joined", "auto_join_logs", ["job_id", "joined_at"]
+        )
+        op.create_index(
+            "ix_auto_join_logs_job_status", "auto_join_logs", ["job_id", "status"]
+        )
 
 
 def downgrade() -> None:

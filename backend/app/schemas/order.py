@@ -57,6 +57,10 @@ class OrderResponse(BaseModel):
     note: str | None
     created_at: datetime
     updated_at: datetime
+    invoice_id: str | None = None
+    payment_required: bool = False
+    is_refunded: bool = False
+    refunded_amount: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -68,6 +72,8 @@ class OrderStatusResponse(BaseModel):
     status: str
     start_count: int | None
     remains: int | None
+    is_refunded: bool = False
+    refunded_amount: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

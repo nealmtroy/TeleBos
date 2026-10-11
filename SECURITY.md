@@ -33,7 +33,7 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 ## Current Security Controls
 
 ### Authentication & Authorization
-- **Better Auth Integration**: Registration, login, logout, and token refresh are handled via Better Auth in the Next.js frontend.
+- **Better Auth Integration**: Registration, login, logout, and token refresh are handled via Better Auth in the Next.js frontend (supporting email/password and Google OAuth 2.0 with automatic account linking).
 - **`get_current_user` dependency**: Validates the Better Auth session token against the database's `session` table directly in FastAPI backend, verifying expiration and linking to an active user.
 - **Password hashing**: Password hashes are managed securely by Better Auth in the PostgreSQL database.
 - **Account ownership check**: Every account/device/chat endpoint verifies `user_id` matches the authenticated user before returning data

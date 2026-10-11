@@ -19,6 +19,7 @@ class JobStatus(StrEnum):
 
 class UserRole(StrEnum):
     """User membership roles."""
+    FREETRIAL = "freetrial"
     BASIC = "basic"
     PRO = "pro"
     PREMIUM = "premium"

@@ -1,6 +1,7 @@
 """Marketplace service logic — buy and sell Telegram accounts, manage stock."""
 
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -10,15 +11,19 @@ from sqlalchemy import select, func, and_, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.telegram_account import TelegramAccount
 from app.models.auto_reply_log import AutoReplyLog
 from app.models.user import User
 from app.models.account_audit_log import AccountAuditLog
+from app.models.wallet_transaction import WalletTransaction, generate_wallet_tx_id
 from app.models.smm_setting import SmmSetting
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
+from app.services.klikqris_service import create_qris_transaction, is_klikqris_configured
 from app.services.telegram_client import client_pool
 from app.services.notification_service import create_notification
+from app.services.ledger_service import record_ledger_entry
 from app.utils.encryption import decrypt
 from app.utils.phone import COUNTRY_PREFIXES, clean_phone_number
 
@@ -446,11 +451,16 @@ async def get_stock_accounts(db: AsyncSession, country_code: str) -> list[dict]:
     return matched
 
 
-async def buy_account(db: AsyncSession, user: User, account_id: str) -> TelegramAccount:
+async def buy_account(
+    db: AsyncSession,
+    user: User,
+    account_id: str,
+    allow_invoice: bool = False,
+) -> TelegramAccount:
     """Atomic buy transaction.
 
     Locks the account row, checks buyer balance, transfers ownership,
-    credits the seller's balance.
+    credits the seller's balance, or creates QRIS invoice if allow_invoice=True.
 
     Note: session_manager.attach_and_reconnect is intentionally NOT called
     inside this function to prevent network I/O from running within the active
@@ -458,8 +468,8 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
     The caller must trigger the reconnect after committing the transaction.
     """
     try:
-        acc_uuid = UUID(account_id)
-    except ValueError:
+        acc_uuid = UUID(str(account_id))
+    except (ValueError, TypeError, AttributeError):
         raise ValueError("Invalid account ID format.")
 
     # Capture the buyer's UUID up-front. We deliberately avoid touching the
@@ -515,14 +525,88 @@ async def buy_account(db: AsyncSession, user: User, account_id: str) -> Telegram
         raise ValueError("Buyer account not found.")
 
     if buyer.balance < buy_price:
-        raise ValueError("Insufficient balance to buy this account.")
+        if not allow_invoice:
+            raise ValueError("Insufficient balance to buy this account.")
 
-    # 1. Debit buyer's balance by the full buy_price
-    buyer.balance -= buy_price
+        invoice_id = generate_wallet_tx_id()
+        now_utc = datetime.now(timezone.utc)
+        settings = get_settings()
+
+        qris_url = None
+        qris_image = None
+        signature = None
+
+        if is_klikqris_configured():
+            callback_url = (
+                settings.KLIKQRIS_CALLBACK_URL
+                or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+            )
+            phone_display = account.phone or str(account.id)[:8]
+            keterangan = f"Beli Akun #{phone_display} ({buyer.email})"
+            try:
+                kq_data = await create_qris_transaction(
+                    order_id=invoice_id,
+                    amount=buy_price,
+                    keterangan=keterangan,
+                    callback_url=callback_url,
+                )
+                qris_url = kq_data.get("qris_url")
+                qris_image = kq_data.get("qris_image")
+                signature = kq_data.get("signature")
+            except Exception as e:
+                logger.warning("Failed to create KlikQRIS transaction for account %s: %s", invoice_id, e)
+
+        note_data = json.dumps({
+            "account_id": str(account.id),
+            "seller_id": str(seller_id),
+            "sell_price": sell_price,
+            "buy_price": buy_price,
+        })
+
+        tx = WalletTransaction(
+            id=invoice_id,
+            user_id=buyer_id,
+            type="marketplace",
+            amount=buy_price,
+            total_amount=buy_price,
+            method="QRIS",
+            note=note_data,
+            status="pending",
+            signature=signature,
+            qris_url=qris_url,
+            qris_image=qris_image,
+            created_at=now_utc,
+        )
+        db.add(tx)
+
+        # Mark metadata on the returned account object
+        account.invoice_id = invoice_id
+        account.payment_required = True
+        account.buy_price = buy_price
+        return account
+
+    # 1. Debit buyer's balance via double-entry ledger by the full buy_price
+    await record_ledger_entry(
+        db=db,
+        user=buyer,
+        amount=buy_price,
+        entry_type="DEBIT",
+        category="marketplace_buy",
+        reference_id=str(account.id),
+        description=f"Beli akun Telegram #{account.phone or str(account.id)[:8]}",
+    )
 
     # 2. Credit the seller only the sell_price. The difference is platform margin.
     if seller:
-        seller.balance += sell_price
+        await record_ledger_entry(
+            db=db,
+            user=seller,
+            amount=sell_price,
+            entry_type="CREDIT",
+            category="marketplace_sell",
+            reference_id=str(account.id),
+            description=f"Penjualan akun Telegram #{account.phone or str(account.id)[:8]}",
+        )
     else:
         # If seller no longer exists, the platform keeps the balance
         # (e.g. user was deleted). Just skip the credit.

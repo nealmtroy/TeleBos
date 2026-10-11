@@ -23,7 +23,7 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    role: Mapped[str] = mapped_column(String(20), default="basic")
+    role: Mapped[str] = mapped_column(String(20), default="freetrial")
     balance: Mapped[int] = mapped_column(BigInteger, default=0)
     subscription_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
@@ -32,6 +32,9 @@ class User(Base):
     ban_reason: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
     ban_expires: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
+    )
+    onboarding_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -59,4 +62,7 @@ class User(Base):
     )
     account_folders: Mapped[list["AccountFolder"]] = relationship(
         "AccountFolder", back_populates="user", cascade="all, delete-orphan"
+    )
+    onboarding_survey: Mapped["OnboardingSurvey | None"] = relationship(
+        "OnboardingSurvey", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )

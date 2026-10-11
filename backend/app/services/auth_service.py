@@ -50,7 +50,7 @@ async def change_password(
         text("""
             SELECT password
             FROM account
-            WHERE "userId" = :user_id
+            WHERE "userId" = :user_id AND "providerId" = 'credential'
             LIMIT 1
         """),
         {"user_id": str(user.id)},
@@ -58,11 +58,18 @@ async def change_password(
     row = result.one_or_none()
 
     if row is None:
+        # Check if the user only has OAuth accounts (e.g. Google)
+        oauth_check = await db.execute(
+            text('SELECT "providerId" FROM account WHERE "userId" = :user_id LIMIT 1'),
+            {"user_id": str(user.id)},
+        )
+        if oauth_check.one_or_none():
+            raise ValueError("Akun ini terdaftar melalui pihak ketiga (Google) dan belum memiliki kata sandi.")
         raise ValueError("No Better Auth account found for this user")
 
     current_hash = row.password
     if not current_hash:
-        raise ValueError("Account has no password set (OAuth-only?)")
+        raise ValueError("Akun belum memiliki kata sandi (OAuth-only).")
 
     # 2. Verify current password against the stored hash
     if not pwd_context.verify(current_password, current_hash):
@@ -79,7 +86,7 @@ async def change_password(
         text("""
             UPDATE account
             SET password = :password, "updatedAt" = NOW()
-            WHERE "userId" = :user_id
+            WHERE "userId" = :user_id AND "providerId" = 'credential'
         """),
         {"password": new_hash, "user_id": str(user.id)},
     )

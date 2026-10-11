@@ -4,7 +4,7 @@ import json
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.models.redeem_log import RedeemLog
 from app.models.wallet_transaction import WalletTransaction
 from app.schemas.redeem import RedeemCodeCreate
 from app.services.notification_service import create_notification
+from app.services.ledger_service import record_ledger_entry
 
 
 def generate_code(*, prefix: str | None = None) -> str:
@@ -122,8 +123,16 @@ async def redeem_code(
     detail_parts = {}
 
     if redeem.code_type == "balance":
-        # Grant balance
-        locked_user.balance += redeem.amount
+        # Grant balance via double-entry ledger
+        await record_ledger_entry(
+            db=db,
+            user=locked_user,
+            amount=redeem.amount,
+            entry_type="CREDIT",
+            category="redeem_voucher",
+            reference_id=redeem.code,
+            description=f"Redeem voucher saldo {redeem.code}",
+        )
         user.balance = locked_user.balance
         detail_parts["type"] = "balance"
         detail_parts["amount"] = redeem.amount
@@ -141,6 +150,10 @@ async def redeem_code(
         # Don't downgrade premium to pro
         if not (locked_user.role == "premium" and redeem.plan == "pro"):
             locked_user.role = redeem.plan
+            await db.execute(
+                text('UPDATE "user" SET role = :role WHERE id = :user_id'),
+                {"role": redeem.plan, "user_id": str(locked_user.id)},
+            )
 
         # Accumulate remaining days if existing subscription is active
         from app.utils.timezone import ensure_utc
@@ -265,11 +278,53 @@ async def delete_redeem_code(db: AsyncSession, code_id: str) -> None:
     await db.flush()
 
 
+def is_subscription_active(user: object) -> bool:
+    """Return True if user currently has an active, non-expired subscription or unexpired free trial."""
+    if not user:
+        return False
+    role = getattr(user, "role", "freetrial") or "freetrial"
+    if role == "owner":
+        return True
+
+    now_utc = datetime.now(timezone.utc)
+    expires_at = getattr(user, "subscription_expires_at", None)
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if role in ("basic", "pro", "premium"):
+        return expires_at is None or expires_at > now_utc
+    elif role == "freetrial":
+        return expires_at is not None and expires_at > now_utc
+    return False
+
+
 async def auto_downgrade_if_expired(db: AsyncSession, user: User) -> User:
     """Check if user's subscription has expired and downgrade if so."""
-    if user.role in ("pro", "premium") and user.subscription_expires_at:
-        if user.subscription_expires_at < datetime.now(timezone.utc):
-            user.role = "basic"
-            user.subscription_expires_at = None
+    now_utc = datetime.now(timezone.utc)
+    expires_at = getattr(user, "subscription_expires_at", None)
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if user.role in ("basic", "pro", "premium") and expires_at:
+        if expires_at < now_utc:
+            user.role = "freetrial"
+            await db.execute(
+                text('UPDATE users SET role = :role WHERE id = :user_id'),
+                {"role": "freetrial", "user_id": str(user.id)},
+            )
+            await db.execute(
+                text('UPDATE "user" SET role = :role WHERE id = :user_id'),
+                {"role": "freetrial", "user_id": str(user.id)},
+            )
             await db.flush()
+    elif user.role == "freetrial" and user.subscription_expires_at is None:
+        created = user.created_at if user.created_at else now_utc
+        if created and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        user.subscription_expires_at = created + timedelta(hours=5)
+        await db.execute(
+            text('UPDATE users SET subscription_expires_at = :exp WHERE id = :user_id'),
+            {"exp": user.subscription_expires_at, "user_id": str(user.id)},
+        )
+        await db.flush()
     return user

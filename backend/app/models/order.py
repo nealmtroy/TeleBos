@@ -35,6 +35,8 @@ class Order(Base):
     remains: Mapped[int | None] = mapped_column(Integer)
     is_mass_order: Mapped[bool] = mapped_column(Boolean, default=False)
     mass_parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # For mass orders
+    is_refunded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    refunded_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(

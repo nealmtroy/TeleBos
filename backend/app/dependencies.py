@@ -416,7 +416,7 @@ def require_api_scope(scope: str):
 
 
 def require_role(allowed_roles: list[str] | str):
-    """Dependency that checks if the authenticated user has one of the allowed roles."""
+    """Dependency that checks if the authenticated user has one of the allowed roles and an active subscription."""
     if isinstance(allowed_roles, str):
         allowed_roles = [allowed_roles]
 
@@ -426,5 +426,13 @@ def require_role(allowed_roles: list[str] | str):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action.",
             )
+        # If accessing paid-only features (non-owner), verify subscription is active and not expired
+        if current_user.role != "owner" and any(r in ("basic", "pro", "premium") for r in allowed_roles):
+            from app.services.redeem_service import is_subscription_active
+            if not is_subscription_active(current_user):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Paket langganan Anda telah kedaluwarsa. Silakan perpanjang langganan untuk mengakses fitur ini.",
+                )
         return current_user
     return dependency

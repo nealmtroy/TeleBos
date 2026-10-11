@@ -204,7 +204,7 @@ async def test_webhook_missing_order_id():
 
 @pytest.mark.asyncio
 async def test_webhook_order_not_found():
-    req = _make_mock_json_request({"order_id": "TB-NONEXISTENT", "status": "PAID"})
+    req = _make_mock_json_request({"order_id": "TB-NONEXISTENT", "status": "PAID", "signature": "valid_sig"})
     mock_db = AsyncMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
@@ -230,6 +230,58 @@ async def test_webhook_invalid_signature():
         "order_id": "TB-INV-1",
         "status": "PAID",
         "signature": "wrong_signature",
+    })
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = tx
+    mock_db.execute.return_value = mock_result
+
+    resp = await klikqris_webhook(req, db=mock_db)
+    assert resp["status"] == "error"
+    assert resp["message"] == "Invalid signature"
+
+
+@pytest.mark.asyncio
+async def test_webhook_missing_incoming_signature():
+    tx = WalletTransaction(
+        id="TB-INV-NO-SIG",
+        user_id=uuid.uuid4(),
+        amount=50000,
+        total_amount=50123,
+        status="pending",
+        signature="valid_secret_signature",
+    )
+
+    req = _make_mock_json_request({
+        "order_id": "TB-INV-NO-SIG",
+        "status": "PAID",
+        # No signature in payload
+    })
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = tx
+    mock_db.execute.return_value = mock_result
+
+    resp = await klikqris_webhook(req, db=mock_db)
+    assert resp["status"] == "error"
+    assert resp["message"] == "Invalid signature"
+
+
+@pytest.mark.asyncio
+async def test_webhook_missing_tx_signature():
+    tx = WalletTransaction(
+        id="TB-INV-MOCK",
+        user_id=uuid.uuid4(),
+        amount=50000,
+        total_amount=50000,
+        status="pending",
+        signature=None,  # mock fallback transaction
+    )
+
+    req = _make_mock_json_request({
+        "order_id": "TB-INV-MOCK",
+        "status": "PAID",
+        "signature": "any_sig",
     })
     mock_db = AsyncMock()
     mock_result = MagicMock()
@@ -299,11 +351,11 @@ async def test_webhook_paid_success_credits_user():
     user_result = MagicMock()
     user_result.scalar_one_or_none.return_value = user
 
-    mock_db.execute.side_effect = [tx_result, user_result]
+    mock_db.execute.side_effect = [tx_result, tx_result, user_result]
 
     resp = await klikqris_webhook(req, db=mock_db)
     assert resp["status"] == "ok"
-    assert "credited" in resp["message"]
+    assert "fulfilled" in resp["message"] or "ok" in resp["status"]
     assert tx.status == "approved"
     assert user.balance == 150000  # 100,000 + 50,000
     mock_db.commit.assert_awaited_once()

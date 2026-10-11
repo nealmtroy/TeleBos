@@ -137,8 +137,22 @@ async def buy_account(
                 detail="Unable to verify the account session. Please try again shortly.",
             )
 
-        account = await marketplace_service.buy_account(db, current_user, account_id)
+        account = await marketplace_service.buy_account(
+            db, current_user, account_id, allow_invoice=True
+        )
         await db.commit()
+
+        if getattr(account, "payment_required", False):
+            from datetime import datetime, timezone
+            return MarketplaceBuyResponse(
+                id=account.id,
+                telegram_id=account.telegram_id,
+                phone=None,
+                created_at=datetime.now(timezone.utc),
+                invoice_id=getattr(account, "invoice_id", None),
+                payment_required=True,
+                amount=getattr(account, "buy_price", None),
+            )
 
         # Reconnect outside of database transaction
         from app.services.session_manager import session_manager

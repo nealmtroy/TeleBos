@@ -48,7 +48,9 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     balance: int = 0
+    telegram_chat_id: int | None = None
     created_at: datetime | None = None
+    onboarding_completed: bool = False
 
     model_config = {"from_attributes": True}
 

@@ -86,14 +86,22 @@ async def get_free_daily_limit(db: AsyncSession) -> int:
     return max(0, value)
 
 
-async def get_remaining_broadcast_seconds(db: AsyncSession, user_id: str) -> int:
+async def get_remaining_broadcast_seconds(
+    db: AsyncSession,
+    user_id: str,
+    user: object | None = None,
+) -> int:
     """Seconds of broadcast send-time the user may still consume today.
 
     Consuming a message counts only the time actually spent sending, recorded
-    in ``BroadcastLog.details[].send_ms``. The per-group ``duration_ms`` is not
-    usable here: it also covers the configured delay and any flood-wait sleep,
-    so summing it would charge the user for the throttle the product asked for.
+    in ``BroadcastLog.details[].send_ms``. If the user's trial or subscription
+    is expired, returns 0.
     """
+    if user is not None:
+        from app.services.redeem_service import is_subscription_active
+        if not is_subscription_active(user):
+            return 0
+
     limit = await get_free_daily_limit(db)
     if limit <= 0:
         return 0
@@ -125,19 +133,46 @@ async def get_remaining_broadcast_seconds(db: AsyncSession, user_id: str) -> int
     return max(0, limit - int(used_ms / 1000))
 
 
-async def has_broadcast_allowance(db: AsyncSession, user_id: str, role: str) -> bool:
+async def has_broadcast_allowance(
+    db: AsyncSession,
+    user_id: str,
+    role: str,
+    user: object | None = None,
+) -> bool:
     """Whether this user may start another broadcast right now."""
+    if user is not None:
+        from app.services.redeem_service import is_subscription_active
+        if not is_subscription_active(user):
+            return False
+
     if role in UNRESTRICTED_ROLES:
         return True
-    return await get_remaining_broadcast_seconds(db, user_id) > 0
+    return await get_remaining_broadcast_seconds(db, user_id, user=user) > 0
 
 
 async def enforce_broadcast_allowance(db: AsyncSession, user: "object") -> None:
-    """Raise a user-facing error when a free account is out of daily send time."""
-    role = getattr(user, "role", "basic")
+    """Raise a user-facing error when an account is expired or out of daily send time."""
+    role = getattr(user, "role", "freetrial") or "freetrial"
+    if role == "owner":
+        return
+
+    from app.services.redeem_service import is_subscription_active
+    if not is_subscription_active(user):
+        plan_display = {
+            "freetrial": "Free Trial",
+            "basic": "Starter",
+            "pro": "Pro",
+            "premium": "Business",
+        }.get(role, role.capitalize())
+        raise ValueError(
+            f"Masa aktif paket {plan_display} Anda telah berakhir. "
+            "Silakan berlangganan atau perpanjang paket Anda untuk melanjutkan siaran."
+        )
+
     if role in UNRESTRICTED_ROLES:
         return
-    remaining = await get_remaining_broadcast_seconds(db, str(user.id))
+
+    remaining = await get_remaining_broadcast_seconds(db, str(user.id), user=user)
     if remaining <= 0:
         raise ValueError(
             "Your free daily broadcast time is used up. It resets at 00:00 UTC, "

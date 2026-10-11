@@ -21,21 +21,11 @@ def upgrade() -> None:
     op.execute("TRUNCATE TABLE broadcast_logs;")
 
     # 2. Drop old indexes
-    try:
-        op.drop_index("ix_broadcast_logs_job_sent", table_name="broadcast_logs")
-    except Exception:
-        pass
-
-    try:
-        op.drop_index("ix_broadcast_logs_account_id_used", table_name="broadcast_logs")
-    except Exception:
-        pass
+    op.execute("DROP INDEX IF EXISTS ix_broadcast_logs_job_sent")
+    op.execute("DROP INDEX IF EXISTS ix_broadcast_logs_account_id_used")
 
     # 3. Drop old foreign key and per-message columns
-    try:
-        op.drop_constraint("broadcast_logs_account_id_used_fkey", "broadcast_logs", type_="foreignkey")
-    except Exception:
-        pass
+    op.execute("ALTER TABLE broadcast_logs DROP CONSTRAINT IF EXISTS broadcast_logs_account_id_used_fkey")
 
     columns_to_drop = [
         "account_id_used",
@@ -48,49 +38,50 @@ def upgrade() -> None:
         "sent_at",
     ]
     for col in columns_to_drop:
-        try:
-            op.drop_column("broadcast_logs", col)
-        except Exception:
-            pass
+        op.execute(f"ALTER TABLE broadcast_logs DROP COLUMN IF EXISTS {col}")
 
     # 4. Add cycle-level aggregate columns and JSONB details
-    op.add_column(
-        "broadcast_logs",
-        sa.Column("total_groups", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "broadcast_logs",
-        sa.Column("sent_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "broadcast_logs",
-        sa.Column("fail_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "broadcast_logs",
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-    )
-    op.add_column(
-        "broadcast_logs",
-        sa.Column(
-            "details",
-            postgresql.JSONB(astext_type=sa.Text()),
-            nullable=False,
-            server_default=sa.text("'[]'::jsonb"),
-        ),
-    )
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_cols = {c["name"] for c in inspector.get_columns("broadcast_logs")}
+    if "total_groups" not in existing_cols:
+        op.add_column(
+            "broadcast_logs",
+            sa.Column("total_groups", sa.Integer(), nullable=False, server_default="0"),
+        )
+        op.add_column(
+            "broadcast_logs",
+            sa.Column("sent_count", sa.Integer(), nullable=False, server_default="0"),
+        )
+        op.add_column(
+            "broadcast_logs",
+            sa.Column("fail_count", sa.Integer(), nullable=False, server_default="0"),
+        )
+        op.add_column(
+            "broadcast_logs",
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        )
+        op.add_column(
+            "broadcast_logs",
+            sa.Column(
+                "details",
+                postgresql.JSONB(astext_type=sa.Text()),
+                nullable=False,
+                server_default=sa.text("'[]'::jsonb"),
+            ),
+        )
 
-    # 5. Create new indexes for cycle-based queries
-    op.create_index(
-        "ix_broadcast_logs_job_cycle",
-        "broadcast_logs",
-        ["job_id", "cycle_number"],
-    )
-    op.create_index(
-        "ix_broadcast_logs_job_created",
-        "broadcast_logs",
-        ["job_id", "created_at"],
-    )
+        # 5. Create new indexes for cycle-based queries
+        op.create_index(
+            "ix_broadcast_logs_job_cycle",
+            "broadcast_logs",
+            ["job_id", "cycle_number"],
+        )
+        op.create_index(
+            "ix_broadcast_logs_job_created",
+            "broadcast_logs",
+            ["job_id", "created_at"],
+        )
 
 
 def downgrade() -> None:

@@ -73,9 +73,9 @@ def test_paid_roles_are_never_watermarked(role):
     assert ent.requires_watermark(role) is False
 
 
-@pytest.mark.parametrize("role", ["basic", "pro", "premium", "owner"])
+@pytest.mark.parametrize("role", ["freetrial", "basic", "pro", "premium", "owner"])
 def test_only_the_free_role_requires_a_watermark(role):
-    assert ent.requires_watermark(role) is (role == "basic")
+    assert ent.requires_watermark(role) is (role in ("freetrial", "basic"))
 
 
 def test_unknown_role_is_treated_as_free_rather_than_privileged():

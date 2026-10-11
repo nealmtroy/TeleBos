@@ -193,10 +193,12 @@ async def broadcast_entitlement(
 ):
     """Get the current user's broadcast allowance and watermark state."""
     from app.services import broadcast_entitlement as ent
+    from app.services.redeem_service import is_subscription_active
 
+    is_active = is_subscription_active(user)
     daily_limit = await ent.get_free_daily_limit(db)
-    remaining = await ent.get_remaining_broadcast_seconds(db, str(user.id))
-    unlimited = not ent.requires_watermark(user.role)
+    remaining = await ent.get_remaining_broadcast_seconds(db, str(user.id), user=user) if is_active else 0
+    unlimited = (not ent.requires_watermark(user.role)) and is_active
 
     watermark_enabled, template = await ent.get_watermark_config(db)
     # Only preview a watermark the user would actually receive.
@@ -205,9 +207,9 @@ async def broadcast_entitlement(
     return BroadcastEntitlementResponse(
         role=user.role,
         unlimited=unlimited,
-        daily_limit_seconds=0 if unlimited else daily_limit,
-        remaining_seconds=0 if unlimited else remaining,
-        used_seconds=0 if unlimited else max(0, daily_limit - remaining),
+        daily_limit_seconds=0 if (unlimited or not is_active) else daily_limit,
+        remaining_seconds=0 if (unlimited or not is_active) else remaining,
+        used_seconds=0 if unlimited else (daily_limit if not is_active else max(0, daily_limit - remaining)),
         watermark_enabled=bool(watermark_enabled and not unlimited),
         watermark_preview=preview,
     )

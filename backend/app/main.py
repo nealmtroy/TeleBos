@@ -83,6 +83,8 @@ from app.api import (
     telegram_reg_date,
     wallet,
     support,
+    onboarding,
+    telegram_bot,
 )
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
@@ -281,16 +283,16 @@ class SecurityHeadersMiddleware:
 
 
 # Next.js needs 'unsafe-inline'/'unsafe-eval' for scripts, plus Cloudflare Web
-# Analytics and jsDelivr. Kept module-level so it is built once, not per request.
+# Analytics, Google Tag Manager, and jsDelivr. Kept module-level so it is built once, not per request.
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net https://www.googletagmanager.com; "
     "worker-src 'self' blob:; "
     "child-src 'self' blob:; "
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com; "
+    "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com https://*.google-analytics.com https://*.googletagmanager.com; "
     "font-src 'self' data:; "
-    "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com https://cdn.jsdelivr.net; "
+    "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com https://cdn.jsdelivr.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"
@@ -654,6 +656,8 @@ app.include_router(api_keys.router)
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(telegram_reg_date.router, prefix="/api/v1")
 app.include_router(support.router, prefix="/api/v1")
+app.include_router(onboarding.router, prefix="/api/v1")
+app.include_router(telegram_bot.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

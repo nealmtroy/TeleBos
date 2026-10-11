@@ -1,6 +1,12 @@
 """Alembic configuration."""
 
+import os
+import sys
 from logging.config import fileConfig
+
+# Ensure app module can be imported regardless of execution cwd
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 

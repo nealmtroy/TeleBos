@@ -208,7 +208,22 @@ async def start_broadcast(
     delay_randomized: bool = False,
     log_destination: str | None = None,
 ) -> BroadcastJob:
-    """Create a new broadcast job and queue it."""
+    # Enforce active subscription / trial before querying resources
+    from app.services.redeem_service import is_subscription_active
+
+    user_role = getattr(user, "role", "freetrial") or "freetrial"
+    if not is_subscription_active(user):
+        plan_display = {
+            "freetrial": "Free Trial",
+            "basic": "Starter",
+            "pro": "Pro",
+            "premium": "Business",
+        }.get(user_role, user_role.capitalize())
+        raise ValueError(
+            f"Masa aktif paket {plan_display} Anda telah berakhir. "
+            "Silakan berlangganan atau perpanjang paket Anda untuk melanjutkan siaran."
+        )
+
     # Validate existence of accounts
     if not account_ids:
         raise ValueError("At least one account is required")
@@ -221,6 +236,26 @@ async def start_broadcast(
         if account is None:
             raise ValueError(f"Account {acc_id} not found")
         valid_account_ids.append(str(account.id))
+
+    plan_max_accounts = {
+        "freetrial": 1,
+        "basic": 1,
+        "pro": 3,
+        "premium": 5,
+        "owner": 9999,
+    }
+    max_allowed = plan_max_accounts.get(user_role, 1)
+    if len(valid_account_ids) > max_allowed:
+        plan_display = {
+            "freetrial": "Free Trial",
+            "basic": "Starter",
+            "pro": "Pro",
+            "premium": "Business",
+        }.get(user_role, user_role.capitalize())
+        raise ValueError(
+            f"Paket {plan_display} hanya mengizinkan maksimal {max_allowed} akun pengirim siaran. "
+            f"Anda memilih {len(valid_account_ids)} akun. Silakan upgrade paket Anda."
+        )
 
     gl_result = await db.execute(
         select(GroupList).where(GroupList.id == group_list_id, GroupList.user_id == user.id)
@@ -835,6 +870,7 @@ async def execute_broadcast(job_id: str):
             await db.commit()
 
             loop_enabled = job_orm.loop_enabled
+            job_user_id = str(job_orm.user_id)
             delay_randomized = job_orm.delay_randomized
             delay_per_group = job_orm.delay_per_group
             delay_after_all = job_orm.delay_after_all
@@ -1814,6 +1850,45 @@ async def execute_broadcast(job_id: str):
                     current_status = await _get_current_status(job_uuid)
                     if current_status in ("cancelled", "completed", "failed"):
                         break
+
+                    # Security Check (SEC-03): Check subscription & quota before starting next cycle
+                    try:
+                        async with async_session_factory() as db_cycle_check:
+                            user_res = await db_cycle_check.execute(
+                                select(User).where(User.id == _uuid.UUID(job_user_id))
+                            )
+                            loop_user = user_res.scalar_one_or_none()
+                            if loop_user:
+                                from app.services.redeem_service import is_subscription_active, auto_downgrade_if_expired
+                                from app.services.broadcast_entitlement import has_broadcast_allowance
+                                await auto_downgrade_if_expired(db_cycle_check, loop_user)
+                                if not is_subscription_active(loop_user) or not await has_broadcast_allowance(
+                                    db_cycle_check, str(loop_user.id), loop_user.role, user=loop_user
+                                ):
+                                    logger.info(
+                                        "Stopping looping broadcast job %s: subscription or daily allowance expired for user %s",
+                                        job_id_str,
+                                        job_user_id,
+                                    )
+                                    res_job = await db_cycle_check.execute(
+                                        select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                                    )
+                                    db_job_stop = res_job.scalar_one_or_none()
+                                    if db_job_stop:
+                                        db_job_stop.status = "completed"
+                                        db_job_stop.completed_at = datetime.now(timezone.utc)
+                                        await db_cycle_check.commit()
+                                    await _push_broadcast(
+                                        job_id_str,
+                                        "status",
+                                        {
+                                            "status": "completed",
+                                            "message": "Paket langganan atau kuota harian siaran Anda telah berakhir.",
+                                        },
+                                    )
+                                    break
+                    except Exception as cycle_check_exc:
+                        logger.warning("Error checking subscription in broadcast cycle loop: %s", cycle_check_exc)
             else:
                 break
 
