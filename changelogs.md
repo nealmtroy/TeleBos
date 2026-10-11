@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-12
+- **[9038507c](https://github.com/nealmtroy/TeleBos/commit/9038507c)**: fix: change DecryptionError log level from ERROR to WARNING in spam check and session manager
 - **[253454ae](https://github.com/nealmtroy/TeleBos/commit/253454ae)**: migration: add missing ban_reason and ban_expires columns to users table
 
 ## 2026-10-09

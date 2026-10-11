@@ -63,7 +63,10 @@ def decrypt(ciphertext: str) -> str:
     try:
         return _get_cipher().decrypt(ciphertext.encode()).decode()
     except Exception as exc:
-        logger.error("Decryption failed (possibly invalid ENCRYPTION_KEY): %s", exc)
+        # DecryptionError is intentionally raised for callers to handle.
+        # Log at WARNING since this is an expected state when ENCRYPTION_KEY rotates
+        # or data is corrupt, not a system defect.
+        logger.warning("Decryption failed (possibly invalid ENCRYPTION_KEY): %s", exc)
         raise DecryptionError(
             "Stored secret could not be decrypted; the ENCRYPTION_KEY may have "
             "changed or the stored value is corrupt"
