@@ -1067,8 +1067,25 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
     """
     import asyncio
     from datetime import datetime, timezone
+    from app.utils.encryption import DecryptionError
 
-    session_str = decrypt(account.session_string)
+    try:
+        session_str = decrypt(account.session_string)
+    except DecryptionError as dec_exc:
+        # Decryption failure is an expected state when ENCRYPTION_KEY rotates or data is corrupt.
+        # Log at WARNING since we handle it gracefully by marking the account for re-login.
+        logger.warning(
+            "Cannot check spam status for account %s: session string decryption failed (%s). "
+            "ENCRYPTION_KEY may have rotated or data is corrupt.",
+            account.phone,
+            dec_exc,
+        )
+        account.spam_status = "unknown"
+        account.spam_detail = f"Decryption failed: {dec_exc}"
+        account.spam_last_checked_at = datetime.now(timezone.utc)
+        await db.flush()
+        return account
+
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
         raise AccountDisconnectedError("Account is disconnected. Please re-login.")

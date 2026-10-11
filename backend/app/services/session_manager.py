@@ -435,7 +435,18 @@ class SessionManager:
                     )
                     row = result.fetchone()
                     if row and row[0]:
-                        session_str = decrypt(row[0])
+                        try:
+                            session_str = decrypt(row[0])
+                        except DecryptionError as dec_exc:
+                            # Decryption failure is an expected state when ENCRYPTION_KEY rotates or data is corrupt.
+                            # Log at WARNING since we handle it gracefully by returning False.
+                            logger.warning(
+                                "Failed to re-attach event handler for account %s: session string decryption failed (%s). "
+                                "ENCRYPTION_KEY may have rotated or data is corrupt.",
+                                account_id,
+                                dec_exc,
+                            )
+                            return False
                         if session_str:
                             await event_relay.attach(account_id, session_str)
             except Exception as exc:

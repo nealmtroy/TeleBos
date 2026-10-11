@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-12
+- **[253454ae](https://github.com/nealmtroy/TeleBos/commit/253454ae)**: migration: add missing ban_reason and ban_expires columns to users table
+
 ## 2026-10-09
 - **[0686a136](https://github.com/nealmtroy/TeleBos/commit/0686a136)**: chore: update default domain to telebos.app across configs, bot handlers, and compose
 - **[7625665f](https://github.com/nealmtroy/TeleBos/commit/7625665f)**: chore: gitignore and untrack docs/, align legal routes, llms.txt, and sitemap
