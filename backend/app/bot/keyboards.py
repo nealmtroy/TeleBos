@@ -182,17 +182,10 @@ def autoreply_menu_keyboard(accounts: List[TelegramAccount], page: int = 1, tota
 
 
 def login_start_keyboard():
-    """InlineKeyboardMarkup to start login flow."""
+    """InlineKeyboardMarkup to direct user to Settings Dashboard."""
     return [
-        [Button.inline("🔑 Hubungkan Akun TeleBos", data="login_start")],
-        [Button.url("📝 Daftar Akun TeleBos", url="https://telebos.app/register")]
-    ]
-
-
-def login_cancel_keyboard():
-    """InlineKeyboardMarkup to cancel active login flow."""
-    return [
-        [Button.inline("❌ Batal", data="login_cancel")]
+        [Button.url("🌐 Buka Settings Dashboard", "https://telebos.app/settings?tab=telegram")],
+        [Button.url("📝 Daftar Akun TeleBos", "https://telebos.app/register")]
     ]
 
 

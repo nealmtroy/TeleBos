@@ -33,25 +33,20 @@ def auth_required(func):
             user = result.scalar_one_or_none()
 
         if not user:
-            # Check if they are currently in the middle of a login flow
-            import json
-            from app.utils.redis import redis_client
-            raw_state = await redis_client.get(f"bot_auth_state:{sender_id}")
-            if raw_state:
-                # If they are in a login flow, let the text handler process the input
-                return
-
-            # Not in login flow and not authenticated, prompt to login
-            from app.bot.keyboards import login_start_keyboard
+            from telethon import Button
             await event.respond(
                 "⚠️ **Akun TeleBos Belum Tertaut!**\n\n"
-                "Untuk menggunakan bot ini, silakan tautkan akun website TeleBos Anda terlebih dahulu "
-                "secara interaktif.\n\n"
-                "📌 **Belum punya akun TeleBos?**\n"
-                "Silakan register/daftar terlebih dahulu di:\n"
-                "🔗 https://telebos.app/register\n\n"
-                "Silakan klik tombol di bawah ini untuk menghubungkan akun:",
-                buttons=login_start_keyboard()
+                "Untuk menggunakan bot ini, silakan hubungkan akun website TeleBos Anda terlebih dahulu "
+                "menggunakan **Token Penghubung** aman (mirip Authenticator):\n\n"
+                "📌 **Langkah Cepat:**\n"
+                "1. Buka menu **Settings** > **Bot Telegram** di Dashboard Web TeleBos\n"
+                "2. Klik **Buat Token Penghubung**\n"
+                "3. Kirimkan token (contoh: `TB-K7D9P2`) ke chat bot ini.\n\n"
+                "Silakan ketik atau tempelkan token Anda:",
+                buttons=[
+                    [Button.url("🌐 Buka Settings Dashboard", "https://telebos.app/settings?tab=telegram")],
+                    [Button.url("📝 Daftar Akun", "https://telebos.app/register")]
+                ]
             )
             return
 

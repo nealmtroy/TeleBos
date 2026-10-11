@@ -1,4 +1,4 @@
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useI18nStore } from "@/lib/i18n";
@@ -13,6 +13,14 @@ vi.mock("next/navigation", () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+}));
+
+// Mock api
+const mockApiPost = vi.fn().mockResolvedValue({ data: { success: true } });
+vi.mock("@/lib/api", () => ({
+  default: {
+    post: (...args: any[]) => mockApiPost(...args),
+  },
 }));
 
 // Mock framer-motion to avoid animation delays in tests
@@ -56,7 +64,7 @@ describe("OnboardingPage Survey", () => {
     expect(screen.getByText("Agensi & Tim Marketing")).toBeDefined();
   });
 
-  it("progresses through all 5 survey questions and saves survey responses", () => {
+  it("progresses through all 5 survey questions and saves survey responses", async () => {
     render(<OnboardingPage />);
 
     // Q1 -> Q2: Referral
@@ -94,16 +102,35 @@ describe("OnboardingPage Survey", () => {
     expect(savedSurvey.referral).toBe("friend");
     expect(savedSurvey.volume).toBe("6-20");
     expect(savedSurvey.features).toContain("broadcast");
-    expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/onboarding",
+      expect.objectContaining({
+        role: "solo",
+        referral: "friend",
+        volume: "6-20",
+        is_skipped: false,
+      })
+    );
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
   });
 
-  it("allows skipping survey directly to dashboard and marks completed", () => {
+  it("allows skipping survey directly to dashboard and marks completed", async () => {
     render(<OnboardingPage />);
 
     const skipBtn = screen.getByText("Lewati ke Dashboard");
     fireEvent.click(skipBtn);
 
     expect(localStorage.getItem("telebos_onboarding_completed_usr-123")).toBe("true");
-    expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/onboarding",
+      expect.objectContaining({
+        is_skipped: true,
+      })
+    );
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
   });
 });

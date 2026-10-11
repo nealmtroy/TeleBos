@@ -55,6 +55,9 @@ async def main():
     
     bot_me = await client.get_me()
     logger.info("🤖 Bot @%s is online and ready!", bot_me.username)
+    from app.services.telegram_bot_service import set_bot_username
+    if bot_me and bot_me.username:
+        await set_bot_username(bot_me.username)
     
     # Block and run until disconnected
     await client.run_until_disconnected()

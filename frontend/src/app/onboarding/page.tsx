@@ -29,6 +29,7 @@ import {
   Check,
   Sparkles,
   LayoutDashboard,
+  Loader2,
 } from "lucide-react";
 
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -36,6 +37,7 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
 
 const TOTAL_STEPS = 5;
 
@@ -52,12 +54,18 @@ export default function OnboardingPage() {
     "broadcast",
     "webchat",
   ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const allowReset = params?.get("edit") === "true" || params?.get("reset") === "true";
+
     if (!isLoading && !isAuthenticated) {
       router.replace("/login?redirect=/onboarding");
+    } else if (!isLoading && isAuthenticated && user?.onboarding_completed && !allowReset) {
+      router.replace("/dashboard");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, user, router]);
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -67,7 +75,9 @@ export default function OnboardingPage() {
     );
   }
 
-  const saveSurveyAndComplete = () => {
+  const saveSurveyAndComplete = async (isSkipped = false, destination = "/dashboard") => {
+    setIsSubmitting(true);
+    // 1. Keep localStorage for offline fallback & client tests compatibility
     try {
       if (user?.id) {
         localStorage.setItem(
@@ -77,6 +87,7 @@ export default function OnboardingPage() {
             referral: selectedReferral,
             volume: selectedVolume,
             features: selectedFeatures,
+            is_skipped: isSkipped,
             completedAt: new Date().toISOString(),
           })
         );
@@ -85,19 +96,40 @@ export default function OnboardingPage() {
     } catch {
       // Ignore localStorage write failures
     }
+
+    // 2. Persist to PostgreSQL database via API
+    try {
+      await api.post("/onboarding", {
+        role: selectedRole,
+        referral: selectedReferral,
+        volume: selectedVolume,
+        features: selectedFeatures,
+        is_skipped: isSkipped,
+      });
+    } catch (err) {
+      console.error("Failed to save onboarding survey to database:", err);
+    }
+
+    // 3. Update auth store user state in memory
+    if (user) {
+      useAuthStore.setState({
+        user: { ...user, onboarding_completed: true },
+      });
+    }
+
+    setIsSubmitting(false);
+    router.push(destination);
   };
 
   const handleSkip = () => {
-    saveSurveyAndComplete();
-    router.push("/dashboard");
+    void saveSurveyAndComplete(true, "/dashboard");
   };
 
   const handleNext = () => {
     if (currentStep < TOTAL_STEPS) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      saveSurveyAndComplete();
-      router.push("/dashboard");
+      void saveSurveyAndComplete(false, "/dashboard");
     }
   };
 
@@ -705,11 +737,9 @@ export default function OnboardingPage() {
                   <div className="space-y-3">
                     <button
                       type="button"
-                      onClick={() => {
-                        saveSurveyAndComplete();
-                        router.push("/accounts/add");
-                      }}
-                      className="w-full flex items-center justify-between p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-left cursor-pointer group"
+                      disabled={isSubmitting}
+                      onClick={() => void saveSurveyAndComplete(false, "/accounts/add")}
+                      className="w-full flex items-center justify-between p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-left cursor-pointer group disabled:opacity-60"
                     >
                       <div className="flex items-center gap-3.5">
                         <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
@@ -729,11 +759,9 @@ export default function OnboardingPage() {
 
                     <button
                       type="button"
-                      onClick={() => {
-                        saveSurveyAndComplete();
-                        router.push("/dashboard");
-                      }}
-                      className="w-full flex items-center justify-between p-4 rounded-xl border border-border/80 bg-background/50 hover:bg-muted/40 transition-all text-left cursor-pointer group"
+                      disabled={isSubmitting}
+                      onClick={() => void saveSurveyAndComplete(false, "/dashboard")}
+                      className="w-full flex items-center justify-between p-4 rounded-xl border border-border/80 bg-background/50 hover:bg-muted/40 transition-all text-left cursor-pointer group disabled:opacity-60"
                     >
                       <div className="flex items-center gap-3.5">
                         <div className="w-10 h-10 rounded-xl bg-muted text-foreground flex items-center justify-center">
@@ -760,8 +788,9 @@ export default function OnboardingPage() {
               {currentStep > 1 ? (
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={handleBack}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition cursor-pointer disabled:opacity-50"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   {_("onboarding.back")}
@@ -772,13 +801,23 @@ export default function OnboardingPage() {
 
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={handleNext}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs sm:text-sm shadow-md hover:bg-primary/90 hover:shadow-lg transition cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs sm:text-sm shadow-md hover:bg-primary/90 hover:shadow-lg transition cursor-pointer disabled:opacity-60"
               >
-                {currentStep === TOTAL_STEPS
-                  ? _("onboarding.finish")
-                  : _("onboarding.next")}
-                <ArrowRight className="w-4 h-4" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    {currentStep === TOTAL_STEPS
+                      ? _("onboarding.finish")
+                      : _("onboarding.next")}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </div>

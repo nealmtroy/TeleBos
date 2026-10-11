@@ -1,24 +1,20 @@
-"""Base command handlers for /start, /login, /logout, and navigation."""
+"""Base command handlers for /start, /logout, navigation, and authenticator token linking."""
 
 import logging
-from telethon import events
+from telethon import events, Button
 from app.database import async_session_factory
 from app.models.user import User
 from app.models.telegram_account import TelegramAccount
 from app.models.broadcast_job import BroadcastJob
-from app.utils.encryption import verify_password
 from sqlalchemy.future import select
 from sqlalchemy import func
 from app.bot.keyboards import (
     main_menu_keyboard,
     back_to_main_keyboard,
-    login_start_keyboard,
-    login_cancel_keyboard
 )
 from app.bot.utils import auth_required, format_dashboard_message
 from app.services.uptimerobot_status import uptimerobot_service
-import json
-from app.utils.redis import redis_client
+from app.services import telegram_bot_service
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -27,14 +23,39 @@ logger = logging.getLogger(__name__)
 def register_base_handlers(client):
     """Register base command handlers to the Telethon client."""
 
-    @client.on(events.NewMessage(pattern='/start'))
+    @client.on(events.NewMessage(pattern=r'^/start(?:\s+(.+))?$'))
     async def start_handler(event):
         sender_id = event.sender_id
         if sender_id is None:
             return
 
+        param = event.pattern_match.group(1)
+        token_candidate = param.strip() if param else None
+
         async with async_session_factory() as session:
-            # Check if user already exists
+            # 1. If deep-link token is provided (e.g. /start TB-K7D9P2), verify immediately
+            if token_candidate:
+                success, msg, user = await telegram_bot_service.verify_and_link_token(
+                    session, token_candidate, sender_id
+                )
+                if success and user:
+                    await event.respond(
+                        f"🎉 **Akun Berhasil Terhubung!**\n\n"
+                        f"Akun TeleBos Anda (`{user.email}`) telah berhasil dikaitkan dengan Telegram ini.\n\n"
+                        f"Gunakan keyboard di bawah untuk mengoperasikan TeleBos:",
+                        buttons=main_menu_keyboard(),
+                    )
+                else:
+                    await event.respond(
+                        f"❌ **Gagal Menghubungkan Akun:**\n\n{msg}\n\n"
+                        f"Silakan buat token baru melalui menu **Settings** > **Bot Telegram** di Dashboard Web TeleBos.",
+                        buttons=[
+                            [Button.url("🌐 Buka Settings Dashboard", "https://telebos.app/settings?tab=telegram")],
+                        ],
+                    )
+                return
+
+            # 2. Check if user already linked
             result = await session.execute(
                 select(User).where(User.telegram_chat_id == sender_id)
             )
@@ -43,176 +64,88 @@ def register_base_handlers(client):
             if user:
                 # Welcome authenticated user
                 await event.respond(
-                    f"🟢 **Selamat datang kembali, {user.full_name or 'User'}!**\n"
+                    f"🟢 **Selamat datang kembali, {user.full_name or user.email}!**\n\n"
                     "Gunakan keyboard di bawah untuk mengoperasikan TeleBos.",
-                    buttons=main_menu_keyboard()
+                    buttons=main_menu_keyboard(),
                 )
             else:
-                # Unauthenticated welcome message
+                # Unauthenticated welcome message with token instructions
                 await event.respond(
                     "🤖 **TeleBos Bot - Multi-Account Telegram Manager**\n\n"
-                    "Silakan hubungkan akun website TeleBos Anda terlebih dahulu untuk menggunakan bot ini.\n\n"
-                    "⚠️ **Belum punya akun TeleBos?**\n"
-                    "Silakan register/daftar terlebih dahulu di:\n"
-                    "🔗 https://telebos.app/register\n\n"
-                    "Jika sudah memiliki akun, silakan klik tombol di bawah ini untuk menghubungkan akun secara interaktif:",
-                    buttons=login_start_keyboard()
+                    "Bot ini menggunakan sistem otentikasi **Token Penghubung** (mirip Authenticator) untuk menjaga keamanan akun Anda tanpa perlu memasukkan password di chat.\n\n"
+                    "📌 **Cara Menghubungkan Akun:**\n"
+                    "1. Buka Dashboard TeleBos Anda di web\n"
+                    "2. Masuk ke menu **Settings** > **Bot Telegram**\n"
+                    "3. Klik tombol **Buat Token Penghubung**\n"
+                    "4. Kirimkan token (contoh: `TB-K7D9P2`) ke chat bot ini (atau gunakan link otomatis).\n\n"
+                    "Silakan ketik atau tempelkan token Anda di bawah ini:",
+                    buttons=[
+                        [Button.url("🌐 Buka Settings Dashboard", "https://telebos.app/settings?tab=telegram")],
+                        [Button.url("📝 Daftar Akun TeleBos", "https://telebos.app/register")],
+                    ],
                 )
 
-    # ── Callback Handlers for Login Flow ──
-
-    @client.on(events.CallbackQuery(pattern=b'login_start'))
-    async def login_start_callback(event):
-        sender_id = event.sender_id
-        if sender_id is None:
-            return
-
-        # Initialize state in Redis: step waiting_email (expires in 5 minutes)
-        await redis_client.setex(f"bot_auth_state:{sender_id}", 300, json.dumps({"step": "waiting_email"}))
-        
-        await event.edit(
-            "💬 **Langkah 1 dari 2: Email**\n\n"
-            "Silakan ketik dan kirimkan **Email** akun TeleBos Anda:",
-            buttons=login_cancel_keyboard()
-        )
-
-    @client.on(events.CallbackQuery(pattern=b'login_cancel'))
-    async def login_cancel_callback(event):
-        sender_id = event.sender_id
-        if sender_id is None:
-            return
-
-        # Delete state from Redis
-        await redis_client.delete(f"bot_auth_state:{sender_id}")
-        
-        await event.edit(
-            "❌ **Login Dibatalkan.**\n\n"
-            "Silakan klik tombol di bawah untuk memulai kembali jika Anda ingin menghubungkan akun:",
-            buttons=login_start_keyboard()
-        )
-
-    # ── General Message Dispatcher for Login Inputs ──
+    # ── Text Message Dispatcher for Linking Tokens ──
 
     @client.on(events.NewMessage())
-    async def login_input_dispatcher(event):
+    async def token_input_dispatcher(event):
         sender_id = event.sender_id
-        if sender_id is None or event.message.message.startswith('/'):
+        if sender_id is None:
             return
 
-        # Check if user is in an active login flow
-        raw_state = await redis_client.get(f"bot_auth_state:{sender_id}")
-        state = json.loads(raw_state) if raw_state else None
-        if not state:
-            # If not in login flow, ignore or let ReplyKeyboardMarkup buttons handle it
+        text_msg = (event.message.message or "").strip()
+        if not text_msg or text_msg.startswith("/"):
             return
 
-        step = state.get("step")
-        if step == "waiting_email":
-            email = event.message.message.strip()
-            
-            # Simple email format check
-            if "@" not in email or "." not in email:
-                await event.respond(
-                    "❌ **Format email tidak valid!**\n\n"
-                    "Silakan masukkan email yang benar (contoh: `admin@telebos.com`):",
-                    buttons=login_cancel_keyboard()
-                )
+        # Check if already authenticated
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(User).where(User.telegram_chat_id == sender_id)
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                # Already authenticated; let menu handlers handle normal button text
                 return
 
-            # Update state in Redis
-            await redis_client.setex(
-                f"bot_auth_state:{sender_id}",
-                300,
-                json.dumps({"step": "waiting_password", "email": email})
-            )
-            
-            await event.respond(
-                f"💬 **Langkah 2 dari 2: Password**\n\n"
-                f"Email diterima: `{email}`\n\n"
-                f"Sekarang silakan kirimkan **Password** akun TeleBos Anda:\n\n"
-                f"__Keamanan Anda Terjamin:__ Pesan password Anda akan langsung dihapus oleh bot setelah dibaca.",
-                buttons=login_cancel_keyboard()
-            )
-
-        elif step == "waiting_password":
-            password = event.message.message.strip()
-            email = state.get("email")
-
-            # Delete the user's password message immediately for security
-            try:
-                await client.delete_messages(event.chat_id, [event.id])
-            except Exception as e:
-                logger.warning("Failed to delete user password message: %s", e)
-
-            # Check credentials in DB
-            async with async_session_factory() as session:
-                result = await session.execute(
-                    select(User).where(User.email == email)
+            # User is NOT authenticated, treat message as a candidate linking token
+            # Formats: TB-XXXXXX, or XXXXXX (6 chars)
+            norm = text_msg.upper()
+            if norm.startswith("TB-") or len(norm) == 6 or len(norm) == 9:
+                success, msg, linked_user = await telegram_bot_service.verify_and_link_token(
+                    session, text_msg, sender_id
                 )
-                user = result.scalar_one_or_none()
-
-                if not user or not verify_password(password, user.password_hash):
-                    # Clear state on failure
-                    await redis_client.delete(f"bot_auth_state:{sender_id}")
+                if success and linked_user:
                     await event.respond(
-                        "❌ **Email atau password salah!** Login gagal.\n\n"
-                        "Silakan klik tombol di bawah untuk mencoba kembali:",
-                        buttons=login_start_keyboard()
+                        f"🎉 **Akun Berhasil Terhubung!**\n\n"
+                        f"Akun TeleBos Anda (`{linked_user.email}`) telah berhasil dikaitkan dengan Telegram ini.\n\n"
+                        f"Gunakan menu di bawah untuk mulai mengelola akun Telegram Anda:",
+                        buttons=main_menu_keyboard(),
                     )
-                    return
-
-                if not user.is_active:
-                    await redis_client.delete(f"bot_auth_state:{sender_id}")
-                    await event.respond("❌ **Akun Anda telah dinonaktifkan oleh administrator.**")
-                    return
-
-                # Enforce 1-to-1 mapping:
-                # 1. Check if this TeleBos user is already linked to another Telegram chat ID
-                if user.telegram_chat_id is not None and user.telegram_chat_id != sender_id:
-                    await redis_client.delete(f"bot_auth_state:{sender_id}")
+                else:
                     await event.respond(
-                        f"❌ **Gagal Menghubungkan!**\n\n"
-                        f"Akun TeleBos dengan email `{email}` sudah terhubung ke akun Telegram lain. "
-                        f"Silakan putuskan hubungan terlebih dahulu dari akun Telegram tersebut.",
-                        buttons=login_start_keyboard()
+                        f"❌ **Verifikasi Gagal:**\n\n{msg}\n\n"
+                        f"Pastikan token yang Anda masukkan sesuai dengan yang muncul di menu **Settings** > **Bot Telegram** di Dashboard Web.",
+                        buttons=[
+                            [Button.url("🌐 Buka Settings Dashboard", "https://telebos.app/settings?tab=telegram")],
+                        ],
                     )
-                    return
-
-                # 2. Check if this Telegram chat ID is already linked to another TeleBos user
-                result_other = await session.execute(
-                    select(User).where(User.telegram_chat_id == sender_id).where(User.id != user.id)
+            else:
+                await event.respond(
+                    "⚠️ **Format Token Tidak Sesuai.**\n\n"
+                    "Token penghubung akun memiliki format `TB-XXXXXX` (contoh: `TB-K7D9P2`).\n"
+                    "Silakan dapatkan token Anda di menu **Settings** > **Bot Telegram** pada Dashboard Web.",
+                    buttons=[
+                        [Button.url("🌐 Buka Settings Dashboard", "https://telebos.app/settings?tab=telegram")],
+                    ],
                 )
-                other_user = result_other.scalar_one_or_none()
-                if other_user:
-                    await redis_client.delete(f"bot_auth_state:{sender_id}")
-                    await event.respond(
-                        "❌ **Gagal Menghubungkan!**\n\n"
-                        "Akun Telegram Anda sudah terhubung ke akun TeleBos lain. "
-                        "Silakan kirim perintah `/logout` terlebih dahulu untuk memutuskan tautan sebelum menghubungkan akun baru.",
-                        buttons=login_start_keyboard()
-                    )
-                    return
 
-                # Link telegram_chat_id
-                user.telegram_chat_id = sender_id
-                await session.commit()
+    # ── Logout / Disconnect Handler ──
 
-            # Clear state on success
-            await redis_client.delete(f"bot_auth_state:{sender_id}")
-
-            await event.respond(
-                f"🟢 **Hubungkan Akun Berhasil!**\n\n"
-                f"Akun TeleBos Anda (`{email}`) telah dikaitkan dengan Telegram ini.\n\n"
-                f"Selamat menggunakan!",
-                buttons=main_menu_keyboard()
-            )
-
-    @client.on(events.NewMessage(pattern='/logout'))
+    @client.on(events.NewMessage(pattern=r'^/(?:logout|disconnect|putus)$'))
     @auth_required
     async def logout_handler(event):
         # Disassociate telegram_chat_id
         async with async_session_factory() as session:
-            # We can re-fetch the user to ensure session binding
             result = await session.execute(
                 select(User).where(User.id == event.user.id)
             )
@@ -222,9 +155,9 @@ def register_base_handlers(client):
                 await session.commit()
 
         await event.respond(
-            "🔴 **Akun Anda telah dinonaktifkan dari bot ini.**\n\n"
-            "Gunakan `/login <email> <password>` jika ingin masuk kembali.",
-            buttons=[] # Removes reply keyboard
+            "🔴 **Akun Anda telah diputuskan dari bot ini.**\n\n"
+            "Untuk menghubungkan kembali di kemudian hari, buat token baru di menu **Settings** > **Bot Telegram** pada Dashboard Web.",
+            buttons=[],  # Removes reply keyboard
         )
 
     # ── ReplyKeyboardMarkup Navigation Handlers ──
