@@ -106,7 +106,7 @@ export default function SmmOrdersPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">SMM Orders</h1>
-          <p className="text-gray-500 mt-1">Monitor users' SMM orders, check order status history, and update from providers</p>
+          <p className="text-gray-500 mt-1">Monitor users&apos; SMM orders, check order status history, and update from providers</p>
         </div>
       </div>
 

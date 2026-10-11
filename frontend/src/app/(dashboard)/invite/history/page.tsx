@@ -50,14 +50,14 @@ export default function InviteHistoryPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [stopConfirmId, setStopConfirmId] = useState<string | null>(null);
 
-  // Role check: basic users cannot access invite
-  if (user?.role === "basic") {
+  // Role check: invite is available for Pro and Business plans
+  if (user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner") {
     return (
       <div className="text-center py-16">
         <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
         <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
         <p className="text-sm text-gray-500">
-          Member Invite feature is not available for your plan. Upgrade to Pro or Premium to access this feature.
+          Member Invite feature is not available for your plan. Upgrade to Pro or Business to access this feature.
         </p>
       </div>
     );

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AtSign, CalendarDays, Contact, Pencil, ShieldCheck, UserCog } from "lucide-react";
+import { AtSign, CalendarDays, Contact, Pencil, ShieldCheck, UserCog, Camera } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { authClient } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/store/auth-store";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   Dialog,
   DialogContent,
@@ -23,20 +24,12 @@ import {
   StatusDot,
 } from "./settings-cards";
 
-function initialsOf(name: string | null, email: string): string {
-  const source = (name ?? "").trim();
-  if (source) {
-    return source
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0] ?? "")
-      .join("")
-      .toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase();
-}
-
 const ROLE_LABELS: Record<string, string> = {
+  freetrial: "Free Trial",
+  basic: "Starter",
+  pro: "Pro",
+  premium: "Business",
+  owner: "Owner",
   admin: "Admin",
   superadmin: "Super Admin",
   user: "User",
@@ -56,16 +49,17 @@ export function ProfileCard() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   if (!user) return null;
 
-  const initials = initialsOf(user.full_name, user.email);
   const displayName = user.full_name || user.email;
   const roleLabel = ROLE_LABELS[user.role?.toLowerCase()] ?? user.role;
 
   function openEditor() {
     setFullName(user?.full_name ?? "");
+    setAvatarUrl(user?.image || user?.avatar_url || "");
     setIsEditing(true);
   }
 
@@ -78,10 +72,15 @@ export function ProfileCard() {
 
     setIsSaving(true);
     try {
-      // Better Auth owns the profile name. The backend databaseHooks.user.update
+      // Better Auth owns the profile name & image. The backend databaseHooks.user.update
       // hook mirrors it into the legacy "users" row so /auth/me (and therefore
       // the navbar) reports the new value too.
-      const { error } = await authClient.updateUser({ name: next });
+      const updatePayload: { name: string; image?: string } = { name: next };
+      if (avatarUrl.trim()) {
+        updatePayload.image = avatarUrl.trim();
+      }
+
+      const { error } = await authClient.updateUser(updatePayload);
       if (error) throw error;
 
       // Pull the mirrored value from /auth/me instead of patching local state,
@@ -107,7 +106,7 @@ export function ProfileCard() {
             <button
               type="button"
               onClick={openEditor}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10 cursor-pointer"
             >
               <Pencil className="h-3.5 w-3.5" />
               {t("settings.editProfile")}
@@ -118,12 +117,11 @@ export function ProfileCard() {
         <SettingsDivider className="my-4" />
 
         <div className="flex items-center gap-4">
-          <span
-            aria-hidden
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-violet-500 text-base font-semibold text-primary-foreground"
-          >
-            {initials || "--"}
-          </span>
+          <UserAvatar
+            user={user}
+            size="xl"
+            className="ring-2 ring-primary/20 shadow-sm"
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
@@ -177,20 +175,60 @@ export function ProfileCard() {
             <DialogDescription>{t("settings.profileDesc")}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <label htmlFor="settings-full-name" className="text-xs font-medium text-foreground">
-              {t("settings.fullName")}
-            </label>
-            <input
-              id="settings-full-name"
-              name="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder={t("settings.fullNamePlaceholder")}
-              autoFocus
-              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
-            />
-            <p className="text-xs text-muted-foreground">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
+              <UserAvatar
+                user={{
+                  full_name: fullName,
+                  email: user.email,
+                  image: avatarUrl.trim() || null,
+                }}
+                size="lg"
+                className="ring-2 ring-primary/20"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-foreground truncate">
+                  {fullName.trim() || user.email}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {avatarUrl.trim() ? "Preview foto profil kustom" : "Preview inisial Telegram"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="settings-full-name" className="text-xs font-medium text-foreground">
+                {t("settings.fullName")}
+              </label>
+              <input
+                id="settings-full-name"
+                name="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={t("settings.fullNamePlaceholder")}
+                autoFocus
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="settings-avatar-url" className="text-xs font-medium text-foreground">
+                Foto Profil / Avatar URL (Opsional)
+              </label>
+              <input
+                id="settings-avatar-url"
+                name="avatarUrl"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://example.com/avatar.jpg"
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Masukkan URL gambar atau kosongkan untuk menggunakan warna inisial standar.
+              </p>
+            </div>
+
+            <p className="text-xs text-muted-foreground pt-1 border-t border-border/50">
               {t("settings.email")}: <span className="font-medium text-foreground">{user.email}</span>
             </p>
           </div>

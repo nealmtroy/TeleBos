@@ -70,7 +70,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium whitespace-nowrap border",
+        "inline-flex items-center gap-1.5 rounded-md px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium whitespace-nowrap border shrink-0 leading-tight",
         TONES[tone],
         className
       )}
@@ -267,6 +267,8 @@ export function ButtonInButton({
 
 /**
  * Metric Readout Display Card.
+ * Robust responsive bento card with isolated top header for icon & label,
+ * and wrap-safe layout for value + badge preventing mobile overlap.
  */
 export function MetricReadout({
   label,
@@ -286,31 +288,39 @@ export function MetricReadout({
   return (
     <div
       className={cn(
-        "relative rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs p-3.5 sm:p-4 flex items-start justify-between gap-3 shadow-2xs",
+        "relative rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs p-3 sm:p-4 flex flex-col justify-between gap-2 sm:gap-2.5 shadow-2xs min-w-0 overflow-hidden",
         className
       )}
     >
-      <div className="space-y-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </p>
-          {badge}
-        </div>
-        <p className="text-xl sm:text-2xl font-bold tabular-nums text-foreground tracking-tight">
-          {value}
+      {/* Top Header: Label & Icon safely separated */}
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate leading-snug">
+          {label}
         </p>
+        {icon && (
+          <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.04] border border-foreground/[0.06] text-muted-foreground">
+            {icon}
+          </div>
+        )}
+      </div>
+
+      {/* Main Body: Value & Badge (Wrap-safe & Anti-overlap) */}
+      <div className="space-y-1 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+          <div className="text-lg sm:text-2xl font-bold tabular-nums text-foreground tracking-tight leading-tight">
+            {value}
+          </div>
+          {badge && <div className="shrink-0 flex items-center">{badge}</div>}
+        </div>
         {subtext && (
-          <p className="text-xs text-muted-foreground/80 leading-relaxed truncate">
+          <p
+            className="text-[10px] sm:text-xs text-muted-foreground/80 leading-relaxed truncate"
+            title={subtext}
+          >
             {subtext}
           </p>
         )}
       </div>
-      {icon && (
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.04] border border-foreground/[0.06] text-muted-foreground">
-          {icon}
-        </div>
-      )}
     </div>
   );
 }

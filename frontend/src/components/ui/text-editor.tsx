@@ -368,11 +368,19 @@ export function TextEditor({
         <div className="flex items-center gap-2">
           <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "edit" | "preview")}>
             <TabsList className="h-7 bg-gray-200/80 dark:bg-slate-800 p-0.5">
-              <TabsTrigger value="edit" className="h-6 px-2 text-[11px] gap-1">
+              <TabsTrigger
+                value="edit"
+                onClick={() => setActiveTab("edit")}
+                className="h-6 px-2 text-[11px] gap-1"
+              >
                 <Edit3 className="h-3 w-3" />
                 Tulis
               </TabsTrigger>
-              <TabsTrigger value="preview" className="h-6 px-2 text-[11px] gap-1">
+              <TabsTrigger
+                value="preview"
+                onClick={() => setActiveTab("preview")}
+                className="h-6 px-2 text-[11px] gap-1"
+              >
                 <Eye className="h-3 w-3" />
                 Preview
               </TabsTrigger>

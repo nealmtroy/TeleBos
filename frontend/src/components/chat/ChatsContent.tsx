@@ -155,7 +155,10 @@ export function ChatsContent() {
     enabled: !!selectedAccount,
   });
 
-  const folders = Array.isArray(foldersData?.folders) ? foldersData.folders : [];
+  const folders = useMemo(
+    () => (Array.isArray(foldersData?.folders) ? foldersData.folders : []),
+    [foldersData?.folders]
+  );
 
   // Build folder filter list
   const folderFilters = useMemo(() => {

@@ -40,6 +40,13 @@ import { TgIcon } from "./helpers";
 import { AccountSwitcher } from "./AccountSwitcher";
 import { ChatAvatar } from "./ChatAvatar";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ChatLeftColumnProps {
   selectedAccount: string;
@@ -925,98 +932,68 @@ export function ChatLeftColumn({
       )}
 
       {/* ======== MY STORIES MODAL ======== */}
-      {showStoriesModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => setShowStoriesModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-[#17212b] rounded-2xl p-5 w-full max-w-sm shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 text-left"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--tg-divider)" }}>
-              <div className="flex items-center gap-2 font-bold text-base" style={{ color: "var(--tg-text-primary)" }}>
-                <Camera className="w-5 h-5 text-amber-500" />
-                <span>My Stories</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowStoriesModal(false)}
-                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+      <Dialog open={showStoriesModal} onOpenChange={setShowStoriesModal}>
+        <DialogContent className="w-full max-w-sm bg-white dark:bg-[#17212b] rounded-2xl p-5 border-slate-200 dark:border-slate-800 shadow-xl gap-4 text-left">
+          <DialogHeader className="border-b pb-3 pr-6 text-left" style={{ borderColor: "var(--tg-divider)" }}>
+            <DialogTitle className="flex items-center gap-2 font-bold text-base" style={{ color: "var(--tg-text-primary)" }}>
+              <Camera className="w-5 h-5 text-amber-500" />
+              <span>My Stories</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
               Share photo & video updates with your Telegram contacts. Stories expire after 24 hours.
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="p-3 bg-amber-500/10 rounded-xl flex items-center gap-3">
-                <Camera className="w-5 h-5 text-amber-500" />
-                <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  0 Active Stories
-                </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <div className="p-3 bg-amber-500/10 rounded-xl flex items-center gap-3">
+              <Camera className="w-5 h-5 text-amber-500" />
+              <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                0 Active Stories
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  alert("Story creation feature ready. Connect camera or select media file.");
-                  setShowStoriesModal(false);
-                }}
-                className="w-full py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:opacity-90 transition shadow-sm"
-              >
-                Post New Story
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                alert("Story creation feature ready. Connect camera or select media file.");
+                setShowStoriesModal(false);
+              }}
+              className="w-full py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:opacity-90 transition shadow-sm cursor-pointer"
+            >
+              Post New Story
+            </button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* ======== WALLET MODAL ======== */}
-      {showWalletModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => setShowWalletModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-[#17212b] rounded-2xl p-5 w-full max-w-sm shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 text-left"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--tg-divider)" }}>
-              <div className="flex items-center gap-2 font-bold text-base" style={{ color: "var(--tg-text-primary)" }}>
-                <Wallet className="w-5 h-5 text-emerald-500" />
-                <span>Telegram Wallet</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowWalletModal(false)}
-                className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-400"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4 bg-emerald-500/10 rounded-xl flex flex-col gap-1">
-              <span className="text-xs text-slate-400 font-semibold">Total Balance</span>
-              <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">0.00 TON</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+      <Dialog open={showWalletModal} onOpenChange={setShowWalletModal}>
+        <DialogContent className="w-full max-w-sm bg-white dark:bg-[#17212b] rounded-2xl p-5 border-slate-200 dark:border-slate-800 shadow-xl gap-4 text-left">
+          <DialogHeader className="border-b pb-3 pr-6 text-left" style={{ borderColor: "var(--tg-divider)" }}>
+            <DialogTitle className="flex items-center gap-2 font-bold text-base" style={{ color: "var(--tg-text-primary)" }}>
+              <Wallet className="w-5 h-5 text-emerald-500" />
+              <span>Telegram Wallet</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
               Manage your TON cryptocurrencies and instant Telegram payments safely.
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  window.open("https://t.me/wallet", "_blank");
-                  setShowWalletModal(false);
-                }}
-                className="flex-1 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:opacity-90 transition text-center shadow-sm"
-              >
-                Open @wallet Bot
-              </button>
-            </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4 bg-emerald-500/10 rounded-xl flex flex-col gap-1">
+            <span className="text-xs text-slate-400 font-semibold">Total Balance</span>
+            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">0.00 TON</span>
           </div>
-        </div>
-      )}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                window.open("https://t.me/wallet", "_blank");
+                setShowWalletModal(false);
+              }}
+              className="flex-1 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:opacity-90 transition text-center shadow-sm cursor-pointer"
+            >
+              Open @wallet Bot
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Hover action visibility CSS */}
       <style>{`

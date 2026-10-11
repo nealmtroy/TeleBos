@@ -635,6 +635,12 @@ function DashboardContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <QuickLinkCard
+            title="Onboarding Analytics"
+            desc="Survei pengguna baru, alur referral, skala akun, dan conversion rate."
+            href="/admin/onboarding"
+            icon={Sparkles}
+          />
+          <QuickLinkCard
             title="User Management"
             desc="Configure accounts, roles, balance deposits, and suspensions."
             href="/admin/users"

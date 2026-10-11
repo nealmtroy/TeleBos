@@ -20,7 +20,7 @@ describe("PricingPage", () => {
     render(<PricingPage />);
 
     // These come from src/data/plans.ts, which mirrors the subscription screen.
-    expect(PLANS.map((p) => p.price)).toEqual(["Rp 0", "Rp 99.000", "Rp 249.000"]);
+    expect(PLANS.map((p) => p.price)).toEqual(["Gratis", "Rp 5.000", "Rp 10.000", "Rp 20.000"]);
 
     for (const plan of PLANS) {
       expect(screen.getAllByText(plan.price).length).toBeGreaterThan(0);
@@ -38,8 +38,8 @@ describe("PricingPage", () => {
     render(<PricingPage />);
 
     const table = screen.getByRole("table");
-    // 3 plan columns + the label column.
-    expect(within(table).getAllByRole("columnheader")).toHaveLength(4);
+    // 4 plan columns + the label column.
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
     expect(within(table).getAllByRole("row")).toHaveLength(11); // header + 10 limits
   });
 
@@ -52,7 +52,7 @@ describe("PricingPage", () => {
   it("routes the free plan to signup and paid plans to login", () => {
     render(<PricingPage />);
 
-    const ctas = screen.getAllByRole("link", { name: /start free|get pro|get premium/i });
+    const ctas = screen.getAllByRole("link", { name: /start free|get starter|get pro|get business/i });
     const hrefs = ctas.map((el) => el.getAttribute("href"));
 
     expect(hrefs).toContain("/register");
@@ -65,6 +65,6 @@ describe("PricingPage", () => {
 
     expect(screen.getByText("Paling banyak dipilih")).toBeTruthy();
     // Prices are currency, not copy, so they must not be translated.
-    expect(screen.getAllByText("Rp 249.000").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Rp 20.000").length).toBeGreaterThan(0);
   });
 });

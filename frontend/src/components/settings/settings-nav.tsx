@@ -10,11 +10,13 @@ import {
   LockKeyhole,
   ShieldCheck,
   User,
+  Bot,
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { cn } from "@/lib/utils";
 import { SettingsBadge, StatusDot } from "./settings-cards";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 /**
  * Section ids for the /settings page.
@@ -30,6 +32,7 @@ export type SettingsSectionKey =
   | "2fa"
   | "api-keys"
   | "bank-accounts"
+  | "telegram"
   | "appearance"
   | "language";
 
@@ -78,6 +81,12 @@ const NAV_ITEMS: NavItem[] = [
     Icon: Landmark,
   },
   {
+    key: "telegram",
+    labelKey: "settings.navTelegram",
+    descKey: "settings.navTelegramDesc",
+    Icon: Bot,
+  },
+  {
     key: "appearance",
     labelKey: "settings.navAppearance",
     descKey: "settings.navAppearanceDesc",
@@ -97,18 +106,10 @@ const SECTION_TO_TAB: Partial<Record<SettingsSectionKey, string>> = {
   "2fa": "2fa",
   "api-keys": "api-keys",
   "bank-accounts": "bank-accounts",
+  telegram: "telegram",
   appearance: "appearance",
   language: "language",
 };
-
-function initialsOf(name: string | null, email: string): string {
-  const source = (name ?? "").trim();
-  if (source) {
-    const parts = source.split(/\s+/).slice(0, 2);
-    return parts.map((part) => part[0] ?? "").join("").toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase();
-}
 
 export function SettingsNav({
   active,
@@ -121,19 +122,17 @@ export function SettingsNav({
   const user = useAuthStore((s) => s.user);
 
   const displayName = user?.full_name || user?.email || "";
-  const initials = initialsOf(user?.full_name ?? null, user?.email ?? "");
 
   return (
     <nav aria-label={t("settings.title")} className="space-y-4">
       {/* Identity summary */}
       <div className="rounded-xl border border-border/70 bg-card p-5">
         <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-violet-500 text-sm font-semibold text-primary-foreground"
-          >
-            {initials || "--"}
-          </span>
+          <UserAvatar
+            user={user}
+            size="lg"
+            className="ring-1 ring-border shadow-xs"
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
             <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
@@ -161,7 +160,7 @@ export function SettingsNav({
                 className={cn(
                   "flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-150",
                   isActive
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/10 text-primary dark:text-blue-300"
                     : "text-foreground hover:bg-accent/60"
                 )}
               >
@@ -170,7 +169,7 @@ export function SettingsNav({
                   className={cn(
                     "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
                     isActive
-                      ? "bg-primary/15 text-primary"
+                      ? "bg-primary/15 text-primary dark:text-blue-300"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -180,7 +179,7 @@ export function SettingsNav({
                   <span
                     className={cn(
                       "block text-sm font-medium",
-                      isActive ? "text-primary" : "text-foreground"
+                      isActive ? "text-primary dark:text-blue-300" : "text-foreground"
                     )}
                   >
                     {t(item.labelKey)}
@@ -188,7 +187,7 @@ export function SettingsNav({
                   <span
                     className={cn(
                       "mt-0.5 block text-xs leading-relaxed",
-                      isActive ? "text-primary/70" : "text-muted-foreground"
+                      isActive ? "text-primary/70 dark:text-blue-300/70" : "text-muted-foreground"
                     )}
                   >
                     {t(item.descKey)}

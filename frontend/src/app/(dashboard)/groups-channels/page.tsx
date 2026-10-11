@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
@@ -103,7 +103,7 @@ function GroupsChannelsContent() {
     }
   };
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     if (!selectedAccount) return;
     setIsSyncing(true);
     setSyncError("");
@@ -121,7 +121,7 @@ function GroupsChannelsContent() {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [selectedAccount, _, queryClient]);
 
   // Join modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -154,7 +154,7 @@ function GroupsChannelsContent() {
     if (selectedAccount && !syncedAt && !isSyncing && !syncError) {
       handleSync();
     }
-  }, [selectedAccount, syncedAt, isSyncing, syncError]);
+  }, [selectedAccount, syncedAt, isSyncing, syncError, handleSync]);
 
   // ── Join handler ─────────────────────────────────────────────────────
   const handleJoin = async () => {

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-12
+- **[20e8f5da](https://github.com/nealmtroy/TeleBos/commit/20e8f5da)**: feat(wallet): enhance wallet invoice payment flow, withdraw OTP modal, and subscriptions layout
 - **[199877c4](https://github.com/nealmtroy/TeleBos/commit/199877c4)**: feat(onboarding): add interactive SaaS onboarding survey and Telegram bot token linking
 - **[fef41d91](https://github.com/nealmtroy/TeleBos/commit/fef41d91)**: feat(backend): implement security hardening SEC-01 through SEC-09 and double-entry wallet ledger
 - **[49835f28](https://github.com/nealmtroy/TeleBos/commit/49835f28)**: fix: change decryption failure log level from ERROR to WARNING in encryption module

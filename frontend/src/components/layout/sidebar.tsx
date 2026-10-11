@@ -51,11 +51,13 @@ import {
   Sliders,
   ArrowLeft,
   ArrowRight,
+  Repeat,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { UserProfileMenu } from "@/components/layout/user-profile-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,6 +81,7 @@ interface SubItem {
   labelKey: string;
   icon: any;
   exact?: boolean;
+  minRole?: number;
 }
 
 const broadcastSubItems: SubItem[] = [
@@ -95,12 +98,12 @@ const inviteSubItems: SubItem[] = [
 
 const groupsChannelsSubItems: SubItem[] = [
   { href: "/groups-channels", labelKey: "groupsChannels.myChats", icon: Smartphone, exact: true },
-  { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search, exact: true },
+  { href: "/groups-channels/public", labelKey: "groupsChannels.publicIndex", icon: Search, exact: true, minRole: 2 },
 ];
 
 const accountsSubItems: SubItem[] = [
   { href: "/accounts", labelKey: "nav.accounts", icon: Smartphone, exact: true },
-  { href: "/accounts/age-checker", labelKey: "nav.ageChecker", icon: Clock },
+  { href: "/accounts/age-checker", labelKey: "nav.ageChecker", icon: Clock, minRole: 2 },
 ];
 
 const servicesSubItems: SubItem[] = [
@@ -108,10 +111,12 @@ const servicesSubItems: SubItem[] = [
   { href: "/orders/reactions", labelKey: "nav.telegramReactions", icon: Sparkles },
   { href: "/orders/auto-reactions", labelKey: "nav.telegramAutoReactions", icon: Clock },
   { href: "/orders/post-views", labelKey: "nav.telegramPostViews", icon: Eye },
+  { href: "/orders/auto-post-views", labelKey: "nav.telegramAutoPostViews", icon: Repeat },
 ];
 
 const administrationsSubItems: SubItem[] = [
   { href: "/admin/dashboard", exact: false, labelKey: "admin.overview", icon: BarChart3 },
+  { href: "/admin/onboarding", exact: false, labelKey: "admin.onboarding", icon: Sparkles },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
   { href: "/admin/transactions", exact: false, labelKey: "admin.transactions", icon: Wallet },
   { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
@@ -131,12 +136,13 @@ const adminSmmSubItems: SubItem[] = [
   { href: "/admin/smm/orders", exact: false, labelKey: "adminSmm.allOrders", icon: ShoppingCart },
 ];
 
-// role hierarchy: basic < pro < premium < owner
+// role hierarchy: freetrial < basic < pro < premium < owner
 const ROLE_HIERARCHY: Record<string, number> = {
-  basic: 0,
-  pro: 1,
-  premium: 2,
-  owner: 3,
+  freetrial: 0,
+  basic: 1,
+  pro: 2,
+  premium: 3,
+  owner: 4,
 };
 
 interface NavItem {
@@ -185,9 +191,6 @@ export function Sidebar() {
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
   const [servicesOpen, setServicesOpen] = useState(isServicesOpen);
-  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-
-  const logout = useAuthStore((s) => s.logout);
 
   // Auto-open sections on mount / pathname change
   useEffect(() => {
@@ -227,33 +230,6 @@ export function Sidebar() {
     if (window.innerWidth < 1024) closeSidebar();
   }
 
-  function confirmLogout() {
-    setShowLogoutDialog(false);
-    logout();
-  }
-
-  const initials = user?.full_name
-    ? user.full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : user?.email?.slice(0, 2).toUpperCase() || "U";
-
-  // Role details mapping
-  const roleDisplay = {
-    owner: { icon: Shield, text: "Owner", color: "text-rose-400 bg-rose-950/40 border-rose-900/50" },
-    premium: { icon: Crown, text: "Premium", color: "text-amber-400 bg-amber-950/40 border-amber-900/50" },
-    pro: { icon: Star, text: "Pro", color: "text-blue-400 bg-blue-950/40 border-blue-900/50" },
-    basic: { icon: User, text: "Basic", color: "text-slate-400 bg-slate-900 border-slate-800" },
-  };
-  const userRole = user?.role || "basic";
-  const RoleIcon = roleDisplay[userRole as keyof typeof roleDisplay]?.icon || User;
-  const roleColor = roleDisplay[userRole as keyof typeof roleDisplay]?.color || roleDisplay.basic.color;
-  const roleText = roleDisplay[userRole as keyof typeof roleDisplay]?.text || "Basic";
-  const planName = userRole === "basic" ? "Free" : roleText;
-
   // Navigation grouping
   const navGroups: NavGroup[] = [
     {
@@ -270,7 +246,7 @@ export function Sidebar() {
           minRole: 0,
         },
         { href: "/chats", labelKey: "nav.chats", icon: MessageSquare, minRole: 0 },
-        { href: "/contacts", labelKey: "nav.contacts", icon: Users, minRole: 1 },
+        { href: "/contacts", labelKey: "nav.contacts", icon: Users, minRole: 2 },
         {
           href: "/groups-channels",
           labelKey: "nav.groupsChannels",
@@ -296,14 +272,14 @@ export function Sidebar() {
           exact: true,
           minRole: 1,
         },
-        { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 1 },
+        { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 0 },
         {
           href: "/invite",
           labelKey: "invite.navLabel",
           icon: Send,
           hasSubItems: true,
           subItems: inviteSubItems,
-          minRole: 1,
+          minRole: 2,
         },
         {
           href: "/broadcast",
@@ -325,7 +301,7 @@ export function Sidebar() {
           icon: Sparkles,
           hasSubItems: true,
           subItems: servicesSubItems,
-          matchPrefixes: ["/orders/members", "/orders/reactions", "/orders/auto-reactions", "/orders/post-views"],
+          matchPrefixes: ["/orders/members", "/orders/reactions", "/orders/auto-reactions", "/orders/post-views", "/orders/auto-post-views"],
           minRole: 0,
         },
         { href: "/orders/buy-accounts", labelKey: "orders.buyAccounts", icon: ShoppingCart, minRole: 0 },
@@ -340,6 +316,7 @@ export function Sidebar() {
       id: "support",
       labelKey: locale === "id" ? "DUKUNGAN" : "SUPPORT",
       items: [
+        { href: "/support", labelKey: "nav.aiSupport", icon: Bot, minRole: 0 },
         { href: "/help", labelKey: "nav.help", icon: HelpCircle, minRole: 0 },
         { href: "/help/api", labelKey: "help.apiTitle", icon: BookOpen, minRole: 0 },
       ],
@@ -352,37 +329,37 @@ export function Sidebar() {
       id: "admin-overview",
       labelKey: locale === "id" ? "IKHTISAR" : "OVERVIEW",
       items: [
-        { href: "/admin/dashboard", labelKey: "admin.overview", icon: BarChart3, exact: true, minRole: 3 },
-        { href: "/admin/users", labelKey: "admin.users", icon: Users, exact: false, minRole: 3 },
-        { href: "/admin/transactions", labelKey: "admin.transactions", icon: Wallet, exact: false, minRole: 3 },
-        { href: "/admin/settings", labelKey: "admin.systemConfig", icon: Settings, exact: false, minRole: 3 },
+        { href: "/admin/dashboard", labelKey: "admin.overview", icon: BarChart3, exact: true, minRole: 4 },
+        { href: "/admin/users", labelKey: "admin.users", icon: Users, exact: false, minRole: 4 },
+        { href: "/admin/transactions", labelKey: "admin.transactions", icon: Wallet, exact: false, minRole: 4 },
+        { href: "/admin/settings", labelKey: "admin.systemConfig", icon: Settings, exact: false, minRole: 4 },
       ],
     },
     {
       id: "admin-telegram",
       labelKey: locale === "id" ? "TELEGRAM & BOT" : "TELEGRAM & BOTS",
       items: [
-        { href: "/admin/broadcasts", labelKey: "admin.manageBroadcasts", icon: Radio, exact: false, minRole: 3 },
-        { href: "/admin/auto-replies", labelKey: "admin.manageAutoReplies", icon: Bot, exact: false, minRole: 3 },
-        { href: "/admin/account-prices", labelKey: "admin.accountPrices", icon: Tag, exact: false, minRole: 3 },
+        { href: "/admin/broadcasts", labelKey: "admin.manageBroadcasts", icon: Radio, exact: false, minRole: 4 },
+        { href: "/admin/auto-replies", labelKey: "admin.manageAutoReplies", icon: Bot, exact: false, minRole: 4 },
+        { href: "/admin/account-prices", labelKey: "admin.accountPrices", icon: Tag, exact: false, minRole: 4 },
       ],
     },
     {
       id: "admin-smm",
       labelKey: locale === "id" ? "LAYANAN SMM" : "SMM SERVICES",
       items: [
-        { href: "/admin/smm/services", labelKey: "adminSmm.services", icon: Package, exact: false, minRole: 3 },
-        { href: "/admin/smm/orders", labelKey: "adminSmm.allOrders", icon: ShoppingCart, exact: false, minRole: 3 },
-        { href: "/admin/smm/settings", labelKey: "adminSmm.settings", icon: Sliders, exact: false, minRole: 3 },
+        { href: "/admin/smm/services", labelKey: "adminSmm.services", icon: Package, exact: false, minRole: 4 },
+        { href: "/admin/smm/orders", labelKey: "adminSmm.allOrders", icon: ShoppingCart, exact: false, minRole: 4 },
+        { href: "/admin/smm/settings", labelKey: "adminSmm.settings", icon: Sliders, exact: false, minRole: 4 },
       ],
     },
     {
       id: "admin-voucher",
       labelKey: locale === "id" ? "VOUCHER & DUKUNGAN" : "VOUCHERS & SUPPORT",
       items: [
-        { href: "/admin/redeem-codes", labelKey: "adminRedeem.title", icon: Ticket, exact: false, minRole: 3 },
-        { href: "/admin/redeem-logs", labelKey: "adminRedeem.logs", icon: ClipboardList, exact: false, minRole: 3 },
-        { href: "/admin/tickets", labelKey: "nav.tickets", icon: LifeBuoy, exact: false, minRole: 3 },
+        { href: "/admin/redeem-codes", labelKey: "adminRedeem.title", icon: Ticket, exact: false, minRole: 4 },
+        { href: "/admin/redeem-logs", labelKey: "adminRedeem.logs", icon: ClipboardList, exact: false, minRole: 4 },
+        { href: "/admin/tickets", labelKey: "nav.tickets", icon: LifeBuoy, exact: false, minRole: 4 },
       ],
     },
   ];
@@ -503,8 +480,8 @@ export function Sidebar() {
           <TooltipProvider delayDuration={0}>
             {displayedNavGroups.map((group, groupIdx) => {
               // Filter items in the group by user role
+              const userLevel = ROLE_HIERARCHY[user?.role || "freetrial"] ?? 0;
               const visibleItems = group.items.filter((item) => {
-                const userLevel = ROLE_HIERARCHY[user?.role || "basic"] ?? 0;
                 return userLevel >= (item.minRole ?? 0);
               });
 
@@ -608,7 +585,9 @@ export function Sidebar() {
                                     <div
                                       className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
                                     >
-                                      {item.subItems.map((sub) => {
+                                      {item.subItems
+                                        .filter((sub) => userLevel >= (sub.minRole ?? 0))
+                                        .map((sub) => {
                                         const isSubActive = sub.exact
                                           ? pathname === sub.href
                                           : pathname.startsWith(sub.href);
@@ -681,285 +660,9 @@ export function Sidebar() {
 
                 {/* Footer (Profile Section) */}
                 <div className="p-2 border-t border-slate-900 shrink-0 relative">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      {sidebarOpen ? (
-                        <button
-                          type="button"
-                          className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-slate-900/60 rounded-xl transition-all duration-200 select-none text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
-                            <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
-                              {initials}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium text-white truncate leading-tight">
-                                {user?.full_name || _("navbar.user")}
-                              </p>
-                              <p className="text-[11px] text-neutral-400 font-normal capitalize truncate leading-tight mt-0.5">
-                                {planName}
-                              </p>
-                            </div>
-                          </div>
-
-                          {userRole === "basic" ? (
-                            <Badge
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push("/subscriptions");
-                              }}
-                              className="text-[11px] font-medium text-white bg-neutral-800 hover:bg-neutral-700 border-neutral-700 shrink-0 ml-2 cursor-pointer active:scale-95"
-                            >
-                              Upgrade
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[11px] font-bold uppercase tracking-wider shrink-0 ml-2",
-                                roleColor
-                              )}
-                            >
-                              {roleText}
-                            </Badge>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="flex justify-center w-full">
-                          <button
-                            type="button"
-                            className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold hover:ring-2 hover:ring-white/20 transition-all shrink-0 active:scale-95 cursor-pointer outline-none"
-                            title={user?.full_name || user?.email || "Profile"}
-                          >
-                            {initials}
-                          </button>
-                        </div>
-                      )}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      side={sidebarOpen ? "top" : "right"}
-                      align={sidebarOpen ? "start" : "end"}
-                      sideOffset={8}
-                      className="w-64 bg-[#212121] border border-neutral-800 p-1.5 shadow-2xl rounded-2xl select-none text-neutral-200"
-                    >
-                      {/* 1. Account item (with flyout submenu) */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="flex items-center gap-2 p-1.5 rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white">
-                          <div className="w-7 h-7 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
-                            {initials}
-                          </div>
-                          <div className="min-w-0 flex-1 text-left">
-                            <p className="text-xs font-medium text-white truncate leading-tight">
-                              {user?.full_name || _("navbar.user")}
-                            </p>
-                            <p className="text-[11px] text-neutral-400 capitalize truncate leading-tight mt-0.5">
-                              {planName}
-                            </p>
-                          </div>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-64 p-2 bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl text-neutral-200">
-                          {/* Email Row */}
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-neutral-400 border-b border-neutral-800 pb-2 mb-1">
-                            <User className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span className="truncate">{user?.email || "user@telebos.com"}</span>
-                          </div>
-
-                          {/* Active Account with Checkmark */}
-                          <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-[#2a2a2a] text-white my-1">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-6 h-6 rounded-full bg-[#735118] text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
-                                {initials}
-                              </div>
-                              <span className="text-sm font-medium truncate">{user?.full_name || "User"}</span>
-                            </div>
-                            <Check className="h-4 w-4 text-white shrink-0 ml-2" />
-                          </div>
-
-                          {/* Balance Row */}
-                          <div className="flex items-center justify-between px-2.5 py-1.5 text-xs text-neutral-300">
-                            <span className="flex items-center gap-1.5 text-neutral-400">
-                              <Wallet className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                              {locale === "id" ? "Saldo" : "Balance"}
-                            </span>
-                            <span className="font-semibold text-emerald-400">Rp {(user?.balance || 0).toLocaleString("id-ID")}</span>
-                          </div>
-
-                          <DropdownMenuSeparator className="border-neutral-800 my-1" />
-
-                          {/* Add Account */}
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/accounts")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <Plus className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Tambah akun" : "Add account"}</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-
-                      <DropdownMenuSeparator className="border-neutral-800 my-1" />
-
-                      {/* 2. Subscription status */}
-                      <DropdownMenuItem
-                        onSelect={() => router.push("/subscriptions")}
-                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                      >
-                        {userRole === "premium" || userRole === "owner" ? (
-                          <CalendarClock className="h-4 w-4 text-neutral-300 shrink-0" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 text-neutral-300 shrink-0" />
-                        )}
-                        <span>
-                          {userRole === "premium" || userRole === "owner"
-                            ? locale === "id"
-                              ? "Status langganan"
-                              : "Subscription status"
-                            : locale === "id"
-                            ? "Tingkatkan paket"
-                            : "Upgrade plan"}
-                        </span>
-                      </DropdownMenuItem>
-
-                      {/* Owner Admin Mode Toggle */}
-                      {userRole === "owner" && (
-                        <DropdownMenuItem
-                          onSelect={() => router.push(isAdminPage ? "/dashboard" : "/admin/dashboard")}
-                          className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-rose-300 focus:text-rose-200"
-                        >
-                          <Shield className="h-4 w-4 text-rose-400 shrink-0" />
-                          <span>
-                            {isAdminPage
-                              ? locale === "id"
-                                ? "Kembali ke Aplikasi User"
-                                : "Back to User App"
-                              : locale === "id"
-                              ? "Buka Panel Admin"
-                              : "Open Admin Panel"}
-                          </span>
-                        </DropdownMenuItem>
-                      )}
-
-                      {/* 3. Personalization */}
-                      <DropdownMenuItem
-                        onSelect={() => router.push("/settings?tab=appearance")}
-                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                      >
-                        <Sliders className="h-4 w-4 text-neutral-300 shrink-0" />
-                        <span>{locale === "id" ? "Personalisasi" : "Personalization"}</span>
-                      </DropdownMenuItem>
-
-                      {/* 4. Profile */}
-                      <DropdownMenuItem
-                        onSelect={() => router.push("/settings")}
-                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                      >
-                        <User className="h-4 w-4 text-neutral-300 shrink-0" />
-                        <span>{locale === "id" ? "Profil" : "Profile"}</span>
-                      </DropdownMenuItem>
-
-                      {/* 5. Settings */}
-                      <DropdownMenuItem
-                        onSelect={() => router.push("/settings")}
-                        className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                      >
-                        <Settings className="h-4 w-4 text-neutral-300 shrink-0" />
-                        <span>{_("navbar.settings")}</span>
-                      </DropdownMenuItem>
-
-                      <DropdownMenuSeparator className="border-neutral-800 my-1" />
-
-                      {/* 6. Help Submenu */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="flex items-center gap-3 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white">
-                          <HelpCircle className="h-4 w-4 text-neutral-300 shrink-0" />
-                          <span>{locale === "id" ? "Bantuan" : "Help"}</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-60 p-1.5 bg-[#212121] border border-neutral-800 rounded-2xl shadow-2xl text-neutral-200">
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/help")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <HelpCircle className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Pusat Bantuan" : "Help center"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/privacy-policy")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <Shield className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Pusat Privasi" : "Privacy center"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/help#release-notes")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Catatan Rilis" : "Release notes"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/help")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <Smartphone className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Unduh Aplikasi" : "Download apps"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/help#shortcuts")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <Keyboard className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Pintasan Keyboard" : "Keyboard shortcuts"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="border-neutral-800 my-1" />
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/terms-of-service")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Ketentuan Layanan" : "Terms of Service"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/privacy-policy")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <Info className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Kebijakan Privasi" : "Privacy Policy"}</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => router.push("/help")}
-                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-xl cursor-pointer hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-neutral-200 focus:text-white"
-                          >
-                            <Bug className="h-4 w-4 text-neutral-400 shrink-0" />
-                            <span>{locale === "id" ? "Laporkan Bug" : "Report a bug"}</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-
-                      <DropdownMenuSeparator className="border-neutral-800 my-1" />
-
-                      {/* 7. Log out */}
-                      <DropdownMenuItem
-                        onSelect={() => setShowLogoutDialog(true)}
-                        className="flex items-center gap-3 px-2.5 py-2 text-xs font-medium text-rose-300 hover:text-rose-100 focus:text-rose-100 hover:bg-rose-950/50 focus:bg-rose-950/50 rounded-xl transition-colors cursor-pointer"
-                      >
-                        <LogOut className="h-4 w-4 text-rose-400 shrink-0" />
-                        <span>{_("navbar.logout")}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <UserProfileMenu variant="sidebar" collapsed={!sidebarOpen} />
                 </div>
       </aside>
-
-      <ConfirmDialog
-        open={showLogoutDialog}
-        onOpenChange={setShowLogoutDialog}
-        onConfirm={confirmLogout}
-        title={_("navbar.logoutTitle")}
-        message={_("navbar.logoutConfirm")}
-        confirmText={_("navbar.yesLogout")}
-        cancelText={_("navbar.cancel")}
-        variant="danger"
-      />
     </>
   );
 }

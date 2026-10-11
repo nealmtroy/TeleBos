@@ -56,8 +56,10 @@ import {
   BankAccountsCard,
   ChangePasswordCard,
   LanguageCard,
+  TelegramBotSummaryCard,
   TwoFactorCard,
 } from "@/components/settings/settings-summary-cards";
+import { TelegramBotSection } from "@/components/settings/telegram-bot-section";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -124,7 +126,8 @@ export default function SettingsPage() {
       tabParam === "security" ||
       tabParam === "2fa" ||
       tabParam === "api-keys" ||
-      tabParam === "bank-accounts"
+      tabParam === "bank-accounts" ||
+      tabParam === "telegram"
     ) {
       setActiveTab(tabParam as TabKey);
       setMobileDetailOpen(true);
@@ -217,7 +220,7 @@ export default function SettingsPage() {
       .then((response) => setApiKeys(Array.isArray(response.data) ? response.data : []))
       .catch(() => toast.error(_("settings.failedLoadApiKeys")))
       .finally(() => setApiKeysLoading(false));
-  }, []);
+  }, [_]);
 
   // ── Password Handlers ─────────────────────────────────────────────────────
   const passwordCriteria = useMemo(() => {
@@ -548,6 +551,7 @@ export default function SettingsPage() {
                 count={accounts.length}
                 loading={false}
               />
+              <TelegramBotSummaryCard onOpen={() => openSection("telegram")} />
               <AppearanceCard onOpen={() => openSection("appearance")} />
               <LanguageCard onOpen={() => openSection("language")} />
             </div>
@@ -1920,6 +1924,13 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ── SECTION: TELEGRAM BOT INTEGRATION ──────────────────────────── */}
+          {activeTab === "telegram" && (
+            <div className="animate-in fade-in slide-in-from-right-2 duration-200">
+              <TelegramBotSection />
             </div>
           )}
 

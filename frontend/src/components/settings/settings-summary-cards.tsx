@@ -9,7 +9,9 @@ import {
   Landmark,
   ShieldCheck,
   Wallet,
+  Bot,
 } from "lucide-react";
+import api from "@/lib/api";
 import { useT, useI18nStore } from "@/lib/i18n";
 import { useThemeStore } from "@/store/theme-store";
 import { authClient } from "@/lib/auth-client";
@@ -344,6 +346,64 @@ export function LanguageCard({ onOpen }: { onOpen: () => void }) {
           <p className="mt-1 flex items-center gap-2 text-sm font-medium text-foreground">
             <span aria-hidden className="text-base">{active.flag}</span>
             {active.label}
+          </p>
+        </div>
+        <span aria-hidden className="shrink-0 text-muted-foreground">
+          ›
+        </span>
+      </button>
+    </SettingsCard>
+  );
+}
+
+/* ── Telegram Bot ────────────────────────────────────────────────────────── */
+
+export function TelegramBotSummaryCard({ onOpen }: { onOpen: () => void }) {
+  const t = useT();
+  const [status, setStatus] = useState<{ is_connected: boolean; bot_username: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get("/telegram-bot/status");
+        if (!cancelled && res.data) {
+          setStatus(res.data);
+        }
+      } catch {
+        // silent fallback
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isConnected = status?.is_connected ?? false;
+
+  return (
+    <SettingsCard>
+      <SettingsCardHeader
+        icon={<Bot className="h-4.5 w-4.5" />}
+        title={t("settings.navTelegram") || "Bot Telegram"}
+        description={t("settings.navTelegramDesc") || "Hubungkan bot Telegram resmi"}
+        action={
+          <SettingsBadge tone={isConnected ? "success" : "neutral"}>
+            <StatusDot tone={isConnected ? "success" : "neutral"} />
+            {isConnected ? "Terhubung" : "Belum Terhubung"}
+          </SettingsBadge>
+        }
+      />
+      <SettingsDivider className="my-4" />
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Integrasi Bot Telegram</p>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {isConnected ? `Aktif (@${status?.bot_username || "TeleBosBot"})` : "Tautkan akun via Token Penghubung"}
           </p>
         </div>
         <span aria-hidden className="shrink-0 text-muted-foreground">

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   X,
-  Image,
+  Image as ImageIcon,
   FileText,
   Shield,
   Trash2,
@@ -375,7 +375,7 @@ export function ChatRightColumn({
                             <img src={msg.stripped_thumb} className="w-full h-full object-cover" alt="" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--tg-text-tertiary)" }}>
-                              <Image className="h-4 w-4" />
+                              <ImageIcon className="h-4 w-4" />
                             </div>
                           )}
                         </div>

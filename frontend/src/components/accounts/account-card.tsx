@@ -423,7 +423,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
           <div className="space-y-3 text-left">
             <p className="text-sm text-gray-500">
               List this account for sale at Rp {(account.sell_price ?? pricing?.sell_price ?? 5500).toLocaleString()}.
-              Your balance will <strong>not</strong> be credited immediately — you'll be paid when a buyer purchases it.
+              Your balance will <strong>not</strong> be credited immediately — you&apos;ll be paid when a buyer purchases it.
             </p>
             <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
               <div className="flex justify-between">

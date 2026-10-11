@@ -17,6 +17,7 @@
 //     sticky first column stays readable, and the plan columns are the only
 //     thing that needs to scroll.
 
+import React, { useState } from "react";
 import { ArrowRight, Check, Minus } from "lucide-react";
 
 import { PublicFooter } from "@/components/public/public-footer";
@@ -25,30 +26,42 @@ import { publicButtonClass } from "@/components/public/public-ui";
 import { LandingReveal } from "@/components/landing/landing-motion";
 import { Navbar5 } from "@/components/ui/navbar-5";
 import { PLANS, type PlanId } from "@/data/plans";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
 type FeatureLine = { text: string };
 
-// Feature bullets per tier, in the order the subscription screen lists them.
 const FEATURES: Record<PlanId, FeatureLine[]> = {
+  freetrial: [
+    { text: "Text chats & direct chat management" },
+    { text: "1 connected Telegram account" },
+    { text: "Automatic auto-reply for incoming messages" },
+    { text: "Standard proxy support & encrypted sessions" },
+  ],
   basic: [
     { text: "Text chats & direct chat management" },
     { text: "1 connected Telegram account" },
-    { text: "Public channel & group catalogue search" },
-    { text: "Telegram number and ID age estimate" },
+    { text: "Automatic auto-reply for incoming messages" },
+    { text: "Auto-join groups & channels" },
     { text: "Standard proxy support & encrypted sessions" },
   ],
   pro: [
     { text: "Mass broadcast & scheduled sends" },
-    { text: "Automatic auto-reply for incoming messages" },
-    { text: "Up to 10 connected Telegram accounts" },
-    { text: "Account folders & category filters" },
-    { text: "Custom anti flood-wait delays" },
+    { text: "Up to 3 connected Telegram accounts" },
+    { text: "Age Checker & Public Index" },
+    { text: "Member Inviter & Auto-join" },
     { text: "Contact sync & log history" },
   ],
   premium: [
-    { text: "Unlimited Telegram account connections" },
+    { text: "Up to 5 connected Telegram accounts" },
     { text: "Scrape target members & auto-invite to your group" },
     { text: "Fastest server queue & high priority" },
     { text: "Post reaction automation & view booster" },
@@ -60,22 +73,23 @@ const FEATURES: Record<PlanId, FeatureLine[]> = {
 
 /** One row of the comparison table. `cells` is keyed by plan id. */
 const COMPARE_ROWS: Array<{ cells: Record<PlanId, string>; labelKey: string }> = [
-  { labelKey: "accounts", cells: { basic: "free", pro: "upTo10", premium: "unlimited" } },
-  { labelKey: "broadcast", cells: { basic: "no", pro: "yes", premium: "yes" } },
-  { labelKey: "autoReply", cells: { basic: "no", pro: "yes", premium: "yes" } },
-  { labelKey: "scheduling", cells: { basic: "no", pro: "yes", premium: "yes" } },
-  { labelKey: "scrape", cells: { basic: "no", pro: "no", premium: "yes" } },
-  { labelKey: "autoJoin", cells: { basic: "no", pro: "no", premium: "yes" } },
-  { labelKey: "proxy", cells: { basic: "standard", pro: "standard", premium: "best" } },
-  { labelKey: "appeals", cells: { basic: "no", pro: "no", premium: "yes" } },
-  { labelKey: "queue", cells: { basic: "no", pro: "standard", premium: "best" } },
-  { labelKey: "support", cells: { basic: "no", pro: "no", premium: "hours" } },
+  { labelKey: "accounts", cells: { freetrial: "free", basic: "free", pro: "upTo3", premium: "unlimited" } },
+  { labelKey: "broadcast", cells: { freetrial: "no", basic: "no", pro: "yes", premium: "yes" } },
+  { labelKey: "autoReply", cells: { freetrial: "yes", basic: "yes", pro: "yes", premium: "yes" } },
+  { labelKey: "scheduling", cells: { freetrial: "no", basic: "no", pro: "yes", premium: "yes" } },
+  { labelKey: "scrape", cells: { freetrial: "no", basic: "no", pro: "yes", premium: "yes" } },
+  { labelKey: "autoJoin", cells: { freetrial: "no", basic: "yes", pro: "yes", premium: "yes" } },
+  { labelKey: "proxy", cells: { freetrial: "standard", basic: "standard", pro: "standard", premium: "best" } },
+  { labelKey: "appeals", cells: { freetrial: "no", basic: "no", pro: "no", premium: "yes" } },
+  { labelKey: "queue", cells: { freetrial: "no", basic: "no", pro: "standard", premium: "best" } },
+  { labelKey: "support", cells: { freetrial: "no", basic: "no", pro: "no", premium: "hours" } },
 ];
 
 const FAQ_KEYS = ["payment", "upgrade", "cancel", "spam"] as const;
 
 export default function PricingPage() {
   const _ = useT();
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
   return (
     <PublicShell header={<Navbar5 />} footer={<PublicFooter />}>
@@ -93,10 +107,38 @@ export default function PricingPage() {
               {_("pricing.subtitle")}
             </p>
           </LandingReveal>
+
+          {/* Toggle Monthly/Yearly */}
+          <LandingReveal delay={0.1}>
+            <div className="mt-8 flex justify-center items-center gap-3">
+              <span className={cn("text-sm font-medium", billingCycle === "monthly" ? "text-[var(--public-text)]" : "text-[var(--public-muted)]")}>
+                Monthly
+              </span>
+              <button
+                type="button"
+                onClick={() => setBillingCycle(prev => prev === "monthly" ? "yearly" : "monthly")}
+                className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[var(--public-accent)] transition-colors duration-200 ease-in-out focus:outline-none"
+                role="switch"
+                aria-checked={billingCycle === "yearly"}
+              >
+                <span className="sr-only">Toggle billing cycle</span>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                    billingCycle === "yearly" ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
+              <span className={cn("text-sm font-medium", billingCycle === "yearly" ? "text-[var(--public-text)]" : "text-[var(--public-muted)]")}>
+                Yearly
+              </span>
+            </div>
+          </LandingReveal>
         </div>
 
         {/* ── Plan cards ─────────────────────────────────────────────────── */}
-        <div className="mt-14 grid gap-5 md:grid-cols-3 md:items-start">
+        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4 md:items-start">
           {PLANS.map((plan, index) => (
             <LandingReveal key={plan.id} delay={0.06 * index}>
               <article
@@ -113,24 +155,41 @@ export default function PricingPage() {
                   </span>
                 )}
 
-                <h2 className="text-lg font-bold text-[var(--public-text)]">
+                <h2 className="text-lg font-bold text-[var(--public-text)] flex items-center gap-2">
                   {_(`pricing.headers.${plan.id}`)}
+                  {billingCycle === "yearly" && plan.id !== "basic" && plan.id !== "freetrial" && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
+                      Hemat {plan.yearlyDiscount}
+                    </span>
+                  )}
                 </h2>
                 <p className="mt-2.5 min-h-[3.5rem] text-sm leading-6 text-[var(--public-muted)]">
                   {_(`pricing.desc.${plan.id}`)}
                 </p>
 
-                <div className="mt-6 flex items-baseline gap-1.5">
-                  <span className="public-display text-[2.4rem] font-bold leading-none text-[var(--public-text)]">
-                    {plan.price}
-                  </span>
-                  <span className="text-sm text-[var(--public-subtle)]">
-                    {_("pricing.perMonth")}
-                  </span>
+                <div className="mt-6 flex flex-col gap-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="public-display text-[2.4rem] font-bold leading-none text-[var(--public-text)]">
+                      {billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice}
+                    </span>
+                    <span className="text-sm text-[var(--public-subtle)]">
+                      {billingCycle === "monthly" ? _("pricing.perMonth") : "/tahun"}
+                    </span>
+                  </div>
+                  {billingCycle === "yearly" && plan.id !== "basic" && plan.id !== "freetrial" && (
+                    <span className="text-xs text-[var(--public-muted)] font-medium">
+                      Setara {plan.yearlyEquivalentPrice}/bulan, ditagih tahunan
+                    </span>
+                  )}
+                  {billingCycle === "yearly" && (plan.id === "basic" || plan.id === "freetrial") && (
+                    <span className="text-xs text-transparent select-none font-medium">
+                      Spacer
+                    </span>
+                  )}
                 </div>
 
                 <a
-                  href={plan.id === "basic" ? "/register" : "/login"}
+                  href={plan.id === "freetrial" ? "/register" : "/login"}
                   className={cn(
                     publicButtonClass,
                     "mt-6 w-full justify-center",
@@ -181,49 +240,48 @@ export default function PricingPage() {
           {/* Horizontal scroll is expected and contained here: the label column
               stays put and only the three plan columns move. */}
           <div className="mt-10 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <table className="w-full min-w-[560px] border-collapse text-sm">
+            <Table className="w-full min-w-[560px]">
               <caption className="sr-only">{_("pricing.compare.limits")}</caption>
-              <thead>
-                <tr className="border-b border-[var(--public-border)]">
-                  <th scope="col" className="w-[40%] py-3 pr-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[var(--public-subtle)]">
+              <TableHeader>
+                <TableRow className="border-b border-[var(--public-border)] hover:bg-transparent">
+                  <TableHead className="w-[40%] py-3 pr-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[var(--public-subtle)]">
                     {_("pricing.compare.limits")}
-                  </th>
+                  </TableHead>
                   {PLANS.map((plan) => (
-                    <th
+                    <TableHead
                       key={plan.id}
-                      scope="col"
                       className="py-3 pr-4 text-left text-sm font-bold text-[var(--public-text)] last:pr-0"
                     >
                       {_(`pricing.headers.${plan.id}`)}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {COMPARE_ROWS.map((row) => (
-                  <tr key={row.labelKey} className="border-b border-[var(--public-border)] last:border-b-0">
-                    <th scope="row" className="py-3.5 pr-4 text-left font-normal text-[var(--public-body)]">
+                  <TableRow key={row.labelKey} className="border-b border-[var(--public-border)] last:border-b-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    <TableCell className="py-3.5 pr-4 text-left font-normal text-[var(--public-body)]">
                       {_(`pricing.compare.rows.${row.labelKey}`)}
-                    </th>
+                    </TableCell>
                     {PLANS.map((plan) => {
                       const raw = row.cells[plan.id];
                       const value = raw === "no" ? _("pricing.compare.values.no") : _(`pricing.compare.values.${raw}`);
                       const absent = raw === "no";
                       return (
-                        <td
+                        <TableCell
                           key={plan.id}
                           className="py-3.5 pr-4 text-[var(--public-body)] last:pr-0"
                         >
                           <span className={absent ? "text-[var(--public-subtle)]" : "text-[var(--public-text)]"}>
                             {value}
                           </span>
-                        </td>
+                        </TableCell>
                       );
                     })}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </section>

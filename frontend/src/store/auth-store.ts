@@ -12,6 +12,9 @@ export interface User {
   balance: number;
   /** Account creation timestamp. Optional because older API responses omit it. */
   created_at?: string | null;
+  onboarding_completed?: boolean;
+  image?: string | null;
+  avatar_url?: string | null;
 }
 
 interface AuthState {
@@ -41,11 +44,17 @@ function syncSessionToken(token: string | null) {
  * the backend is unavailable.
  */
 async function hydrateUserFromBackend(
-  betterAuthUser: { id: string; email: string; name?: string | null },
+  betterAuthUser: { id: string; email: string; name?: string | null; image?: string | null },
 ): Promise<User> {
   try {
     const { data } = await api.get<User>("/auth/me");
-    if (data) return data;
+    if (data) {
+      return {
+        ...data,
+        image: data.image || betterAuthUser.image || null,
+        avatar_url: data.avatar_url || null,
+      };
+    }
   } catch {
     // Backend unavailable — fall through to Better Auth fallback.
   }
@@ -53,9 +62,11 @@ async function hydrateUserFromBackend(
     id: betterAuthUser.id,
     email: betterAuthUser.email,
     full_name: betterAuthUser.name || null,
-    role: "basic",
+    image: betterAuthUser.image || null,
+    role: (betterAuthUser as any).role || "freetrial",
     is_active: true,
     balance: 0,
+    onboarding_completed: false,
   };
 }
 

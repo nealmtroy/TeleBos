@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff, Loader2, Lock, RefreshCw, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { PhoneInputWithCountry } from "@/components/accounts/phone-input-with-country";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Step = "phone" | "code" | "setupEmail" | "setupEmailCode" | "twofa";
 type SentCode = {
@@ -66,12 +69,12 @@ export function TelegramLoginFlow() {
     setFlow(null); setCode(""); setEmail(""); setTwofaPassword(""); setV2lHint(null); setTimeLeft(0); setStep("phone");
   };
 
-  const cancel = async () => {
+  const cancel = useCallback(async () => {
     if (!flow?.login_id) return;
     try { await api.post("/accounts/cancel-login", { login_id: flow.login_id }); } catch { /* best effort */ }
-  };
+  }, [flow?.login_id]);
 
-  useEffect(() => () => { void cancel(); }, [flow?.login_id]);
+  useEffect(() => () => { void cancel(); }, [cancel]);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -148,34 +151,178 @@ export function TelegramLoginFlow() {
   const ready = !!code && (!codeLength || code.length === codeLength);
   const time = `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`;
 
-  return <div className="space-y-5">
-    {error && <div className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><ShieldAlert className="h-5 w-5 shrink-0" />{error}</div>}
-    {step === "phone" && <>
-      <div>
-        <label className="mb-1.5 block text-sm font-semibold text-foreground">{_("addAccount.phoneLabel")}</label>
-        <PhoneInputWithCountry
-          value={phone}
-          onChange={setPhone}
-          disabled={loading}
-          autoFocus
-        />
-        <p className="mt-1.5 text-xs text-muted-foreground">{_("addAccount.phoneHint")}</p>
-      </div>
-      <button onClick={sendCode} disabled={loading || !phone} className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition shadow-xs">{loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.sendOtp")}</button>
-    </>}
-    {step === "setupEmail" && <>
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-500 dark:text-blue-400">{_("addAccount.setupEmailRequired")}</div>
-      <div><label htmlFor="setup-email-input" className="mb-1.5 block text-sm font-semibold text-foreground">{_("addAccount.setupEmailLabel")}</label><input id="setup-email-input" name="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
-      {(flow as SentCode)?.google_signin_allowed || (flow as SentCode)?.apple_signin_allowed ? <p className="text-xs text-muted-foreground">{_("addAccount.thirdPartySigninUnavailable")}</p> : null}
-      <button onClick={startSetupEmail} disabled={loading || !email} className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition shadow-xs">{loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.setupEmailSendCode")}</button>
-    </>}
-    {(step === "code" || step === "setupEmailCode") && <>
-      <div className="rounded-xl border border-border/80 bg-muted/40 p-4 text-center text-sm text-foreground/80">{step === "setupEmailCode" ? _("addAccount.setupEmailCodePrompt") : _("addAccount.deliveryCodePrompt", { delivery: deliveryLabel((flow as SentCode)?.delivery_type) })}<div className="mt-1 font-mono text-lg font-bold text-foreground">{flow?.email_pattern || phone}</div></div>
-      {cells.length ? <div className="mx-auto max-w-md"><input id="telegram-verification-code" name="code" aria-label="verification-code" value={code} onChange={(event) => setCodeValue(event.target.value)} onPaste={(event) => { event.preventDefault(); setCodeValue(event.clipboardData.getData("text").trim()); }} inputMode={inputMode === "numeric" ? "numeric" : "text"} maxLength={codeLength || undefined} className="col-span-full rounded-xl border-2 border-border bg-background text-foreground px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.5em] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div> : <input id="telegram-verification-code" name="code" aria-label="verification-code" value={code} onChange={(event) => setCodeValue(event.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />}
-      {timeLeft > 0 ? <p className="text-center text-xs text-muted-foreground">{_("addAccount.resendAvailable")} <strong className="text-foreground">{time}</strong></p> : step === "code" ? <button onClick={resend} disabled={loading} className="mx-auto flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><RefreshCw className="h-4 w-4" />{_("addAccount.resendCode")}</button> : null}
-      <button onClick={step === "setupEmailCode" ? verifySetupEmail : verifyCode} disabled={loading || !ready} className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition shadow-xs">{loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.verifyLogin")}</button>
-      <button onClick={async () => { await cancel(); resetFlow(); }} className="w-full text-sm font-medium text-muted-foreground hover:text-foreground transition">{_("addAccount.changePhone")}</button>
-    </>}
-    {step === "twofa" && <><div className="flex gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400"><Lock className="h-5 w-5 shrink-0" />{v2lHint || _("addAccount.twoFaWarning")}</div><div className="relative"><input id="telegram-twofa-password" name="twofaPassword" aria-label={_("addAccount.twoFaPlaceholder")} type={showPassword ? "text" : "password"} value={twofaPassword} onChange={(event) => setTwofaPassword(event.target.value)} placeholder={_("addAccount.twoFaPlaceholder")} className="w-full rounded-xl border border-border bg-background px-4 py-2.5 pr-10 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><button onClick={verifyTwofa} disabled={loading || !twofaPassword} className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition shadow-xs">{loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.verifyLogin")}</button></>}
-  </div>;
+  return (
+    <div className="space-y-5">
+      {error && (
+        <div className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {step === "phone" && (
+        <>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-foreground">
+              {_("addAccount.phoneLabel")}
+            </Label>
+            <PhoneInputWithCountry
+              value={phone}
+              onChange={setPhone}
+              disabled={loading}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">{_("addAccount.phoneHint")}</p>
+          </div>
+          <Button
+            onClick={sendCode}
+            disabled={loading || !phone}
+            className="w-full rounded-xl py-2.5 font-semibold shadow-xs"
+          >
+            {loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.sendOtp")}
+          </Button>
+        </>
+      )}
+
+      {step === "setupEmail" && (
+        <>
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-500 dark:text-blue-400">
+            {_("addAccount.setupEmailRequired")}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="setup-email-input" className="text-sm font-semibold text-foreground">
+              {_("addAccount.setupEmailLabel")}
+            </Label>
+            <Input
+              id="setup-email-input"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="w-full rounded-xl border-border bg-background px-4 py-2.5 text-foreground"
+            />
+          </div>
+          {(flow as SentCode)?.google_signin_allowed || (flow as SentCode)?.apple_signin_allowed ? (
+            <p className="text-xs text-muted-foreground">
+              {_("addAccount.thirdPartySigninUnavailable")}
+            </p>
+          ) : null}
+          <Button
+            onClick={startSetupEmail}
+            disabled={loading || !email}
+            className="w-full rounded-xl py-2.5 font-semibold shadow-xs"
+          >
+            {loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.setupEmailSendCode")}
+          </Button>
+        </>
+      )}
+
+      {(step === "code" || step === "setupEmailCode") && (
+        <>
+          <div className="rounded-xl border border-border/80 bg-muted/40 p-4 text-center text-sm text-foreground/80">
+            {step === "setupEmailCode"
+              ? _("addAccount.setupEmailCodePrompt")
+              : _("addAccount.deliveryCodePrompt", { delivery: deliveryLabel((flow as SentCode)?.delivery_type) })}
+            <div className="mt-1 font-mono text-lg font-bold text-foreground">
+              {flow?.email_pattern || phone}
+            </div>
+          </div>
+          {cells.length ? (
+            <div className="mx-auto max-w-md">
+              <Input
+                id="telegram-verification-code"
+                name="code"
+                aria-label="verification-code"
+                value={code}
+                onChange={(event) => setCodeValue(event.target.value)}
+                onPaste={(event) => {
+                  event.preventDefault();
+                  setCodeValue(event.clipboardData.getData("text").trim());
+                }}
+                inputMode={inputMode === "numeric" ? "numeric" : "text"}
+                maxLength={codeLength || undefined}
+                className="col-span-full rounded-xl border-2 border-border bg-background text-foreground px-4 py-3 h-14 text-center font-mono text-2xl font-bold tracking-[0.5em]"
+              />
+            </div>
+          ) : (
+            <Input
+              id="telegram-verification-code"
+              name="code"
+              aria-label="verification-code"
+              value={code}
+              onChange={(event) => setCodeValue(event.target.value)}
+              className="w-full rounded-xl border-border bg-background px-4 py-2.5 text-foreground"
+            />
+          )}
+          {timeLeft > 0 ? (
+            <p className="text-center text-xs text-muted-foreground">
+              {_("addAccount.resendAvailable")} <strong className="text-foreground">{time}</strong>
+            </p>
+          ) : step === "code" ? (
+            <Button
+              variant="link"
+              onClick={resend}
+              disabled={loading}
+              className="mx-auto flex items-center gap-2 text-sm font-semibold p-0 h-auto"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {_("addAccount.resendCode")}
+            </Button>
+          ) : null}
+          <Button
+            onClick={step === "setupEmailCode" ? verifySetupEmail : verifyCode}
+            disabled={loading || !ready}
+            className="w-full rounded-xl py-2.5 font-semibold shadow-xs"
+          >
+            {loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.verifyLogin")}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={async () => {
+              await cancel();
+              resetFlow();
+            }}
+            className="w-full text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            {_("addAccount.changePhone")}
+          </Button>
+        </>
+      )}
+
+      {step === "twofa" && (
+        <>
+          <div className="flex gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+            <Lock className="h-5 w-5 shrink-0" />
+            {v2lHint || _("addAccount.twoFaWarning")}
+          </div>
+          <div className="relative">
+            <Input
+              id="telegram-twofa-password"
+              name="twofaPassword"
+              aria-label={_("addAccount.twoFaPlaceholder")}
+              type={showPassword ? "text" : "password"}
+              value={twofaPassword}
+              onChange={(event) => setTwofaPassword(event.target.value)}
+              placeholder={_("addAccount.twoFaPlaceholder")}
+              className="w-full rounded-xl border-border bg-background px-4 py-2.5 pr-10 text-foreground"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <Button
+            onClick={verifyTwofa}
+            disabled={loading || !twofaPassword}
+            className="w-full rounded-xl py-2.5 font-semibold shadow-xs"
+          >
+            {loading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : _("addAccount.verifyLogin")}
+          </Button>
+        </>
+      )}
+    </div>
+  );
 }

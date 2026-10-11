@@ -36,7 +36,8 @@ describe("TextEditor Component", () => {
       <TextEditor value="<b>Pesan Penting</b>" onChange={vi.fn()} />
     );
 
-    const previewBtn = screen.getByRole("button", { name: /preview/i });
+    const previewBtn = screen.getByRole("tab", { name: /preview/i });
+    fireEvent.pointerDown(previewBtn);
     fireEvent.click(previewBtn);
 
     expect(screen.getByText("Pesan Penting")).toBeInTheDocument();

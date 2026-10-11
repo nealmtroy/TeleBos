@@ -111,14 +111,14 @@ export default function InvitePage() {
     }
   }, [accounts, selectedAccountIds]);
 
-  // Role check: basic users cannot access invite
-  if (user?.role === "basic") {
+  // Role check: only pro, premium, owner can access invite
+  if (user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner") {
     return (
       <div className="text-center py-16">
         <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
         <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
         <p className="text-sm text-gray-500">
-          Member Invite feature is not available for your plan. Upgrade to Pro or Premium to access this feature.
+          Member Invite feature is not available for your plan. Upgrade to Pro or Business to access this feature.
         </p>
       </div>
     );

@@ -20,10 +20,19 @@ import { cn } from "@/lib/utils";
 
 // Role-based account limits
 const ROLE_LIMITS: Record<string, number> = {
+  freetrial: 1,
   basic: 1,
   pro: 10,
   premium: 100,
   owner: 999999,
+};
+
+const PLAN_NAMES: Record<string, string> = {
+  freetrial: "Free Trial",
+  basic: "Starter",
+  pro: "Pro",
+  premium: "Business",
+  owner: "Owner",
 };
 
 // Order here is the order the filter row renders in.
@@ -105,56 +114,57 @@ export default function AccountsListPage() {
   }, [page, totalPages]);
 
   const totalUsedAccounts = accountsSummary?.total ?? paginatedData?.total ?? 0;
-  const accountLimit = ROLE_LIMITS[user?.role || "basic"] ?? 1;
+  const accountLimit = ROLE_LIMITS[user?.role || "freetrial"] ?? 1;
   const atLimit = totalUsedAccounts >= accountLimit;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{_("accountsList.title")}</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">{_("accountsList.title")}</h1>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-0.5 sm:mt-1">
             {_("accountsList.subtitle")}
           </p>
           <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">
             {totalUsedAccounts}/{accountLimit} accounts used
-            {user?.role !== "owner" && ` (${user?.role || "basic"} plan)`}
+            {user?.role !== "owner" && ` (${PLAN_NAMES[user?.role || "freetrial"] || user?.role || "Free Trial"} plan)`}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setFolderManagerOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0 justify-start sm:justify-end">
+          <button
+            onClick={() => setFolderManagerOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0 shadow-2xs"
+          >
+            <FolderOpen className="h-4 w-4 shrink-0" />
+            {_("accountFolders.manageFolders")}
+          </button>
+          {atLimit ? (
+            <span
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-400 rounded-lg text-xs sm:text-sm font-medium cursor-not-allowed whitespace-nowrap shrink-0 shadow-2xs"
+              title={`Account limit reached for ${PLAN_NAMES[user?.role || "freetrial"] || "Free Trial"} plan (max ${accountLimit})`}
             >
-              <FolderOpen className="h-4 w-4" />
-              {_("accountFolders.manageFolders")}
-            </button>
-            {atLimit ? (
-              <span className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-400 rounded-lg text-sm font-medium cursor-not-allowed" title={`Account limit reached for ${user?.role || "basic"} plan (max ${accountLimit})`}>
-                <Info className="h-4 w-4" />
-                Limit Reached
-              </span>
-            ) : (
-              <Link
-                href="/accounts/add"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                {_("accountsList.addAccount")}
-              </Link>
-            )}
-          </div>
+              <Info className="h-4 w-4 shrink-0" />
+              Limit Reached
+            </span>
+          ) : (
+            <Link
+              href="/accounts/add"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 bg-primary-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-primary-700 transition-colors whitespace-nowrap shrink-0 shadow-2xs"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              {_("accountsList.addAccount")}
+            </Link>
+          )}
           {user?.role === "owner" && (
             <button
               onClick={() => {
                 setSelectedTransferAccounts([]);
                 setTransferDialogOpen(true);
               }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors whitespace-nowrap shrink-0 shadow-2xs"
             >
-              <ArrowRightLeft className="h-4 w-4" />
+              <ArrowRightLeft className="h-4 w-4 shrink-0" />
               {_("accountsList.transferAccounts")}
             </button>
           )}
@@ -164,14 +174,14 @@ export default function AccountsListPage() {
       {/* Search & Filters */}
       <div className="flex flex-col gap-4">
         {/* Status filters & Search bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar border border-transparent dark:border-slate-700/60">
             {STATUS_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => handleSelectStatus(value)}
                 className={cn(
-                  "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                  "px-3.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors",
                   statusFilter === value
                     ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
                     : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
@@ -182,7 +192,7 @@ export default function AccountsListPage() {
             ))}
           </div>
 
-          <div className="relative w-full md:w-72 shrink-0">
+          <div className="relative w-full sm:w-80 md:w-88 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
             <input
               id="accounts-search"
@@ -192,7 +202,7 @@ export default function AccountsListPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label={_("accountsList.searchPlaceholder") || "Cari akun Telegram"}
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
             />
           </div>
         </div>

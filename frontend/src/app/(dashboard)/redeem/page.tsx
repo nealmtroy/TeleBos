@@ -19,6 +19,7 @@ import {
   Star,
   Wallet,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -76,8 +77,9 @@ export default function RedeemPage() {
     }
   }
 
-  const userPlan = user?.role || "basic";
+  const userPlan = user?.role || "freetrial";
   const planMeta: Record<string, { icon: typeof Star; color: string; bg: string }> = {
+    freetrial: { icon: Clock, color: "text-sky-500", bg: "bg-sky-50" },
     basic: { icon: Star, color: "text-slate-500", bg: "bg-slate-100" },
     pro: { icon: Star, color: "text-primary-600", bg: "bg-primary-50" },
     premium: { icon: Crown, color: "text-amber-600", bg: "bg-amber-50" },

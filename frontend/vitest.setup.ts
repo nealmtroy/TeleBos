@@ -13,8 +13,21 @@ class IntersectionObserverMock implements IntersectionObserver {
   unobserve() {}
 }
 
+class ResizeObserverMock {
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+}
+
 Object.defineProperty(globalThis, "IntersectionObserver", {
   configurable: true,
   writable: true,
   value: IntersectionObserverMock,
 });
+
+Object.defineProperty(globalThis, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverMock,
+});
+

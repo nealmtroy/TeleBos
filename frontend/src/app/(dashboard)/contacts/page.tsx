@@ -66,13 +66,13 @@ import {
 export default function ContactsPage() {
   const user = useAuthStore((s) => s.user);
 
-  // Role check: basic users cannot access contacts
-  if (user?.role === "basic") {
+  // Role check: contacts is available for Pro and Business plans
+  if (user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner") {
     return (
       <div className="text-center py-16">
         <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
         <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
-        <p className="text-sm text-gray-500">Contacts feature is not available for your plan. Upgrade to Pro or Premium to access this feature.</p>
+        <p className="text-sm text-gray-500">Contacts feature is not available for your plan. Upgrade to Pro or Business to access this feature.</p>
       </div>
     );
   }

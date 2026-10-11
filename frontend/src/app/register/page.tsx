@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 import { PublicCheckbox } from "@/components/public/public-checkbox";
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
-import { PublicInput, publicPrimaryButtonClass } from "@/components/public/public-ui";
+import { PublicInput, publicButtonClass, publicPrimaryButtonClass } from "@/components/public/public-ui";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { GoogleIcon } from "@/components/ui/google-icon";
+import { authClient } from "@/lib/auth-client";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const register = useAuthStore((state) => state.register);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -29,10 +32,33 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      setError(_("register.googleAuthFailed"));
+    }
+  }, [searchParams, _]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace("/dashboard");
   }, [isAuthenticated, isLoading, router]);
+
+  async function handleGoogleSignUp() {
+    setError("");
+    setSuccess("");
+    setGoogleLoading(true);
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+      });
+    } catch (err: any) {
+      setError(err?.message || _("register.googleAuthFailed"));
+      setGoogleLoading(false);
+    }
+  }
 
   if (isLoading) return <LoadingState />;
   if (isAuthenticated) return null;
@@ -111,6 +137,33 @@ export default function RegisterPage() {
                 {success}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={handleGoogleSignUp}
+              disabled={loading || googleLoading}
+              className={`${publicButtonClass} w-full flex items-center justify-center gap-2.5`}
+            >
+              {googleLoading ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--public-border)] border-t-[var(--public-accent)]" />
+              ) : (
+                <GoogleIcon className="h-4 w-4 shrink-0" />
+              )}
+              <span>{_("register.signUpWithGoogle")}</span>
+            </button>
+            <p className="text-center text-xs text-[var(--public-muted)]">
+              {_("register.googleTermsNotice")}
+            </p>
+
+            <div className="relative my-2 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[var(--public-border)]" />
+              </div>
+              <div className="relative bg-[var(--public-canvas)] px-3 text-xs uppercase tracking-wider text-[var(--public-subtle)]">
+                {_("register.orContinueWith")}
+              </div>
+            </div>
+
             <div>
               <label htmlFor="name" className="mb-2 block text-sm font-medium text-[var(--public-body)]">
                 {_("register.fullNameLabel")}
@@ -234,7 +287,7 @@ export default function RegisterPage() {
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               aria-busy={loading}
               className={`${publicPrimaryButtonClass} w-full`}
             >
@@ -259,3 +312,12 @@ function LoadingState() {
     </div>
   );
 }
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+

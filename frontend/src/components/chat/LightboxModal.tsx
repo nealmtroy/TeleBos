@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { X, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface LightboxModalProps {
   lightboxMedia: { url: string; type: "photo" | "video" } | null;
@@ -23,92 +30,93 @@ export function LightboxModal({
     setZoomLevel(1);
   }, [lightboxMedia]);
 
-  if (!lightboxMedia) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center animate-in fade-in-0 duration-200 select-none"
-      onClick={onClose}
-    >
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-55 shadow-md"
-      >
-        <X className="h-6 w-6" />
-      </button>
-      
-      <a
-        href={lightboxMedia.url}
-        download
-        onClick={(e) => e.stopPropagation()}
-        className="absolute top-4 right-20 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-55 shadow-md flex items-center justify-center"
-        title="Download"
-      >
-        <FileText className="h-6 w-6" />
-      </a>
+    <Dialog open={!!lightboxMedia} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto border-none bg-black/90 backdrop-blur-md p-0 shadow-none flex flex-col items-center justify-center select-none text-white [&>button:last-child]:bg-white/10 [&>button:last-child]:hover:bg-white/20 [&>button:last-child]:text-white [&>button:last-child]:rounded-full [&>button:last-child]:p-2 [&>button:last-child]:top-4 [&>button:last-child]:right-4">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Media Preview</DialogTitle>
+          <DialogDescription>Preview image or video in full screen</DialogDescription>
+        </DialogHeader>
 
-      {currentMediaIndex > 0 && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onNavigate("prev");
-          }}
-          className="absolute left-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md"
-          title="Previous"
-        >
-          <ChevronLeft className="h-8 w-8" />
-        </button>
-      )}
+        {lightboxMedia && (
+          <>
+            <a
+              href={lightboxMedia.url}
+              download
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-4 right-16 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md flex items-center justify-center"
+              title="Download"
+            >
+              <FileText className="h-5 w-5" />
+            </a>
 
-      {currentMediaIndex !== -1 && currentMediaIndex < mediaListLength - 1 && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onNavigate("next");
-          }}
-          className="absolute right-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md"
-          title="Next"
-        >
-          <ChevronRight className="h-8 w-8" />
-        </button>
-      )}
+            {currentMediaIndex > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate("prev");
+                }}
+                className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md"
+                title="Previous"
+              >
+                <ChevronLeft className="h-7 w-7" />
+              </button>
+            )}
 
-      <div
-        className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {lightboxMedia.type === "photo" ? (
-          <img
-            src={lightboxMedia.url}
-            onWheel={(e) => {
-              e.stopPropagation();
-              if (e.deltaY < 0) {
-                setZoomLevel((prev) => Math.min(prev + 0.25, 4));
-              } else {
-                setZoomLevel((prev) => Math.max(prev - 0.25, 1));
-              }
-            }}
-            style={{
-              transform: `scale(${zoomLevel})`,
-              transition: "transform 0.1s ease-out",
-              cursor: zoomLevel > 1 ? "zoom-out" : "zoom-in",
-            }}
-            onClick={() => {
-              if (zoomLevel > 1) setZoomLevel(1);
-              else setZoomLevel(2);
-            }}
-            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
-            alt="Fullscreen View"
-          />
-        ) : (
-          <video
-            src={lightboxMedia.url}
-            controls
-            autoPlay
-            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
-          />
+            {currentMediaIndex !== -1 && currentMediaIndex < mediaListLength - 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate("next");
+                }}
+                className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition active:scale-95 z-50 shadow-md"
+                title="Next"
+              >
+                <ChevronRight className="h-7 w-7" />
+              </button>
+            )}
+
+            <div
+              className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {lightboxMedia.type === "photo" ? (
+                <img
+                  src={lightboxMedia.url}
+                  onWheel={(e) => {
+                    e.stopPropagation();
+                    if (e.deltaY < 0) {
+                      setZoomLevel((prev) => Math.min(prev + 0.25, 4));
+                    } else {
+                      setZoomLevel((prev) => Math.max(prev - 0.25, 1));
+                    }
+                  }}
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transition: "transform 0.1s ease-out",
+                    cursor: zoomLevel > 1 ? "zoom-out" : "zoom-in",
+                  }}
+                  onClick={() => {
+                    if (zoomLevel > 1) setZoomLevel(1);
+                    else setZoomLevel(2);
+                  }}
+                  className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                  alt="Fullscreen View"
+                />
+              ) : (
+                <video
+                  src={lightboxMedia.url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                />
+              )}
+            </div>
+          </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

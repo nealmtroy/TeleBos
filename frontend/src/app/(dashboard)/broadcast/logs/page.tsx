@@ -190,8 +190,8 @@ export default function BroadcastLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("broadcastLogs.title")}</h1>
-        <p className="text-gray-500 mt-1">{_("broadcastLogs.desc")}</p>
+        <h1 className="text-2xl font-bold text-foreground">{_("broadcastLogs.title")}</h1>
+        <p className="text-muted-foreground mt-1">{_("broadcastLogs.desc")}</p>
       </div>
 
       {/* Job selector */}
@@ -200,7 +200,7 @@ export default function BroadcastLogsPage() {
           value={selectedJobId || "_none"}
           onValueChange={(val) => setSelectedJobId(val === "_none" ? "" : val)}
         >
-          <SelectTrigger className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white min-w-[250px] h-10">
+          <SelectTrigger className="px-4 py-2 border border-border rounded-lg text-sm bg-card text-foreground min-w-[250px] h-10">
             <SelectValue placeholder={_("broadcastLogs.selectJob")} />
           </SelectTrigger>
           <SelectContent>
@@ -215,7 +215,7 @@ export default function BroadcastLogsPage() {
         </Select>
 
         {selectedJobId && selectedJob && (
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Badge
               variant={
                 selectedJob.status === "completed" ? "success" :
@@ -236,7 +236,7 @@ export default function BroadcastLogsPage() {
           {/* Filters (cycle dropdown removed — replaced by accordion) */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 id="broadcast-logs-search"
                 name="search"
@@ -245,14 +245,14 @@ export default function BroadcastLogsPage() {
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder={_("broadcastLogs.searchGroup")}
                 aria-label={_("broadcastLogs.searchGroup")}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                className="pl-10 pr-4 py-2 border border-border bg-card text-foreground rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
             <Select
               value={statusFilter || "all"}
               onValueChange={(val) => setStatusFilter(val === "all" ? "" : val)}
             >
-              <SelectTrigger className="w-[170px] h-10 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+              <SelectTrigger className="w-[170px] h-10 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground">
                 <SelectValue placeholder={_("broadcastLogs.allStatuses")} />
               </SelectTrigger>
               <SelectContent>
@@ -264,14 +264,14 @@ export default function BroadcastLogsPage() {
             <div className="flex-1" />
             <button
               onClick={() => handleExport("csv")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition"
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-border bg-card text-foreground rounded-lg text-sm hover:bg-muted/80 transition"
             >
               <FileDown className="h-4 w-4" />
               {_("broadcastLogs.exportCsv")}
             </button>
             <button
               onClick={() => handleExport("json")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition"
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-border bg-card text-foreground rounded-lg text-sm hover:bg-muted/80 transition"
             >
               <FileDown className="h-4 w-4" />
               {_("broadcastLogs.exportJson")}
@@ -280,7 +280,7 @@ export default function BroadcastLogsPage() {
 
           {/* Error state */}
           {isError && (
-            <div className="text-center py-12 bg-white rounded-xl border border-red-200 text-red-600">
+            <div className="text-center py-12 bg-card rounded-xl border border-destructive/30 text-destructive">
               <p className="mb-2">{_("broadcastLogs.noEntries")}</p>
               <button
                 onClick={() => refetch()}
@@ -295,12 +295,12 @@ export default function BroadcastLogsPage() {
           {logsLoading && !allLogs ? (
             <TableSkeleton rows={4} cols={3} />
           ) : !allLogs || allLogs.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200 text-gray-500">
-              <Filter className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+            <div className="text-center py-12 bg-card rounded-xl border border-border text-muted-foreground">
+              <Filter className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
               <p>{_("broadcastLogs.noEntries")}</p>
             </div>
           ) : cycleSummaries.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200 text-gray-500">
+            <div className="text-center py-12 bg-card rounded-xl border border-border text-muted-foreground">
               <p>{_("broadcastLogs.noEntries")}</p>
             </div>
           ) : (
@@ -348,7 +348,7 @@ export default function BroadcastLogsPage() {
                             ? accountMap.get(log.account_id_used) || "Deleted Account"
                             : "—");
                           return (
-                            <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`} className="hover:bg-muted/40 transition">
+                            <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`}>
                               <TableCell className="px-4 py-3 whitespace-normal">
                                 <Badge variant="secondary" className="gap-1 bg-indigo-50 text-indigo-800 border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 font-semibold font-mono">
                                   <Layers className="h-3 w-3" />

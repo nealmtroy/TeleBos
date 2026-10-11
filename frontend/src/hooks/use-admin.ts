@@ -30,6 +30,35 @@ export interface AdminStats {
   auto_reply_running: number;
   auto_reply_stopped: number;
   total_auto_reply_sent: number;
+
+  onboarding_completed_count?: number;
+  onboarding_completion_rate?: number;
+}
+
+export interface OnboardingSurveyItem {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_full_name: string | null;
+  role: string | null;
+  referral: string | null;
+  volume: string | null;
+  features: string[];
+  is_skipped: boolean;
+  created_at: string;
+}
+
+export interface OnboardingAnalytics {
+  total_users: number;
+  completed_count: number;
+  skipped_count: number;
+  pending_count: number;
+  completion_rate: number;
+  roles_breakdown: Record<string, number>;
+  referrals_breakdown: Record<string, number>;
+  volumes_breakdown: Record<string, number>;
+  features_breakdown: Record<string, number>;
+  recent_surveys: OnboardingSurveyItem[];
 }
 
 export interface AdminUser {
@@ -69,6 +98,17 @@ export function useAdminStats() {
     queryKey: ["admin", "stats"],
     queryFn: async () => {
       const { data } = await api.get("/admin/stats");
+      return data;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminOnboardingAnalytics(limit = 50) {
+  return useQuery<OnboardingAnalytics>({
+    queryKey: ["admin", "onboarding-analytics", limit],
+    queryFn: async () => {
+      const { data } = await api.get(`/admin/onboarding/analytics?limit=${limit}`);
       return data;
     },
     staleTime: 30_000,

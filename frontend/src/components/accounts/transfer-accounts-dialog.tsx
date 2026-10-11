@@ -32,6 +32,7 @@ import api from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 const ROLE_LIMITS: Record<string, number> = {
+  freetrial: 1,
   basic: 1,
   pro: 10,
   premium: 100,

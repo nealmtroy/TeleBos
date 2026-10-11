@@ -84,9 +84,9 @@ export default function CycleAccordion({
             <AccordionItem
               key={cycle.cycleNumber}
               value={String(cycle.cycleNumber)}
-              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs transition-colors data-[state=open]:border-primary/40 dark:data-[state=open]:border-primary/40"
+              className="rounded-xl border border-border bg-card text-card-foreground overflow-hidden shadow-xs transition-colors data-[state=open]:border-primary/40"
             >
-              <AccordionTrigger className="px-5 py-3.5 hover:no-underline hover:bg-gray-50/50 dark:hover:bg-slate-800/50">
+              <AccordionTrigger className="px-5 py-3.5 hover:no-underline hover:bg-muted/50">
                 <div className="flex items-center gap-3">
                   {/* Cycle badge */}
                   <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-full font-semibold border border-indigo-200/50 dark:border-indigo-800/50">
@@ -108,9 +108,9 @@ export default function CycleAccordion({
 
                 {/* Stats row */}
                 <div className="flex items-center gap-4 text-sm ml-auto mr-3">
-                  <span className="text-gray-500 dark:text-slate-400">
+                  <span className="text-muted-foreground">
                     {_("broadcastLogs.total")}:{" "}
-                    <strong className="text-gray-700 dark:text-slate-200">
+                    <strong className="text-foreground">
                       {cycle.totalCount}
                     </strong>
                   </span>
@@ -125,7 +125,7 @@ export default function CycleAccordion({
                 </div>
               </AccordionTrigger>
 
-              <AccordionContent className="border-t border-gray-200 dark:border-slate-800 p-1">
+              <AccordionContent className="border-t border-border p-1">
                 {children(cycle.cycleNumber)}
               </AccordionContent>
             </AccordionItem>

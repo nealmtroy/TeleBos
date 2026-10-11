@@ -81,3 +81,30 @@
 [data-slot="toast"] {
   transition-property: transform, opacity, box-shadow !important;
 }
+
+/* Telegram QR Code Laser Scanner Beam */
+@keyframes qrScanLaser {
+  0% {
+    top: 6%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  50% {
+    top: 90%;
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 6%;
+    opacity: 0;
+  }
+}
+
+.animate-qr-scan {
+  animation: qrScanLaser 3.2s ease-in-out infinite;
+}
+

@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { getRequestLocale } from "@/lib/i18n";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import Script from "next/script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,6 +25,7 @@ const publicSans = Plus_Jakarta_Sans({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_URL || "https://telebos.app";
+const gaId = process.env.NEXT_PUBLIC_GA_ID || "G-SR0FJEE8YR";
 
 export const metadata: Metadata = {
   title: {
@@ -133,15 +136,16 @@ export default function RootLayout({
           */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content={`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com${process.env.NODE_ENV === 'development' ? ' http://localhost:8400' : ''}; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.qrserver.com ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')}; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')} ws: wss:${process.env.NODE_ENV === 'development' ? ' ws://localhost:8400 http://localhost:8400' : ''}; base-uri 'self'; form-action 'self'`}
+          content={`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://www.googletagmanager.com${process.env.NODE_ENV === 'development' ? ' http://localhost:8400' : ''}; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.qrserver.com https://*.google-analytics.com https://*.googletagmanager.com ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')}; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com ${(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000').replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')} ws: wss:${process.env.NODE_ENV === 'development' ? ' ws://localhost:8400 http://localhost:8400' : ''}; base-uri 'self'; form-action 'self'`}
         />
         <link rel="describedby" href="/llms.txt" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
+        <GoogleAnalytics gaId={gaId} />
         <Providers>{children}</Providers>
         {/* impeccable-live-start */}
         {process.env.NODE_ENV === 'development' && (
-          <script src="http://localhost:8400/live.js"></script>
+          <Script src="http://localhost:8400/live.js" strategy="lazyOnload" />
         )}
         {/* impeccable-live-end */}
       </body>

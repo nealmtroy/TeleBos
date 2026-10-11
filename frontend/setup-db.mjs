@@ -12,6 +12,36 @@
  */
 
 import { Pool } from "pg";
+import fs from "fs";
+import path from "path";
+
+// Dynamically patch Next.js rewrites at container startup based on API_PROXY_TARGET
+function patchNextRewrites() {
+  const apiProxyTarget = process.env.API_PROXY_TARGET;
+  if (!apiProxyTarget) return;
+
+  const manifestPaths = [
+    path.join(process.cwd(), ".next", "routes-manifest.json"),
+    path.join(process.cwd(), ".next", "required-server-files.json"),
+  ];
+
+  for (const mPath of manifestPaths) {
+    if (fs.existsSync(mPath)) {
+      try {
+        let content = fs.readFileSync(mPath, "utf8");
+        if (content.includes("http://localhost:8000")) {
+          content = content.replaceAll("http://localhost:8000", apiProxyTarget);
+          fs.writeFileSync(mPath, content, "utf8");
+          console.log(`✓ Patched ${path.basename(mPath)} with API_PROXY_TARGET=${apiProxyTarget}`);
+        }
+      } catch (err) {
+        console.warn(`[setup-db] Failed to patch ${mPath}:`, err.message);
+      }
+    }
+  }
+}
+
+patchNextRewrites();
 
 const DATABASE_URL =
   process.env.DATABASE_URL_SYNC || process.env.DATABASE_URL;

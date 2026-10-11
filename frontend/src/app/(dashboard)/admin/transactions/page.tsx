@@ -526,13 +526,13 @@ export default function AdminTransactionsPage() {
                       {/* Actions */}
                       <TableCell className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {tx.status === "pending" && (
+                          {tx.status === "pending" && tx.type === "withdraw" ? (
                             <>
                               <button
                                 type="button"
                                 onClick={() => handleApprove(tx)}
                                 className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition cursor-pointer"
-                                title="Setujui transaksi"
+                                title="Setujui penarikan dana"
                               >
                                 <Check className="h-4 w-4" />
                               </button>
@@ -543,12 +543,16 @@ export default function AdminTransactionsPage() {
                                   setRejectReason("");
                                 }}
                                 className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer"
-                                title="Tolak transaksi"
+                                title="Tolak penarikan dana"
                               >
                                 <X className="h-4 w-4" />
                               </button>
                             </>
-                          )}
+                          ) : tx.status === "pending" ? (
+                            <span className="text-[10px] text-gray-400 dark:text-slate-500 font-medium px-2 py-0.5 rounded-md bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800/80">
+                              Otomatis (Gateway)
+                            </span>
+                          ) : null}
                           <Button
                             variant="ghost"
                             size="xs"
@@ -641,14 +645,14 @@ export default function AdminTransactionsPage() {
               </div>
 
               {/* Action buttons inside modal if still pending */}
-              {selectedTx.status === "pending" && (
+              {selectedTx.status === "pending" && selectedTx.type === "withdraw" && (
                 <div className="pt-3 border-t border-gray-100 dark:border-slate-800 flex gap-2">
                   <Button
                     onClick={() => handleApprove(selectedTx)}
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 cursor-pointer"
                   >
                     <Check className="h-4 w-4 mr-1.5" />
-                    <span>Setujui Transaksi</span>
+                    <span>Setujui Penarikan</span>
                   </Button>
                   <Button
                     variant="destructive"
@@ -659,7 +663,27 @@ export default function AdminTransactionsPage() {
                     className="flex-1 text-xs h-9 cursor-pointer"
                   >
                     <X className="h-4 w-4 mr-1.5" />
-                    <span>Tolak Transaksi</span>
+                    <span>Tolak Penarikan</span>
+                  </Button>
+                </div>
+              )}
+
+              {selectedTx.status === "pending" && selectedTx.type !== "withdraw" && (
+                <div className="pt-3 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs text-gray-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/40 p-3 rounded-lg border border-gray-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                    <span className="text-[11px]">
+                      Transaksi pembayaran diproses otomatis saat pembayaran diterima via QRIS.
+                    </span>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    onClick={() => handleApprove(selectedTx)}
+                    className="text-[11px] h-7 text-amber-700 hover:text-amber-800 dark:text-amber-400 border-amber-300 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer shrink-0"
+                    title="Paksa setujui jika pembayaran manual atau webhook gateway gagal"
+                  >
+                    <span>Override Manual</span>
                   </Button>
                 </div>
               )}

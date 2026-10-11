@@ -59,8 +59,8 @@ function PublicGroupsChannelsContent() {
   const [copiedChatId, setCopiedChatId] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // Check if user is Basic member
-  const isBasic = user?.role === "basic";
+  // Check if user has access to Public Index (Pro, Business, Owner only)
+  const isRestricted = user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner";
 
   const chatType = activeTab === "groups" ? "group,supergroup" : "channel";
 
@@ -113,8 +113,8 @@ function PublicGroupsChannelsContent() {
     setPage(1);
   };
 
-  // ── 1. Basic User Subscription Wall ──────────────────────────────────────────
-  if (isBasic) {
+  // ── 1. Subscription Wall (Pro & Business Only) ──────────────────────────────
+  if (isRestricted) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 max-w-md mx-auto">
         <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-amber-500 shadow-sm animate-bounce">

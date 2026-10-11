@@ -22,12 +22,14 @@ export interface Dict {
     telegramReactions: string;
     telegramAutoReactions: string;
     telegramPostViews: string;
+    telegramAutoPostViews: string;
     services: string;
     administrations: string;
     redeem: string;
     smm: string;
     ageChecker: string;
     tickets: string;
+    aiSupport: string;
   };
 
   // Account Folders
@@ -147,6 +149,9 @@ export interface Dict {
     backToLogin: string;
     showPassword: string;
     hidePassword: string;
+    signInWithGoogle: string;
+    orContinueWith: string;
+    googleAuthFailed: string;
   };
 
   // Auth — Register
@@ -175,6 +180,10 @@ export interface Dict {
     agreeAnd: string;
     mustAgree: string;
     verificationRequired: string;
+    signUpWithGoogle: string;
+    orContinueWith: string;
+    googleAuthFailed: string;
+    googleTermsNotice: string;
   };
 
   // Auth — Forgot Password
@@ -315,7 +324,34 @@ export interface Dict {
     title: string;
     subtitle: string;
     tabOtp: string;
+    tabQr: string;
     tabUpload: string;
+    qrBadge: string;
+    qrTitle: string;
+    qrSubtitle: string;
+    qrStep1Title: string;
+    qrStep1Desc: string;
+    qrStep2Title: string;
+    qrStep2Desc: string;
+    qrStep3Title: string;
+    qrStep3Desc: string;
+    qrGenerating: string;
+    qrWaitingScan: string;
+    qrValidFor: string;
+    qrExpiredTitle: string;
+    qrExpiredDesc: string;
+    qrReloadBtn: string;
+    qrRefreshTooltip: string;
+    qrTwoFaTitle: string;
+    qrTwoFaWarning: string;
+    qrTwoFaLabel: string;
+    qrTwoFaPlaceholder: string;
+    qrTwoFaConfirmBtn: string;
+    qrTwoFaProcessing: string;
+    qrTwoFaBack: string;
+    qrSuccessTitle: string;
+    qrSuccessDesc: string;
+    qrSwitchToOtp: string;
     phoneLabel: string;
     phonePlaceholder: string;
     phoneHint: string;
@@ -707,6 +743,8 @@ export interface Dict {
     navApiKeysDesc: string;
     navBankAccounts: string;
     navBankAccountsDesc: string;
+    navTelegram: string;
+    navTelegramDesc: string;
     navAppearance: string;
     navAppearanceDesc: string;
     navLanguage: string;
@@ -1946,6 +1984,8 @@ export interface Dict {
       autoReactionsTag: string;
       postViews: string;
       postViewsTag: string;
+      autoPostViews: string;
+      autoPostViewsTag: string;
       history: string;
       historyTag: string;
     };
@@ -2029,6 +2069,13 @@ export interface Dict {
       targetExample: string;
     };
     reactions: {
+      title: string;
+      desc: string;
+      targetPlaceholder: string;
+      targetHelper: string;
+      targetExample: string;
+    };
+    autoPostViews: {
       title: string;
       desc: string;
       targetPlaceholder: string;
@@ -2122,6 +2169,9 @@ export interface Dict {
     accountPrices: string;
     transactions: string;
     systemConfig: string;
+    onboarding: string;
+    onboardingTitle: string;
+    onboardingSubtitle: string;
   };
 
   // Subscription
@@ -2178,6 +2228,7 @@ export interface Dict {
     paymentStep1: string;
     paymentStep2: string;
     paymentStep3: string;
+    paymentStep4: string;
     changeAmount: string;
     qrisSupported: string;
     paymentConfirmed: string;
@@ -2225,10 +2276,91 @@ export interface Dict {
     notificationWithdrawApprovedMessage: string;
     notificationWithdrawRejectedTitle: string;
     notificationWithdrawRejectedMessage: string;
+    withdrawOtpTitle: string;
+    withdrawOtpDesc: string;
+    withdrawOtpSent: string;
+    withdrawOtpLabel: string;
+    withdrawOtpPlaceholder: string;
+    withdrawOtpResend: string;
+    withdrawOtpResendIn: string;
+    withdrawOtpConfirm: string;
+    withdrawOtpSending: string;
     notificationAdminAdjustmentTitle: string;
     notificationAdminAdjustmentMessage: string;
     notificationRedeemSuccessTitle: string;
     notificationRedeemSuccessMessage: string;
+    paymentPendingToast: string;
+    paymentCheckFailed: string;
+    totalTransferBill: string;
+    includesUniqueCode: string;
+    copyAmountTitle: string;
+    uniqueCodeNotice: string;
+    nationalPaymentStandard: string;
+    checkingStatus: string;
+    checkPaymentStatus: string;
+    autoCheckNotice: string;
+    supportsLabel: string;
+    selectDestinationAccount: string;
+    defaultBadge: string;
+    noSavedAccountsDesc: string;
+    addAccount: string;
+    topupNotice: string;
+    withdrawalAccountsTitle: string;
+    manage: string;
+    accountHolderPrefix: string;
+    noSavedAccountsShort: string;
+    addAccountInSettings: string;
+    savedAccountsHint: string;
+    transactionTermsTitle: string;
+    termQrisFree: string;
+    termWithdrawSpeed: string;
+    termMinimumLimit: string;
+    needHelpShort: string;
+    historySubtitle: string;
+    resetFilter: string;
+    showingTransactionsCount: string;
+    modalTransferBillNotice: string;
+    openQrisPayment: string;
+    yourEmail: string;
+    withdrawOtpSentSimple: string;
+    withdrawOtpRequestFailed: string;
+    otpResentSuccess: string;
+    otpResendFailed: string;
+    invoiceNotFound: string;
+    invoiceNotFoundDesc: string;
+    backToWallet: string;
+    paymentStatusLabel: string;
+    waitingForPayment: string;
+    successful: string;
+    cancelled: string;
+    saveQrCode: string;
+    back: string;
+    checkPayment: string;
+    invoiceTotalPaid: string;
+    completionTime: string;
+    viewWallet: string;
+    cancelledExpiredTitle: string;
+    cancelledExpiredDesc: string;
+    invoiceSubscriptionTitle: string;
+    invoiceSubscriptionSubtitle: string;
+    invoiceSubscriptionSuccessTitle: string;
+    invoiceSubscriptionSuccessDesc: string;
+    invoiceSubscriptionCta: string;
+    invoiceSmmTitle: string;
+    invoiceSmmSubtitle: string;
+    invoiceSmmSuccessTitle: string;
+    invoiceSmmSuccessDesc: string;
+    invoiceSmmCta: string;
+    invoiceMarketplaceTitle: string;
+    invoiceMarketplaceSubtitle: string;
+    invoiceMarketplaceSuccessTitle: string;
+    invoiceMarketplaceSuccessDesc: string;
+    invoiceMarketplaceCta: string;
+    invoiceTopupTitle: string;
+    invoiceTopupSubtitle: string;
+    invoiceTopupSuccessTitle: string;
+    invoiceTopupSuccessDesc: string;
+    invoiceTopupCta: string;
   };
   pricing: {
     kicker: string;
@@ -2236,6 +2368,7 @@ export interface Dict {
     subtitle: string;
     perMonth: string;
     cta: {
+      freetrial: string;
       basic: string;
       pro: string;
       premium: string;
@@ -2243,16 +2376,19 @@ export interface Dict {
     currentPlan: string;
     popular: string;
     headers: {
+      freetrial: string;
       basic: string;
       pro: string;
       premium: string;
     };
     desc: {
+      freetrial: string;
       basic: string;
       pro: string;
       premium: string;
     };
     footnote: {
+      freetrial: string;
       basic: string;
       pro: string;
       premium: string;
@@ -2275,7 +2411,7 @@ export interface Dict {
       };
       values: {
         free: string;
-        upTo10: string;
+        upTo3: string;
         unlimited: string;
         no: string;
         yes: string;
@@ -2354,6 +2490,7 @@ export interface Dict {
     voucherCodePlaceholder: string;
     redeemCodeAction: string;
     contactSupportPrompt: string;
+    invoiceCreated: string;
   };
 
   // Redeem
@@ -2537,5 +2674,13 @@ export interface Dict {
     welcomeBannerTitle: string;
     welcomeBannerDesc: string;
     welcomeBannerCta: string;
+    // Direct Prompt Modal
+    promptModalTitle: string;
+    promptModalDesc: string;
+    promptBenefit1: string;
+    promptBenefit2: string;
+    promptBenefit3: string;
+    promptStartCta: string;
+    promptSkipCta: string;
   };
 }

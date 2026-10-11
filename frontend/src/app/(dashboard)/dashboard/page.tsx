@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { StatsCardSkeleton, AccountRowSkeleton } from "@/components/ui/skeleton-cards";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { OnboardingPromptModal } from "@/components/onboarding/onboarding-prompt-modal";
 
 const RECENT_ACCOUNTS_LIMIT = 5;
 
@@ -29,16 +30,41 @@ export default function DashboardPage() {
   const _ = useT();
   const user = useAuthStore((s) => s.user);
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
+  const [showOnboardingPromptModal, setShowOnboardingPromptModal] = useState(false);
+
+  const isOnboardingComplete = Boolean(
+    user?.onboarding_completed ||
+    (user?.id && typeof window !== "undefined" && localStorage.getItem(`telebos_onboarding_completed_${user.id}`) === "true")
+  );
 
   useEffect(() => {
     if (user?.id) {
-      const isComplete = localStorage.getItem(`telebos_onboarding_completed_${user.id}`);
-      const isDismissed = sessionStorage.getItem(`telebos_onboarding_dismissed_${user.id}`);
-      if (!isComplete && !isDismissed) {
+      const isComplete =
+        Boolean(user.onboarding_completed) ||
+        localStorage.getItem(`telebos_onboarding_completed_${user.id}`) === "true";
+      const isPromptDismissed = sessionStorage.getItem(`telebos_onboarding_prompt_dismissed_${user.id}`);
+      const isBannerDismissed = sessionStorage.getItem(`telebos_onboarding_dismissed_${user.id}`);
+
+      if (!isComplete && !isPromptDismissed) {
+        setShowOnboardingPromptModal(true);
+      } else {
+        setShowOnboardingPromptModal(false);
+      }
+
+      if (!isComplete && !isBannerDismissed) {
         setShowOnboardingBanner(true);
+      } else {
+        setShowOnboardingBanner(false);
       }
     }
   }, [user]);
+
+  const handleClosePromptModal = (open: boolean) => {
+    setShowOnboardingPromptModal(open);
+    if (!open && user?.id) {
+      sessionStorage.setItem(`telebos_onboarding_prompt_dismissed_${user.id}`, "true");
+    }
+  };
 
   const dismissOnboardingBanner = () => {
     setShowOnboardingBanner(false);
@@ -91,6 +117,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 max-w-[1400px] mx-auto">
+      {/* Onboarding Direct Prompt Modal */}
+      <OnboardingPromptModal
+        open={showOnboardingPromptModal}
+        onOpenChange={handleClosePromptModal}
+      />
+
       {/* Onboarding Welcome Callout */}
       {showOnboardingBanner && (
         <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
@@ -334,12 +366,14 @@ export default function DashboardPage() {
                 >
                   <Plus className="h-3.5 w-3.5" /> {_("dashboard.addFirstAccount")}
                 </Link>
-                <Link
-                  href="/onboarding"
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-border bg-card text-foreground rounded-lg text-xs font-semibold hover:bg-muted transition w-full sm:w-auto justify-center"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-primary" /> {_("onboarding.welcomeBannerCta")}
-                </Link>
+                {!isOnboardingComplete && (
+                  <Link
+                    href="/onboarding"
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-border bg-card text-foreground rounded-lg text-xs font-semibold hover:bg-muted transition w-full sm:w-auto justify-center"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> {_("onboarding.welcomeBannerCta")}
+                  </Link>
+                )}
               </div>
             </div>
           )}

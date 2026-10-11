@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { BroadcastEntitlementBanner } from "@/components/broadcast/broadcast-entitlement-banner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuthStore } from "@/store/auth-store";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ import {
 export default function NewBroadcastPage() {
   const _ = useT();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { data: rawAccounts, isLoading: accountsLoading } = useAccounts();
   const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
   const { data: folders } = useAccountFolders();
@@ -145,6 +147,32 @@ export default function NewBroadcastPage() {
       );
       return;
     }
+
+    const planMaxBroadcastAccounts: Record<string, number> = {
+      freetrial: 1,
+      basic: 1,
+      pro: 3,
+      premium: 5,
+      owner: 9999,
+    };
+    const userRole = user?.role || "freetrial";
+    const maxAllowed = planMaxBroadcastAccounts[userRole] ?? 1;
+    if (selectedAccountIds.length > maxAllowed) {
+      const planNames: Record<string, string> = {
+        freetrial: "Free Trial",
+        basic: "Starter",
+        pro: "Pro",
+        premium: "Business",
+      };
+      const planName = planNames[userRole] || userRole;
+      setValidationError(
+        isIndonesian
+          ? `Paket ${planName} hanya mengizinkan maksimal ${maxAllowed} akun pengirim broadcast sekaligus. Anda memilih ${selectedAccountIds.length} akun. Silakan upgrade paket Anda.`
+          : `Your ${planName} plan allows a maximum of ${maxAllowed} sending account(s). You selected ${selectedAccountIds.length}. Please upgrade your plan.`
+      );
+      return;
+    }
+
     if (!groupListId) {
       setValidationError(
         isIndonesian
@@ -280,7 +308,19 @@ export default function NewBroadcastPage() {
         {/* Accounts Selection */}
         <AccountSelector
           title={_("newBroadcast.account") || "Telegram Accounts"}
-          description="Pilih akun pengirim yang akan digunakan untuk mengirim pesan siaran"
+          description={
+            user?.role === "owner"
+              ? "Pilih akun pengirim yang akan digunakan untuk mengirim pesan siaran (tanpa batas akun)"
+              : `Pilih akun pengirim (maksimal ${user?.role === "premium" ? 5 : user?.role === "pro" ? 3 : 1} akun untuk paket ${
+                  user?.role === "premium"
+                    ? "Business"
+                    : user?.role === "pro"
+                    ? "Pro"
+                    : user?.role === "basic"
+                    ? "Starter"
+                    : "Free Trial"
+                })`
+          }
           accounts={accounts}
           folders={folders}
           isLoading={accountsLoading}
@@ -461,7 +501,7 @@ export default function NewBroadcastPage() {
               onCheckedChange={(checked) => setLogWebOnly(!!checked)}
             />
             <label htmlFor="logWebOnly" className="text-sm text-gray-700 cursor-pointer">
-              Web only (don't send cycle logs to Telegram)
+              Web only (don&apos;t send cycle logs to Telegram)
             </label>
           </div>
           <input
@@ -476,7 +516,7 @@ export default function NewBroadcastPage() {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100 disabled:text-gray-500"
           />
           <p className="text-xs text-gray-400">
-            The broadcasting account will send each cycle's summary here. Default: @teleboslogging_bot
+            The broadcasting account will send each cycle&apos;s summary here. Default: @teleboslogging_bot
           </p>
         </div>
 
@@ -536,12 +576,12 @@ export default function NewBroadcastPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className={cn(
-                "px-2.5 py-0.5 rounded-full text-xs font-medium",
-                activeJob.status === "running" && "bg-blue-100 text-blue-800",
-                activeJob.status === "paused" && "bg-yellow-100 text-yellow-800",
-                activeJob.status === "completed" && "bg-green-100 text-green-800",
-                activeJob.status === "failed" && "bg-red-100 text-red-800",
-                activeJob.status === "cancelled" && "bg-gray-100 text-gray-600",
+                "px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                activeJob.status === "running" && "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
+                activeJob.status === "paused" && "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-800",
+                activeJob.status === "completed" && "bg-green-100 text-green-800 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800",
+                activeJob.status === "failed" && "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+                activeJob.status === "cancelled" && "bg-muted text-muted-foreground border-border",
               )}>
                 {activeJob.status}
               </span>
@@ -551,14 +591,14 @@ export default function NewBroadcastPage() {
                 <>
                   <button
                     onClick={() => actionMutation.mutate({ jobId: activeJob.id, action: "pause" })}
-                    className="p-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition"
+                    className="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-900/70 rounded-lg hover:bg-yellow-200 transition"
                     title={_("newBroadcast.pause")}
                   >
                     <Pause className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setStopConfirmOpen(true)}
-                    className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                    className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
                     title={_("newBroadcast.stop")}
                   >
                     <Square className="h-4 w-4" />
@@ -568,7 +608,7 @@ export default function NewBroadcastPage() {
               {activeJob.status === "paused" && (
                 <button
                   onClick={() => actionMutation.mutate({ jobId: activeJob.id, action: "resume" })}
-                  className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                  className="p-1.5 bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400 dark:hover:bg-green-900/70 rounded-lg hover:bg-green-200 transition"
                   title={_("newBroadcast.resume")}
                 >
                   <Play className="h-4 w-4" />

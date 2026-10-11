@@ -122,8 +122,8 @@ export default function BroadcastHistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("broadcastHistory.title")}</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">{_("broadcastHistory.title")}</h1>
+        <p className="text-muted-foreground mt-1">
           {_("broadcastHistory.desc")}
         </p>
       </div>
@@ -131,85 +131,85 @@ export default function BroadcastHistoryPage() {
       {/* Broadcast Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Running Broadcasts */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {_("broadcastHistory.summaryRunning") || "Running Broadcasts"}
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-gray-900">{runningCount}</span>
+              <span className="text-2xl font-extrabold text-foreground">{runningCount}</span>
               {runningCount > 0 ? (
                 <Badge variant="success" className="gap-1 text-[11px] font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Active
                 </Badge>
               ) : (
-                <span className="text-xs text-gray-400">Idle</span>
+                <span className="text-xs text-muted-foreground/70">Idle</span>
               )}
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-muted-foreground">
               {summary?.paused_jobs ? `${summary.paused_jobs} paused` : "In execution"}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/60">
             <Radio className="h-5 w-5" />
           </div>
         </div>
 
         {/* Accounts In Use */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {_("broadcastHistory.summaryAccountsInUse") || "Accounts In Use"}
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-gray-900">{accountsInUse}</span>
-              <span className="text-xs font-medium text-gray-500">active</span>
+              <span className="text-2xl font-extrabold text-foreground">{accountsInUse}</span>
+              <span className="text-xs font-medium text-muted-foreground">active</span>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-muted-foreground">
               {totalAccountsUsed} total accounts configured
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/60">
             <Smartphone className="h-5 w-5" />
           </div>
         </div>
 
         {/* Completed Broadcasts */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {_("broadcastHistory.summaryCompleted") || "Completed"}
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-gray-900">{completedCount}</span>
-              <span className="text-xs font-medium text-gray-500">jobs</span>
+              <span className="text-2xl font-extrabold text-foreground">{completedCount}</span>
+              <span className="text-xs font-medium text-muted-foreground">jobs</span>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-muted-foreground">
               {failedCount > 0 ? `${failedCount} failed jobs` : "All runs completed"}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+          <div className="p-3 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 dark:bg-purple-950/50 dark:text-purple-400 dark:border-purple-900/60">
             <CheckCircle2 className="h-5 w-5" />
           </div>
         </div>
 
         {/* Total Sent */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 shadow-sm hover:shadow-md transition flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {_("broadcastHistory.summaryTotalSent") || "Messages Delivered"}
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-gray-900">
+              <span className="text-2xl font-extrabold text-foreground">
                 {totalSent.toLocaleString()}
               </span>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-muted-foreground">
               {totalFailed > 0 ? `${totalFailed.toLocaleString()} failed` : "Delivered without failure"}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+          <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400 dark:border-indigo-900/60">
             <Send className="h-5 w-5" />
           </div>
         </div>
@@ -218,52 +218,52 @@ export default function BroadcastHistoryPage() {
       {isLoading ? (
         <TableSkeleton rows={5} cols={7} />
       ) : !jobs || jobs.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Clock className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-gray-500">{_("broadcastHistory.noJobs")}</p>
+        <div className="text-center py-16 bg-card text-muted-foreground rounded-xl border border-border">
+          <Clock className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+          <p className="text-muted-foreground">{_("broadcastHistory.noJobs")}</p>
           <button
             onClick={() => router.push("/broadcast/new")}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition"
           >
             {_("broadcastHistory.startBroadcast")}
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="bg-card text-card-foreground rounded-xl border border-border overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <Table className="text-sm">
               <TableHeader>
-                <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50 text-xs">
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.date")}</TableHead>
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.setup")}</TableHead>
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.accounts")}</TableHead>
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.status")}</TableHead>
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.progress")}</TableHead>
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.sentFailed")}</TableHead>
-                  <TableHead className="text-left px-4 py-3.5 font-semibold text-gray-500 uppercase tracking-wider">{_("broadcastHistory.actions")}</TableHead>
+                <TableRow className="bg-muted/50 border-b border-border hover:bg-muted/50 text-xs">
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.date")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.setup")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.accounts")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.status")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.progress")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.sentFailed")}</TableHead>
+                  <TableHead className="text-left px-4 py-3.5 font-semibold text-muted-foreground uppercase tracking-wider">{_("broadcastHistory.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-100">
+              <TableBody className="divide-y divide-border/60">
                 {jobs.map((job: BroadcastJob) => (
-                  <TableRow key={job.id} className="hover:bg-gray-50/50 transition">
-                    <TableCell className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
+                  <TableRow key={job.id}>
+                    <TableCell className="px-4 py-3 text-muted-foreground whitespace-nowrap text-xs">
                       {formatDate(job.created_at)}
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="space-y-1.5 text-xs max-w-[250px]">
-                        <div className="flex items-center gap-1.5 text-gray-700 font-medium">
-                          <Folder className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                          <span className="text-gray-500 font-normal">{_("broadcastHistory.groupList")}:</span>
+                        <div className="flex items-center gap-1.5 text-foreground font-medium">
+                          <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground font-normal">{_("broadcastHistory.groupList")}:</span>
                           <span className="truncate max-w-[150px] block" title={getGroupListName(job.group_list_id)}>
                             {getGroupListName(job.group_list_id)}
                           </span>
                         </div>
-                        <div className="flex items-start gap-1.5 text-gray-700 font-medium">
-                          <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0 mt-0.5" />
-                          <span className="text-gray-500 font-normal">{_("broadcastHistory.textList")}:</span>
+                        <div className="flex items-start gap-1.5 text-foreground font-medium">
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                          <span className="text-muted-foreground font-normal">{_("broadcastHistory.textList")}:</span>
                           <span className="truncate max-w-[150px] block" title={job.mode === "single_text" ? job.custom_text || "" : getTextListName(job.text_list_id)}>
                             {job.mode === "single_text" ? (
-                              <span className="italic text-gray-600 bg-gray-50 px-1 py-0.5 rounded border border-gray-100 text-[10px]">
+                              <span className="italic text-foreground/80 bg-muted px-1.5 py-0.5 rounded border border-border text-[10px]">
                                 {job.custom_text ? `"${job.custom_text.slice(0, 20)}${job.custom_text.length > 20 ? '...' : ''}"` : _("broadcastHistory.customText")}
                               </span>
                             ) : (
@@ -361,7 +361,7 @@ export default function BroadcastHistoryPage() {
                                       action: "pause",
                                     })
                                   }
-                                  className="p-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition"
+                                  className="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-900/70 rounded-lg hover:bg-yellow-200 transition"
                                 >
                                   <Pause className="h-4 w-4" />
                                 </button>
@@ -382,7 +382,7 @@ export default function BroadcastHistoryPage() {
                                         })
                                     )
                                   }
-                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                  className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
                                 >
                                   <Square className="h-4 w-4" />
                                 </button>
@@ -404,7 +404,7 @@ export default function BroadcastHistoryPage() {
                                       action: "resume",
                                     })
                                   }
-                                  className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                                  className="p-1.5 bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400 dark:hover:bg-green-900/70 rounded-lg hover:bg-green-200 transition"
                                 >
                                   <Play className="h-4 w-4" />
                                 </button>
@@ -425,7 +425,7 @@ export default function BroadcastHistoryPage() {
                                         })
                                     )
                                   }
-                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                  className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
                                 >
                                   <Square className="h-4 w-4" />
                                 </button>
@@ -451,7 +451,7 @@ export default function BroadcastHistoryPage() {
                                       })
                                   )
                                 }
-                                className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
                               >
                                 <Square className="h-4 w-4" />
                               </button>
@@ -472,7 +472,7 @@ export default function BroadcastHistoryPage() {
                                     retryMutation.mutate(job.id)
                                   }
                                   disabled={retryMutation.isPending}
-                                  className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
+                                  className="p-1.5 bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/70 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
                                 >
                                   <RotateCw className="h-4 w-4" />
                                 </button>
@@ -490,7 +490,7 @@ export default function BroadcastHistoryPage() {
                                     )
                                   }
                                   disabled={deleteMutation.isPending}
-                                  className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
+                                  className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
@@ -510,7 +510,7 @@ export default function BroadcastHistoryPage() {
                                     `/broadcast/logs?jobId=${job.id}`
                                   )
                                 }
-                                className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
+                                className="p-1.5 bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground rounded-lg transition"
                               >
                                 <FileText className="h-4 w-4" />
                               </button>

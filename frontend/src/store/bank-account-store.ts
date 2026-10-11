@@ -19,7 +19,7 @@ export interface DepositSettings {
   bankAccountHolder: string;
 }
 
-export type TransactionType = "topup" | "withdraw" | "redeem" | "admin_adjustment";
+export type TransactionType = "topup" | "withdraw" | "redeem" | "admin_adjustment" | "subscription" | "smm" | "marketplace";
 export type TransactionStatus = "pending" | "approved" | "rejected";
 
 export interface WalletTransaction {

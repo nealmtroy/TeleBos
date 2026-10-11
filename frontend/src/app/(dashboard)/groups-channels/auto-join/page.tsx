@@ -49,7 +49,10 @@ import {
   History,
   Wifi,
   WifiOff,
+  Shield,
+  Crown,
 } from "lucide-react";
+import { useAuthStore } from "@/store/auth-store";
 
 /** Where the still-running job id is remembered so navigation never orphans a run. */
 const ACTIVE_JOB_KEY = "telebos:auto-join-active-job";
@@ -207,6 +210,8 @@ function parseRawTargets(text: string): string[] {
 export default function AutoJoinPage() {
   const _ = useT();
   const { toast } = useToast();
+  const user = useAuthStore((s) => s.user);
+
 
   // Accounts
   const { data: rawAccounts, isLoading: accountsLoading } = useAccounts({ is_active: true, limit: 1000 });
@@ -356,7 +361,7 @@ export default function AutoJoinPage() {
     if (activeAccounts.length > 0 && selectedAccountIds.size === 0) {
       setSelectedAccountIds(new Set([activeAccounts[0].id]));
     }
-  }, [activeAccounts]);
+  }, [activeAccounts, selectedAccountIds.size]);
 
   // Effective targets list
   const effectiveTargets = useMemo(() => {
@@ -480,6 +485,30 @@ export default function AutoJoinPage() {
   };
 
   const canStart = effectiveTargets.length > 0 && selectedAccountIds.size > 0 && !startMutation.isPending;
+
+  // Free Trial users cannot access Auto-Join per spec
+  if (user?.role === "freetrial") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 max-w-md mx-auto">
+        <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-amber-500 shadow-sm">
+          <Shield className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">
+          Fitur Khusus Paket Starter, Pro & Business
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6 leading-relaxed">
+          Fitur Auto-Join tidak tersedia pada masa Free Trial. Silakan tingkatkan paket Anda ke Starter (Rp 5.000/bln), Pro, atau Business untuk mengakses fitur ini.
+        </p>
+        <Link
+          href="/subscriptions"
+          className="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md transition-all hover:scale-105 active:scale-95"
+        >
+          <Crown className="h-4 w-4 mr-2" />
+          Lihat Paket Langganan
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fadeIn">

@@ -2,9 +2,26 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import QRCode from "react-qr-code";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ShieldAlert, Loader2, RefreshCw, Lock, Eye, EyeOff, Smartphone, KeyRound } from "lucide-react";
+import {
+  ShieldAlert,
+  Loader2,
+  RefreshCw,
+  Lock,
+  Eye,
+  EyeOff,
+  Smartphone,
+  KeyRound,
+  QrCode,
+  Laptop,
+  Clock,
+  CheckCircle2,
+  ArrowRight,
+  ScanLine,
+  AlertCircle,
+} from "lucide-react";
 import { TelegramLoginFlow } from "@/components/accounts/telegram-login-flow";
 import { PhoneInputWithCountry } from "@/components/accounts/phone-input-with-country";
 import { useT } from "@/lib/i18n";
@@ -30,18 +47,22 @@ export default function AddAccountPage() {
           <div className="border-b border-border/80 bg-muted/20 rounded-t-2xl px-3 pt-2">
             <TabsList className="w-full h-11 bg-transparent p-0 gap-2 border-b-0">
               {[
-                { key: "otp", label: _("addAccount.tabOtp") },
-                { key: "qr", label: "QR Code" },
-                { key: "upload", label: _("addAccount.tabUpload") },
-              ].map((t) => (
-                <TabsTrigger
-                  key={t.key}
-                  value={t.key}
-                  className="flex-1 h-10 text-sm font-medium rounded-xl data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-bold"
-                >
-                  {t.label}
-                </TabsTrigger>
-              ))}
+                { key: "otp", label: _("addAccount.tabOtp"), icon: Smartphone },
+                { key: "qr", label: _("addAccount.tabQr"), icon: QrCode },
+                { key: "upload", label: _("addAccount.tabUpload"), icon: KeyRound },
+              ].map((t) => {
+                const Icon = t.icon;
+                return (
+                  <TabsTrigger
+                    key={t.key}
+                    value={t.key}
+                    className="flex-1 h-10 text-xs sm:text-sm font-medium rounded-xl flex items-center justify-center gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-bold transition-all"
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{t.label}</span>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
           </div>
         </Tabs>
@@ -50,7 +71,7 @@ export default function AddAccountPage() {
           {tab === "otp" ? (
             <TelegramLoginFlow />
           ) : tab === "qr" ? (
-            <QRLoginForm />
+            <QRLoginForm onSwitchToOtp={() => setTab("otp")} />
           ) : (
             <UploadSessionForm />
           )}
@@ -658,14 +679,21 @@ function UploadSessionForm() {
 }
 
 
-function QRLoginForm() {
+function TelegramPlaneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.943z" />
+    </svg>
+  );
+}
+
+function QRLoginForm({ onSwitchToOtp }: { onSwitchToOtp?: () => void }) {
   const _ = useT();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [qrId, setQrId] = useState("");
   const [qrUrl, setQrUrl] = useState("");
-  const [expiresAt, setExpiresAt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(300);
   const [status, setStatus] = useState<"pending" | "success" | "requires_2fa" | "failed" | "expired">("pending");
   const [twofaPassword, setTwofaPassword] = useState("");
@@ -683,10 +711,9 @@ function QRLoginForm() {
       const { data } = await api.post("/accounts/qr-login/init");
       setQrId(data.qr_id);
       setQrUrl(data.qr_url);
-      setExpiresAt(data.expires_at);
       setTimeLeft(300);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to generate QR Code");
+      setError(err?.response?.data?.detail || "Gagal membuat sesi QR Code");
     } finally {
       setLoading(false);
     }
@@ -698,14 +725,13 @@ function QRLoginForm() {
 
   // Timer Countdown
   useEffect(() => {
-    if (!qrUrl || timeLeft <= 0) return;
+    if (!qrUrl || timeLeft <= 0 || status !== "pending") return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          setStatus("failed");
-          setError("QR Code expired. Silakan refresh.");
+          setStatus("expired");
           return 0;
         }
         return prev - 1;
@@ -713,7 +739,7 @@ function QRLoginForm() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [qrUrl, timeLeft]);
+  }, [qrUrl, timeLeft, status]);
 
   // Status Polling
   useEffect(() => {
@@ -725,21 +751,22 @@ function QRLoginForm() {
         if (data.status !== status) {
           setStatus(data.status);
           if (data.status === "success" && data.account_id) {
-            router.push(`/accounts/${data.account_id}`);
+            setTimeout(() => {
+              router.push(`/accounts/${data.account_id}`);
+            }, 600);
           } else if (data.status === "failed") {
             setError(data.error || "Login gagal. Silakan coba lagi.");
           } else if (data.status === "expired") {
             setError("Kode QR sudah kedaluwarsa. Silakan generate ulang.");
           }
         }
-      } catch (err: any) {
-        clearInterval(pollInterval);
-        setError("Koneksi gagal saat melacak status QR.");
+      } catch {
+        // silent retry on transient poll errors
       }
     }, 2000);
 
     return () => clearInterval(pollInterval);
-  }, [qrId, status]);
+  }, [qrId, status, router]);
 
   // Handle 2FA Password Submission
   const submit2FA = async () => {
@@ -751,7 +778,10 @@ function QRLoginForm() {
         twofa_password: twofaPassword,
       });
       if (data.status === "success" && data.account_id) {
-        router.push(`/accounts/${data.account_id}`);
+        setStatus("success");
+        setTimeout(() => {
+          router.push(`/accounts/${data.account_id}`);
+        }, 600);
       }
     } catch (err: any) {
       setError(err?.response?.data?.detail || "Password 2FA salah. Silakan coba lagi.");
@@ -768,68 +798,250 @@ function QRLoginForm() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3.5 rounded-xl text-sm flex items-start gap-2.5 shadow-sm">
-          <ShieldAlert className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5" />
-          <div className="flex-1 font-medium">{error}</div>
+      {/* Error Alert */}
+      {error && status !== "requires_2fa" && (
+        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 px-4 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-between gap-3 shadow-2xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="h-4.5 w-4.5 text-rose-500 shrink-0" />
+            <span className="font-medium">{error}</span>
+          </div>
+          <button
+            onClick={initQR}
+            className="text-xs font-semibold underline hover:no-underline text-rose-600 dark:text-rose-400 shrink-0"
+          >
+            {_("addAccount.resendCode")}
+          </button>
         </div>
       )}
 
-      {loading && !qrUrl && (
-        <div className="flex flex-col items-center justify-center py-10 gap-3">
-          <Loader2 className="h-10 w-10 animate-spin text-primary-600" />
-          <p className="text-sm text-gray-500 font-medium">Generating QR Code...</p>
-        </div>
-      )}
-
-      {qrUrl && status === "pending" && (
-        <div className="flex flex-col items-center gap-5">
-          <div className="text-center bg-gray-50 p-4 rounded-xl border border-gray-100 w-full max-w-md">
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Login via QR Code</h4>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Buka aplikasi Telegram di HP Anda, masuk ke <strong>Settings &gt; Devices &gt; Link Desktop Device</strong>, lalu pindai QR Code di bawah ini.
-            </p>
-          </div>
-
-          <div className="relative bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-sm flex items-center justify-center w-[270px] h-[270px]">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}`}
-              alt="Telegram Login QR Code"
-              className="w-full h-full rounded-lg"
-            />
-          </div>
-
-          {timeLeft > 0 ? (
-            <p className="text-xs text-gray-500">
-              QR Code berlaku untuk{" "}
-              <span className="font-mono font-bold text-primary-600 bg-primary-50 px-2.5 py-1 rounded-full ml-1">
-                {formatTime(timeLeft)}
+      {/* Main View: QR Code pending or loading */}
+      {status !== "requires_2fa" && status !== "success" && (
+        <div className="space-y-6">
+          {/* Header & Steps Banner */}
+          <div className="flex flex-col items-center text-center space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-            </p>
-          ) : (
-            <button
-              onClick={initQR}
-              disabled={loading}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
-            >
-              {_("addAccount.resendCode")}
-            </button>
-          )}
-        </div>
-      )}
+              <span>{_("addAccount.qrBadge")}</span>
+            </div>
 
-      {status === "requires_2fa" && (
-        <div className="space-y-4 max-w-md mx-auto">
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3.5 rounded-xl text-sm flex items-start gap-2.5 shadow-sm">
-            <Lock className="h-5 w-5 flex-shrink-0 text-yellow-600 mt-0.5" />
-            <div className="flex-1 font-medium leading-relaxed">
-              Akun Anda menggunakan verifikasi 2 Langkah (2FA). Silakan masukkan password 2FA Anda untuk melanjutkan.
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              {_("addAccount.qrTitle")}
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-md leading-relaxed">
+              {_("addAccount.qrSubtitle")}
+            </p>
+          </div>
+
+          {/* 3-Step Visual Instruction Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 w-full">
+            <div className="rounded-xl border border-border/70 bg-card/60 dark:bg-slate-900/40 p-3 sm:p-3.5 flex sm:flex-col items-center sm:items-start gap-3 sm:gap-2 shadow-2xs transition hover:border-primary/40">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary border border-primary/20 font-bold text-xs flex items-center justify-center shrink-0">
+                1
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Smartphone className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>{_("addAccount.qrStep1Title")}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  {_("addAccount.qrStep1Desc")}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-card/60 dark:bg-slate-900/40 p-3 sm:p-3.5 flex sm:flex-col items-center sm:items-start gap-3 sm:gap-2 shadow-2xs transition hover:border-primary/40">
+              <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold text-xs flex items-center justify-center shrink-0">
+                2
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Laptop className="h-3.5 w-3.5 text-sky-500 shrink-0" />
+                  <span>{_("addAccount.qrStep2Title")}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  {_("addAccount.qrStep2Desc")}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-card/60 dark:bg-slate-900/40 p-3 sm:p-3.5 flex sm:flex-col items-center sm:items-start gap-3 sm:gap-2 shadow-2xs transition hover:border-primary/40">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold text-xs flex items-center justify-center shrink-0">
+                3
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <ScanLine className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  <span>{_("addAccount.qrStep3Title")}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  {_("addAccount.qrStep3Desc")}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label htmlFor="tdlib-twofa-password" className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Password 2FA
+          {/* QR Viewfinder Frame */}
+          <div className="flex flex-col items-center justify-center py-2 relative">
+            {/* Ambient background glow */}
+            <div className="absolute w-72 h-72 bg-gradient-to-tr from-primary-500/15 via-sky-400/15 to-blue-600/15 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Main QR Card */}
+            <div className="relative group/qr">
+              <div
+                data-keep-white="true"
+                className="relative w-64 h-64 sm:w-72 sm:h-72 bg-white rounded-3xl p-5 sm:p-6 border-2 border-slate-200/90 dark:border-slate-700/80 shadow-2xl shadow-primary/10 flex items-center justify-center overflow-hidden transition-all duration-300"
+              >
+                {/* Viewfinder corner brackets */}
+                <div className="absolute top-3 left-3 w-5 h-5 border-t-3 border-l-3 border-primary-500 rounded-tl-lg pointer-events-none" />
+                <div className="absolute top-3 right-3 w-5 h-5 border-t-3 border-r-3 border-primary-500 rounded-tr-lg pointer-events-none" />
+                <div className="absolute bottom-3 left-3 w-5 h-5 border-b-3 border-l-3 border-primary-500 rounded-bl-lg pointer-events-none" />
+                <div className="absolute bottom-3 right-3 w-5 h-5 border-b-3 border-r-3 border-primary-500 rounded-br-lg pointer-events-none" />
+
+                {/* Laser scan line (active while scanning) */}
+                {qrUrl && status === "pending" && timeLeft > 0 && !loading && (
+                  <div className="absolute inset-x-4 h-[2px] bg-gradient-to-r from-transparent via-primary-500 to-transparent shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-qr-scan pointer-events-none z-10" />
+                )}
+
+                {/* Loading State */}
+                {loading && !qrUrl && (
+                  <div className="flex flex-col items-center justify-center gap-3 text-slate-500 animate-pulse">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center border border-slate-200">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                    </div>
+                    <p className="text-xs font-medium text-slate-600 text-center px-4">
+                      {_("addAccount.qrGenerating")}
+                    </p>
+                  </div>
+                )}
+
+                {/* QR Code SVG */}
+                {qrUrl && (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <QRCode
+                      value={qrUrl}
+                      size={220}
+                      level="M"
+                      fgColor="#0f172a"
+                      bgColor="#ffffff"
+                      className="h-full w-full object-contain"
+                    />
+
+                    {/* Centered Telegram Logo */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-12 rounded-full bg-white p-1 shadow-lg border border-slate-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-[#229ED9] flex items-center justify-center text-white shadow-inner">
+                          <TelegramPlaneIcon className="w-6 h-6 -translate-x-0.5" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Expired / Failed Overlay */}
+                {(timeLeft <= 0 || status === "expired" || status === "failed") && (
+                  <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-5 text-center text-white z-20 animate-in fade-in duration-200">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mb-2.5">
+                      <RefreshCw className="h-6 w-6" />
+                    </div>
+                    <h5 className="text-sm font-bold text-white mb-1">
+                      {_("addAccount.qrExpiredTitle")}
+                    </h5>
+                    <p className="text-[11px] text-slate-300 mb-3 max-w-[200px] leading-snug">
+                      {_("addAccount.qrExpiredDesc")}
+                    </p>
+                    <button
+                      onClick={initQR}
+                      disabled={loading}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-xl text-xs font-semibold shadow-md transition active:scale-95"
+                    >
+                      <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                      <span>{_("addAccount.qrReloadBtn")}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status Bar: Expiration Countdown & Pulse Indicator */}
+            {qrUrl && status === "pending" && timeLeft > 0 && (
+              <div className="mt-4 flex flex-col sm:flex-row items-center gap-2.5 text-xs">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 dark:bg-slate-900 border border-border text-foreground shadow-2xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-medium">
+                    {_("addAccount.qrWaitingScan")}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border shadow-2xs transition-colors",
+                      timeLeft <= 60
+                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-bold animate-pulse"
+                        : "bg-muted/60 dark:bg-slate-900 border-border text-muted-foreground"
+                    )}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{_("addAccount.qrValidFor")}</span>
+                    <span className="font-mono font-bold ml-0.5">{formatTime(timeLeft)}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={initQR}
+                    disabled={loading}
+                    title={_("addAccount.qrRefreshTooltip")}
+                    className="p-1.5 rounded-full border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition shadow-2xs active:scale-95"
+                  >
+                    <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Switch to OTP link */}
+            {onSwitchToOtp && (
+              <div className="mt-5 text-center">
+                <button
+                  type="button"
+                  onClick={onSwitchToOtp}
+                  className="text-xs text-muted-foreground hover:text-primary transition font-medium inline-flex items-center gap-1.5 group"
+                >
+                  <span>{_("addAccount.qrSwitchToOtp")}</span>
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2FA Verification State */}
+      {status === "requires_2fa" && (
+        <div className="space-y-5 max-w-md mx-auto py-2 animate-in fade-in duration-300">
+          <div className="rounded-2xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/30 p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                {_("addAccount.qrTwoFaTitle")}
+              </h4>
+              <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-1 leading-relaxed">
+                {_("addAccount.qrTwoFaWarning")}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="tdlib-twofa-password" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              {_("addAccount.qrTwoFaLabel")}
             </label>
             <div className="relative">
               <input
@@ -838,34 +1050,57 @@ function QRLoginForm() {
                 type={showPassword ? "text" : "password"}
                 value={twofaPassword}
                 onChange={(e) => setTwofaPassword(e.target.value)}
-                placeholder="Masukkan password 2FA Anda"
-                className="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-100 focus:border-primary-500 outline-none transition"
+                placeholder={_("addAccount.qrTwoFaPlaceholder")}
+                className="w-full pl-4 pr-11 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition p-1"
               >
-                {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
-          <div className="space-y-3 pt-2">
+          <div className="space-y-2.5 pt-1">
             <button
               onClick={submit2FA}
               disabled={loading || !twofaPassword}
-              className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition"
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
             >
-              {loading ? "Memproses..." : "Konfirmasi Password"}
+              {loading ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{_("addAccount.qrTwoFaProcessing")}</span>
+                </span>
+              ) : (
+                _("addAccount.qrTwoFaConfirmBtn")
+              )}
             </button>
             <button
+              type="button"
               onClick={initQR}
-              className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 transition py-1.5 text-center block"
+              className="w-full text-xs font-medium text-muted-foreground hover:text-foreground transition py-1 text-center block"
             >
-              ← Generate QR Code Baru
+              {_("addAccount.qrTwoFaBack")}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Success State */}
+      {status === "success" && (
+        <div className="flex flex-col items-center justify-center py-10 gap-3 text-center animate-in fade-in duration-300">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/10">
+            <CheckCircle2 className="h-8 w-8" />
+          </div>
+          <h4 className="text-lg font-bold text-foreground">
+            {_("addAccount.qrSuccessTitle")}
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            {_("addAccount.qrSuccessDesc")}
+          </p>
         </div>
       )}
     </div>

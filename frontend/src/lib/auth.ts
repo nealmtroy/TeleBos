@@ -13,6 +13,20 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      prompt: "select_account",
+    },
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+    },
+  },
   rateLimit: {
     storage: "database",
     modelName: "rateLimit",
@@ -35,11 +49,17 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: (() => {
-    try {
-      return JSON.parse(process.env.CORS_ORIGINS || "[]");
-    } catch {
-      return ["http://localhost:3000"];
+    const origins = new Set<string>(["http://localhost:3000", "https://telebos.app"]);
+    if (process.env.BETTER_AUTH_URL) {
+      origins.add(process.env.BETTER_AUTH_URL);
     }
+    try {
+      const parsed = JSON.parse(process.env.CORS_ORIGINS || "[]");
+      if (Array.isArray(parsed)) {
+        parsed.forEach((o) => origins.add(o));
+      }
+    } catch {}
+    return Array.from(origins);
   })(),
   emailAndPassword: {
     enabled: true,
@@ -156,9 +176,14 @@ export const auth = betterAuth({
           // already prevents duplicate emails, so an email UNIQUE violation
           // here means something bypassed that check — surface it loudly.
           try {
+            // Also update Better Auth's own table to make sure the role is freetrial
             await pool.query(
-              `INSERT INTO users (id, email, full_name, is_active, role, balance, created_at, updated_at)
-               VALUES ($1::uuid, $2, $3, true, 'basic', 0, NOW(), NOW())
+              `UPDATE "user" SET role = 'freetrial' WHERE id = $1`,
+              [user.id]
+            );
+            await pool.query(
+              `INSERT INTO users (id, email, full_name, is_active, role, balance, subscription_expires_at, created_at, updated_at)
+               VALUES ($1::uuid, $2, $3, true, 'freetrial', 0, NOW() + INTERVAL '5 hours', NOW(), NOW())
                ON CONFLICT (id) DO NOTHING`,
               [user.id, user.email, user.name || null]
             );

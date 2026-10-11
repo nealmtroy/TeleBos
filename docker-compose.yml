@@ -118,6 +118,7 @@ services:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api/v1}
         - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-wss://telebos.app}
         - NEXT_PUBLIC_BETTER_AUTH_URL=${NEXT_PUBLIC_BETTER_AUTH_URL:-https://telebos.app}
+        - API_PROXY_TARGET=${API_PROXY_TARGET:-http://backend:8000}
     restart: unless-stopped
     env_file: ./.env
     environment:

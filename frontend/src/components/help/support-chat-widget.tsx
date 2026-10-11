@@ -26,6 +26,10 @@ import {
 import { useSession } from "@/lib/auth-client";
 import { getSessionToken } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 
 export interface OrderItem {
   id: string;
@@ -353,9 +357,9 @@ export function SupportChatWidget() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h3 className="text-xs font-semibold text-white">{_("help.aiSupport")}</h3>
-                  <span className="rounded bg-blue-500/10 px-1 py-0.2 text-[9px] font-medium text-blue-400 border border-blue-500/20">
+                  <Badge variant="info" className="text-[9px] px-1 py-0 h-4 border-blue-500/20 bg-blue-500/10 text-blue-400">
                     AI
-                  </span>
+                  </Badge>
                 </div>
                 <p className="text-[10px] text-emerald-400 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -388,9 +392,9 @@ export function SupportChatWidget() {
               <div className="flex items-center gap-1.5 text-slate-300">
                 <User className="h-3 w-3 text-blue-400" />
                 <span className="font-medium text-white truncate max-w-[170px]">{userName}</span>
-                <span className="rounded bg-emerald-500/10 px-1 text-[9px] text-emerald-400 border border-emerald-500/20">
+                <Badge variant="success" className="text-[9px] px-1 py-0 h-4">
                   Terhubung
-                </span>
+                </Badge>
               </div>
             ) : (
               <div className="flex items-center justify-between w-full">
@@ -524,63 +528,66 @@ export function SupportChatWidget() {
                 </p>
 
                 <form onSubmit={handleEscalateSubmit} className="space-y-2">
-                  <div>
-                    <label className="text-[10px] font-medium text-slate-400 block mb-0.5">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-medium text-slate-400 block">
                       Subjek Kendala
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="text"
                       required
                       value={escalateSubject}
                       onChange={(e) => setEscalateSubject(e.target.value)}
                       placeholder="Contoh: Pesanan SMM macet / Gagal broadcast"
-                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                      className="w-full h-8 rounded-md border-slate-700 bg-slate-950 px-2.5 text-xs text-white placeholder-slate-500 focus-visible:ring-blue-500"
                     />
                   </div>
 
                   {!isAuthenticated && (
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] font-medium text-slate-400 block mb-0.5">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-medium text-slate-400 block">
                           Nama Anda
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="text"
                           required
                           value={guestName}
                           onChange={(e) => setGuestName(e.target.value)}
                           placeholder="Nama"
-                          className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                          className="w-full h-8 rounded-md border-slate-700 bg-slate-950 px-2 text-xs text-white placeholder-slate-500 focus-visible:ring-blue-500"
                         />
                       </div>
-                      <div>
-                        <label className="text-[10px] font-medium text-slate-400 block mb-0.5">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-medium text-slate-400 block">
                           Email / Telegram
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           type="text"
                           required
                           value={guestContact}
                           onChange={(e) => setGuestContact(e.target.value)}
                           placeholder="@username / email"
-                          className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                          className="w-full h-8 rounded-md border-slate-700 bg-slate-950 px-2 text-xs text-white placeholder-slate-500 focus-visible:ring-blue-500"
                         />
                       </div>
                     </div>
                   )}
 
                   <div className="flex justify-end gap-1.5 pt-1">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => setShowEscalationForm(false)}
-                      className="rounded-md border border-slate-700 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
+                      className="h-7 rounded-md border-slate-700 px-2.5 text-[11px] text-slate-300 hover:bg-slate-800"
                     >
                       Batal
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
+                      size="sm"
                       disabled={isEscalating}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                      className="h-7 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-medium text-white hover:bg-blue-500 disabled:opacity-50"
                     >
                       {isEscalating ? (
                         <>
@@ -589,7 +596,7 @@ export function SupportChatWidget() {
                       ) : (
                         "Kirim ke Admin"
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -660,19 +667,20 @@ export function SupportChatWidget() {
               }}
               className="flex items-center gap-2"
             >
-              <input
+              <Input
                 ref={inputRef}
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder={_("help.aiSupportPlaceholder")}
                 disabled={isLoading}
-                className="flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                className="flex-1 rounded-xl border-slate-800 bg-slate-900 px-3.5 text-xs text-white placeholder-slate-500 focus-visible:ring-blue-500 disabled:opacity-50 h-9"
               />
-              <button
+              <Button
                 type="submit"
+                size="icon"
                 disabled={!inputMessage.trim() || isLoading}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-white transition-all hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600"
+                className="h-9 w-9 rounded-xl bg-blue-600 text-white transition-all hover:bg-blue-500 disabled:opacity-40 shrink-0"
                 aria-label={_("help.aiSupportSend")}
               >
                 {isLoading ? (
@@ -680,7 +688,7 @@ export function SupportChatWidget() {
                 ) : (
                   <Send className="h-3.5 w-3.5" />
                 )}
-              </button>
+              </Button>
             </form>
             <p className="mt-1.5 text-center text-[9px] text-slate-500">
               {_("help.aiSupportDisclaimer")}

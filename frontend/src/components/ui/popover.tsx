@@ -43,6 +43,7 @@ const PopoverContent = React.forwardRef<
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}
+      data-slot="popover-content"
       align={align}
       sideOffset={sideOffset}
       className={cn(
@@ -59,6 +60,7 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
+      data-slot="popover-header"
       className={cn("flex flex-col gap-0.5 text-sm", className)}
       {...props}
     />
@@ -68,6 +70,7 @@ function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
 function PopoverTitle({ className, ...props }: React.ComponentProps<"h4">) {
   return (
     <h4
+      data-slot="popover-title"
       className={cn("font-medium text-gray-900 dark:text-slate-100", className)}
       {...props}
     />
@@ -80,6 +83,7 @@ function PopoverDescription({
 }: React.ComponentProps<"p">) {
   return (
     <p
+      data-slot="popover-description"
       className={cn("text-xs text-muted-foreground dark:text-slate-400", className)}
       {...props}
     />

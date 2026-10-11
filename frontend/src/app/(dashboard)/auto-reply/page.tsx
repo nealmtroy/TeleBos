@@ -46,22 +46,6 @@ export default function AutoReplyPage() {
   } = useAccounts({ is_active: true, limit: 1000 });
   const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
 
-  // Role check
-  if (user?.role === "basic") {
-    return (
-      <div className="text-center py-16">
-        <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="font-semibold text-gray-900 dark:text-slate-100 mb-1">
-          Access Denied
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-slate-400">
-          Auto Reply feature is not available for your plan. Upgrade to Pro or
-          Premium to access this feature.
-        </p>
-      </div>
-    );
-  }
-
   // ── State ──────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);

@@ -141,10 +141,12 @@ export default function SmmServicesPage() {
 
   // Auto-expand first category
   useEffect(() => {
-    if (categories.length > 0 && Object.keys(expandedCategories).length === 0) {
-      setExpandedCategories({ [categories[0]]: true });
+    if (categories.length > 0) {
+      setExpandedCategories((prev) =>
+        Object.keys(prev).length === 0 ? { [categories[0]]: true } : prev
+      );
     }
-  }, [categories.length]);
+  }, [categories]);
 
   // Only owner can access
   if (currentUser?.role !== "owner") {

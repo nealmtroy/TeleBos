@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useT } from "@/lib/i18n";
+import { useAuthStore } from "@/store/auth-store";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { Calendar, Clock, Search, RefreshCw, Info, ShieldCheck } from "lucide-react";
+import { Calendar, Clock, Search, RefreshCw, Info, ShieldCheck, Shield, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -17,11 +19,36 @@ interface EstimateResult {
 export default function AgeCheckerPage() {
   const _ = useT();
   const { toast } = useToast();
+  const user = useAuthStore((s) => s.user);
 
   // State for estimation
   const [telegramId, setTelegramId] = useState("");
   const [estimating, setEstimating] = useState(false);
   const [result, setResult] = useState<EstimateResult | null>(null);
+
+  // Role check: Age Checker is available for Pro and Business plans
+  if (user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 max-w-md mx-auto">
+        <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-amber-500 shadow-sm">
+          <Shield className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          Fitur Khusus Paket Pro & Business
+        </h2>
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Fitur Age Checker (cek umur akun Telegram) hanya tersedia untuk pelanggan paket Pro atau Business. Silakan tingkatkan paket Anda untuk mengakses fitur ini.
+        </p>
+        <Link
+          href="/subscriptions"
+          className="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md transition-all hover:scale-105 active:scale-95"
+        >
+          <Crown className="h-4 w-4 mr-2" />
+          Lihat Paket Langganan
+        </Link>
+      </div>
+    );
+  }
 
   const handleEstimate = async (e: React.FormEvent) => {
     e.preventDefault();
