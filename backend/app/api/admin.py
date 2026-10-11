@@ -688,6 +688,28 @@ async def update_user_balance(
         href="/wallet",
     )
 
+    try:
+        from app.services.security_audit_service import record_security_audit_event
+
+        await record_security_audit_event(
+            db=db,
+            action="admin.balance_adjusted",
+            actor=current_user,
+            target_type="user",
+            target_id=str(user.id),
+            target_label=user.email,
+            outcome="success",
+            severity="warning",
+            request=request,
+            metadata={
+                "amount": payload.amount,
+                "action": "penambahan" if payload.amount >= 0 else "pengurangan",
+                "new_balance": user.balance,
+            },
+        )
+    except Exception:
+        pass
+
     await db.flush()
     return BalanceHistoryResponse(
         user_id=user.id,
@@ -716,11 +738,48 @@ async def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    old_role = user.role
     user.role = payload.role
     await db.execute(
         text('UPDATE "user" SET role = :role WHERE id = :user_id'),
         {"role": payload.role, "user_id": str(user.id)},
     )
+
+    # Track subscription change in analytics
+    try:
+        from app.services.analytics_tracking_service import track_subscription_change
+
+        await track_subscription_change(
+            db=db,
+            user_id=user.id,
+            old_role=old_role,
+            new_role=payload.role,
+            reason="admin_update",
+        )
+    except Exception as exc:
+        logger.warning("Could not record analytics subscription change event: %s", exc)
+
+    try:
+        from app.services.security_audit_service import record_security_audit_event
+
+        await record_security_audit_event(
+            db=db,
+            action="admin.role_changed",
+            actor=current_user,
+            target_type="user",
+            target_id=str(user.id),
+            target_label=user.email,
+            outcome="success",
+            severity="warning",
+            request=request,
+            metadata={
+                "old_role": old_role,
+                "new_role": payload.role,
+            },
+        )
+    except Exception:
+        pass
+
     await db.flush()
     return user
 
@@ -783,6 +842,27 @@ async def suspend_user(
         except Exception:
             pass
 
+    try:
+        from app.services.security_audit_service import record_security_audit_event
+
+        await record_security_audit_event(
+            db=db,
+            action="admin.user_suspended",
+            actor=current_user,
+            target_type="user",
+            target_id=str(user.id),
+            target_label=user.email,
+            outcome="success",
+            severity="critical",
+            request=request,
+            metadata={
+                "reason": payload.reason,
+                "duration_days": payload.duration_days,
+            },
+        )
+    except Exception:
+        pass
+
     await db.flush()
     return user
 
@@ -818,6 +898,23 @@ async def unsuspend_user(
         """),
         {"user_id": user_id_str},
     )
+
+    try:
+        from app.services.security_audit_service import record_security_audit_event
+
+        await record_security_audit_event(
+            db=db,
+            action="admin.user_unsuspended",
+            actor=current_user,
+            target_type="user",
+            target_id=str(user.id),
+            target_label=user.email,
+            outcome="success",
+            severity="warning",
+            request=request,
+        )
+    except Exception:
+        pass
 
     await db.flush()
     return user
@@ -870,9 +967,28 @@ async def delete_user(
 
     # Synchronize deletion with Better Auth authentication tables to prevent drift
     user_id_str = str(user.id)
+    user_email_str = user.email
     await db.execute(text('DELETE FROM session WHERE "userId" = :user_id'), {"user_id": user_id_str})
     await db.execute(text('DELETE FROM account WHERE "userId" = :user_id'), {"user_id": user_id_str})
     await db.execute(text('DELETE FROM "user" WHERE id = :user_id'), {"user_id": user_id_str})
+
+    try:
+        from app.services.security_audit_service import record_security_audit_event
+
+        await record_security_audit_event(
+            db=db,
+            action="admin.user_deleted",
+            actor=current_user,
+            target_type="user",
+            target_id=user_id_str,
+            target_label=user_email_str,
+            outcome="success",
+            severity="critical",
+            request=request,
+            metadata={"deleted_email": user_email_str},
+        )
+    except Exception:
+        pass
 
     await db.delete(user)
     await db.flush()
@@ -916,6 +1032,22 @@ async def create_redeem_code(
 
     try:
         code = await svc_create(db, current_user, payload)
+        try:
+            from app.services.security_audit_service import record_security_audit_event
+
+            await record_security_audit_event(
+                db=db,
+                action="admin.redeem_code_created",
+                actor=current_user,
+                target_type="redeem_code",
+                target_id=str(code.id) if hasattr(code, "id") else None,
+                target_label=code.code if hasattr(code, "code") else None,
+                outcome="success",
+                severity="info",
+                metadata={"plan_id": getattr(code, "plan_id", None)},
+            )
+        except Exception:
+            pass
         resp = RedeemCodeResponse.model_validate(code)
         resp.created_by_email = current_user.email
         return resp

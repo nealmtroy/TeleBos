@@ -52,6 +52,8 @@ import {
   ArrowLeft,
   ArrowRight,
   Repeat,
+  TrendingUp,
+  Activity,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
@@ -115,6 +117,12 @@ const servicesSubItems: SubItem[] = [
 ];
 
 const administrationsSubItems: SubItem[] = [
+  { href: "/admin/analytics", exact: true, labelKey: "admin.analytics", icon: TrendingUp },
+  { href: "/admin/analytics/users", exact: false, labelKey: "admin.userAnalytics", icon: Users },
+  { href: "/admin/analytics/telegram-accounts", exact: false, labelKey: "admin.telegramAccountAnalytics", icon: Radio },
+  { href: "/admin/analytics/automation", exact: false, labelKey: "admin.automationAnalytics", icon: Bot },
+  { href: "/admin/analytics/financial", exact: false, labelKey: "admin.financialAnalytics", icon: DollarSign },
+  { href: "/admin/analytics/system-health", exact: false, labelKey: "admin.systemHealthAnalytics", icon: Activity },
   { href: "/admin/dashboard", exact: false, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/onboarding", exact: false, labelKey: "admin.onboarding", icon: Sparkles },
   { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
@@ -329,6 +337,9 @@ export function Sidebar() {
       id: "admin-overview",
       labelKey: locale === "id" ? "IKHTISAR" : "OVERVIEW",
       items: [
+        { href: "/admin/analytics", labelKey: "admin.analytics", icon: TrendingUp, exact: true, minRole: 4 },
+        { href: "/admin/analytics/users", labelKey: "admin.userAnalytics", icon: Users, exact: false, minRole: 4 },
+        { href: "/admin/analytics/security", labelKey: "admin.securityAnalytics", icon: Shield, exact: false, minRole: 4 },
         { href: "/admin/dashboard", labelKey: "admin.overview", icon: BarChart3, exact: true, minRole: 4 },
         { href: "/admin/users", labelKey: "admin.users", icon: Users, exact: false, minRole: 4 },
         { href: "/admin/transactions", labelKey: "admin.transactions", icon: Wallet, exact: false, minRole: 4 },

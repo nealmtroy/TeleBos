@@ -22,4 +22,5 @@ Pillow>=10.0.0
 requests>=2.31.0
 cloudscraper>=1.2.71
 sentry-sdk[fastapi]>=2.0.0
+psutil>=5.9.0
 

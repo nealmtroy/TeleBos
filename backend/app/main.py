@@ -85,6 +85,7 @@ from app.api import (
     support,
     onboarding,
     telegram_bot,
+    admin_analytics,
 )
 from app.api import settings as api_settings
 from app.services.session_manager import session_manager
@@ -606,6 +607,11 @@ if "*" not in _allowed_hosts:
 # Add RealIPMiddleware to parse correct client IPs when behind Cloudflare/reverse proxy
 app.add_middleware(RealIPMiddleware)
 
+# System health, latency percentiles, and traffic instrumentation
+from app.services.system_health_service import SystemTelemetryMiddleware
+
+app.add_middleware(SystemTelemetryMiddleware)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -647,6 +653,7 @@ app.include_router(redeem.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_smm.router, prefix="/api/v1")
 app.include_router(admin_account_prices.router, prefix="/api/v1")
+app.include_router(admin_analytics.router, prefix="/api/v1")
 app.include_router(account_folders.router, prefix="/api/v1")
 app.include_router(wallet.router, prefix="/api/v1")
 app.include_router(ws.router)

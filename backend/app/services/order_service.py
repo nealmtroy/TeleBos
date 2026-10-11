@@ -287,6 +287,23 @@ async def place_order(
     )
     db.add(order)
     await db.flush()
+
+    # Track order placement in analytics
+    try:
+        from app.services.analytics_tracking_service import track_order_placed
+
+        await track_order_placed(
+            db=db,
+            user_id=user.id,
+            order_id=order.id,
+            service_id=service_id,
+            service_name=service_name,
+            quantity=quantity,
+            total_price=total_price,
+        )
+    except Exception as exc:
+        logger.warning("Could not record analytics event for order %s: %s", order.id, exc)
+
     create_notification(
         db,
         user.id,

@@ -544,9 +544,42 @@ class SessionManager:
                 success = await event_relay.attach(account_id_value, session_str)
                 if success:
                     logger.info("Account %s connected + event handlers attached", account_id_value)
+
+                try:
+                    from app.services.analytics_tracking_service import track_account_connection_result
+                    async with async_session_factory() as event_db:
+                        await track_account_connection_result(
+                            db=event_db,
+                            user_id=account_snapshot["user_id"],
+                            account_id=uuid.UUID(account_id_value),
+                            phone=account_snapshot.get("phone", ""),
+                            success=bool(success),
+                            is_reconnect=True,
+                            error_type=None if success else "attach_failed",
+                        )
+                        await event_db.commit()
+                except Exception:
+                    pass
+
                 return success
         except Exception as exc:
             logger.error("Error connecting account %s on-demand: %s", account_id_value, exc)
+            try:
+                from app.services.analytics_tracking_service import track_account_connection_result
+                err_type = type(exc).__name__
+                async with async_session_factory() as event_db:
+                    await track_account_connection_result(
+                        db=event_db,
+                        user_id=account_snapshot["user_id"],
+                        account_id=uuid.UUID(account_id_value),
+                        phone=account_snapshot.get("phone", ""),
+                        success=False,
+                        is_reconnect=True,
+                        error_type=err_type,
+                    )
+                    await event_db.commit()
+            except Exception:
+                pass
             return False
 
         return False

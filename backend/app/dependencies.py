@@ -376,6 +376,7 @@ api_key_scheme = HTTPBearer(auto_error=False, description="TeleBos integration A
 
 
 async def get_api_principal(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Security(api_key_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -395,7 +396,29 @@ async def get_api_principal(
 
     api_key, user = row
     now = datetime.now(timezone.utc)
-    if api_key.revoked_at is not None or (api_key.expires_at and api_key.expires_at <= now):
+    if api_key.revoked_at is not None:
+        try:
+            from app.services.security_audit_service import record_security_audit_event
+
+            await record_security_audit_event(
+                db=db,
+                action="security.revoked_api_key_used",
+                actor_id=user.id,
+                actor_email=user.email,
+                target_type="api_key",
+                target_id=str(api_key.id),
+                target_label=api_key.key_prefix,
+                outcome="failure",
+                severity="warning",
+                request=request,
+                metadata={"key_prefix": api_key.key_prefix},
+            )
+            await db.commit()
+        except Exception:
+            pass
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired or revoked")
+
+    if api_key.expires_at and api_key.expires_at <= now:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired or revoked")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
@@ -420,8 +443,34 @@ def require_role(allowed_roles: list[str] | str):
     if isinstance(allowed_roles, str):
         allowed_roles = [allowed_roles]
 
-    async def dependency(current_user: User = Depends(get_current_user)) -> User:
+    async def dependency(
+        request: Request,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
         if current_user.role not in allowed_roles:
+            if "owner" in allowed_roles:
+                try:
+                    from app.services.security_audit_service import record_security_audit_event
+
+                    await record_security_audit_event(
+                        db=db,
+                        action="security.unauthorized_access_attempt",
+                        actor=current_user,
+                        target_type="system",
+                        target_label=request.url.path if request else None,
+                        outcome="failure",
+                        severity="warning",
+                        request=request,
+                        metadata={
+                            "attempted_role": current_user.role,
+                            "required_roles": allowed_roles,
+                            "path": request.url.path if request else None,
+                        },
+                    )
+                    await db.commit()
+                except Exception:
+                    pass
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action.",

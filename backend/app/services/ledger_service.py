@@ -88,6 +88,24 @@ async def record_ledger_entry(
     )
     db.add(ledger)
 
+    # Track financial telemetry event idempotently
+    try:
+        from app.services.analytics_tracking_service import track_financial_mutation
+
+        await track_financial_mutation(
+            db=db,
+            user_id=user.id,
+            ledger_id=ledger.id,
+            amount=amount,
+            entry_type=norm_entry_type,
+            category=category,
+            reference_id=str(reference_id) if reference_id else None,
+            balance_before=balance_before,
+            balance_after=balance_after,
+        )
+    except Exception as exc:
+        logger.warning("Could not record analytics event for ledger %s: %s", ledger.id, exc)
+
     logger.info(
         "Ledger mutation: user=%s | %s %d IDR [%s] | %d -> %d | ref=%s",
         user.id,

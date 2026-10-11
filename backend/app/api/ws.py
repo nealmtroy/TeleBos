@@ -54,6 +54,13 @@ class ConnectionManager:
         if not conns:
             self._connections.pop(channel, None)
 
+    def get_stats(self) -> dict[str, int]:
+        total_connections = sum(len(conns) for conns in self._connections.values())
+        return {
+            "total_channels": len(self._connections),
+            "total_active_connections": total_connections,
+        }
+
     def has_channel(self, channel: str) -> bool:
         """Check if there are any active subscribers for a channel."""
         conns = self._connections.get(channel)

@@ -1057,6 +1057,19 @@ async def remove_account(db: AsyncSession, account: TelegramAccount, logout_sess
     except (ValueError, TypeError):
         pass
 
+    # Record analytics event for account deletion
+    try:
+        from app.services.analytics_tracking_service import track_account_deleted
+        await track_account_deleted(
+            db=db,
+            user_id=account.user_id,
+            account_id=account.id,
+            phone=account.phone,
+            username=account.username,
+        )
+    except Exception:
+        pass
+
     await db.delete(account)
 
 
@@ -1210,6 +1223,16 @@ async def move_to_expired_folder(db: AsyncSession, account_id: Any, user_id: Any
         .values(is_active=False)
     )
     await db.flush()
+
+    try:
+        from app.services.analytics_tracking_service import track_account_session_expired
+        import uuid
+        u_uuid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
+        a_uuid = account_id if isinstance(account_id, uuid.UUID) else uuid.UUID(str(account_id))
+        await track_account_session_expired(db, u_uuid, a_uuid, reason="session_revoked_or_expired")
+    except Exception:
+        pass
+
     logger.info("Account %s marked as inactive due to expired session", account_id)
 
 

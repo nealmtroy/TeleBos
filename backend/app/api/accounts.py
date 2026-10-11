@@ -453,6 +453,22 @@ async def _finish_login(entry: Any, account: Any, db: AsyncSession, user: User) 
     db.add(account)
     await db.commit()
     await db.refresh(account)
+
+    # Track confirmed account connection in analytics
+    try:
+        from app.services.analytics_tracking_service import track_account_connected
+
+        await track_account_connected(
+            db=db,
+            user_id=user.id,
+            account_id=account.id,
+            phone=account.phone,
+            username=account.username,
+        )
+        await db.commit()
+    except Exception as exc:
+        logger.warning("Could not record analytics event for account connection %s: %s", account.id, exc)
+
     from app.services.session_manager import session_manager
     await session_manager.attach_and_reconnect(db, account)
     await pending_login_manager.discard(entry.login_id, expected=entry)
@@ -525,6 +541,21 @@ async def upload_session(
     account.sell_price = await resolve_telegram_id_price(db, account)
     await db.commit()
     await db.refresh(account)
+
+    # Track confirmed account connection in analytics
+    try:
+        from app.services.analytics_tracking_service import track_account_connected
+
+        await track_account_connected(
+            db=db,
+            user_id=user.id,
+            account_id=account.id,
+            phone=account.phone,
+            username=account.username,
+        )
+        await db.commit()
+    except Exception as exc:
+        logger.warning("Could not record analytics event for upload_session %s: %s", account.id, exc)
 
     # Attach real-time event handlers and trigger background synchronization
     from app.services.session_manager import session_manager

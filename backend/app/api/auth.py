@@ -30,7 +30,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(get_current_user)):
+async def me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        from app.services.analytics_tracking_service import track_user_login
+
+        await track_user_login(db, user_id=current_user.id)
+        await db.commit()
+    except Exception:
+        pass
     return current_user
 
 
@@ -84,6 +94,23 @@ async def change_password(
             db, current_user, payload.current_password, payload.new_password
         )
         await revoke_all_user_sessions(db, current_user)
+        try:
+            from app.services.security_audit_service import record_security_audit_event
+
+            await record_security_audit_event(
+                db=db,
+                action="auth.password_changed",
+                actor=current_user,
+                target_type="user",
+                target_id=str(current_user.id),
+                target_label=current_user.email,
+                outcome="success",
+                severity="warning",
+                request=request,
+                metadata={"sessions_revoked": True},
+            )
+        except Exception:
+            pass
         await db.commit()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

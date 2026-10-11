@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 import uuid
 from types import SimpleNamespace
@@ -42,7 +43,7 @@ async def test_withdraw_creates_notification(monkeypatch):
     user_id = uuid.uuid4()
     user = User(id=user_id, email="user@telebos.test", balance=100000)
     mock_request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
-    payload = WithdrawCreateRequest(amount=50000, method="BCA", note="12345678 a/n Test")
+    payload = WithdrawCreateRequest(amount=50000, method="BCA", note="12345678 a/n Test", otp_code="123456")
 
     mock_db = MagicMock()
     mock_db.add = MagicMock()
@@ -53,6 +54,9 @@ async def test_withdraw_creates_notification(monkeypatch):
     mock_db.execute = AsyncMock(return_value=user_result)
 
     monkeypatch.setattr("app.api.wallet.rate_limiter.check", AsyncMock(return_value=True))
+    fake_otp_data = json.dumps({"code": "123456", "amount": 50000, "attempts": 0})
+    monkeypatch.setattr("app.api.wallet.redis_client.get", AsyncMock(return_value=fake_otp_data))
+    monkeypatch.setattr("app.api.wallet.redis_client.delete", AsyncMock())
 
     res = await request_withdraw(mock_request, payload, db=mock_db, current_user=user)
     assert res.status == "pending"

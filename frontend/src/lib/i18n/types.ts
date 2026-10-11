@@ -2089,6 +2089,13 @@ export interface Dict {
     title: string;
     desc: string;
     overview: string;
+    analytics: string;
+    userAnalytics: string;
+    telegramAccountAnalytics: string;
+    automationAnalytics: string;
+    financialAnalytics: string;
+    systemHealthAnalytics: string;
+    securityAnalytics: string;
     dashboard: string;
     dashboardDesc: string;
     platformOverview: string;

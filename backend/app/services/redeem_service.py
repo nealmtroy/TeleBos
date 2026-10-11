@@ -1,12 +1,15 @@
 """Redeem code service — creation, redemption, and subscription expiry logic."""
 
 import json
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func, text
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.models.user import User
 from app.models.redeem_code import RedeemCode
@@ -149,11 +152,12 @@ async def redeem_code(
 
         # Don't downgrade premium to pro
         if not (locked_user.role == "premium" and redeem.plan == "pro"):
-            locked_user.role = redeem.plan
-            await db.execute(
-                text('UPDATE "user" SET role = :role WHERE id = :user_id'),
-                {"role": redeem.plan, "user_id": str(locked_user.id)},
-            )
+            if locked_user.role != redeem.plan:
+                locked_user.role = redeem.plan
+                await db.execute(
+                    text('UPDATE "user" SET role = :role WHERE id = :user_id'),
+                    {"role": redeem.plan, "user_id": str(locked_user.id)},
+                )
 
         # Accumulate remaining days if existing subscription is active
         from app.utils.timezone import ensure_utc
@@ -179,6 +183,21 @@ async def redeem_code(
         detail=json.dumps(detail_parts),
     )
     db.add(log_entry)
+
+    if redeem.code_type == "subscription":
+        try:
+            from app.services.analytics_tracking_service import track_subscription_change
+
+            await track_subscription_change(
+                db=db,
+                user_id=user.id,
+                old_role=locked_user.role,
+                new_role=redeem.plan,
+                reason=f"voucher_redeem:{redeem.code}",
+                duration_days=redeem.duration_days,
+            )
+        except Exception as exc:
+            logger.warning("Could not record analytics subscription change event: %s", exc)
 
     if redeem.code_type == "balance" and redeem.amount:
         tx = WalletTransaction(

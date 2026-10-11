@@ -783,6 +783,22 @@ async def _flush_cycle_logs(
                 )
                 db.add(new_log)
 
+            # Track broadcast cycle telemetry idempotently
+            try:
+                from app.services.analytics_tracking_service import track_broadcast_cycle
+
+                await track_broadcast_cycle(
+                    db=db,
+                    user_id=db_job.user_id,
+                    job_id=job_uuid_obj,
+                    cycle_number=cycle_number,
+                    sent_count=db_log.sent_count if db_log else cycle_sent,
+                    fail_count=db_log.fail_count if db_log else cycle_failed,
+                    total_groups=total_groups or len(cycle_details_copy),
+                )
+            except Exception as exc:
+                logger.debug("Could not record analytics broadcast cycle event: %s", exc)
+
         await db.commit()
 
 

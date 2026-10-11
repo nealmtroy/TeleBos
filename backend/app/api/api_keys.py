@@ -70,12 +70,38 @@ async def create_api_key(
     db.add(api_key)
     await db.flush()
     await db.refresh(api_key)
+
+    try:
+        from app.services.security_audit_service import record_security_audit_event
+
+        await record_security_audit_event(
+            db=db,
+            action="api_key.created",
+            actor=user,
+            target_type="api_key",
+            target_id=str(api_key.id),
+            target_label=prefix,
+            outcome="success",
+            severity="info",
+            request=request,
+            metadata={
+                "name": payload.name,
+                "key_prefix": prefix,
+                "scopes": api_key.scopes,
+                "expires_at": api_key.expires_at,
+            },
+        )
+        await db.flush()
+    except Exception as exc:
+        pass
+
     return {**ApiKeyResponse.model_validate(api_key).model_dump(), "secret": secret}
 
 
 @router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_api_key(
     key_id: UUID,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -87,3 +113,26 @@ async def revoke_api_key(
         raise HTTPException(status_code=404, detail="API key not found")
     if api_key.revoked_at is None:
         api_key.revoked_at = datetime.now(timezone.utc)
+        try:
+            from app.services.security_audit_service import record_security_audit_event
+
+            await record_security_audit_event(
+                db=db,
+                action="api_key.revoked",
+                actor=user,
+                target_type="api_key",
+                target_id=str(api_key.id),
+                target_label=api_key.key_prefix,
+                outcome="success",
+                severity="warning",
+                request=request,
+                metadata={
+                    "name": api_key.name,
+                    "key_prefix": api_key.key_prefix,
+                    "scopes": api_key.scopes,
+                },
+            )
+            await db.flush()
+        except Exception as exc:
+            pass
+

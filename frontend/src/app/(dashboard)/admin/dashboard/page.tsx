@@ -34,6 +34,7 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
+  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -179,6 +180,12 @@ function DashboardContent() {
             <span className="text-xs font-medium">
               {_("admin.refreshData") || "Refresh Data"}
             </span>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-9 px-3 gap-2">
+            <Link href="/admin/analytics">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <span className="text-xs font-medium">Analytics</span>
+            </Link>
           </Button>
           <Button asChild size="sm" className="h-9 px-3 gap-2">
             <Link href="/admin/users">

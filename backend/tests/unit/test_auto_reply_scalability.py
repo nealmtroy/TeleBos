@@ -162,8 +162,8 @@ async def test_database_connection_pool_settings():
     clients already" (PYTHON-FASTAPI-4). docker-compose.yml now sets
     max_connections=300; this asserts the app side fits inside that.
     """
-    assert engine.pool.size() == 20
-    assert engine.pool._max_overflow == 20
+    assert engine.pool.size() == 30
+    assert engine.pool._max_overflow == 30
 
     # 3 processes x (size + overflow) must fit inside the configured ceiling.
     postgres_max_connections = 300

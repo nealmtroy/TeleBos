@@ -117,6 +117,22 @@ async def enable_2fa(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         await settings_service.enable_2fa(account, payload.password)
+        try:
+            from app.services.security_audit_service import record_security_audit_event, mask_phone_number
+
+            await record_security_audit_event(
+                db=db,
+                action="auth.2fa_enabled",
+                actor=user,
+                target_type="telegram_account",
+                target_id=str(account.id),
+                target_label=mask_phone_number(account.phone),
+                outcome="success",
+                severity="info",
+                request=request,
+            )
+        except Exception:
+            pass
         await db.flush()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
@@ -143,6 +159,22 @@ async def disable_2fa(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         await settings_service.disable_2fa(account, payload.password)
+        try:
+            from app.services.security_audit_service import record_security_audit_event, mask_phone_number
+
+            await record_security_audit_event(
+                db=db,
+                action="auth.2fa_disabled",
+                actor=user,
+                target_type="telegram_account",
+                target_id=str(account.id),
+                target_label=mask_phone_number(account.phone),
+                outcome="success",
+                severity="warning",
+                request=request,
+            )
+        except Exception:
+            pass
         await db.flush()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
@@ -219,6 +251,22 @@ async def change_2fa_password(
         await settings_service.change_2fa_password(
             account, payload.old_password, payload.new_password
         )
+        try:
+            from app.services.security_audit_service import record_security_audit_event, mask_phone_number
+
+            await record_security_audit_event(
+                db=db,
+                action="auth.2fa_password_updated",
+                actor=user,
+                target_type="telegram_account",
+                target_id=str(account.id),
+                target_label=mask_phone_number(account.phone),
+                outcome="success",
+                severity="warning",
+                request=request,
+            )
+        except Exception:
+            pass
         await db.flush()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))

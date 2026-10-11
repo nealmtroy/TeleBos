@@ -27,6 +27,8 @@ from .wallet_transaction import WalletTransaction
 from .wallet_ledger import WalletLedger
 from .support_ticket import SupportTicket
 from .onboarding_survey import OnboardingSurvey
+from .analytics_event import AnalyticsEvent, DailyAnalyticsSnapshot
+from .security_audit_log import SecurityAuditLog
 
 __all__ = [
     "User",
@@ -58,4 +60,7 @@ __all__ = [
     "WalletLedger",
     "SupportTicket",
     "OnboardingSurvey",
+    "AnalyticsEvent",
+    "DailyAnalyticsSnapshot",
+    "SecurityAuditLog",
 ]

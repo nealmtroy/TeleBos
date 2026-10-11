@@ -607,7 +607,10 @@ async def get_smm_stats(db: AsyncSession) -> dict:
 
     # Revenue
     revenue_result = await db.execute(
-        select(func.sum(Order.total_price)).where(Order.status == "Success")
+        select(func.coalesce(func.sum(Order.total_price), 0)).where(
+            Order.status.in_(["Completed", "Processing", "In progress"]),
+            Order.is_refunded.is_(False),
+        )
     )
     total_revenue = revenue_result.scalar() or 0
 

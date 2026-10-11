@@ -959,4 +959,110 @@ def run_migrations(connection):
         except Exception as e:
             logger.warning("Could not create onboarding_surveys table: %s", e)
 
+    # ── Analytics Foundation Tables & Performance Indexes ───────────────────
+    if "analytics_events" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS analytics_events (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                        event_category VARCHAR(32) NOT NULL,
+                        event_name VARCHAR(64) NOT NULL,
+                        properties JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        dedup_key VARCHAR(128) UNIQUE,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT chk_analytics_event_category CHECK (
+                            event_category IN ('product', 'financial', 'automation', 'account', 'subscription', 'system')
+                        )
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_user_id ON analytics_events(user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_category ON analytics_events(event_category)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_name ON analytics_events(event_name)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_created_at ON analytics_events(created_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_name_created ON analytics_events(event_name, created_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_user_created ON analytics_events(user_id, created_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_analytics_events_category_created ON analytics_events(event_category, created_at)"))
+        except Exception as e:
+            logger.warning("Could not create analytics_events table: %s", e)
+
+    if "daily_analytics_snapshots" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS daily_analytics_snapshots (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        snapshot_date DATE NOT NULL UNIQUE,
+                        new_users_count INT NOT NULL DEFAULT 0,
+                        active_users_count INT NOT NULL DEFAULT 0,
+                        total_broadcast_sent INT NOT NULL DEFAULT 0,
+                        total_broadcast_failed INT NOT NULL DEFAULT 0,
+                        total_invites_sent INT NOT NULL DEFAULT 0,
+                        smm_gross_revenue BIGINT NOT NULL DEFAULT 0,
+                        smm_provider_cost BIGINT NOT NULL DEFAULT 0,
+                        smm_net_margin BIGINT NOT NULL DEFAULT 0,
+                        marketplace_gmv BIGINT NOT NULL DEFAULT 0,
+                        marketplace_margin BIGINT NOT NULL DEFAULT 0,
+                        topup_volume BIGINT NOT NULL DEFAULT 0,
+                        withdraw_volume BIGINT NOT NULL DEFAULT 0,
+                        user_balance_liability BIGINT NOT NULL DEFAULT 0,
+                        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_snapshots_date ON daily_analytics_snapshots(snapshot_date)"))
+        except Exception as e:
+            logger.warning("Could not create daily_analytics_snapshots table: %s", e)
+
+    # Performance indexes on existing high-volume tables for date-range analytics
+    for idx_sql in [
+        "CREATE INDEX IF NOT EXISTS ix_orders_created_at ON orders (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_broadcast_logs_created_at ON broadcast_logs (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_telegram_accounts_created_at ON telegram_accounts (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_users_created_at ON users (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)",
+        "CREATE INDEX IF NOT EXISTS ix_wallet_transactions_created_at ON wallet_transactions (created_at)",
+    ]:
+        try:
+            connection.execute(text(idx_sql))
+        except Exception as e:
+            logger.warning("Could not create analytics index %s: %s", idx_sql, e)
+
+    # ── Security Audit Logs Table & Performance Indexes ──────────────────────
+    if "security_audit_logs" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS security_audit_logs (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                        actor_email VARCHAR(255),
+                        actor_role VARCHAR(32),
+                        action VARCHAR(64) NOT NULL,
+                        target_type VARCHAR(64) NOT NULL DEFAULT 'system',
+                        target_id VARCHAR(128),
+                        target_label VARCHAR(255),
+                        outcome VARCHAR(16) NOT NULL DEFAULT 'success',
+                        severity VARCHAR(16) NOT NULL DEFAULT 'info',
+                        ip_address VARCHAR(64),
+                        user_agent VARCHAR(255),
+                        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_created_at ON security_audit_logs(created_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_action ON security_audit_logs(action)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_actor_id ON security_audit_logs(actor_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_actor_email ON security_audit_logs(actor_email)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_outcome ON security_audit_logs(outcome)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_severity ON security_audit_logs(severity)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_action_created ON security_audit_logs(action, created_at)"))
+        except Exception as e:
+            logger.warning("Could not create security_audit_logs table: %s", e)
+
 
