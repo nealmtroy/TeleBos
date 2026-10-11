@@ -5,7 +5,7 @@ export interface WalletTransactionItem {
   id: string;
   user_id: string;
   user_email?: string | null;
-  type: "topup" | "withdraw" | "redeem" | "admin_adjustment";
+  type: "topup" | "withdraw" | "redeem" | "admin_adjustment" | "subscription" | "smm" | "marketplace";
   amount: number;
   total_amount?: number | null;
   method: string;
@@ -40,6 +40,7 @@ export interface TopupStatusResponse {
   amount: number;
   total_amount: number;
   is_paid: boolean;
+  type?: string | null;
   processed_at?: string | null;
 }
 
@@ -86,10 +87,24 @@ export function useRequestTopup() {
   });
 }
 
+export function useRequestWithdrawOtp() {
+  return useMutation({
+    mutationFn: async (payload: { amount: number; method: string; note: string }) => {
+      const { data } = await api.post("/wallet/withdraw/otp/request", payload);
+      return data as {
+        message: string;
+        email_masked: string;
+        expires_in_seconds: number;
+        cooldown_seconds: number;
+      };
+    },
+  });
+}
+
 export function useRequestWithdraw() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { amount: number; method: string; note: string }) => {
+    mutationFn: async (payload: { amount: number; method: string; note: string; otp_code: string }) => {
       const { data } = await api.post("/wallet/withdraw", payload);
       return data;
     },
@@ -165,6 +180,10 @@ export function useCheckTopupStatus() {
         queryClient.invalidateQueries({ queryKey: ["wallet", "transactions"] });
         queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
         queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["orders"] });
+        queryClient.invalidateQueries({ queryKey: ["marketplace"] });
+        queryClient.invalidateQueries({ queryKey: ["accounts"] });
       }
     },
   });

@@ -33,6 +33,20 @@ const initialTransactions = [
 
 let mockTransactions = [...initialTransactions];
 
+const { mockPush } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => "/wallet",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/api", () => {
   let txCounter = 1;
   return {
@@ -109,6 +123,7 @@ function submitButton(container: HTMLElement): HTMLButtonElement {
 }
 
 beforeEach(() => {
+  mockPush.mockClear();
   useI18nStore.setState({ locale: "en" });
   mockTransactions = JSON.parse(JSON.stringify(initialTransactions));
 });
@@ -198,16 +213,13 @@ describe("WalletPage — top-up flow with QRIS", () => {
     expect(container.textContent).not.toContain("BCA");
   });
 
-  it("generates a QRIS code and shows the download QR button after submitting", async () => {
+  it("submits top-up request and redirects to dedicated invoice page", async () => {
     const { container, amount } = renderWallet();
     fireEvent.change(amount(), { target: { value: "100000" } });
     fireEvent.click(submitButton(container));
 
     await vi.waitFor(() => {
-      // The QR code SVG is rendered
-      expect(container.querySelector("#qris-qr-code")).toBeInTheDocument();
-      // Download QR button is displayed
-      expect(container.textContent).toContain("Download QR Code");
+      expect(mockPush).toHaveBeenCalledWith(expect.stringMatching(/\/wallet\/invoice\/tx-/));
     });
   });
 
@@ -220,21 +232,6 @@ describe("WalletPage — top-up flow with QRIS", () => {
       const pills = container.querySelectorAll("li span.rounded-full");
       expect([...pills].some((el) => el.textContent === "Pending")).toBe(true);
     });
-  });
-
-  it("allows returning to amount selection via Change Amount button", async () => {
-    const { container, amount } = renderWallet();
-    fireEvent.change(amount(), { target: { value: "75000" } });
-    fireEvent.click(submitButton(container));
-
-    await vi.waitFor(() => {
-      expect(container.textContent).toContain("Download QR Code");
-    });
-
-    const changeBtn = within(container).getByRole("button", { name: /^Change Amount$/i });
-    fireEvent.click(changeBtn);
-
-    expect(container.querySelector("#wallet-amount")).toBeInTheDocument();
   });
 });
 
@@ -252,5 +249,28 @@ describe("WalletPage — request history", () => {
     await vi.waitFor(() => {
       expect(container.textContent).toContain("1 pending");
     });
+  });
+});
+
+describe("WalletPage — language consistency (EN vs ID)", () => {
+  it("renders pure English text without Indonesian leakage when locale is 'en'", async () => {
+    useI18nStore.setState({ locale: "en" });
+    const { container } = renderWallet();
+
+    expect(container.textContent).toContain("Available Balance");
+    expect(container.textContent).toContain("Withdrawal Account");
+    expect(container.textContent).toContain("Transaction Terms");
+    expect(container.textContent).toContain("Supports:");
+    expect(container.textContent).not.toContain("Rekening Penarikan");
+    expect(container.textContent).not.toContain("Ketentuan Transaksi");
+  });
+
+  it("renders Indonesian text properly when locale is 'id'", async () => {
+    useI18nStore.setState({ locale: "id" });
+    const { container } = renderWallet();
+
+    expect(container.textContent).toContain("Rekening Penarikan");
+    expect(container.textContent).toContain("Ketentuan Transaksi");
+    expect(container.textContent).toContain("Mendukung:");
   });
 });

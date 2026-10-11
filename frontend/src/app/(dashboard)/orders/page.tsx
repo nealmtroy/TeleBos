@@ -763,7 +763,14 @@ function OrderHistoryContent() {
         />
         <MetricReadout
           label={locale === "id" ? "Sedang Diproses" : "In Progress"}
-          value={`${metrics.inProgressCount} ${locale === "id" ? "Pesanan" : "Orders"}`}
+          value={
+            <span className="inline-flex items-baseline gap-1">
+              <span>{metrics.inProgressCount}</span>
+              <span className="text-xs font-normal text-muted-foreground hidden sm:inline">
+                {locale === "id" ? "Pesanan" : "Orders"}
+              </span>
+            </span>
+          }
           subtext={
             metrics.inProgressCount > 0
               ? locale === "id"

@@ -18,7 +18,7 @@ import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import Link from "next/link";
 
-import { useT } from "@/lib/i18n";
+import { useT, useI18nStore } from "@/lib/i18n";
 import { useWalletTransactions, useCheckTopupStatus } from "@/hooks/use-wallet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,11 +48,53 @@ const QRIS_SUPPORTED_CHANNELS = [
 
 const displayTxId = (id: string) => `#TRX-${id.replace("wrn_", "").toUpperCase()}`;
 
+function getInvoiceDetails(type?: string, _: (key: string) => string = (k) => k) {
+  switch (type) {
+    case "subscription":
+      return {
+        title: _("wallet.invoiceSubscriptionTitle"),
+        subtitle: _("wallet.invoiceSubscriptionSubtitle"),
+        successTitle: _("wallet.invoiceSubscriptionSuccessTitle"),
+        successDesc: _("wallet.invoiceSubscriptionSuccessDesc"),
+        ctaText: _("wallet.invoiceSubscriptionCta"),
+        ctaHref: "/subscriptions",
+      };
+    case "smm":
+      return {
+        title: _("wallet.invoiceSmmTitle"),
+        subtitle: _("wallet.invoiceSmmSubtitle"),
+        successTitle: _("wallet.invoiceSmmSuccessTitle"),
+        successDesc: _("wallet.invoiceSmmSuccessDesc"),
+        ctaText: _("wallet.invoiceSmmCta"),
+        ctaHref: "/orders/history",
+      };
+    case "marketplace":
+      return {
+        title: _("wallet.invoiceMarketplaceTitle"),
+        subtitle: _("wallet.invoiceMarketplaceSubtitle"),
+        successTitle: _("wallet.invoiceMarketplaceSuccessTitle"),
+        successDesc: _("wallet.invoiceMarketplaceSuccessDesc"),
+        ctaText: _("wallet.invoiceMarketplaceCta"),
+        ctaHref: "/accounts",
+      };
+    default:
+      return {
+        title: _("wallet.invoiceTopupTitle"),
+        subtitle: _("wallet.invoiceTopupSubtitle"),
+        successTitle: _("wallet.invoiceTopupSuccessTitle"),
+        successDesc: _("wallet.invoiceTopupSuccessDesc"),
+        ctaText: _("wallet.invoiceTopupCta"),
+        ctaHref: "/wallet",
+      };
+  }
+}
+
 export default function InvoicePage() {
   const params = useParams();
   const invoiceId = params.id as string;
   const router = useRouter();
   const _ = useT();
+  const locale = useI18nStore((s) => s.locale);
   
   const { data: walletData, isLoading, refetch: refetchTxs } = useWalletTransactions({ limit: 100 });
   const checkTopupStatus = useCheckTopupStatus();
@@ -60,6 +102,8 @@ export default function InvoicePage() {
   const tx = useMemo(() => {
     return walletData?.transactions.find(t => t.id === invoiceId);
   }, [walletData, invoiceId]);
+
+  const invoiceDetails = useMemo(() => getInvoiceDetails(tx?.type, _), [tx?.type, _]);
 
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [copiedAmount, setCopiedAmount] = useState(false);
@@ -93,7 +137,8 @@ export default function InvoicePage() {
       try {
         const res = await checkTopupStatus.mutateAsync(tx.id);
         if (res.is_paid) {
-          toast.success("Pembayaran Berhasil! Saldo telah masuk ke akun Anda.");
+          const details = getInvoiceDetails(tx.type, _);
+          toast.success(details.successTitle);
           refetchTxs();
         }
       } catch {
@@ -115,10 +160,10 @@ export default function InvoicePage() {
     return (
       <div className="max-w-2xl mx-auto mt-10 text-center space-y-4">
         <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
-        <h1 className="text-xl font-bold">Invoice Tidak Ditemukan</h1>
-        <p className="text-muted-foreground">Transaksi tidak ditemukan atau Anda tidak memiliki akses.</p>
+        <h1 className="text-xl font-bold">{_("wallet.invoiceNotFound")}</h1>
+        <p className="text-muted-foreground">{_("wallet.invoiceNotFoundDesc")}</p>
         <Link href="/wallet">
-          <Button variant="outline" className="mt-4">Kembali ke Dompet</Button>
+          <Button variant="outline" className="mt-4">{_("wallet.backToWallet")}</Button>
         </Link>
       </div>
     );
@@ -250,13 +295,14 @@ export default function InvoicePage() {
       const res = await checkTopupStatus.mutateAsync(tx.id);
       if (res.is_paid) {
         refetchTxs();
-        toast.success("Pembayaran Berhasil! Saldo telah ditambahkan ke akun Anda.");
+        const details = getInvoiceDetails(tx.type, _);
+        toast.success(details.successTitle);
       } else {
-        toast.info("Pembayaran belum terdeteksi. Sistem mengecek status otomatis setiap 5 detik.");
+        toast.info(_("wallet.paymentPendingToast"));
         refetchTxs();
       }
     } catch {
-      toast.error("Gagal memeriksa status pembayaran. Silakan coba beberapa saat lagi.");
+      toast.error(_("wallet.paymentCheckFailed"));
     } finally {
       setVerifying(false);
     }
@@ -266,37 +312,37 @@ export default function InvoicePage() {
   const qrString = generateQrisString(tx.id, tx.total_amount ?? tx.amount);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="max-w-xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/wallet")} className="rounded-full">
+        <Button variant="ghost" size="icon" onClick={() => router.push(invoiceDetails.ctaHref || "/wallet")} className="rounded-full">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{tx.id}</h1>
-          <p className="text-muted-foreground text-sm">Selesaikan pembayaran untuk menambah saldo Anda.</p>
+          <h1 className="text-base sm:text-lg font-bold text-foreground truncate">{invoiceDetails.title} ({tx.id})</h1>
+          <p className="text-muted-foreground text-sm">{invoiceDetails.subtitle}</p>
         </div>
       </div>
 
-      <div className="bg-card text-card-foreground border rounded-2xl shadow-sm p-6 space-y-6">
+      <div className="bg-card text-card-foreground border rounded-2xl shadow-sm p-4 sm:p-5 space-y-4">
         
         {/* Status bar */}
-        <div className="flex items-center justify-between pb-4 border-b border-border">
+        <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground">Status Pembayaran:</span>
+            <span className="text-sm font-semibold text-muted-foreground">{_("wallet.paymentStatusLabel")}</span>
             {isPending ? (
               <Badge variant="warning" className="gap-1.5 px-3 py-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                Menunggu Pembayaran
+                {_("wallet.waitingForPayment")}
               </Badge>
             ) : tx.status === "approved" ? (
               <Badge variant="success" className="bg-emerald-500/15 text-emerald-600 gap-1.5 px-3 py-1 border-0">
                 <CheckCircle2 className="h-4 w-4" />
-                Berhasil
+                {_("wallet.successful")}
               </Badge>
             ) : (
               <Badge variant="destructive" className="gap-1.5 px-3 py-1">
-                Dibatalkan
+                {_("wallet.cancelled")}
               </Badge>
             )}
           </div>
@@ -310,47 +356,47 @@ export default function InvoicePage() {
 
         {/* QR Code Presentation Box */}
         {isPending && (
-          <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-card border-2 shadow-sm space-y-5">
+          <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-card border-2 shadow-sm space-y-3">
             <div className="flex items-center gap-2">
               <div className="bg-[#EE1D24] text-white px-3 py-0.5 rounded font-black text-sm tracking-wider">
                 QRIS
               </div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Standar Pembayaran Nasional
+                {_("wallet.nationalPaymentStandard")}
               </span>
             </div>
 
             <div
               id="qris-qr-container"
               data-keep-white="true"
-              className="p-4 bg-white rounded-xl border shadow-sm flex items-center justify-center min-h-[250px]"
+              className="p-3 bg-white rounded-xl border shadow-sm flex items-center justify-center"
             >
               {tx.qris_image ? (
                 <img
                   id="qris-image-el"
                   src={tx.qris_image}
                   alt={`QRIS ${tx.id}`}
-                  className="w-64 h-64 object-contain rounded-md"
+                  className="w-44 h-44 sm:w-52 sm:h-52 object-contain rounded-md"
                 />
               ) : tx.qris_url ? (
                 <img
                   id="qris-image-el"
                   src={tx.qris_url}
                   alt={`QRIS ${tx.id}`}
-                  className="w-64 h-64 object-contain rounded-md"
+                  className="w-44 h-44 sm:w-52 sm:h-52 object-contain rounded-md"
                 />
               ) : (
                 <QRCode
                   id="qris-qr-code"
                   value={qrString}
-                  size={220}
+                  size={180}
                   level="M"
                   className="h-auto max-w-full"
                 />
               )}
             </div>
 
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-1.5">
               <div className="flex items-center justify-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground font-mono">
                   {tx.id}
@@ -363,7 +409,7 @@ export default function InvoicePage() {
                   {copiedInvoice ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
-              <p className="text-3xl font-black text-foreground tabular-nums flex items-center justify-center gap-2">
+              <p className="text-xl sm:text-2xl font-black text-foreground tabular-nums flex items-center justify-center gap-2">
                 {formatIDR(tx.total_amount ?? tx.amount)}
                 <button
                   type="button"
@@ -373,22 +419,17 @@ export default function InvoicePage() {
                   {copiedAmount ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                 </button>
               </p>
-              
-              {isPending && (tx.total_amount && tx.total_amount !== tx.amount) && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium pt-1">
-                  *Wajib transfer sesuai nominal hingga 3 digit terakhir.
-                </p>
-              )}
             </div>
 
-            <div className="w-full max-w-xs pt-3">
+
+            <div className="w-full max-w-xs pt-1">
               <Button
                 type="button"
                 onClick={handleDownloadQR}
                 className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Download className="h-4 w-4" />
-                <span>Simpan Kode QR</span>
+                <span>{_("wallet.saveQrCode")}</span>
               </Button>
             </div>
           </div>
@@ -397,7 +438,7 @@ export default function InvoicePage() {
         {/* Supported Channels & Info */}
         {isPending && (
           <>
-            <div className="rounded-xl border bg-muted/50 p-4 space-y-3">
+            <div className="rounded-xl border bg-muted/50 p-3 space-y-2">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
                 {_("wallet.qrisSupported")}
               </span>
@@ -413,28 +454,28 @@ export default function InvoicePage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/20 p-5 space-y-3">
+            <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/20 p-3 sm:p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-200">
                 <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
                 <span>{_("wallet.paymentStepsTitle")}</span>
               </div>
               <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800 dark:text-blue-300/90 leading-relaxed ml-1">
-                <li>Buka aplikasi m-Banking atau E-Wallet pilihan Anda (BCA, Mandiri, BRI, DANA, GoPay, OVO, dll).</li>
-                <li>Scan kode QR di atas atau unduh gambar QRIS.</li>
-                <li>Pastikan total nominal transfer sama persis dengan yang tertera (termasuk kode unik).</li>
-                <li>Sistem otomatis mendeteksi dan menambah saldo akun Anda tanpa perlu konfirmasi manual.</li>
+                <li>{_("wallet.paymentStep1")}</li>
+                <li>{_("wallet.paymentStep2")}</li>
+                <li>{_("wallet.paymentStep3")}</li>
+                <li>{_("wallet.paymentStep4")}</li>
               </ol>
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-border">
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.push("/wallet")}
                 className="w-full sm:w-auto flex-1 bg-card hover:bg-muted border"
               >
-                Kembali
+                {_("wallet.back")}
               </Button>
               <Button
                 type="button"
@@ -445,20 +486,100 @@ export default function InvoicePage() {
                 {verifying ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>Mengecek...</span>
+                    <span>{_("wallet.checkingStatus")}</span>
                   </>
                 ) : (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    <span>Cek Pembayaran</span>
+                    <span>{_("wallet.checkPayment")}</span>
                   </>
                 )}
               </Button>
             </div>
             <p className="text-xs text-center text-muted-foreground mt-4">
-              Status pembayaran otomatis diperiksa setiap 5 detik. Saldo langsung bertambah setelah transfer berhasil.
+              {_("wallet.autoCheckNotice")}
             </p>
           </>
+        )}
+
+        {/* Approved Success Presentation Box */}
+        {tx.status === "approved" && (
+          <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl bg-card border shadow-sm text-center space-y-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
+              <CheckCircle2 className="h-9 w-9" />
+            </div>
+
+            <div className="space-y-1.5 max-w-md">
+              <h2 className="text-xl font-bold tracking-tight text-foreground">
+                {invoiceDetails.successTitle}
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {invoiceDetails.successDesc}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-4 w-full max-w-sm text-left space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{_("wallet.transactionId")}:</span>
+                <span className="font-mono font-semibold text-foreground">{tx.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{_("wallet.invoiceTotalPaid")}</span>
+                <span className="font-bold text-foreground">{formatIDR(tx.total_amount ?? tx.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{_("wallet.methodProvider")}:</span>
+                <span className="font-semibold text-foreground uppercase">{tx.method || "QRIS"}</span>
+              </div>
+              {tx.processed_at && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{_("wallet.completionTime")}</span>
+                  <span className="text-foreground">
+                    {new Date(tx.processed_at).toLocaleString(locale === "id" ? "id-ID" : "en-US")}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm pt-2">
+              <Link href={invoiceDetails.ctaHref} className="flex-1">
+                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold cursor-pointer">
+                  {invoiceDetails.ctaText}
+                </Button>
+              </Link>
+              <Link href="/wallet" className="flex-1">
+                <Button variant="outline" className="w-full cursor-pointer">
+                  {_("wallet.viewWallet")}
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Rejected Presentation Box */}
+        {tx.status === "rejected" && (
+          <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl bg-card border shadow-sm text-center space-y-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shadow-sm">
+              <AlertCircle className="h-9 w-9" />
+            </div>
+
+            <div className="space-y-1.5 max-w-md">
+              <h2 className="text-xl font-bold tracking-tight text-foreground">
+                {_("wallet.cancelledExpiredTitle")}
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {_("wallet.cancelledExpiredDesc")}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Link href="/wallet">
+                <Button variant="outline" className="cursor-pointer">
+                  {_("wallet.backToWallet")}
+                </Button>
+              </Link>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@ export interface SubscriptionInfo {
   expires_at: string | null;
   is_active: boolean;
   days_remaining: number | null;
+  seconds_remaining?: number | null;
 }
 
 export function useMySubscription() {
@@ -30,6 +31,25 @@ export function useRedeemCode() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscription", "me"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+  });
+}
+
+export function useCheckoutSubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      plan_id: string;
+      billing_cycle: string;
+      payment_method?: "auto" | "balance" | "qris";
+    }) => {
+      const { data } = await api.post("/subscriptions/checkout", params);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
     },
   });
 }

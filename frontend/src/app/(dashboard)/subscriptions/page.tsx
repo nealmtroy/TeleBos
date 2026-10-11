@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { useMySubscription, useRedeemCode } from "@/hooks/use-subscriptions";
+import { useRouter } from "next/navigation";
+import { useMySubscription, useRedeemCode, useCheckoutSubscription } from "@/hooks/use-subscriptions";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,10 @@ import {
   Loader2,
   ChevronDown,
   Table as TableIcon,
+  Wallet,
+  QrCode,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -55,9 +59,23 @@ import {
   TableCell,
 } from "@/components/ui/table";
 
-const PLAN_KEYS = ["basic", "pro", "premium"] as const;
+const PLAN_KEYS = ["freetrial", "basic", "pro", "premium"] as const;
 type PlanKey = (typeof PLAN_KEYS)[number];
 type CurrentPlanKey = PlanKey | "owner";
+
+const PLAN_DISPLAY_NAMES: Record<CurrentPlanKey, string> = {
+  freetrial: "Free Trial",
+  basic: "Starter",
+  pro: "Pro",
+  premium: "Business",
+  owner: "Owner Access",
+};
+
+const PLAN_PRICES: Record<string, { monthly: number; yearly: number }> = {
+  basic: { monthly: 5000, yearly: 50000 },
+  pro: { monthly: 10000, yearly: 100000 },
+  premium: { monthly: 20000, yearly: 200000 },
+};
 
 const PLAN_META: Record<
   CurrentPlanKey,
@@ -71,6 +89,15 @@ const PLAN_META: Record<
     badgeBg: string;
   }
 > = {
+  freetrial: {
+    icon: Clock,
+    statusBg: "bg-sky-50",
+    statusText: "text-sky-700",
+    cardRing: "ring-sky-200",
+    iconColor: "text-sky-600",
+    iconBg: "bg-sky-100",
+    badgeBg: "bg-sky-100 text-sky-700 border-sky-200",
+  },
   basic: {
     icon: Zap,
     statusBg: "bg-slate-50",
@@ -99,7 +126,7 @@ const PLAN_META: Record<
     badgeBg: "bg-amber-50 text-amber-700 border-amber-200",
   },
   owner: {
-    icon: Crown,
+    icon: Shield,
     statusBg: "bg-indigo-50/60",
     statusText: "text-indigo-700",
     cardRing: "ring-indigo-200",
@@ -110,15 +137,16 @@ const PLAN_META: Record<
 };
 
 // Features matrix: which features are included in which plans
-const FEATURE_MATRIX: { key: string; basic: boolean; pro: boolean; premium: boolean }[] = [
-  { key: "featureChat", basic: true, pro: true, premium: true },
-  { key: "featureAccounts", basic: false, pro: true, premium: true },
-  { key: "featureBroadcast", basic: false, pro: true, premium: true },
-  { key: "featureAutoReply", basic: false, pro: true, premium: true },
-  { key: "featureContacts", basic: false, pro: true, premium: true },
-  { key: "featureInvite", basic: false, pro: false, premium: true },
-  { key: "featurePriority", basic: false, pro: false, premium: true },
-  { key: "featureAllFuture", basic: false, pro: false, premium: true },
+const FEATURE_MATRIX: { name: string; freetrial: boolean; basic: boolean; pro: boolean; premium: boolean }[] = [
+  { name: "Direct Chat & Obrolan Teks", freetrial: true, basic: true, pro: true, premium: true },
+  { name: "Auto Reply Responder", freetrial: true, basic: true, pro: true, premium: true },
+  { name: "Auto Join Groups & Channels", freetrial: false, basic: true, pro: true, premium: true },
+  { name: "Mass Broadcast (Pesan Massal)", freetrial: false, basic: false, pro: true, premium: true },
+  { name: "Bebas Watermark Pesan", freetrial: false, basic: false, pro: true, premium: true },
+  { name: "Age Checker (Cek Umur Akun)", freetrial: false, basic: false, pro: true, premium: true },
+  { name: "Public Index Groups & Channels", freetrial: false, basic: false, pro: true, premium: true },
+  { name: "Member Inviter", freetrial: false, basic: false, pro: true, premium: true },
+  { name: "Prioritas Antrean Server Tercepat", freetrial: false, basic: false, pro: false, premium: true },
 ];
 
 export default function SubscriptionPage() {
@@ -127,16 +155,20 @@ export default function SubscriptionPage() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { data: subscription, isLoading, error } = useMySubscription();
   const redeemMutation = useRedeemCode();
+  const checkoutMutation = useCheckoutSubscription();
+  const router = useRouter();
 
   const [showMatrix, setShowMatrix] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
   const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
 
-  const currentPlan = (subscription?.plan || user?.role || "basic") as CurrentPlanKey;
+  const currentPlan = (subscription?.plan || user?.role || "freetrial") as CurrentPlanKey;
   const isActive = subscription?.is_active ?? false;
   const expiresAt = subscription?.expires_at ?? null;
   const daysRemaining = subscription?.days_remaining ?? null;
+  const secondsRemaining = subscription?.seconds_remaining ?? null;
 
   // Premium and Owner are at or above the top sellable tier, so the page stops
   // being a sales surface for them: it shows only their current status and
@@ -170,13 +202,72 @@ export default function SubscriptionPage() {
     }
   }
 
+  const [paymentModalPlan, setPaymentModalPlan] = useState<{
+    id: string;
+    title: string;
+    price: number;
+  } | null>(null);
+
+  async function handleCheckoutWithBalance(planId: string) {
+    try {
+      const response = await checkoutMutation.mutateAsync({
+        plan_id: planId,
+        billing_cycle: billingCycle,
+        payment_method: "balance",
+      });
+      toast.success(
+        response.message || "Langganan berhasil diaktifkan menggunakan saldo dompet Anda!"
+      );
+      setPaymentModalPlan(null);
+      await fetchMe();
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Gagal mengaktifkan langganan dengan saldo";
+      toast.error(msg);
+    }
+  }
+
+  async function handleCheckoutQRIS(planId: string) {
+    try {
+      const response = await checkoutMutation.mutateAsync({
+        plan_id: planId,
+        billing_cycle: billingCycle,
+        payment_method: "qris",
+      });
+      if (response.invoice_id) {
+        toast.success(_("subscription.invoiceCreated") || "Invoice created! Redirecting...");
+        setPaymentModalPlan(null);
+        router.push(`/wallet/invoice/${response.invoice_id}`);
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || "Failed to create invoice";
+      toast.error(msg);
+    }
+  }
+
+  function handleSelectPlan(planId: string, title: string) {
+    const price = PLAN_PRICES[planId]?.[billingCycle] || 0;
+    const userBalance = user?.balance ?? 0;
+    if (userBalance >= price) {
+      setPaymentModalPlan({ id: planId, title, price });
+    } else {
+      toast.info("Saldo tidak mencukupi, membuat tagihan pembayaran QRIS...");
+      handleCheckoutQRIS(planId);
+    }
+  }
+
   // Define tier card data matching ChatGPT style layout
   const tierCards: {
     id: PlanKey;
     title: string;
     tagline: string;
     desc: string;
-    price: string;
+    monthlyPrice: string;
+    yearlyPrice: string;
+    yearlyEquivalentPrice: string;
+    yearlyDiscount: string;
     period: string;
     isCurrent: boolean;
     isPopular: boolean;
@@ -185,11 +276,38 @@ export default function SubscriptionPage() {
     footnote: React.ReactNode;
   }[] = [
     {
-      id: "basic",
-      title: "Free",
+      id: "freetrial",
+      title: "Free Trial",
       tagline: _("subscription.tryTelebos"),
-      desc: "Jelajahi pengelolaan akun Telegram, fitur direct chat, dan perkiraan umur akun secara mudah.",
-      price: "Rp 0",
+      desc: "Coba fitur dasar selama 5 jam sejak pendaftaran. Dilengkapi watermark.",
+      monthlyPrice: "Gratis",
+      yearlyPrice: "Gratis",
+      yearlyEquivalentPrice: "Rp 0",
+      yearlyDiscount: "0%",
+      period: "5 jam",
+      isCurrent: currentPlan === "freetrial",
+      isPopular: false,
+      headerFeature: "Mulai dari uji coba gratis",
+      features: [
+        { icon: MessageSquare, text: "Obrolan teks & manajemen chat langsung" },
+        { icon: Smartphone, text: "1 akun Telegram aktif terhubung" },
+        { icon: Bot, text: "Sistem auto-reply aktif" },
+        { icon: Clock, text: "Masa aktif trial 5 jam" },
+        { icon: Shield, text: "Pesan memiliki watermark aplikasi" },
+      ],
+      footnote: (
+        <span className="text-slate-500">Otomatis berakhir setelah 5 jam.</span>
+      ),
+    },
+    {
+      id: "basic",
+      title: "Starter",
+      tagline: _("subscription.tryTelebos"),
+      desc: "Kelola akun Telegram, auto-reply, dan auto-join grup/channel secara efisien.",
+      monthlyPrice: "Rp 5.000",
+      yearlyPrice: "Rp 50.000",
+      yearlyEquivalentPrice: "Rp 4.167",
+      yearlyDiscount: "17%",
       period: _("subscription.perMonth"),
       isCurrent: currentPlan === "basic",
       isPopular: false,
@@ -197,9 +315,9 @@ export default function SubscriptionPage() {
       features: [
         { icon: MessageSquare, text: "Obrolan teks & manajemen chat langsung" },
         { icon: Smartphone, text: "1 akun Telegram aktif terhubung" },
-        { icon: Search, text: "Pencarian katalog channel & grup publik" },
-        { icon: Clock, text: "Alat estimasi umur nomor & ID Telegram" },
-        { icon: Shield, text: "Dukungan proxy & sesi terenkripsi standar" },
+        { icon: Bot, text: "Sistem auto-reply aktif" },
+        { icon: FolderSync, text: "Auto-join grup & channel publik" },
+        { icon: Shield, text: "Pesan memiliki watermark aplikasi" },
       ],
       footnote: (
         <Link href="/help" className="hover:underline flex items-center gap-1">
@@ -210,39 +328,45 @@ export default function SubscriptionPage() {
     },
     {
       id: "pro",
-      title: "TeleBos Pro",
+      title: "Pro",
       tagline: _("subscription.expandedAccess"),
-      desc: "Kirim pesan siaran massal dan aktifkan bot penjawab otomatis dengan kapasitas diperluas.",
-      price: "Rp 99.000",
+      desc: "Kirim pesan siaran massal tanpa watermark dan kelola hingga 3 akun.",
+      monthlyPrice: "Rp 10.000",
+      yearlyPrice: "Rp 100.000",
+      yearlyEquivalentPrice: "Rp 8.333",
+      yearlyDiscount: "17%",
       period: _("subscription.perMonth"),
       isCurrent: currentPlan === "pro",
       isPopular: false,
       headerFeature: _("subscription.everythingInFree"),
       features: [
-        { icon: Radio, text: "Siaran broadcast pesan massal & terjadwal" },
+        { icon: Radio, text: "Siaran broadcast pesan massal tanpa watermark" },
         { icon: Bot, text: "Auto-reply responder otomatis untuk pesan masuk" },
-        { icon: Users, text: "Kelola hingga 10 akun Telegram terhubung" },
-        { icon: FolderSync, text: "Manajemen folder akun & filter kategori" },
-        { icon: Sliders, text: "Pengaturan jeda anti flood-wait kustom" },
+        { icon: Users, text: "Kelola hingga 3 akun Telegram terhubung" },
+        { icon: Search, text: "Age Checker & Public Index grup/channel" },
+        { icon: UserPlus, text: "Member Inviter & Auto-join grup" },
         { icon: FileText, text: "Sinkronisasi kontak Telegram & histori log" },
       ],
       footnote: "Pilihan terbaik untuk pengelola channel & grup Telegram aktif.",
     },
     {
       id: "premium",
-      title: "TeleBos Premium",
+      title: "Business",
       tagline: _("subscription.yourTelegramAssistant"),
-      desc: "Solusi terlengkap: scraper lead anggota grup, auto-invite target, dan prioritas server tercepat.",
-      price: "Rp 249.000",
+      desc: "Solusi terlengkap: kapasitas 5 akun, scraper member target, auto-invite, dan prioritas server tercepat.",
+      monthlyPrice: "Rp 20.000",
+      yearlyPrice: "Rp 200.000",
+      yearlyEquivalentPrice: "Rp 16.667",
+      yearlyDiscount: "17%",
       period: _("subscription.perMonth"),
       isCurrent: currentPlan === "premium",
       isPopular: true,
       headerFeature: _("subscription.everythingInPro"),
       features: [
-        { icon: Crown, text: "Koneksi akun Telegram tanpa batas (Unlimited)" },
-        { icon: UserPlus, text: "Scrape member target & auto-invite ke grup Anda" },
-        { icon: Zap, text: "Antrean eksekusi server tercepat & prioritas tinggi" },
-        { icon: Sparkles, text: "Otomasi reaksi postingan & booster views" },
+        { icon: Crown, text: "Koneksi hingga 5 akun Telegram aktif" },
+        { icon: Radio, text: "Siaran broadcast tanpa watermark & antrean tercepat" },
+        { icon: UserPlus, text: "Scrape member target & auto-invite ke grup" },
+        { icon: Search, text: "Age Checker & Public Index grup/channel" },
         { icon: ShieldCheck, text: "Banding otomatis status SpamBot Telegram" },
         { icon: FolderSync, text: "Filter rotasi proxy & proteksi multi-sesi" },
         { icon: CheckCircle2, text: "Semua fitur masa depan & support prioritas 24/7" },
@@ -283,27 +407,41 @@ export default function SubscriptionPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">{_("subscription.currentPlan")}:</span>
                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
-                  {currentPlan}
+                  {PLAN_DISPLAY_NAMES[currentPlan] || currentPlan}
                 </span>
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
                     currentPlan === "owner"
                       ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                      : currentPlan === "freetrial"
+                      ? isActive
+                        ? "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                       : isActive
                       ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                      : "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                   )}
                 >
                   {currentPlan === "owner" ? (
                     <Crown className="h-3 w-3" />
+                  ) : currentPlan === "freetrial" ? (
+                    isActive ? (
+                      <Clock className="h-3 w-3 text-sky-600 dark:text-sky-400" />
+                    ) : (
+                      <XCircle className="h-3 w-3 text-slate-400" />
+                    )
                   ) : isActive ? (
                     <CheckCircle className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <XCircle className="h-3 w-3 text-slate-400" />
+                    <XCircle className="h-3 w-3 text-rose-500" />
                   )}
                   {currentPlan === "owner"
                     ? _("subscription.lifetime")
+                    : currentPlan === "freetrial"
+                    ? isActive
+                      ? "Trial Aktif"
+                      : "Trial Selesai"
                     : isActive
                     ? _("subscription.active")
                     : _("subscription.expired")}
@@ -311,7 +449,28 @@ export default function SubscriptionPage() {
               </div>
 
               {/* Expiry detail */}
-              {currentPlan !== "basic" && currentPlan !== "owner" && expiresAt && (
+              {currentPlan === "freetrial" ? (
+                isActive && secondsRemaining !== null && secondsRemaining > 0 ? (
+                  <div className="flex items-center gap-2 text-xs text-sky-700 dark:text-sky-300 mt-1 font-medium">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Trial —{" "}
+                      <strong>
+                        {Math.floor(secondsRemaining / 3600)}j {Math.floor((secondsRemaining % 3600) / 60)}m tersisa
+                      </strong>
+                    </span>
+                    {expiresAt && (
+                      <span className="text-slate-400 font-normal">
+                        (hingga {new Date(expiresAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })})
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Masa coba gratis 5 jam telah berakhir. Silakan pilih paket langganan di bawah untuk melanjutkan.
+                  </div>
+                )
+              ) : currentPlan !== "owner" && expiresAt && (
                 <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
                   <span>
                     {_("subscription.expiresAt")}:{" "}
@@ -364,8 +523,34 @@ export default function SubscriptionPage() {
 
       {showUpsell && (
         <>
-        {/* ── 3 CHATGPT-STYLE PLAN CARDS ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        {/* Toggle Monthly/Yearly */}
+        <div className="flex justify-center items-center gap-3 mt-8 mb-6">
+          <span className={cn("text-sm font-medium", billingCycle === "monthly" ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400")}>
+            Monthly
+          </span>
+          <button
+            type="button"
+            onClick={() => setBillingCycle(prev => prev === "monthly" ? "yearly" : "monthly")}
+            className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-primary-600 transition-colors duration-200 ease-in-out focus:outline-none"
+            role="switch"
+            aria-checked={billingCycle === "yearly"}
+          >
+            <span className="sr-only">Toggle billing cycle</span>
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                billingCycle === "yearly" ? "translate-x-5" : "translate-x-0"
+              )}
+            />
+          </button>
+          <span className={cn("text-sm font-medium", billingCycle === "yearly" ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400")}>
+            Yearly
+          </span>
+        </div>
+
+        {/* ── 4 CHATGPT-STYLE PLAN CARDS ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {tierCards.map((card) => {
             return (
               <div
@@ -391,11 +576,16 @@ export default function SubscriptionPage() {
                   <div className="flex items-center justify-between">
                     <span
                       className={cn(
-                        "text-xs font-bold uppercase tracking-wider",
+                        "text-xs font-bold uppercase tracking-wider flex items-center gap-2",
                         card.isPopular ? "text-primary-600 dark:text-primary-400" : "text-slate-500 dark:text-slate-300"
                       )}
                     >
                       {card.title}
+                      {billingCycle === "yearly" && card.id !== "basic" && card.id !== "freetrial" && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
+                          Hemat {card.yearlyDiscount}
+                        </span>
+                      )}
                     </span>
                   </div>
 
@@ -410,57 +600,94 @@ export default function SubscriptionPage() {
                   </p>
 
                   {/* Price Display */}
-                  <div className="mt-5 flex items-baseline">
-                    <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
-                      {card.price}
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-300 font-medium ml-1.5">
-                      {card.period}
-                    </span>
+                  <div className="mt-5 flex flex-col gap-1">
+                    <div className="flex items-baseline">
+                      <span className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
+                        {billingCycle === "monthly" ? card.monthlyPrice : card.yearlyPrice}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-300 font-medium ml-1.5">
+                        {billingCycle === "monthly" ? card.period : "/tahun"}
+                      </span>
+                    </div>
+                    {billingCycle === "yearly" && card.id !== "basic" && card.id !== "freetrial" && (
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                        Setara {card.yearlyEquivalentPrice}/bulan, ditagih tahunan
+                      </span>
+                    )}
+                    {billingCycle === "yearly" && (card.id === "basic" || card.id === "freetrial") && (
+                      <span className="text-[11px] text-transparent select-none font-medium mt-0.5">
+                        Spacer
+                      </span>
+                    )}
                   </div>
 
                   {/* Action CTA Button */}
                   <div className="mt-5">
-                    {card.isCurrent ? (
+                    {card.id === "freetrial" ? (
                       <button
                         type="button"
                         disabled
                         className={cn(
                           "w-full py-2.5 rounded-xl text-xs font-semibold cursor-default text-center transition flex items-center justify-center gap-1.5",
-                          card.isPopular
-                            ? "bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800"
-                            : card.id === "pro"
-                            ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                            : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-200 border border-slate-200 dark:border-slate-600"
+                          currentPlan === "freetrial" && isActive
+                            ? "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
                         )}
                       >
-                        <Check className="h-3.5 w-3.5 shrink-0" />
-                        {_("subscription.yourCurrentPlan")}
+                        {currentPlan === "freetrial" && isActive ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 shrink-0" />
+                            <span>Trial Aktif</span>
+                          </>
+                        ) : (
+                          <span>Trial Selesai</span>
+                        )}
                       </button>
-                    ) : card.id === "basic" ? (
+                    ) : card.id === currentPlan && isActive ? (
                       <button
                         type="button"
                         disabled
-                        className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-600 cursor-default"
+                        className="w-full py-2.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 cursor-default flex items-center justify-center gap-1.5"
                       >
+                        <Check className="h-3.5 w-3.5 shrink-0" />
                         {_("subscription.yourCurrentPlan")}
                       </button>
                     ) : card.isPopular ? (
                       <button
                         type="button"
-                        onClick={() => setRedeemOpen(true)}
-                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                        onClick={() => handleSelectPlan(card.id, card.title)}
+                        disabled={checkoutMutation.isPending}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <span>+</span>
-                        <span>{_("subscription.upgradeToPremium")}</span>
+                        {checkoutMutation.isPending ? "Processing..." : (
+                          <>
+                            <span>+</span>
+                            <span>{card.id === currentPlan && !isActive ? "Perpanjang Business" : "Pilih Business"}</span>
+                            {user && user.balance >= (PLAN_PRICES[card.id]?.[billingCycle] || 0) && (
+                              <span className="text-[10px] font-normal opacity-90 ml-1">(Saldo Cukup)</span>
+                            )}
+                          </>
+                        )}
                       </button>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setRedeemOpen(true)}
-                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                        onClick={() => handleSelectPlan(card.id, card.title)}
+                        disabled={checkoutMutation.isPending}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {_("subscription.upgradeToPro")}
+                        {checkoutMutation.isPending ? "Processing..." : (
+                          <>
+                            <span>
+                              {card.id === currentPlan && !isActive
+                                ? `Perpanjang ${card.title}`
+                                : `Pilih ${card.title}`}
+                            </span>
+                            {user && user.balance >= (PLAN_PRICES[card.id]?.[billingCycle] || 0) && (
+                              <span className="text-[10px] font-normal text-emerald-400 ml-1">(Saldo Cukup)</span>
+                            )}
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -555,14 +782,14 @@ export default function SubscriptionPage() {
                 <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {FEATURE_MATRIX.map((row, i) => (
                     <TableRow
-                      key={row.key}
+                      key={row.name}
                       className={cn(
                         "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors",
                         i % 2 === 0 ? "bg-white dark:bg-slate-900/30" : "bg-slate-50/25 dark:bg-slate-950/30"
                       )}
                     >
                       <TableCell className="py-3 px-6 text-xs font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                        {_(`subscription.${row.key}` as any)}
+                        {row.name}
                       </TableCell>
                       {PLAN_KEYS.map((pk) => {
                         const included = row[pk];
@@ -661,6 +888,82 @@ export default function SubscriptionPage() {
               </button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── PAYMENT METHOD SELECTION MODAL ── */}
+      <Dialog
+        open={!!paymentModalPlan}
+        onOpenChange={(open) => {
+          if (!open) setPaymentModalPlan(null);
+        }}
+      >
+        <DialogContent className="max-w-md p-6 rounded-2xl bg-card border-border shadow-xl">
+          <DialogHeader className="text-left space-y-1.5 border-b border-border/50 pb-4">
+            <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-primary" />
+              <span>Metode Pembayaran</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Pilih cara pembayaran untuk mengaktifkan paket langganan Anda.
+            </DialogDescription>
+          </DialogHeader>
+
+          {paymentModalPlan && (
+            <div className="py-4 space-y-4">
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5 space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Paket yang dipilih:</span>
+                  <span className="font-bold text-foreground">
+                    {paymentModalPlan.title} ({billingCycle === "monthly" ? "1 Bulan" : "1 Tahun"})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total Tagihan:</span>
+                  <span className="font-black text-sm text-primary tabular-nums">
+                    Rp {paymentModalPlan.price.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-border/50 pt-2">
+                  <span className="text-muted-foreground">Saldo Dompet Anda:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    Rp {(user?.balance ?? 0).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                <Button
+                  type="button"
+                  onClick={() => handleCheckoutWithBalance(paymentModalPlan.id)}
+                  disabled={checkoutMutation.isPending}
+                  className="w-full h-12 rounded-xl flex items-center justify-between px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Wallet className="h-4 w-4" />
+                    <span>Bayar dengan Saldo Dompet</span>
+                  </div>
+                  <span className="text-[11px] font-semibold opacity-90 bg-emerald-700/60 px-2 py-0.5 rounded">
+                    Langsung Aktif
+                  </span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCheckoutQRIS(paymentModalPlan.id)}
+                  disabled={checkoutMutation.isPending}
+                  className="w-full h-12 rounded-xl flex items-center justify-between px-4 font-semibold text-xs border border-border hover:bg-muted cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <QrCode className="h-4 w-4 text-primary" />
+                    <span>Bayar via QRIS</span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -34,6 +34,10 @@ export interface Order {
   note: string | null;
   created_at: string;
   updated_at: string;
+  invoice_id?: string | null;
+  payment_required?: boolean;
+  is_refunded?: boolean;
+  refunded_amount?: number;
 }
 
 interface OrderCreatePayload {

@@ -1,12 +1,20 @@
 "use client";
 
 import { clampQuantity, parseQuantityInput } from "./smm-quantity";
-import { useMemo, useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   useTelegramServices,
   usePlaceOrder,
@@ -25,6 +33,7 @@ import {
   Search,
   AlertCircle,
   Loader2,
+  QrCode,
   Wallet,
   ChevronDown,
   ChevronUp,
@@ -42,6 +51,7 @@ import {
   Tag,
   Layers,
   ArrowUpDown,
+  Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +69,7 @@ interface SmmOrderManagerProps {
   title: string;
   description: string;
   allowedServiceIds: number[];
-  categoryKey?: "members" | "reactions" | "auto-reactions" | "post-views";
+  categoryKey?: "members" | "reactions" | "auto-reactions" | "post-views" | "auto-post-views";
   targetPlaceholder?: string;
   targetHelperText?: string;
   targetExample?: string;
@@ -107,6 +117,13 @@ export function SmmOrderManager({
         label: _("smmOrderManager.nav.postViews"),
         icon: Eye,
         tag: _("smmOrderManager.nav.postViewsTag"),
+      },
+      {
+        id: "auto-post-views",
+        href: "/orders/auto-post-views",
+        label: _("smmOrderManager.nav.autoPostViews"),
+        icon: Repeat,
+        tag: _("smmOrderManager.nav.autoPostViewsTag"),
       },
       {
         id: "history",
@@ -763,6 +780,7 @@ function OrderModal({
 }: OrderModalProps) {
   const _ = useT();
   const { toast } = useToast();
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const placeOrder = usePlaceOrder();
 
@@ -833,11 +851,22 @@ function OrderModal({
         }
 
     try {
-      await placeOrder.mutateAsync({
+      const res: any = await placeOrder.mutateAsync({
         service_id: Number(service.id),
         data_target: dataTarget.trim(),
         quantity,
       });
+
+      if (res?.invoice_id) {
+        toast({
+          variant: "info",
+          title: "Menunggu Pembayaran",
+          description: "Saldo Anda tidak mencukupi. Mengalihkan ke halaman tagihan QRIS...",
+        });
+        onClose();
+        router.push(`/wallet/invoice/${res.invoice_id}`);
+        return;
+      }
 
       toast({
         variant: "success",
@@ -858,51 +887,27 @@ function OrderModal({
     }
   };
 
-  // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      {/* Double-Bezel Modal Container */}
-      <div
-        className="rounded-2xl border border-border/80 dark:border-slate-700 bg-card p-1.5 shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          animation: "modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
-      >
-        <div className="rounded-xl bg-card border border-border/40 p-5 md:p-6 min-h-0 flex-1 overflow-y-auto custom-scrollbar sidebar-scrollbar overscroll-contain space-y-5">
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden rounded-2xl border-border bg-card shadow-2xl">
+        <div className="p-5 md:p-6 min-h-0 flex-1 overflow-y-auto custom-scrollbar sidebar-scrollbar overscroll-contain space-y-5">
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-border/50 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-muted text-foreground border border-border/50">
-                  ID: #{service.id}
-                </span>
-                <span className="text-xs text-muted-foreground font-semibold">
-                  {service.category}
-                </span>
-              </div>
-              <h2 className="text-base md:text-lg font-bold text-foreground mt-1 leading-snug">
-                {service.name}
-              </h2>
+          <DialogHeader className="flex flex-col text-left space-y-1 border-b border-border/50 pb-4 pr-8">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-muted text-foreground border border-border/50">
+                ID: #{service.id}
+              </span>
+              <span className="text-xs text-muted-foreground font-semibold">
+                {service.category}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+            <DialogTitle className="text-base md:text-lg font-bold text-foreground leading-snug">
+              {service.name}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {service.name} - {_("orders.create")}
+            </DialogDescription>
+          </DialogHeader>
 
           {/* Service Specs Strip with Parsed Speed */}
           <div className="rounded-xl border border-border/50 bg-muted/30 p-3.5 space-y-3">
@@ -965,16 +970,16 @@ function OrderModal({
             {/* Target Input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="smm-data-target" className="text-xs font-bold text-foreground">
+                <Label htmlFor="smm-data-target" className="text-xs font-bold text-foreground">
                   {_("orders.dataTarget") || "Target / Link Telegram"}
-                </label>
+                </Label>
                 {targetExample && (
                   <span className="text-[10px] text-muted-foreground font-mono">
                     {targetExample}
                   </span>
                 )}
               </div>
-              <input
+              <Input
                 id="smm-data-target"
                 name="dataTarget"
                 type="text"
@@ -985,7 +990,7 @@ function OrderModal({
                   _("orders.dataTargetPlaceholder") ||
                   "https://t.me/channel_name atau @channel_name"
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm bg-background border border-input text-foreground placeholder:text-muted-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary transition-[border-color,box-shadow] duration-150"
+                className="w-full h-11 px-3.5 text-sm rounded-xl"
                 required
               />
               {targetHelperText && (
@@ -998,23 +1003,25 @@ function OrderModal({
             {/* Quantity Stepper & Presets */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="smm-order-quantity" className="text-xs font-bold text-foreground">
+                <Label htmlFor="smm-order-quantity" className="text-xs font-bold text-foreground">
                   {_("orders.quantity") || "Jumlah Pemesanan"}
-                </label>
+                </Label>
                 <span className="text-[11px] text-muted-foreground">
                   {_("smmOrderManager.quantityLimit")} {service.min.toLocaleString("id-ID")} - {service.max.toLocaleString("id-ID")}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={() => setQuantity(Math.max(service.min, quantity - 100))}
-                  className="p-2.5 rounded-xl border border-input bg-muted/40 hover:bg-muted text-foreground transition-colors shrink-0"
+                  className="rounded-xl shrink-0 h-11 w-11"
                 >
                   <Minus className="h-4 w-4" />
-                </button>
-                <input
+                </Button>
+                <Input
                   id="smm-order-quantity"
                   name="quantity"
                   type="number"
@@ -1024,15 +1031,17 @@ function OrderModal({
                   min={service.min}
                   max={service.max}
                   aria-label={_("orders.quantity") || "Jumlah Pemesanan"}
-                  className="w-full text-center py-2.5 rounded-xl text-base font-bold bg-background border border-input text-foreground outline-none focus:outline-none focus:ring-offset-0 focus:ring-offset-transparent focus:ring-2 focus:ring-primary/25 focus:border-primary tabular-nums no-spin-button [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0"
+                  className="w-full text-center h-11 text-base font-bold tabular-nums rounded-xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={() => setQuantity(Math.min(service.max, quantity + 100))}
-                  className="p-2.5 rounded-xl border border-input bg-muted/40 hover:bg-muted text-foreground transition-colors shrink-0"
+                  className="rounded-xl shrink-0 h-11 w-11"
                 >
                   <Plus className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
 
               {/* Quick Preset Pills */}
@@ -1110,7 +1119,7 @@ function OrderModal({
                     "p-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 mt-2",
                     hasSufficientBalance
                       ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
-                      : "bg-destructive/10 border-destructive/25 text-destructive"
+                      : "bg-amber-500/10 border-amber-500/25 text-amber-700 dark:text-amber-300"
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -1119,17 +1128,14 @@ function OrderModal({
                       {hasSufficientBalance ? (
                         <>{_("smmOrderManager.sufficientBalance")} Rp {balanceRemaining.toLocaleString("id-ID")}</>
                       ) : (
-                        <>{_("smmOrderManager.insufficientBalanceMsg")} Rp {estimatedPrice.toLocaleString("id-ID")} ({_("smmOrderManager.yourBalance")} Rp {userBalance.toLocaleString("id-ID")})</>
+                        <>Saldo Rp {userBalance.toLocaleString("id-ID")} (kurang Rp {(estimatedPrice - userBalance).toLocaleString("id-ID")}). Tagihan QRIS dibuat otomatis.</>
                       )}
                     </span>
                   </div>
                   {!hasSufficientBalance && (
-                    <Link
-                      href="/wallet"
-                      className="px-2.5 py-1 rounded bg-destructive text-white hover:bg-destructive/90 text-[11px] font-bold shrink-0"
-                    >
-                      Top Up
-                    </Link>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-bold shrink-0">
+                      Auto QRIS
+                    </span>
                   )}
                 </div>
               )}
@@ -1148,39 +1154,27 @@ function OrderModal({
               </Button>
               <Button
                 type="submit"
-                disabled={
-                  placeOrder.isPending || !dataTarget.trim() || !hasSufficientBalance
-                }
-                className="flex-1 rounded-xl h-11 text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs"
+                disabled={placeOrder.isPending || !dataTarget.trim()}
+                className="flex-1 rounded-xl h-11 text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs cursor-pointer"
               >
                 {placeOrder.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" /> {_("smmOrderManager.processing")}
                   </>
-                ) : (
+                ) : hasSufficientBalance ? (
                   <>
                     <ShoppingCart className="h-4 w-4 mr-2" /> {_("smmOrderManager.confirmOrder")}
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="h-4 w-4 mr-2" /> Bayar via QRIS (Rp {estimatedPrice.toLocaleString("id-ID")})
                   </>
                 )}
               </Button>
             </div>
           </form>
         </div>
-      </div>
-
-      <style jsx global>{`
-        @keyframes modalFadeIn {
-          from {
-            opacity: 0;
-            transform: scale(0.97) translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
-    </div>,
-    document.body
+      </DialogContent>
+    </Dialog>
   );
 }

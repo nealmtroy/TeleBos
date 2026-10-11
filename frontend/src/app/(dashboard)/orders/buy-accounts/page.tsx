@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -61,6 +62,7 @@ import {
 
 export default function BuyAccountsPage() {
   const _ = useT();
+  const router = useRouter();
   const { toast } = useToast();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -121,7 +123,20 @@ export default function BuyAccountsPage() {
     if (!pendingBuyAccount) return;
     try {
       const res = await buyMutation.mutateAsync(pendingBuyAccount.id);
-      setBoughtAccount(res);
+
+      if (res.payment_required && res.invoice_id) {
+        toast({
+          variant: "default",
+          title: "Menunggu Pembayaran QRIS",
+          description: "Saldo Anda tidak mencukupi. Silakan selesaikan pembayaran QRIS untuk mengklaim akun ini.",
+        });
+        setBuyConfirmOpen(false);
+        setPendingBuyAccount(null);
+        router.push(`/wallet/invoice/${res.invoice_id}`);
+        return;
+      }
+
+      setBoughtAccount(res as any);
       await fetchMe();
       await Promise.all([refetchCategories(), refetchAccounts()]);
       toast({
@@ -665,8 +680,8 @@ export default function BuyAccountsPage() {
                       className="text-xl sm:text-2xl font-bold tracking-tight text-foreground"
                     />
                     {!canAfford && (
-                      <p className="text-xs font-medium text-destructive">
-                        {_("orders.needsMoreBalance", { amount: (price - balance).toLocaleString("id-ID") })}
+                      <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                        {_("orders.needsMoreBalance", { amount: (price - balance).toLocaleString("id-ID") })} • QRIS Langsung
                       </p>
                     )}
                   </div>
@@ -689,16 +704,15 @@ export default function BuyAccountsPage() {
                         });
                         setBuyConfirmOpen(true);
                       }}
-                      disabled={!canAfford}
                       className={cn(
-                        "h-10 px-5 text-xs font-bold rounded-lg gap-2",
+                        "h-10 px-5 text-xs font-bold rounded-lg gap-2 cursor-pointer",
                         canAfford
                           ? "bg-amber-500 hover:bg-amber-600 text-black shadow-sm"
-                          : "opacity-40"
+                          : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
                       )}
                     >
                       <Zap className="h-3.5 w-3.5" />
-                      <span>{canAfford ? (_("orders.buyNow") || "Buy Now") : (_("orders.insufficientBalance") || "Insufficient Balance")}</span>
+                      <span>{canAfford ? (_("orders.buyNow") || "Beli Sekarang") : "Beli (QRIS)"}</span>
                     </Button>
                   </div>
                 </div>
@@ -772,6 +786,15 @@ export default function BuyAccountsPage() {
                     </span>
                   </div>
                 )}
+
+                {user && pendingBuyAccount && user.balance < pendingBuyAccount.buy_price && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+                    <Zap className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <p className="leading-relaxed">
+                      Saldo Anda kurang dari harga akun. Invoice pembayaran QRIS sebesar <strong>Rp {pendingBuyAccount.buy_price.toLocaleString("id-ID")}</strong> akan dibuat otomatis. Akun akan ditransfer segera setelah pembayaran berhasil.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -783,7 +806,11 @@ export default function BuyAccountsPage() {
             </div>
           </div>
         }
-        confirmText={_("orders.confirmAndPay") || "Confirm & Pay"}
+        confirmText={
+          pendingBuyAccount && user && user.balance < pendingBuyAccount.buy_price
+            ? `Bayar via QRIS (Rp ${pendingBuyAccount.buy_price.toLocaleString("id-ID")})`
+            : (_("orders.confirmAndPay") || "Confirm & Pay")
+        }
         cancelText={_("orders.cancel") || "Cancel"}
         variant="info"
         loading={buyMutation.isPending}

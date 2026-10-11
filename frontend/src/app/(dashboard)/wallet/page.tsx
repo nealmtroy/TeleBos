@@ -35,7 +35,7 @@ import {
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 
-import { useT } from "@/lib/i18n";
+import { useT, useI18nStore } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import {
   useBankAccountStore,
@@ -46,6 +46,7 @@ import {
   useWalletTransactions,
   useRequestTopup,
   useRequestWithdraw,
+  useRequestWithdrawOtp,
   useCheckTopupStatus,
 } from "@/hooks/use-wallet";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 interface ActivePayment {
@@ -115,8 +119,9 @@ function formatIDR(value: number): string {
   return `Rp ${value.toLocaleString("id-ID")}`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString("id-ID", {
+function formatDate(iso: string, locale?: string): string {
+  const loc = locale === "id" ? "id-ID" : "en-US";
+  return new Date(iso).toLocaleString(loc, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -145,6 +150,7 @@ const displayTxId = (id: string) => `#TRX-${id.replace("wrn_", "").toUpperCase()
 export default function WalletPage() {
   const router = useRouter();
   const _ = useT();
+  const locale = useI18nStore((s) => s.locale);
   const user = useAuthStore((s) => s.user);
   const balance = user?.balance ?? 0;
 
@@ -152,7 +158,20 @@ export default function WalletPage() {
   const { data: walletData, isLoading: isTxLoading, refetch: refetchTxs } = useWalletTransactions({ limit: 100 });
   const requestTopup = useRequestTopup();
   const requestWithdraw = useRequestWithdraw();
+  const requestWithdrawOtp = useRequestWithdrawOtp();
   const checkTopupStatus = useCheckTopupStatus();
+
+  // Withdraw Email OTP Step-Up State
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpMaskedEmail, setOtpMaskedEmail] = useState("");
+  const [requestingOtp, setRequestingOtp] = useState(false);
+  const [pendingWithdrawData, setPendingWithdrawData] = useState<{
+    amount: number;
+    method: string;
+    note: string;
+  } | null>(null);
 
   // Bank account store integration
   const accounts = useBankAccountStore((s) => s.accounts);
@@ -167,6 +186,15 @@ export default function WalletPage() {
   const [submitting, setSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Cooldown countdown timer for OTP resend
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
 
   // History Filter & Search State
   const [historyTypeFilter, setHistoryTypeFilter] = useState<"all" | "topup" | "withdraw">("all");
@@ -231,7 +259,7 @@ export default function WalletPage() {
       try {
         const res = await checkTopupStatus.mutateAsync(activePayment.id);
         if (res.is_paid) {
-          toast.success("Pembayaran Berhasil! Saldo telah masuk ke akun Anda.");
+          toast.success(_("wallet.paymentConfirmed"));
           setActivePayment(null);
           refetchTxs();
         }
@@ -252,7 +280,7 @@ export default function WalletPage() {
   /** Withdrawals cannot exceed the spendable balance. */
   const exceedsBalance = tab === "withdraw" && parsedAmount !== null && parsedAmount > balance;
   const belowMinimum = parsedAmount !== null && parsedAmount < 10_000;
-  const canSubmit = parsedAmount !== null && !exceedsBalance && !belowMinimum && !submitting && (tab === "topup" || accounts.length > 0);
+  const canSubmit = parsedAmount !== null && !exceedsBalance && !belowMinimum && !submitting;
 
   function handlePreset(value: number) {
     setAmount(String(value));
@@ -315,7 +343,7 @@ export default function WalletPage() {
 
       const svgElement = document.getElementById("qris-qr-code") as SVGSVGElement | null;
       if (!svgElement) {
-        toast.error(_("wallet.copyFailed") || "Gagal mengunduh QR Code");
+        toast.error(_("wallet.qrDownloadError"));
         return;
       }
 
@@ -438,14 +466,14 @@ export default function WalletPage() {
       const res = await checkTopupStatus.mutateAsync(activePayment.id);
       if (res.is_paid) {
         refetchTxs();
-        toast.success("Pembayaran Berhasil! Saldo telah ditambahkan ke akun Anda.");
+        toast.success(_("wallet.paymentConfirmed"));
         setActivePayment(null);
       } else {
-        toast.info("Pembayaran belum terdeteksi. Sistem mengecek status setiap 5 detik, atau coba periksa kembali sebentar lagi.");
+        toast.info(_("wallet.paymentPendingToast"));
         refetchTxs();
       }
     } catch {
-      toast.error("Gagal memeriksa status pembayaran. Silakan coba beberapa saat lagi.");
+      toast.error(_("wallet.paymentCheckFailed"));
     } finally {
       setVerifying(false);
     }
@@ -464,18 +492,6 @@ export default function WalletPage() {
           note: note.trim() || "QRIS TeleBos",
         });
 
-        const newPayment: ActivePayment = {
-          id: res.id,
-          amount: res.amount,
-          totalAmount: res.total_amount ?? res.amount,
-          note: res.note || "QRIS",
-          createdAt: res.created_at || new Date().toISOString(),
-          expiresAt: res.expired_at || (res.expires_at ? new Date(res.expires_at * 1000).toISOString() : new Date(Date.now() + 60 * 60 * 1000).toISOString()),
-          qrString: res.qr_string,
-          qrisUrl: res.qris_url,
-          qrisImage: res.qris_image,
-        };
-
         setAmount("");
         setNote("");
         setSubmitting(false);
@@ -484,7 +500,7 @@ export default function WalletPage() {
           text: _("wallet.topupSubmitted"),
         });
         refetchTxs();
-        router.push("/wallet/invoice/" + res.id);
+        router.push(`/wallet/invoice/${res.id}`);
       } catch (err: any) {
         setSubmitting(false);
         toast.error(err?.response?.data?.detail || _("wallet.topupFailedToast"));
@@ -494,25 +510,26 @@ export default function WalletPage() {
       const finalMethod = chosenAcc ? chosenAcc.provider : method;
       const finalNote = note.trim() || (chosenAcc ? `${chosenAcc.provider} • ${chosenAcc.accountNumber}` : method.toUpperCase());
 
-      try {
-        await requestWithdraw.mutateAsync({
-          amount: parsedAmount,
-          method: finalMethod,
-          note: finalNote,
-        });
+      const withdrawData = {
+        amount: parsedAmount,
+        method: finalMethod,
+        note: finalNote,
+      };
 
-        setAmount("");
-        setNote("");
-        setSelectedAccountId("manual");
-        setSubmitting(false);
-        setNotice({
-          type: "success",
-          text: _("wallet.withdrawSubmitted"),
-        });
-        refetchTxs();
+      setPendingWithdrawData(withdrawData);
+      setRequestingOtp(true);
+      try {
+        const res = await requestWithdrawOtp.mutateAsync(withdrawData);
+        setOtpMaskedEmail(res.email_masked || user?.email || "");
+        setOtpCooldown(res.cooldown_seconds || 60);
+        setOtpCode("");
+        setOtpDialogOpen(true);
+        toast.info(res.message || _("wallet.withdrawOtpSentSimple"));
       } catch (err: any) {
+        toast.error(err?.response?.data?.detail || _("wallet.withdrawOtpRequestFailed"));
+      } finally {
+        setRequestingOtp(false);
         setSubmitting(false);
-        toast.error(err?.response?.data?.detail || _("wallet.withdrawFailedToast"));
       }
     }
   }
@@ -598,54 +615,48 @@ export default function WalletPage() {
         {/* ── Request form / QRIS Payment Card (Col 1-3) ── */}
         <Card className="lg:col-span-3 border-border shadow-xs">
           <div className="p-5 pb-0">
-            {/* Tabs Navigation Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-4 border-b border-border/50 no-scrollbar">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === "topup"}
-                onClick={() => {
-                  setTab("topup");
-                  setAmount("");
-                  setNotice(null);
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
-                  tab === "topup"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
-                )}
-              >
-                <ArrowDownToLine className={cn("h-4 w-4", tab === "topup" ? "text-white" : "text-muted-foreground")} />
-                <span>{_("wallet.topUp")}</span>
-                {tab === "topup" && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                )}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === "withdraw"}
-                onClick={() => {
-                  setTab("withdraw");
+            {/* Tabs Navigation */}
+            <Tabs
+              value={tab}
+              onValueChange={(val) => {
+                const nextTab = val as "topup" | "withdraw";
+                setTab(nextTab);
+                if (nextTab === "withdraw") {
                   setActivePayment(null);
-                  setAmount("");
-                  setNotice(null);
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer",
-                  tab === "withdraw"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40"
-                )}
-              >
-                <ArrowUpFromLine className={cn("h-4 w-4", tab === "withdraw" ? "text-white" : "text-muted-foreground")} />
-                <span>{_("wallet.withdraw")}</span>
-                {tab === "withdraw" && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                )}
-              </button>
-            </div>
+                }
+                setAmount("");
+                setNotice(null);
+              }}
+              className="w-full pb-4 border-b border-border/50"
+            >
+              <TabsList className="grid w-full grid-cols-2 p-1 h-11 bg-muted/60 rounded-xl">
+                <TabsTrigger
+                  value="topup"
+                  onClick={() => {
+                    setTab("topup");
+                    setAmount("");
+                    setNotice(null);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-lg font-semibold text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                >
+                  <ArrowDownToLine className="h-4 w-4" />
+                  <span>{_("wallet.topUp")}</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="withdraw"
+                  onClick={() => {
+                    setTab("withdraw");
+                    setActivePayment(null);
+                    setAmount("");
+                    setNotice(null);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-lg font-semibold text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                >
+                  <ArrowUpFromLine className="h-4 w-4" />
+                  <span>{_("wallet.withdraw")}</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           <CardContent className="p-5 space-y-5">
@@ -668,7 +679,231 @@ export default function WalletPage() {
               </div>
             )}
 
-            {/* ── CASE 2: REGULAR FORM (Top Up Nominal Selection OR Withdraw) ── */}
+            {/* ── CASE 1: ACTIVE QRIS PAYMENT DISPLAY ── */}
+            {tab === "topup" && activePayment ? (
+              <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                {/* Header with back button & Status */}
+                <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setActivePayment(null)}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 transition cursor-pointer"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>{_("wallet.cancelPayment")}</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <Badge variant="warning" className="gap-1.5 px-2.5 py-1 text-xs font-semibold">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      {_("wallet.status.pending")}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Expiry countdown bar */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-medium">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    <span>{_("wallet.expiresIn")}</span>
+                  </div>
+                  <span className="font-mono font-bold text-sm text-slate-900 dark:text-slate-100 tabular-nums">
+                    {formatTimer(timeLeft)}
+                  </span>
+                </div>
+
+                {/* Invoice & Total Amount Box */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      {_("wallet.invoiceId")}
+                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100">
+                        {activePayment.id}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyInvoice}
+                        className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition cursor-pointer"
+                        title="Copy invoice"
+                      >
+                        {copiedInvoice ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 dark:border-amber-900/60 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                        {_("wallet.totalTransferBill")}
+                      </span>
+                      {activePayment.totalAmount && activePayment.totalAmount !== activePayment.amount && (
+                        <span className="text-[10px] font-bold bg-amber-500/20 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-md">
+                          {_("wallet.includesUniqueCode")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-base sm:text-lg font-black text-amber-950 dark:text-amber-100 tabular-nums">
+                        {formatIDR(activePayment.totalAmount ?? activePayment.amount)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyAmount}
+                        className="p-1.5 rounded hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 transition cursor-pointer"
+                        title={_("wallet.copyAmountTitle")}
+                      >
+                        {copiedAmount ? (
+                          <Check className="h-4 w-4 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-amber-800/90 dark:text-amber-300/80 leading-tight pt-0.5">
+                      {_("wallet.uniqueCodeNotice")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* QR Code Presentation Box */}
+                <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                  {/* QRIS Red Header Badge */}
+                  <div className="flex items-center gap-2">
+                    <div className="bg-[#EE1D24] text-white px-2.5 py-0.5 rounded font-black text-xs tracking-wider">
+                      QRIS
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      {_("wallet.nationalPaymentStandard")}
+                    </span>
+                  </div>
+
+                  {/* The QR Code / KlikQRIS Image itself */}
+                  <div
+                    id="qris-qr-container"
+                    data-keep-white="true"
+                    className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-center min-h-[220px]"
+                  >
+                    {activePayment.qrisImage ? (
+                      <img
+                        id="qris-image-el"
+                        src={activePayment.qrisImage}
+                        alt={`QRIS ${activePayment.id}`}
+                        className="w-56 h-56 object-contain rounded-md"
+                      />
+                    ) : activePayment.qrisUrl ? (
+                      <img
+                        id="qris-image-el"
+                        src={activePayment.qrisUrl}
+                        alt={`QRIS ${activePayment.id}`}
+                        className="w-56 h-56 object-contain rounded-md"
+                      />
+                    ) : (
+                      <QRCode
+                        id="qris-qr-code"
+                        value={activePayment.qrString || ""}
+                        size={200}
+                        level="M"
+                        className="h-auto max-w-full"
+                      />
+                    )}
+                  </div>
+
+                  <div className="text-center space-y-1">
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      TELEBOS
+                    </p>
+                    <p className="text-[11px] text-slate-400 font-mono">
+                      NMID: ID1020042918290 • {activePayment.id}
+                    </p>
+                  </div>
+
+                  {/* Download QR Button */}
+                  <div className="w-full max-w-xs pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadQR}
+                      className="w-full flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                    >
+                      <Download className="h-4 w-4 text-primary-600 dark:text-primary-400" />
+                      <span>{_("wallet.downloadQr")}</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Supported Payment Channels */}
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3.5 space-y-2">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    {_("wallet.qrisSupported")}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {QRIS_SUPPORTED_CHANNELS.map((channel) => (
+                      <span
+                        key={channel}
+                        className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs"
+                      >
+                        {channel}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Step by step guide */}
+                <div className="rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/20 p-4 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>{_("wallet.paymentStepsTitle")}</span>
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1 text-xs text-blue-800 dark:text-blue-300/90 leading-relaxed">
+                    <li>{_("wallet.paymentStep1")}</li>
+                    <li>{_("wallet.paymentStep2")}</li>
+                    <li>{_("wallet.paymentStep3")}</li>
+                    <li>{_("wallet.paymentStep4")}</li>
+                  </ol>
+                </div>
+
+                {/* Final Actions */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActivePayment(null)}
+                      className="w-full sm:w-auto flex-1 order-2 sm:order-1 cursor-pointer"
+                    >
+                      {_("wallet.changeAmount")}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleConfirmPayment}
+                      disabled={verifying}
+                      className="w-full sm:w-auto flex-1 order-1 sm:order-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          <span>{_("wallet.checkingStatus")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          <span>{_("wallet.checkPaymentStatus")}</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-center text-slate-500 dark:text-slate-400">
+                    {_("wallet.autoCheckNotice")}
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div className="space-y-5">
                 {/* QRIS Announcement Banner (Only on Top Up) */}
                 {tab === "topup" && (
@@ -690,7 +925,7 @@ export default function WalletPage() {
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-primary-200/60 dark:border-primary-900/40">
                       <span className="text-[11px] text-primary-700 dark:text-primary-300 font-medium">
-                        Mendukung:
+                        {_("wallet.supportsLabel")}
                       </span>
                       {QRIS_SUPPORTED_CHANNELS.map((ch) => (
                         <span
@@ -706,17 +941,17 @@ export default function WalletPage() {
 
                 {/* Amount input */}
                 <div className="space-y-2">
-                  <label
+                  <Label
                     htmlFor="wallet-amount"
                     className="block text-xs font-semibold text-gray-700 dark:text-slate-300"
                   >
                     {_("wallet.amount")}
-                  </label>
+                  </Label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-3.5 text-sm font-bold text-gray-400 dark:text-slate-500 font-mono">
+                    <span className="absolute left-3.5 text-sm font-bold text-gray-400 dark:text-slate-500 font-mono pointer-events-none z-10">
                       Rp
                     </span>
-                    <input
+                    <Input
                       id="wallet-amount"
                       name="amount"
                       type="text"
@@ -728,9 +963,9 @@ export default function WalletPage() {
                       }}
                       placeholder="0"
                       className={cn(
-                        "w-full border rounded-xl pl-10 pr-4 py-2.5 font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20",
+                        "w-full rounded-xl pl-10 pr-4 py-2.5 font-mono font-semibold text-sm",
                         exceedsBalance || belowMinimum
-                          ? "border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20"
+                          ? "border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-200"
                           : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                       )}
                     />
@@ -782,7 +1017,7 @@ export default function WalletPage() {
                       </label>
                       <Link href="/settings?tab=bank-accounts" className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 cursor-pointer">
                         <Settings className="h-3 w-3" />
-                        <span>Kelola Rekening</span>
+                        <span>{_("wallet.manageBankAccounts")}</span>
                       </Link>
                     </div>
 
@@ -792,21 +1027,21 @@ export default function WalletPage() {
                         onValueChange={handleAccountSelect}
                       >
                         <SelectTrigger id="wallet-saved-account" className="w-full h-11 text-sm rounded-xl">
-                          <SelectValue placeholder="Pilih rekening tujuan" />
+                          <SelectValue placeholder={_("wallet.selectDestinationAccount")} />
                         </SelectTrigger>
                         <SelectContent>
                           {accounts.map((acc) => (
                             <SelectItem key={acc.id} value={acc.id}>
-                              {acc.provider} - {acc.accountNumber} ({acc.accountHolder}) {acc.isDefault ? "★ Utama" : ""}
+                              {acc.provider} - {acc.accountNumber} ({acc.accountHolder}) {acc.isDefault ? `★ ${_("wallet.defaultBadge")}` : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
                       <div className="p-4 rounded-xl border border-dashed border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 text-center space-y-3">
-                        <p className="text-sm text-gray-500 dark:text-slate-400">Anda belum memiliki rekening tersimpan untuk penarikan dana.</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">{_("wallet.noSavedAccountsDesc")}</p>
                         <Link href="/settings?tab=bank-accounts" className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition">
-                          Tambahkan Rekening
+                          {_("wallet.addAccount")}
                         </Link>
                       </div>
                     )}
@@ -832,10 +1067,11 @@ export default function WalletPage() {
 
                 <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed">
                   {tab === "topup"
-                    ? "Setelah menekan Buat Pembayaran, Anda dapat memindai atau mengunduh kode QRIS untuk menyelesaikan transaksi."
+                    ? _("wallet.topupNotice")
                     : _("wallet.manualNotice")}
                 </p>
               </div>
+            )}
           </CardContent>
         </Card>
 
@@ -847,14 +1083,14 @@ export default function WalletPage() {
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary-500" />
                 <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
-                  Rekening Penarikan
+                  {_("wallet.withdrawalAccountsTitle")}
                 </h3>
               </div>
               <Link
                 href="/settings?tab=bank-accounts"
                 className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
-                <span>Kelola</span>
+                <span>{_("wallet.manage")}</span>
                 <ChevronRight className="h-3 w-3" />
               </Link>
             </div>
@@ -867,33 +1103,33 @@ export default function WalletPage() {
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 className="h-3 w-3" />
-                      Utama
+                      {_("wallet.defaultBadge")}
                     </span>
                   </div>
                   <p className="font-mono text-sm font-bold text-gray-900 dark:text-slate-100">
                     {defaultAccount.accountNumber}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    A.N. {defaultAccount.accountHolder}
+                    {_("wallet.accountHolderPrefix")} {defaultAccount.accountHolder}
                   </p>
                 </div>
               ) : (
                 <div className="text-center py-4 space-y-2">
                   <CreditCard className="h-8 w-8 mx-auto text-gray-300 dark:text-slate-600" />
                   <p className="text-xs text-muted-foreground">
-                    Belum ada rekening penarikan yang disimpan.
+                    {_("wallet.noSavedAccountsShort")}
                   </p>
                   <Link
                     href="/settings?tab=bank-accounts"
                     className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
                   >
-                    + Tambah Rekening di Pengaturan
+                    {_("wallet.addAccountInSettings")}
                   </Link>
                 </div>
               )}
 
               <p className="text-[11px] text-gray-400 dark:text-slate-500 leading-relaxed pt-1">
-                Rekening yang disimpan akan mempermudah Anda melakukan penarikan saldo tanpa harus mengetik ulang nomor rekening.
+                {_("wallet.savedAccountsHint")}
               </p>
             </CardContent>
           </Card>
@@ -903,15 +1139,15 @@ export default function WalletPage() {
             <CardContent className="p-4 sm:p-5 space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-900 dark:text-slate-100">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <span>Ketentuan Transaksi</span>
+                <span>{_("wallet.transactionTermsTitle")}</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
-                <li>Deposit QRIS otomatis terverifikasi tanpa biaya admin.</li>
-                <li>Penarikan diproses manual 1-15 menit pada jam kerja.</li>
-                <li>Batas minimum deposit dan penarikan Rp 10.000.</li>
+                <li>{_("wallet.termQrisFree")}</li>
+                <li>{_("wallet.termWithdrawSpeed")}</li>
+                <li>{_("wallet.termMinimumLimit")}</li>
               </ul>
               <div className="pt-2 border-t border-gray-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Butuh bantuan?</span>
+                <span className="text-muted-foreground">{_("wallet.needHelpShort")}</span>
                 <Link
                   href="/help"
                   className="font-semibold text-primary-600 dark:text-primary-400 hover:underline"
@@ -940,7 +1176,7 @@ export default function WalletPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Catatan lengkap riwayat deposit (isi saldo) dan penarikan dana akun Anda.
+              {_("wallet.historySubtitle")}
             </p>
           </div>
 
@@ -1039,8 +1275,8 @@ export default function WalletPage() {
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
+              <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+              <Input
                 id="wallet-history-search"
                 name="historySearch"
                 type="text"
@@ -1048,7 +1284,7 @@ export default function WalletPage() {
                 onChange={(e) => setHistorySearch(e.target.value)}
                 aria-label={_("wallet.searchPlaceholder") || "Cari riwayat transaksi"}
                 placeholder={_("wallet.searchPlaceholder")}
-                className="h-9 pl-8 pr-8 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 w-full sm:w-56"
+                className="h-9 pl-8 pr-8 rounded-lg border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-900 dark:text-slate-100 placeholder:text-gray-400 w-full sm:w-56"
               />
               {historySearch && (
                 <button
@@ -1081,7 +1317,7 @@ export default function WalletPage() {
                   }}
                   className="mt-2 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
                 >
-                  Reset Filter
+                  {_("wallet.resetFilter")}
                 </button>
               )}
             </div>
@@ -1090,32 +1326,32 @@ export default function WalletPage() {
               {filteredRequests.map((request) => (
                 <li
                   key={request.id}
-                  className="p-4 sm:px-6 hover:bg-gray-50/70 dark:hover:bg-slate-800/40 transition flex items-center justify-between gap-4"
+                  className="px-4 py-3 sm:px-6 sm:py-4 hover:bg-gray-50/70 dark:hover:bg-slate-800/40 transition cursor-pointer active:bg-gray-100 dark:active:bg-slate-800/60"
+                  onClick={() => setSelectedTransaction(request)}
                 >
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    {/* Direction Icon Circle */}
+                  <div className="flex items-center gap-3">
+                    {/* Direction Icon */}
                     <div
                       className={cn(
-                        "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border mt-0.5",
+                        "w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border",
                         request.type === "topup"
                           ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80"
                           : "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/80"
                       )}
                     >
                       {request.type === "topup" ? (
-                        <ArrowDownToLine className="h-4 w-4" />
+                        <ArrowDownToLine className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       ) : (
-                        <ArrowUpFromLine className="h-4 w-4" />
+                        <ArrowUpFromLine className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       )}
                     </div>
 
-                    {/* Transaction Details */}
-                    <div className="min-w-0 space-y-1">
+                    {/* Info */}
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm font-bold text-gray-900 dark:text-slate-100 tabular-nums">
                           {request.type === "topup" ? "+" : "-"} {formatIDR(request.amount)}
                         </span>
-
                         <span
                           className={cn(
                             "px-1.5 py-0.5 rounded-full text-[10px] font-semibold border",
@@ -1124,33 +1360,15 @@ export default function WalletPage() {
                         >
                           {_(`wallet.status.${request.status}`)}
                         </span>
-
-                        <span className="text-[11px] font-medium px-2 py-0.2 rounded-md bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200/60 dark:border-slate-700">
-                          {request.method}
-                        </span>
                       </div>
-
-                      <p className="text-xs text-muted-foreground truncate max-w-md">
-                        {request.note}
-                      </p>
-
-                      <p className="text-[11px] text-gray-400 dark:text-slate-500 font-mono">
-                        {request.id} · {formatDate(request.createdAt)}
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                        {request.method} · {formatDate(request.createdAt, locale)}
                       </p>
                     </div>
-                  </div>
 
-                  {/* Right Button: View Detail */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedTransaction(request)}
-                    className="shrink-0 text-xs h-8 px-3 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer"
-                  >
-                    <Eye className="h-3.5 w-3.5 mr-1 text-gray-400" />
-                    <span>Detail</span>
-                  </Button>
+                    {/* Chevron */}
+                    <ChevronRight className="h-4 w-4 text-gray-400 dark:text-slate-600 shrink-0" />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -1158,7 +1376,7 @@ export default function WalletPage() {
 
           <div className="p-4 sm:p-5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              Menampilkan {filteredRequests.length} dari {requests.length} transaksi
+              {_("wallet.showingTransactionsCount", { current: filteredRequests.length, total: requests.length })}
             </span>
             <Link
               href="/help"
@@ -1219,7 +1437,7 @@ export default function WalletPage() {
                 </p>
                 {selectedTransaction.totalAmount && selectedTransaction.totalAmount !== selectedTransaction.amount && (
                   <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold pt-0.5">
-                    Tagihan Transfer: {formatIDR(selectedTransaction.totalAmount)} (termasuk kode unik)
+                    {_("wallet.modalTransferBillNotice", { amount: formatIDR(selectedTransaction.totalAmount) })}
                   </p>
                 )}
                 <div className="pt-1">
@@ -1290,7 +1508,7 @@ export default function WalletPage() {
                 <div className="flex items-center justify-between pt-3">
                   <span className="text-muted-foreground">{_("wallet.transactionTime")}</span>
                   <span className="font-mono text-gray-900 dark:text-slate-100">
-                    {formatDate(selectedTransaction.createdAt)}
+                    {formatDate(selectedTransaction.createdAt, locale)}
                   </span>
                 </div>
               </div>
@@ -1326,26 +1544,18 @@ export default function WalletPage() {
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-              {selectedTransaction.type === "topup" && selectedTransaction.status === "pending" && (selectedTransaction.qrisImage || selectedTransaction.qrisUrl) ? (
+              {selectedTransaction.type === "topup" && selectedTransaction.status === "pending" ? (
                 <Button
-                  type="button"
-                  onClick={() => {
-                    setActivePayment({
-                      id: selectedTransaction.id,
-                      amount: selectedTransaction.amount,
-                      totalAmount: selectedTransaction.totalAmount ?? selectedTransaction.amount,
-                      note: selectedTransaction.note,
-                      createdAt: selectedTransaction.createdAt,
-                      expiresAt: selectedTransaction.expiredAt || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                      qrisUrl: selectedTransaction.qrisUrl || undefined,
-                      qrisImage: selectedTransaction.qrisImage || undefined,
-                    });
-                    setSelectedTransaction(null);
-                  }}
+                  asChild
                   className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 cursor-pointer order-2 sm:order-1"
                 >
-                  <QrCode className="h-4 w-4" />
-                  <span>Buka QRIS Pembayaran</span>
+                  <Link
+                    href={`/wallet/invoice/${selectedTransaction.id}`}
+                    onClick={() => setSelectedTransaction(null)}
+                  >
+                    <QrCode className="h-4 w-4" />
+                    <span>{_("wallet.openQrisPayment")}</span>
+                  </Link>
                 </Button>
               ) : <div className="hidden sm:block" />}
 
@@ -1360,6 +1570,179 @@ export default function WalletPage() {
             </div>
           </DialogContent>
         )}
+      </Dialog>
+
+      {/* ── Withdraw Email OTP Step-Up Dialog ── */}
+      <Dialog
+        open={otpDialogOpen}
+        onOpenChange={(open) => {
+          if (!submitting) {
+            setOtpDialogOpen(open);
+            if (!open) {
+              setOtpCode("");
+              setPendingWithdrawData(null);
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">
+              {_("wallet.withdrawOtpTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {_("wallet.withdrawOtpDesc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Transaction summary box */}
+            {pendingWithdrawData && (
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-border text-xs space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">{_("wallet.withdrawAmount")}:</span>
+                  <span className="font-mono font-bold text-sm text-foreground">
+                    {formatIDR(pendingWithdrawData.amount)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">{_("wallet.destinationMethod")}:</span>
+                  <span className="font-semibold text-foreground">
+                    {pendingWithdrawData.method}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">{_("wallet.accountRef")}:</span>
+                  <span className="font-mono text-muted-foreground truncate max-w-[200px]">
+                    {pendingWithdrawData.note}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center gap-2.5 text-xs text-blue-800 dark:text-blue-300">
+              <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+              <span>
+                {_("wallet.withdrawOtpSent").replace("{email}", otpMaskedEmail || user?.email || _("wallet.yourEmail"))}
+              </span>
+            </div>
+
+            {/* OTP Code input */}
+            <div className="space-y-2">
+              <Label htmlFor="withdraw-otp-input" className="text-xs font-semibold block text-center">
+                {_("wallet.withdrawOtpLabel")}
+              </Label>
+              <Input
+                id="withdraw-otp-input"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                placeholder="• • • • • •"
+                className="text-center font-mono text-2xl tracking-[0.4em] font-bold h-12"
+                autoFocus
+              />
+            </div>
+
+            {/* Resend button with cooldown timer */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                disabled={otpCooldown > 0 || requestingOtp}
+                onClick={async () => {
+                  if (!pendingWithdrawData || otpCooldown > 0 || requestingOtp) return;
+                  setRequestingOtp(true);
+                  try {
+                    const res = await requestWithdrawOtp.mutateAsync(pendingWithdrawData);
+                    setOtpCooldown(res.cooldown_seconds || 60);
+                    toast.success(_("wallet.otpResentSuccess"));
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.detail || _("wallet.otpResendFailed"));
+                  } finally {
+                    setRequestingOtp(false);
+                  }
+                }}
+                className={cn(
+                  "text-xs font-semibold cursor-pointer transition",
+                  otpCooldown > 0 || requestingOtp
+                    ? "text-muted-foreground cursor-not-allowed opacity-60"
+                    : "text-primary hover:underline"
+                )}
+              >
+                {requestingOtp ? (
+                  _("wallet.withdrawOtpSending")
+                ) : otpCooldown > 0 ? (
+                  _("wallet.withdrawOtpResendIn").replace("{seconds}", String(otpCooldown))
+                ) : (
+                  _("wallet.withdrawOtpResend")
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => {
+                setOtpDialogOpen(false);
+                setPendingWithdrawData(null);
+                setOtpCode("");
+              }}
+              className="cursor-pointer"
+            >
+              {_("wallet.close")}
+            </Button>
+            <Button
+              type="button"
+              disabled={otpCode.length !== 6 || submitting}
+              onClick={async () => {
+                if (!pendingWithdrawData || otpCode.length !== 6) return;
+                setSubmitting(true);
+                try {
+                  await requestWithdraw.mutateAsync({
+                    ...pendingWithdrawData,
+                    otp_code: otpCode.trim(),
+                  });
+                  setOtpDialogOpen(false);
+                  setAmount("");
+                  setNote("");
+                  setSelectedAccountId("manual");
+                  setPendingWithdrawData(null);
+                  setOtpCode("");
+                  setNotice({
+                    type: "success",
+                    text: _("wallet.withdrawSubmitted"),
+                  });
+                  toast.success(_("wallet.withdrawSubmitted"));
+                  refetchTxs();
+                } catch (err: any) {
+                  toast.error(err?.response?.data?.detail || _("wallet.withdrawFailedToast"));
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>{_("wallet.withdrawOtpSending")}</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  <span>{_("wallet.withdrawOtpConfirm")}</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );

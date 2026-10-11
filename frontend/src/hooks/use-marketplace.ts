@@ -35,11 +35,14 @@ export interface MarketplaceAccountSummary {
 export interface MarketplaceBuyResponse {
   id: string;
   telegram_id: number | null;
-  phone: string;
-  first_name: string | null;
-  last_name: string | null;
-  username: string | null;
-  created_at: string;
+  phone?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  username?: string | null;
+  created_at?: string;
+  invoice_id?: string | null;
+  payment_required?: boolean;
+  amount?: number | null;
 }
 
 export interface MarketplacePricing {
