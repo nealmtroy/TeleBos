@@ -715,4 +715,13 @@ class SecurityAnalyticsResponse(BaseModel):
     timeseries: list[SecurityTimeSeriesPoint] = Field(default_factory=list)
 
 
+class PruneEventsResponse(BaseModel):
+    """Schema for the ephemeral events pruning response."""
+
+    status: str = Field("success", description="Status string of the prune operation", examples=["success"])
+    deleted_count: int = Field(..., description="Number of pruned ephemeral events deleted from database", examples=[42])
+    retention_days: int = Field(..., description="Retention threshold age applied in days", examples=[90])
+
+
+
 

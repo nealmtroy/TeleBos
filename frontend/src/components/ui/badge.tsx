@@ -14,11 +14,11 @@ const badgeVariants = cva(
         destructive:
           "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60 focus-visible:ring-rose-500/20 [a]:hover:bg-rose-100 dark:[a]:hover:bg-rose-900/50",
         success:
-          "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50 [a]:hover:bg-emerald-100",
+          "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50 [a]:hover:bg-emerald-100 dark:[a]:hover:bg-emerald-900/50",
         warning:
-          "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50 [a]:hover:bg-amber-100",
+          "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50 [a]:hover:bg-amber-100 dark:[a]:hover:bg-amber-900/50",
         info:
-          "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 [a]:hover:bg-blue-100",
+          "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50 [a]:hover:bg-blue-100 dark:[a]:hover:bg-blue-900/50",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:

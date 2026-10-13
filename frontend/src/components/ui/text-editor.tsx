@@ -204,12 +204,12 @@ export function TextEditor({
   return (
     <div
       className={cn(
-        "border border-gray-300 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-xs focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500 transition",
+        "border border-input rounded-xl overflow-hidden bg-background shadow-xs focus-within:ring-2 focus-within:ring-ring focus-within:border-primary transition",
         className
       )}
     >
       {/* Editor Header Toolbar */}
-      <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-slate-800 bg-gray-50/90 dark:bg-slate-800/60 px-3 py-1.5 gap-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/50 px-3 py-1.5 gap-2 text-xs">
         {/* Formatting buttons */}
         <div className="flex items-center gap-1">
           <button
@@ -217,7 +217,7 @@ export function TextEditor({
             title="Tebal (Bold) <b>...</b>"
             onClick={() => applyTag("<b>", "</b>", "tebal")}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition font-bold"
+            className="p-1.5 rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition font-bold"
           >
             <Bold className="h-3.5 w-3.5" />
           </button>
@@ -226,7 +226,7 @@ export function TextEditor({
             title="Miring (Italic) <i>...</i>"
             onClick={() => applyTag("<i>", "</i>", "miring")}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition italic"
+            className="p-1.5 rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition italic"
           >
             <Italic className="h-3.5 w-3.5" />
           </button>
@@ -235,7 +235,7 @@ export function TextEditor({
             title="Monospace (Code) <code>...</code>"
             onClick={() => applyTag("<code>", "</code>", "kode")}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition"
+            className="p-1.5 rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition"
           >
             <Code className="h-3.5 w-3.5" />
           </button>
@@ -244,7 +244,7 @@ export function TextEditor({
             title="Kutipan (Quote) <blockquote>...</blockquote>"
             onClick={() => applyTag("<blockquote>", "</blockquote>", "kutipan")}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition"
+            className="p-1.5 rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition"
           >
             <Quote className="h-3.5 w-3.5" />
           </button>
@@ -253,7 +253,7 @@ export function TextEditor({
             title="Tautan (Link) <a href='...'>...</a>"
             onClick={handleInsertLink}
             disabled={disabled || activeTab === "preview"}
-            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition"
+            className="p-1.5 rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition"
           >
             <LinkIcon className="h-3.5 w-3.5" />
           </button>
@@ -262,12 +262,12 @@ export function TextEditor({
             title="Spoiler <tg-spoiler>...</tg-spoiler>"
             onClick={() => applyTag("<tg-spoiler>", "</tg-spoiler>", "rahasia")}
             disabled={disabled || activeTab === "preview"}
-            className="px-2 py-0.5 text-[11px] rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition font-mono border border-gray-300 dark:border-slate-600"
+            className="px-2 py-0.5 text-[11px] rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition font-mono border border-border"
           >
             spoiler
           </button>
 
-          <div className="h-4 w-[1px] bg-gray-300 dark:bg-slate-700 mx-1" />
+          <div className="h-4 w-[1px] bg-border mx-1" />
 
           {/* Emoji Picker toggle */}
           <div className="relative">
@@ -277,8 +277,8 @@ export function TextEditor({
               onClick={() => setShowEmojiPicker((prev) => !prev)}
               disabled={disabled || activeTab === "preview"}
               className={cn(
-                "p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 disabled:opacity-40 transition flex items-center gap-1",
-                showEmojiPicker && "bg-gray-200 dark:bg-slate-700 text-primary-600"
+                "p-1.5 rounded hover:bg-muted text-foreground/80 hover:text-foreground disabled:opacity-40 transition flex items-center gap-1",
+                showEmojiPicker && "bg-muted text-primary"
               )}
             >
               <Smile className="h-3.5 w-3.5" />
@@ -286,10 +286,10 @@ export function TextEditor({
 
             {/* Emoji Dropdown Popover */}
             {showEmojiPicker && (
-              <div className="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-2 animate-in fade-in zoom-in-95 duration-100">
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-gray-100 dark:border-slate-700">
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700/60 px-2 py-1 rounded-lg text-xs w-full">
-                    <Search className="h-3 w-3 text-gray-400" />
+              <div className="absolute left-0 top-full mt-1.5 z-50 w-72 bg-popover text-popover-foreground rounded-xl shadow-xl border border-border p-2 animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border">
+                  <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-lg text-xs w-full">
+                    <Search className="h-3 w-3 text-muted-foreground" />
                     <input
                       id="text-editor-emoji-search"
                       name="emojiSearch"
@@ -298,7 +298,7 @@ export function TextEditor({
                       placeholder="Cari emoji..."
                       value={emojiSearch}
                       onChange={(e) => setEmojiSearch(e.target.value)}
-                      className="bg-transparent border-none outline-none text-xs w-full text-gray-900 dark:text-slate-100 placeholder:text-gray-400"
+                      className="bg-transparent border-none outline-none text-xs w-full text-foreground placeholder:text-muted-foreground"
                     />
                     {emojiSearch && (
                       <button
@@ -307,7 +307,7 @@ export function TextEditor({
                         aria-label="Clear emoji search"
                         className="p-1 -m-1"
                       >
-                        <X className="h-3 w-3 text-gray-400" />
+                        <X className="h-3 w-3 text-muted-foreground" />
                       </button>
                     )}
                   </div>
@@ -315,7 +315,7 @@ export function TextEditor({
                     type="button"
                     aria-label="Close emoji picker"
                     onClick={() => setShowEmojiPicker(false)}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded text-gray-400 ml-1"
+                    className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground ml-1"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -323,16 +323,16 @@ export function TextEditor({
 
                 {/* Category bar */}
                 {!emojiSearch && (
-                  <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-1 border-b border-gray-100 dark:border-slate-700 scrollbar-none">
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-1 border-b border-border scrollbar-none">
                     {EMOJI_CATEGORIES.map((cat, idx) => (
                       <button
                         key={cat.label}
                         type="button"
                         onClick={() => setSelectedEmojiCategory(idx)}
                         className={cn(
-                          "px-1.5 py-0.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition whitespace-nowrap",
+                          "px-1.5 py-0.5 text-xs rounded hover:bg-muted transition whitespace-nowrap",
                           selectedEmojiCategory === idx &&
-                            "bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 font-medium"
+                            "bg-primary/10 text-primary font-semibold"
                         )}
                       >
                         {cat.icon}
@@ -348,13 +348,13 @@ export function TextEditor({
                       key={`${em}-${idx}`}
                       type="button"
                       onClick={() => handleInsertEmoji(em)}
-                      className="h-7 w-7 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition hover:scale-125"
+                      className="h-7 w-7 flex items-center justify-center text-lg hover:bg-muted rounded transition hover:scale-125"
                     >
                       {em}
                     </button>
                   ))}
                   {filteredEmojis.length === 0 && (
-                    <p className="col-span-8 text-center text-xs text-gray-400 py-4">
+                    <p className="col-span-8 text-center text-xs text-muted-foreground py-4">
                       Emoji tidak ditemukan
                     </p>
                   )}
@@ -367,7 +367,7 @@ export function TextEditor({
         {/* Right side: Mode Switch (Edit vs Preview) & Char count */}
         <div className="flex items-center gap-2">
           <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "edit" | "preview")}>
-            <TabsList className="h-7 bg-gray-200/80 dark:bg-slate-800 p-0.5">
+            <TabsList className="h-7 bg-muted p-0.5">
               <TabsTrigger
                 value="edit"
                 onClick={() => setActiveTab("edit")}
@@ -390,7 +390,7 @@ export function TextEditor({
           <span
             className={cn(
               "text-[10px] tabular-nums font-mono",
-              isOverLimit ? "text-red-600 font-bold" : "text-gray-400 dark:text-slate-500"
+              isOverLimit ? "text-destructive font-bold" : "text-muted-foreground"
             )}
             title={
               isOverLimit
@@ -405,7 +405,7 @@ export function TextEditor({
 
       {/* Inline link editor */}
       {linkDraft.open && (
-        <div className="border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/80 px-3 py-2.5 space-y-2">
+        <div className="border-b border-border bg-muted/40 px-3 py-2.5 space-y-2">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               id="text-editor-link-url"
@@ -423,7 +423,7 @@ export function TextEditor({
               }}
               placeholder="https://t.me/telebos_official"
               aria-label="Link URL"
-              className="w-full sm:flex-1 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+              className="w-full sm:flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring focus:border-primary"
             />
             <input
               id="text-editor-link-text"
@@ -433,14 +433,14 @@ export function TextEditor({
               onChange={(e) => setLinkDraft((d) => ({ ...d, text: e.target.value }))}
               placeholder="Link text (optional)"
               aria-label="Link text"
-              className="w-full sm:flex-1 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+              className="w-full sm:flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring focus:border-primary"
             />
           </div>
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setLinkDraft({ open: false, url: "", text: "" })}
-              className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition"
+              className="px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition"
             >
               Cancel
             </button>
@@ -448,7 +448,7 @@ export function TextEditor({
               type="button"
               onClick={commitLink}
               disabled={!linkDraft.url.trim()}
-              className="px-3.5 py-1 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 rounded-lg transition"
+              className="px-3.5 py-1 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg transition"
             >
               Insert Link
             </button>
@@ -468,7 +468,7 @@ export function TextEditor({
           placeholder={placeholder}
           rows={rows}
           disabled={disabled}
-          className="w-full px-3.5 py-2.5 text-sm outline-none resize-y min-h-[96px] bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 font-sans"
+          className="w-full px-3.5 py-2.5 text-sm outline-none resize-y min-h-[96px] bg-background text-foreground placeholder:text-muted-foreground font-sans"
         />
       ) : (
         /* Telegram Chat Bubble Preview */

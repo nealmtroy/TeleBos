@@ -160,7 +160,7 @@ export function SettingsNav({
                 className={cn(
                   "flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-150",
                   isActive
-                    ? "bg-primary/10 text-primary dark:text-blue-300"
+                    ? "bg-primary/10 text-primary dark:text-blue-300 font-semibold border-l-2 border-primary pl-[10px]"
                     : "text-foreground hover:bg-accent/60"
                 )}
               >
@@ -178,8 +178,8 @@ export function SettingsNav({
                 <span className="min-w-0 flex-1">
                   <span
                     className={cn(
-                      "block text-sm font-medium",
-                      isActive ? "text-primary dark:text-blue-300" : "text-foreground"
+                      "block text-sm font-semibold",
+                      isActive ? "text-primary dark:text-blue-300" : "text-foreground font-medium"
                     )}
                   >
                     {t(item.labelKey)}
@@ -187,7 +187,7 @@ export function SettingsNav({
                   <span
                     className={cn(
                       "mt-0.5 block text-xs leading-relaxed",
-                      isActive ? "text-primary/70 dark:text-blue-300/70" : "text-muted-foreground"
+                      isActive ? "text-primary/90 dark:text-blue-200/90" : "text-muted-foreground"
                     )}
                   >
                     {t(item.descKey)}

@@ -40,6 +40,28 @@ def test_run_migrations_idempotency_structure():
     assert mock_conn.execute.call_count >= 1
 
 
+def test_run_migrations_when_details_already_present():
+    """Verify run_migrations does not raise UnboundLocalError when details is already present."""
+    mock_conn = MagicMock()
+    mock_conn.dialect.name = "postgresql"
+    mock_inspector = MagicMock()
+
+    mock_inspector.get_columns.return_value = [
+        {"name": "id"},
+        {"name": "token_hash"},
+        {"name": "loop_enabled"},
+        {"name": "account_ids"},
+        {"name": "details"},
+        {"name": "is_sold"},
+    ]
+
+    with patch("app.database_migrator.inspect", return_value=mock_inspector):
+        run_migrations(mock_conn)
+
+    assert mock_conn.execute.call_count >= 1
+
+
+
 def test_background_schedulers_importable():
     """Verify background sync functions are valid coroutine functions."""
     import inspect

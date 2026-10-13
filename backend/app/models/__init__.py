@@ -29,6 +29,7 @@ from .support_ticket import SupportTicket
 from .onboarding_survey import OnboardingSurvey
 from .analytics_event import AnalyticsEvent, DailyAnalyticsSnapshot
 from .security_audit_log import SecurityAuditLog
+from .bank_account import UserBankAccount
 
 __all__ = [
     "User",
@@ -63,4 +64,6 @@ __all__ = [
     "AnalyticsEvent",
     "DailyAnalyticsSnapshot",
     "SecurityAuditLog",
+    "UserBankAccount",
 ]
+

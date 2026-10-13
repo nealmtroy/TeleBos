@@ -43,6 +43,8 @@ coverage/
 .mypy_cache/
 .playwright-mcp/
 testing/
+test-results/
+playwright-report/
 
 # Worker & Logs
 *.log

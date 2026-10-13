@@ -252,13 +252,16 @@ export default function AdminSystemConfigPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/admin/transactions"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:text-primary-600 transition shadow-2xs"
+          <Button
+            asChild
+            variant="outline"
+            className="text-xs h-9 cursor-pointer"
           >
-            <CreditCard className="h-4 w-4 text-emerald-500" />
-            <span>Alur Transaksi</span>
-          </Link>
+            <Link href="/admin/transactions">
+              <CreditCard className="h-4 w-4 text-emerald-500 mr-1.5" />
+              <span>Alur Transaksi</span>
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -288,10 +291,10 @@ export default function AdminSystemConfigPage() {
         onValueChange={(val) => setActiveTab(val as ConfigTab)}
         className="w-full"
       >
-        <TabsList className="h-auto p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl flex items-center justify-start gap-1 overflow-x-auto w-full">
+        <TabsList className="h-auto p-1 bg-muted rounded-xl flex items-center justify-start gap-1 overflow-x-auto w-full">
           <TabsTrigger
             value="smm"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 whitespace-nowrap cursor-pointer transition-colors"
           >
             <Server className="h-4 w-4 text-blue-500" />
             <span>SMM Provider & API</span>
@@ -299,7 +302,7 @@ export default function AdminSystemConfigPage() {
 
           <TabsTrigger
             value="payment"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 whitespace-nowrap cursor-pointer transition-colors"
           >
             <QrCode className="h-4 w-4 text-emerald-500" />
             <span>Deposit & Rekening Platform</span>
@@ -307,7 +310,7 @@ export default function AdminSystemConfigPage() {
 
           <TabsTrigger
             value="marketplace"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 whitespace-nowrap cursor-pointer transition-colors"
           >
             <Radio className="h-4 w-4 text-amber-500" />
             <span>Marketplace & Siaran</span>
@@ -315,7 +318,7 @@ export default function AdminSystemConfigPage() {
 
           <TabsTrigger
             value="system"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:dark:bg-slate-900 data-[state=active]:text-gray-900 data-[state=active]:dark:text-slate-100 data-[state=active]:shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 whitespace-nowrap cursor-pointer transition-colors"
           >
             <Lock className="h-4 w-4 text-purple-500" />
             <span>Sistem & Keamanan</span>

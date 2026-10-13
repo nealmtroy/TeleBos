@@ -126,21 +126,19 @@ function AutoReplyManagementContent() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1.5"
+            className="text-xs h-9 cursor-pointer"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin text-slate-500")} />
+            <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isFetching && "animate-spin text-primary")} />
             <span>Refresh</span>
           </Button>
           <Link href="/auto-reply">
             <Button
               variant="outline"
-              size="sm"
-              className="h-9 px-3 text-xs text-slate-700 border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-1.5"
+              className="text-xs h-9 cursor-pointer"
             >
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
               <span>User Auto-Reply</span>
             </Button>
           </Link>
@@ -150,68 +148,68 @@ function AutoReplyManagementContent() {
       {/* KPI Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Responders */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-xs p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Responders</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">{data?.total ?? 0}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Configured bot accounts</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Responders</p>
+            <p className="text-3xl font-extrabold text-card-foreground mt-1">{data?.total ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Configured bot accounts</p>
           </div>
-          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+          <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
             <Bot className="h-5 w-5" />
           </div>
         </div>
 
         {/* Running Now */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-xs p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Responders</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Responders</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-3xl font-extrabold text-gray-900">{data?.running_count ?? 0}</span>
+              <span className="text-3xl font-extrabold text-card-foreground">{data?.running_count ?? 0}</span>
               {(data?.running_count ?? 0) > 0 && (
-                <span className="inline-flex items-center text-xs font-semibold text-emerald-700">
+                <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1" />
                   Listening
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">Auto-responding to incoming chats</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Auto-responding to incoming chats</p>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 text-slate-700 border border-slate-200">
+          <div className="p-3 rounded-xl bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20">
             <Radio className="h-5 w-5" />
           </div>
         </div>
 
         {/* Stopped */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-xs p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stopped / Inactive</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">{data?.stopped_count ?? 0}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Disabled or paused accounts</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stopped / Inactive</p>
+            <p className="text-3xl font-extrabold text-card-foreground mt-1">{data?.stopped_count ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Disabled or paused accounts</p>
           </div>
-          <div className="p-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+          <div className="p-3 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
             <XCircle className="h-5 w-5" />
           </div>
         </div>
 
         {/* Total Sent */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-xs p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Replied</p>
-            <p className="text-3xl font-extrabold text-gray-900 mt-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Replied</p>
+            <p className="text-3xl font-extrabold text-card-foreground mt-1">
               {(data?.total_sent ?? 0).toLocaleString()}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">Automatic welcome replies sent</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Automatic welcome replies sent</p>
           </div>
-          <div className="p-3 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20">
             <MessageCircleReply className="h-5 w-5" />
           </div>
         </div>
       </div>
 
       {/* Main Table Container */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
         {/* Filters */}
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 border-b border-border bg-muted/40 flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Status Tabs */}
           <Tabs
             value={statusFilter}
@@ -220,22 +218,22 @@ function AutoReplyManagementContent() {
               setPage(1);
             }}
           >
-            <TabsList className="bg-gray-200/60 p-1 h-auto rounded-xl">
+            <TabsList className="bg-muted p-1 h-auto rounded-xl">
               <TabsTrigger
                 value="all"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 All Accounts
               </TabsTrigger>
               <TabsTrigger
                 value="running"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 Running
               </TabsTrigger>
               <TabsTrigger
                 value="stopped"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 Stopped
               </TabsTrigger>
@@ -244,7 +242,7 @@ function AutoReplyManagementContent() {
 
           {/* Search */}
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               id="admin-auto-replies-search"
               name="search"
@@ -252,7 +250,7 @@ function AutoReplyManagementContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search phone, user email, or text..."
-              className="pl-9 h-9 text-xs bg-white rounded-xl"
+              className="pl-9 h-9 text-xs bg-background rounded-xl border-input placeholder:text-muted-foreground"
             />
           </div>
         </div>
@@ -261,35 +259,35 @@ function AutoReplyManagementContent() {
         <div className="overflow-x-auto">
           <Table className="w-full text-left border-collapse text-xs">
             <TableHeader>
-              <TableRow className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold hover:bg-gray-50">
-                <TableHead className="py-3 px-4 text-gray-500">Account</TableHead>
-                <TableHead className="py-3 px-4 text-gray-500">Owner / User</TableHead>
-                <TableHead className="py-3 px-4 min-w-[220px] text-gray-500">Auto-Reply Text</TableHead>
-                <TableHead className="py-3 px-4 text-center text-gray-500">Status</TableHead>
-                <TableHead className="py-3 px-4 text-center text-gray-500">Total Replied</TableHead>
-                <TableHead className="py-3 px-4 text-gray-500">Last Sent</TableHead>
-                <TableHead className="py-3 px-4 text-right text-gray-500">Actions</TableHead>
+              <TableRow className="bg-muted/50 border-b border-border text-muted-foreground uppercase tracking-wider font-semibold hover:bg-muted/50">
+                <TableHead className="py-3 px-4 text-muted-foreground">Account</TableHead>
+                <TableHead className="py-3 px-4 text-muted-foreground">Owner / User</TableHead>
+                <TableHead className="py-3 px-4 min-w-[220px] text-muted-foreground">Auto-Reply Text</TableHead>
+                <TableHead className="py-3 px-4 text-center text-muted-foreground">Status</TableHead>
+                <TableHead className="py-3 px-4 text-center text-muted-foreground">Total Replied</TableHead>
+                <TableHead className="py-3 px-4 text-muted-foreground">Last Sent</TableHead>
+                <TableHead className="py-3 px-4 text-right text-muted-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-gray-100">
+            <TableBody className="divide-y divide-border/60">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="animate-pulse">
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-28" /></TableCell>
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-36" /></TableCell>
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-48" /></TableCell>
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-5 bg-gray-200 rounded w-16 mx-auto" /></TableCell>
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-12 mx-auto" /></TableCell>
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-gray-200 rounded w-20" /></TableCell>
-                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-6 bg-gray-200 rounded w-16 ml-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-muted rounded w-28" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-muted rounded w-36" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-muted rounded w-48" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-5 bg-muted rounded w-16 mx-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-muted rounded w-12 mx-auto" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-4 bg-muted rounded w-20" /></TableCell>
+                    <TableCell className="py-4 px-4 whitespace-normal"><div className="h-6 bg-muted rounded w-16 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : !data || data.items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center text-gray-400 whitespace-normal">
-                    <Bot className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                    <p className="font-medium text-gray-600 text-sm">No auto-reply jobs found</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                  <TableCell colSpan={7} className="py-16 text-center text-muted-foreground whitespace-normal">
+                    <Bot className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+                    <p className="font-medium text-foreground text-sm">No auto-reply jobs found</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {search ? "Try adjusting your search query" : "No accounts have auto-reply configured yet"}
                     </p>
                   </TableCell>
@@ -298,18 +296,18 @@ function AutoReplyManagementContent() {
                 data.items.map((item: AdminAutoReplyItem) => {
                   const isRunning = item.status === "running";
                   return (
-                    <TableRow key={item.id} className="hover:bg-gray-50/60 transition-colors">
+                    <TableRow key={item.id} className="hover:bg-muted/40 transition-colors">
                       {/* Account info */}
                       <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-gray-100 text-gray-600 shrink-0">
+                          <div className="p-1.5 rounded-lg bg-muted text-muted-foreground shrink-0">
                             <Smartphone className="h-3.5 w-3.5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-900 truncate">
+                            <p className="font-semibold text-foreground truncate">
                               {item.first_name ? `${item.first_name} ${item.last_name || ""}` : item.phone}
                             </p>
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-muted-foreground font-mono">
                               {item.phone}
                               {item.username && ` • @${item.username}`}
                             </p>
@@ -320,11 +318,11 @@ function AutoReplyManagementContent() {
                       {/* Owner / User */}
                       <TableCell className="py-3.5 px-4 whitespace-normal">
                         <div className="flex items-center gap-1.5">
-                          <UserIcon className="h-3 w-3 text-gray-400 shrink-0" />
+                          <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-800 truncate">{item.user_email}</p>
+                            <p className="font-medium text-foreground truncate">{item.user_email}</p>
                             {item.user_full_name && (
-                              <p className="text-xs text-gray-400 truncate">{item.user_full_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{item.user_full_name}</p>
                             )}
                           </div>
                         </div>
@@ -336,25 +334,25 @@ function AutoReplyManagementContent() {
                           <div className="flex items-center gap-2 group max-w-sm">
                             <span
                               onClick={() => setPreviewItem(item)}
-                              className="text-gray-700 bg-gray-50 border border-gray-200/80 px-2.5 py-1 rounded-lg text-xs truncate max-w-[280px] cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition block"
+                              className="text-foreground bg-muted/60 border border-border px-2.5 py-1 rounded-lg text-xs truncate max-w-[280px] cursor-pointer hover:border-primary/50 hover:bg-muted transition block"
                               title="Click to view full message"
                             >
                               &quot;{item.auto_reply_text}&quot;
                             </span>
                             <button
                               onClick={() => handleCopy(item.id, item.auto_reply_text!)}
-                              className="text-gray-400 hover:text-gray-600 transition shrink-0 p-1 rounded hover:bg-gray-100"
+                              className="text-muted-foreground hover:text-foreground transition shrink-0 p-1 rounded hover:bg-muted"
                               title="Copy message"
                             >
                               {copiedId === item.id ? (
-                                <Check className="h-3 w-3 text-emerald-600" />
+                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                               ) : (
                                 <Copy className="h-3 w-3" />
                               )}
                             </button>
                           </div>
                         ) : (
-                          <span className="text-gray-400 italic text-xs">None configured</span>
+                          <span className="text-muted-foreground italic text-xs">None configured</span>
                         )}
                       </TableCell>
 
@@ -370,7 +368,7 @@ function AutoReplyManagementContent() {
                                 ? "bg-emerald-500 animate-pulse"
                                 : item.auto_reply_enabled
                                 ? "bg-amber-500"
-                                : "bg-gray-400"
+                                : "bg-muted-foreground/60"
                             )}
                           />
                           {isRunning ? "Running" : item.auto_reply_enabled ? "Stopped" : "Disabled"}
@@ -379,20 +377,20 @@ function AutoReplyManagementContent() {
 
                       {/* Total Replied */}
                       <TableCell className="py-3.5 px-4 text-center whitespace-normal">
-                        <span className="font-bold text-gray-900">
+                        <span className="font-bold text-foreground">
                           {item.total_replied.toLocaleString()}
                         </span>
                       </TableCell>
 
                       {/* Last Sent */}
-                      <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
+                      <TableCell className="py-3.5 px-4 text-muted-foreground whitespace-nowrap">
                         {item.last_replied_at ? (
                           <div className="flex items-center gap-1 text-xs">
-                            <Clock className="h-3 w-3 text-gray-400" />
+                            <Clock className="h-3 w-3 text-muted-foreground" />
                             <span>{formatRelative(item.last_replied_at)}</span>
                           </div>
                         ) : (
-                          <span className="text-gray-300 text-xs">—</span>
+                          <span className="text-muted-foreground/60 text-xs">—</span>
                         )}
                       </TableCell>
 
@@ -406,8 +404,8 @@ function AutoReplyManagementContent() {
                           className={cn(
                             "h-8 px-2.5 text-xs font-medium transition rounded-lg",
                             item.auto_reply_enabled
-                              ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                              : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              ? "text-rose-600 hover:text-rose-700 hover:bg-rose-500/10"
+                              : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
                           )}
                           title={item.auto_reply_enabled ? "Turn OFF Auto-Reply" : "Turn ON Auto-Reply"}
                         >
@@ -425,11 +423,11 @@ function AutoReplyManagementContent() {
 
         {/* Pagination Bar */}
         {data && data.total > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50/70 border-t border-gray-100 text-xs text-gray-500">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-t border-border text-xs text-muted-foreground">
             <div>
-              Showing <span className="font-semibold text-gray-800">{(page - 1) * PAGE_SIZE + 1}</span> to{" "}
-              <span className="font-semibold text-gray-800">{Math.min(page * PAGE_SIZE, data.total)}</span> of{" "}
-              <span className="font-semibold text-gray-800">{data.total}</span> accounts
+              Showing <span className="font-semibold text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to{" "}
+              <span className="font-semibold text-foreground">{Math.min(page * PAGE_SIZE, data.total)}</span> of{" "}
+              <span className="font-semibold text-foreground">{data.total}</span> accounts
             </div>
             <DataPagination
               page={page}
@@ -448,22 +446,22 @@ function AutoReplyManagementContent() {
           <DialogContent className="max-w-md p-6 space-y-4">
             <DialogHeader className="pr-6">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <DialogTitle className="font-bold text-gray-900 text-sm">Auto-Reply Message Preview</DialogTitle>
-                  <DialogDescription className="text-xs text-gray-400">{previewItem.phone}</DialogDescription>
+                  <DialogTitle className="font-bold text-foreground text-sm">Auto-Reply Message Preview</DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">{previewItem.phone}</DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-xs text-gray-800 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+            <div className="bg-muted/50 border border-border rounded-xl p-3.5 text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
               {previewItem.auto_reply_text || "No text configured."}
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 Replied: {previewItem.total_replied.toLocaleString()} times
               </span>
               <Button
@@ -476,7 +474,7 @@ function AutoReplyManagementContent() {
                 }}
                 className="text-xs flex items-center gap-1.5"
               >
-                {copiedId === previewItem.id ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedId === previewItem.id ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 <span>{copiedId === previewItem.id ? "Copied" : "Copy Message"}</span>
               </Button>
             </div>

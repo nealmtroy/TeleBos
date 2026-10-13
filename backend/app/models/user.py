@@ -66,3 +66,7 @@ class User(Base):
     onboarding_survey: Mapped["OnboardingSurvey | None"] = relationship(
         "OnboardingSurvey", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
+    bank_accounts: Mapped[list["UserBankAccount"]] = relationship(
+        "UserBankAccount", back_populates="user", cascade="all, delete-orphan"
+    )
+

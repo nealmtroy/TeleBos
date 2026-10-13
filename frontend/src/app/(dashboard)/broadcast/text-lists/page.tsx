@@ -11,6 +11,7 @@ import { CardSkeleton } from "@/components/ui/skeleton-cards";
 import { Plus, Trash2, X, FileText, Edit3 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TextEditorModal } from "@/components/ui/text-editor";
 
@@ -139,15 +140,15 @@ export default function TextListsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Create New List Card */}
           {showNew ? (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border-2 border-primary-500 p-5 flex flex-col justify-between min-h-[300px] shadow-sm animate-fadeIn">
+            <div className="bg-card text-card-foreground rounded-xl border-2 border-primary-500 p-5 flex flex-col justify-between min-h-[300px] shadow-sm animate-fadeIn">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-gray-900 dark:text-slate-100 text-sm">
+                  <span className="font-bold text-foreground text-sm">
                     {_("textLists.newList")}
                   </span>
                   <button
                     onClick={() => setShowNew(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -163,7 +164,7 @@ export default function TextListsPage() {
                   aria-label={
                     _("textLists.listNamePlaceholder") || "Nama daftar..."
                   }
-                  className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition"
+                  className="w-full px-3.5 py-2.5 border border-input bg-background text-foreground rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none transition"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -174,21 +175,22 @@ export default function TextListsPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   onClick={handleCreate}
                   disabled={!newName.trim() || createMutation.isPending}
-                  className="flex-1 py-2.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 flex items-center justify-center gap-1.5 transition"
+                  className="flex-1 h-9 text-xs font-semibold cursor-pointer"
                 >
                   {createMutation.isPending
                     ? "Menyimpan..."
                     : _("textLists.save")}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => setShowNew(false)}
-                  className="px-3 py-2.5 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+                  className="h-9 px-3 text-xs cursor-pointer"
                 >
                   Batal
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -213,7 +215,7 @@ export default function TextListsPage() {
             lists.map((list) => (
               <div
                 key={list.id}
-                className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-col justify-between min-h-[300px] hover:shadow-md transition duration-300"
+                className="bg-card text-card-foreground rounded-xl border border-border flex flex-col justify-between min-h-[300px] hover:shadow-md transition duration-300"
               >
                 <div>
                   {/* Header */}

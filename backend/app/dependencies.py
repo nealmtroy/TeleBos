@@ -21,6 +21,38 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
+async def restore_user_if_ban_expired(db: AsyncSession, user: User) -> bool:
+    """If temporary ban has expired, restore user status without committing prematurely.
+
+    SEC-02 / TASK-08: Uses db.flush() instead of db.commit() to preserve transaction
+    isolation and prevent unintended DML commits during read-only or transactional requests.
+    Returns True if user is active (or was restored), False if user remains suspended.
+    """
+    if user.is_active:
+        return True
+    from app.utils.timezone import ensure_utc
+
+    now_utc = datetime.now(timezone.utc)
+    ban_expires = ensure_utc(user.ban_expires) if user.ban_expires else None
+    if ban_expires and ban_expires <= now_utc:
+        # Temporary ban has expired — automatically restore account in-memory and flush to DB
+        user.is_active = True
+        user.ban_reason = None
+        user.ban_expires = None
+        user_id_str = str(user.id)
+        await db.execute(
+            text('UPDATE "user" SET banned = false, "banReason" = null, "banExpires" = null WHERE id = :user_id'),
+            {"user_id": user_id_str},
+        )
+        await db.execute(
+            text('UPDATE users SET is_active = true, ban_reason = null, ban_expires = null WHERE id = :user_id'),
+            {"user_id": user_id_str},
+        )
+        await db.flush()
+        return True
+    return False
+
+
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -105,19 +137,10 @@ async def get_current_user(
         )
 
     if not user.is_active:
-        now_utc = datetime.now(timezone.utc)
-        ban_expires = ensure_utc(user.ban_expires) if user.ban_expires else None
-        if ban_expires and ban_expires <= now_utc:
-            # Temporary ban has expired — automatically restore account
-            user.is_active = True
-            user.ban_reason = None
-            user.ban_expires = None
-            await db.execute(
-                text('UPDATE "user" SET banned = false, "banReason" = null, "banExpires" = null WHERE id = :user_id'),
-                {"user_id": str(user.id)},
-            )
-            await db.commit()
-        else:
+        is_restored = await restore_user_if_ban_expired(db, user)
+        if not is_restored:
+            from app.utils.timezone import ensure_utc
+            ban_expires = ensure_utc(user.ban_expires) if user.ban_expires else None
             ban_detail = f"Akun Anda disuspend: {user.ban_reason or 'Pelanggaran ketentuan platform'}"
             if ban_expires:
                 ban_detail += f" (berakhir {ban_expires.strftime('%d-%m-%Y %H:%M UTC')})"
@@ -173,8 +196,12 @@ async def get_optional_user(
             select(User).where(User.id == user_uuid)
         )
         user = user_result.scalar_one_or_none()
-        if user is None or not user.is_active:
+        if user is None:
             return None
+        if not user.is_active:
+            is_restored = await restore_user_if_ban_expired(db, user)
+            if not is_restored:
+                return None
 
         return user
     except Exception:
@@ -260,11 +287,18 @@ async def get_current_user_from_token_or_header(
         select(User).where(User.id == user_uuid)
     )
     user = user_result.scalar_one_or_none()
-    if user is None or not user.is_active:
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
+            detail="User not found",
         )
+    if not user.is_active:
+        is_restored = await restore_user_if_ban_expired(db, user)
+        if not is_restored:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or inactive",
+            )
     return user
 
 
@@ -364,8 +398,12 @@ async def _try_session_from_header_or_cookie(
 
     user_result = await db.execute(select(User).where(User.id == user_uuid))
     user = user_result.scalar_one_or_none()
-    if user is None or not user.is_active:
+    if user is None:
         return None
+    if not user.is_active:
+        is_restored = await restore_user_if_ban_expired(db, user)
+        if not is_restored:
+            return None
 
     # Auto-downgrade expired subscriptions, same as get_current_user.
     from app.services.redeem_service import auto_downgrade_if_expired

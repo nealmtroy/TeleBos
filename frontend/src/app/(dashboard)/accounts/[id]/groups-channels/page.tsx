@@ -11,6 +11,7 @@ import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, ArrowLeft, MessageSquare, RefreshCw, Loader2,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
 import {
   Tabs,
   TabsList,
@@ -88,31 +89,32 @@ export default function GroupsChannelsPage() {
     : chats;
 
   return (
-    <div className="h-[calc(100vh-7rem)] -m-6 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm flex flex-col">
+    <div className="h-[calc(100vh-7rem)] -m-6 bg-card rounded-xl overflow-hidden border border-border shadow-sm flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border/60 bg-muted/20 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Link
             href={`/accounts/${accountId}`}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition"
+            className="p-1.5 hover:bg-muted rounded-lg border border-border/50 text-muted-foreground hover:text-foreground transition"
           >
-            <ArrowLeft className="h-4 w-4 text-gray-500" />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-base font-bold text-gray-900">
+            <h1 className="text-base font-bold text-foreground">
               {account?.first_name || account?.phone || _("groupsChannels.title")}
             </h1>
-            <p className="text-xs text-gray-400">{_("groupsChannels.title")}</p>
+            <p className="text-xs text-muted-foreground">{_("groupsChannels.title")}</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={handleSync}
           disabled={!accountId || isSyncing}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          variant="outline"
+          className="text-xs h-9 cursor-pointer"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
-          {isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}
-        </button>
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isSyncing && "animate-spin text-primary")} />
+          <span>{isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}</span>
+        </Button>
       </div>
 
       {/* Sync Status / Errors */}

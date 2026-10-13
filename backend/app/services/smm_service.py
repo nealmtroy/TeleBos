@@ -129,20 +129,37 @@ async def check_order_status(order_id: str) -> dict[str, Any]:
     return await call_smm_api("status", {"id": order_id})
 
 
-async def bulk_check_status(order_ids: list[str]) -> list[dict[str, Any]]:
-    """Check status of multiple orders.
+async def bulk_check_status(
+    order_ids: list[str],
+    max_concurrency: int = 5,
+    pacing_seconds: float = 0.0,
+) -> list[dict[str, Any]]:
+    """Check status of multiple orders using bounded concurrency.
 
     Args:
         order_ids: List of SMM panel order IDs.
+        max_concurrency: Max simultaneous requests (default: 5).
+        pacing_seconds: Optional pacing delay between requests.
 
     Returns:
         List of status responses.
     """
-    results = []
-    for oid in order_ids:
-        result = await check_order_status(oid)
-        results.append(result)
-    return results
+    if not order_ids:
+        return []
+
+    import asyncio
+
+    sem = asyncio.Semaphore(max_concurrency)
+
+    async def _check(oid: str) -> dict[str, Any]:
+        async with sem:
+            res = await check_order_status(oid)
+            if pacing_seconds > 0:
+                await asyncio.sleep(pacing_seconds)
+            return res
+
+    tasks = [_check(oid) for oid in order_ids]
+    return list(await asyncio.gather(*tasks))
 
 
 async def get_profile() -> dict[str, Any]:

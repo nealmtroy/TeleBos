@@ -24,6 +24,7 @@ from app.schemas.analytics import (
     SystemHealthAnalyticsResponse,
     SecurityAnalyticsResponse,
     SecurityAuditLogsListResponse,
+    PruneEventsResponse,
 )
 from app.services import analytics_query_service, analytics_tracking_service, security_audit_service
 from app.services.system_health_service import system_telemetry
@@ -301,19 +302,41 @@ async def list_recent_events(
     return list(res.scalars().all())
 
 
-@router.post("/prune", status_code=status.HTTP_200_OK)
+@router.post(
+    "/prune",
+    response_model=PruneEventsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Prune expired ephemeral analytics and system events",
+    description=(
+        "Prunes ephemeral automation and system events older than the specified retention_days "
+        "(default 90 days, minimum 30 days, maximum 365 days). "
+        "Restricted to platform owner role. Core product and financial analytics events are preserved indefinitely."
+    ),
+    responses={
+        200: {
+            "description": "Prune operation summary with deleted event count",
+            "model": PruneEventsResponse,
+        },
+        403: {"description": "Permission denied (owner role required)"},
+    },
+)
 async def prune_events(
-    retention_days: int = Query(90, ge=30, le=365),
+    retention_days: int = Query(
+        90,
+        ge=30,
+        le=365,
+        description="Threshold age in days; ephemeral events older than this will be permanently removed",
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(["owner"])),
-):
+) -> PruneEventsResponse:
     """Prune ephemeral automation and system events older than retention_days. Owner only."""
     deleted_count = await analytics_tracking_service.prune_ephemeral_events(
         db, retention_days=retention_days
     )
     await db.commit()
-    return {
-        "status": "success",
-        "deleted_count": deleted_count,
-        "retention_days": retention_days,
-    }
+    return PruneEventsResponse(
+        status="success",
+        deleted_count=deleted_count,
+        retention_days=retention_days,
+    )

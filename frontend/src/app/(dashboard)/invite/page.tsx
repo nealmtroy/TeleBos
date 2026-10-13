@@ -18,6 +18,7 @@ import { useT } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -162,29 +163,29 @@ export default function InvitePage() {
       {/* Header + Sub-navigation pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("invite.title")}</h1>
-          <p className="text-gray-500 mt-1">{_("invite.desc")}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{_("invite.title")}</h1>
+          <p className="text-muted-foreground mt-1">{_("invite.desc")}</p>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border/60">
           <Link
             href="/invite"
-            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-semibold bg-white text-gray-900 shadow-xs transition"
+            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-semibold bg-card text-foreground shadow-xs border border-border/60 transition"
           >
-            <Plus className="h-4 w-4 text-primary-600" />
+            <Plus className="h-4 w-4 text-primary" />
             {_("invite.newInvite")}
           </Link>
           <Link
             href="/invite/history"
-            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition"
+            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 transition"
           >
-            <Clock className="h-4 w-4 text-gray-400" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
             {_("invite.inviteHistory")}
           </Link>
           <Link
             href="/invite/logs"
-            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition"
+            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 transition"
           >
-            <ClipboardList className="h-4 w-4 text-gray-400" />
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
             {_("invite.inviteLogs")}
           </Link>
         </div>
@@ -208,8 +209,8 @@ export default function InvitePage() {
         />
 
         {/* Step 2: Destination Group */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">{_("invite.destination")}</h2>
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-6 space-y-4">
+          <h2 className="font-semibold text-foreground">{_("invite.destination")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="sm:col-span-1">
               <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -219,7 +220,7 @@ export default function InvitePage() {
                 value={destType}
                 onValueChange={(val: any) => setDestType(val)}
               >
-                <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-200 rounded-lg">
+                <SelectTrigger className="w-full h-10 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,7 +233,7 @@ export default function InvitePage() {
               </Select>
             </div>
             <div className="sm:col-span-3">
-              <label htmlFor="invite-dest-group" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-dest-group" className="block text-xs font-medium text-muted-foreground mb-1">
                 {destType === "username"
                   ? _("invite.destUsernameLabel")
                   : destType === "link"
@@ -252,28 +253,28 @@ export default function InvitePage() {
                 }
                 value={destGroup}
                 onChange={(e) => setDestGroup(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
         </div>
 
         {/* Step 3: Source Groups (Multi-Group) */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-4">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 sm:p-6 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">{_("invite.sourceGroups")}</h2>
-            <span className="text-xs text-gray-500">
+            <h2 className="font-semibold text-foreground">{_("invite.sourceGroups")}</h2>
+            <span className="text-xs text-muted-foreground">
               {sourceGroups.length} {_("invite.sourcesAdded")}
             </span>
           </div>
-          <p className="text-xs text-gray-500">{_("invite.sourceGroupsDesc")}</p>
+          <p className="text-xs text-muted-foreground">{_("invite.sourceGroupsDesc")}</p>
 
           <div className="flex flex-col sm:flex-row gap-2">
             <Select
               value={newSourceType}
               onValueChange={(val: any) => setNewSourceType(val)}
             >
-              <SelectTrigger className="w-full sm:w-36 sm:shrink-0 h-10 text-sm bg-white border-gray-200 rounded-lg">
+              <SelectTrigger className="w-full sm:w-36 sm:shrink-0 h-10 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -491,13 +492,17 @@ export default function InvitePage() {
                   </button>
                 )}
 
-                <Link
-                  href={`/invite/logs?job_id=${activeJob.id}`}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs cursor-pointer"
                 >
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  Log Detail
-                </Link>
+                  <Link href={`/invite/logs?job_id=${activeJob.id}`}>
+                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+                    Log Detail
+                  </Link>
+                </Button>
               </div>
             </div>
 

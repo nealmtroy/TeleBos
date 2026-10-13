@@ -14,11 +14,11 @@ export function Navbar() {
   const _ = useT();
 
   return (
-    <header className="h-14 sm:h-16 bg-white dark:bg-slate-900/90 dark:backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-2 sm:px-4 lg:px-6 relative z-30 transition-colors">
+    <header className="h-14 sm:h-16 bg-background/95 backdrop-blur-sm border-b border-border flex items-center justify-between px-2 sm:px-4 lg:px-6 relative z-30 transition-colors">
       {/* Left: Hamburger */}
       <button
         onClick={toggleSidebar}
-        className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 dark:hover:text-slate-200 transition-colors duration-200 active:scale-95 shrink-0"
+        className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors duration-200 active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Toggle Sidebar Navigation"
       >
         <Menu className="h-5 w-5" />

@@ -477,11 +477,13 @@ async def list_public_chats_index(
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
     """Get public groups & channels from all accounts, deduplicated by chat_id."""
-    from sqlalchemy import select, or_, func, text, cast, String
+    from sqlalchemy import select, or_, func, text
     from app.models.telegram_chat import TelegramChat
     from app.schemas.chat import ChatItem
 
     # Group by chat_id and get max of other fields to deduplicate
+    # SEC-01 / TASK-02: Public index must strictly expose public chats with usernames.
+    # Never expose private chats, private invite links, or internal account IDs.
     stmt = select(
         TelegramChat.chat_id,
         func.max(TelegramChat.title).label("title"),
@@ -489,15 +491,14 @@ async def list_public_chats_index(
         func.max(TelegramChat.type).label("type"),
         func.max(TelegramChat.member_count).label("member_count"),
         func.max(TelegramChat.online_count).label("online_count"),
-        func.max(TelegramChat.invite_link).label("invite_link"),
         func.max(TelegramChat.last_message_date).label("last_message_date"),
-        func.max(cast(TelegramChat.account_id, String)).label("account_id"),
         func.max(TelegramChat.color_id).label("color_id"),
         func.max(TelegramChat.photo_version).label("photo_version"),
     ).where(
         TelegramChat.is_active == True,
         TelegramChat.type.in_(["group", "supergroup", "channel"]),
-        or_(TelegramChat.username.isnot(None), TelegramChat.invite_link.isnot(None))
+        TelegramChat.username.isnot(None),
+        func.length(func.trim(TelegramChat.username)) > 0,
     ).group_by(TelegramChat.chat_id)
 
     # Filter by chat_type
@@ -531,6 +532,7 @@ async def list_public_chats_index(
 
     chats = []
     for r in rows:
+        public_link = f"https://t.me/{r.username}" if r.username else None
         chats.append(ChatItem(
             chat_id=r.chat_id,
             title=r.title,
@@ -547,8 +549,8 @@ async def list_public_chats_index(
             is_creator=False,
             member_count=r.member_count,
             online_count=r.online_count,
-            invite_link=r.invite_link,
-            account_id=str(r.account_id) if r.account_id else None,
+            invite_link=public_link,
+            account_id=None,
             color_id=r.color_id,
             photo_version=r.photo_version,
         ))

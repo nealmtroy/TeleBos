@@ -228,16 +228,36 @@ async def test_worker_main_spawns_schedulers():
                                 with patch("app.schedulers.background_tasks.adaptive_sequential_sync_loop", return_value=None) as mock_sync:
                                     with patch("app.services.stats_service.background_stats_updater", return_value=None) as mock_stats:
                                         with patch("app.services.twofa_sync_service.background_twofa_updater", return_value=None) as mock_twofa:
-                                            with patch("app.services.broadcast_service.cancel_all_broadcast_tasks", return_value=0):
-                                                with patch("app.services.invite_service.cancel_all_invite_tasks", return_value=0):
-                                                    with patch("app.services.auto_join_service.cancel_all_auto_join_tasks", return_value=0):
-                                                        with patch("app.workers.async_worker.engine", new_callable=AsyncMock):
-                                                            # Trigger immediate shutdown
-                                                            async_worker.shutdown_event.set()
-                                                            await async_worker.main()
+                                            with patch("app.schedulers.background_tasks.smm_services_sync_loop", return_value=None) as mock_smm_sync:
+                                                with patch("app.schedulers.background_tasks.smm_orders_poll_loop", return_value=None) as mock_smm_poll:
+                                                    with patch("app.utils.media_cleanup.background_media_cleanup_loop", return_value=None) as mock_media:
+                                                        with patch("app.services.broadcast_service.cancel_all_broadcast_tasks", return_value=0):
+                                                            with patch("app.services.invite_service.cancel_all_invite_tasks", return_value=0):
+                                                                with patch("app.services.auto_join_service.cancel_all_auto_join_tasks", return_value=0):
+                                                                    with patch("app.services.smm_service.close_smm_http_client", new=AsyncMock()):
+                                                                        with patch("app.workers.async_worker.engine", new_callable=AsyncMock):
+                                                                            # Trigger immediate shutdown
+                                                                            async_worker.shutdown_event.set()
+                                                                            await async_worker.main()
 
-                                                            mock_sync.assert_called_once()
-                                                            mock_stats.assert_called_once()
-                                                            mock_twofa.assert_called_once()
+                                                                            mock_sync.assert_called_once()
+                                                                            mock_stats.assert_called_once()
+                                                                            mock_twofa.assert_called_once()
+                                                                            mock_smm_sync.assert_called_once()
+                                                                            mock_smm_poll.assert_called_once()
+                                                                            mock_media.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_main_lifespan_does_not_spawn_worker_schedulers():
+    """Verify TASK-27 / ARCH-05: main.py lifespan does NOT launch SMM or media schedulers."""
+    import inspect
+    from app import main
+
+    source = inspect.getsource(main.lifespan)
+    assert "smm_services_sync_loop" not in source
+    assert "smm_orders_poll_loop" not in source
+    assert "background_media_cleanup_loop" not in source
+
 
 

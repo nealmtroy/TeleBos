@@ -241,13 +241,16 @@ export default function AdminTransactionsPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Link
-            href="/admin/settings?tab=payment"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:text-primary-600 transition shadow-2xs"
+          <Button
+            asChild
+            variant="outline"
+            className="text-xs h-9 cursor-pointer"
           >
-            <Sliders className="h-4 w-4 text-primary-500" />
-            <span>Atur Gateway Deposit</span>
-          </Link>
+            <Link href="/admin/settings?tab=payment">
+              <Sliders className="h-4 w-4 text-primary-500 mr-1.5" />
+              <span>Atur Gateway Deposit</span>
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -335,37 +338,37 @@ export default function AdminTransactionsPage() {
             onValueChange={(val) => setTypeFilter(val as any)}
             className="w-auto self-start"
           >
-            <TabsList className="bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl h-auto gap-1 flex items-center overflow-x-auto">
+            <TabsList className="bg-muted p-1 rounded-xl h-auto gap-1 flex items-center overflow-x-auto">
               <TabsTrigger
                 value="all"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-gray-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-2xs"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 Semua Jenis
               </TabsTrigger>
               <TabsTrigger
                 value="topup"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-300 data-[state=active]:shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-300 data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 <ArrowDownToLine className="h-3.5 w-3.5" />
                 <span>Deposit</span>
               </TabsTrigger>
               <TabsTrigger
                 value="withdraw"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 data-[state=active]:shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 <ArrowUpFromLine className="h-3.5 w-3.5" />
                 <span>Penarikan</span>
               </TabsTrigger>
               <TabsTrigger
                 value="redeem"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 data-[state=active]:shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 <Ticket className="h-3.5 w-3.5" />
                 <span>Redeem</span>
               </TabsTrigger>
               <TabsTrigger
                 value="admin_adjustment"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300 data-[state=active]:shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-300 data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 <Coins className="h-3.5 w-3.5" />
                 <span>Saldo Admin</span>
@@ -388,7 +391,7 @@ export default function AdminTransactionsPage() {
             </Select>
 
             <div className="relative">
-              <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 id="admin-transactions-search"
                 name="searchQuery"
@@ -397,13 +400,13 @@ export default function AdminTransactionsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari ID, email, atau catatan..."
-                className="h-9 pl-8 pr-8 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 w-full sm:w-56"
+                className="h-9 pl-8 pr-8 rounded-lg border border-input bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary w-full sm:w-56"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

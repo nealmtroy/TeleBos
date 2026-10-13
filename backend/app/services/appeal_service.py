@@ -329,7 +329,13 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
                         text = data["choices"][0]["message"]["content"].strip()
                         if "<think>" in text and "</think>" in text:
                             text = text.split("</think>")[-1].strip()
+                        elif "<think>" in text:
+                            # Generation cut off while still in reasoning block
+                            text = ""
                         text = text.strip('"\'')
+                        if not text:
+                            logger.warning("Groq model '%s' produced empty text (0 chars) after stripping reasoning tokens, trying next candidate...", model)
+                            continue
                         logger.info("Successfully generated AI appeal reason via Groq (%s) using %s (%d chars)", model, name, len(text))
                         return text
                     elif resp.status_code == 404:
@@ -468,6 +474,11 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
                             "Local camoufox solver produced no token; falling back "
                             "to 2captcha if a key is configured."
                         )
+                else:
+                    logger.info(
+                        "CAMOUFOX_SOLVER_ENABLED is false; skipping local Camoufox solver. "
+                        "Set CAMOUFOX_SOLVER_ENABLED=true in .env to use the local container."
+                    )
 
                 # Fallback: 2captcha, only when a key exists and camoufox did not
                 # already deliver.

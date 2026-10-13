@@ -105,9 +105,12 @@ async def test_system_health_endpoint_authorization():
     mock_regular.role = "user"
     mock_regular.email = "user@telebos.id"
 
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+
     # Owner access: should return 200 with full health metrics
     app.dependency_overrides[get_current_user] = lambda: mock_owner
-    app.dependency_overrides[get_db] = lambda: AsyncMock()
+    app.dependency_overrides[get_db] = lambda: mock_db
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

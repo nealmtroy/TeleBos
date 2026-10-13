@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import api from "@/lib/api";
 
 export interface UserBankAccount {
   id: string;
@@ -136,11 +137,11 @@ interface BankAccountStore {
   transactions: WalletTransaction[];
   isHydrated: boolean;
 
-  hydrate: () => void;
-  addAccount: (account: Omit<UserBankAccount, "id" | "createdAt">) => void;
-  updateAccount: (id: string, updates: Partial<UserBankAccount>) => void;
-  deleteAccount: (id: string) => void;
-  setDefaultAccount: (id: string) => void;
+  hydrate: () => Promise<void> | void;
+  addAccount: (account: Omit<UserBankAccount, "id" | "createdAt">) => Promise<UserBankAccount | void> | void;
+  updateAccount: (id: string, updates: Partial<UserBankAccount>) => Promise<void> | void;
+  deleteAccount: (id: string) => Promise<void> | void;
+  setDefaultAccount: (id: string) => Promise<void> | void;
 
   updateDepositSettings: (settings: Partial<DepositSettings>) => void;
 
@@ -154,31 +155,19 @@ export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
   transactions: SEED_TRANSACTIONS,
   isHydrated: false,
 
-  hydrate: () => {
+  hydrate: async () => {
     if (typeof window === "undefined") return;
 
-    let accounts = DEFAULT_ACCOUNTS;
     let depositSettings = DEFAULT_DEPOSIT_SETTINGS;
     let transactions = SEED_TRANSACTIONS;
 
+    // Purge any legacy banking credentials persisted in browser LocalStorage (SEC-03 / TASK-11)
     try {
-      const storedAcc = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
-      if (storedAcc) {
-        const parsed = JSON.parse(storedAcc);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter(
-            (a) =>
-              a.id !== "acc_mandiri_1" &&
-              a.id !== "acc_dana_2" &&
-              a.id !== "acc_bca_1" &&
-              !a.accountHolder?.toLowerCase().includes("ahmad") &&
-              !a.accountHolder?.toLowerCase().includes("yudha")
-          );
-          accounts = cleaned;
-          localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(cleaned));
-        }
-      }
+      localStorage.removeItem(STORAGE_KEY_ACCOUNTS);
+      localStorage.removeItem("telebos_bank_accounts");
+    } catch {}
 
+    try {
       const storedDep = localStorage.getItem(STORAGE_KEY_DEPOSIT_SETTINGS);
       if (storedDep) {
         const parsed = JSON.parse(storedDep);
@@ -197,19 +186,61 @@ export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
     }
 
     set({
-      accounts,
       depositSettings,
       transactions,
       isHydrated: true,
     });
+
+    // Fetch user's server-stored, encrypted bank accounts on-demand
+    try {
+      const res = await api.get<any[]>("/wallet/bank-accounts");
+      if (Array.isArray(res.data)) {
+        const fetchedAccounts: UserBankAccount[] = res.data.map((item) => ({
+          id: String(item.id),
+          type: item.type === "ewallet" ? "ewallet" : "bank",
+          provider: item.provider,
+          accountNumber: item.account_number || item.accountNumber || "",
+          accountHolder: item.account_holder || item.accountHolder || "",
+          isDefault: Boolean(item.is_default ?? item.isDefault),
+          createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+        }));
+        set({ accounts: fetchedAccounts });
+      }
+    } catch {
+      // In offline / mock / unauthenticated mode, keep existing in-memory accounts
+    }
   },
 
-  addAccount: (data) => {
-    const newAccount: UserBankAccount = {
+  addAccount: async (data) => {
+    let newAccount: UserBankAccount = {
       ...data,
       id: `acc_${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
+
+    try {
+      const res = await api.post("/wallet/bank-accounts", {
+        type: data.type,
+        provider: data.provider,
+        account_number: data.accountNumber,
+        account_holder: data.accountHolder,
+        is_default: data.isDefault,
+      });
+      if (res.data) {
+        const saved = res.data;
+        newAccount = {
+          id: String(saved.id),
+          type: saved.type,
+          provider: saved.provider,
+          accountNumber: saved.account_number || saved.accountNumber || data.accountNumber,
+          accountHolder: saved.account_holder || saved.accountHolder || data.accountHolder,
+          isDefault: Boolean(saved.is_default ?? saved.isDefault),
+          createdAt: saved.created_at || new Date().toISOString(),
+        };
+      }
+    } catch (err) {
+      console.warn("Could not save bank account to backend API, keeping local state:", err);
+    }
 
     set((state) => {
       let updatedAccounts = state.accounts;
@@ -218,60 +249,66 @@ export const useBankAccountStore = create<BankAccountStore>((set, get) => ({
       } else if (updatedAccounts.length === 0) {
         newAccount.isDefault = true;
       }
-      const next = [newAccount, ...updatedAccounts];
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(next));
-        } catch {}
-      }
-      return { accounts: next };
+      return { accounts: [newAccount, ...updatedAccounts.filter((a) => a.id !== newAccount.id)] };
     });
+
+    return newAccount;
   },
 
-  updateAccount: (id, updates) => {
+  updateAccount: async (id, updates) => {
+    try {
+      await api.put(`/wallet/bank-accounts/${id}`, {
+        type: updates.type,
+        provider: updates.provider,
+        account_number: updates.accountNumber,
+        account_holder: updates.accountHolder,
+        is_default: updates.isDefault,
+      });
+    } catch (err) {
+      console.warn("Could not update bank account on backend API:", err);
+    }
+
     set((state) => {
       let updatedAccounts = state.accounts.map((a) => (a.id === id ? { ...a, ...updates } : a));
       if (updates.isDefault) {
         updatedAccounts = updatedAccounts.map((a) => (a.id === id ? a : { ...a, isDefault: false }));
       }
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(updatedAccounts));
-        } catch {}
-      }
       return { accounts: updatedAccounts };
     });
   },
 
-  deleteAccount: (id) => {
+  deleteAccount: async (id) => {
+    try {
+      await api.delete(`/wallet/bank-accounts/${id}`);
+    } catch (err) {
+      console.warn("Could not delete bank account on backend API:", err);
+    }
+
     set((state) => {
       const remaining = state.accounts.filter((a) => a.id !== id);
       if (remaining.length > 0 && !remaining.some((a) => a.isDefault)) {
         remaining[0].isDefault = true;
       }
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(remaining));
-        } catch {}
-      }
       return { accounts: remaining };
     });
   },
 
-  setDefaultAccount: (id) => {
+  setDefaultAccount: async (id) => {
+    try {
+      await api.put(`/wallet/bank-accounts/${id}/default`);
+    } catch (err) {
+      console.warn("Could not set default bank account on backend API:", err);
+    }
+
     set((state) => {
       const updated = state.accounts.map((a) => ({
         ...a,
         isDefault: a.id === id,
       }));
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(updated));
-        } catch {}
-      }
       return { accounts: updated };
     });
   },
+
 
   updateDepositSettings: (updates) => {
     set((state) => {

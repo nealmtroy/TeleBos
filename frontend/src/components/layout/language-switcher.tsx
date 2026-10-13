@@ -47,7 +47,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
             "public-focus flex min-h-10 items-center gap-1.5 rounded-[6px] border px-2 py-1.5 text-xs font-medium transition-colors duration-150 cursor-pointer",
             variant === "public"
               ? "border-transparent text-[#a1a4a5] hover:border-[#292d30] hover:text-white"
-              : "border-transparent text-gray-600 dark:text-slate-400 hover:border-gray-200 dark:hover:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-200"
+              : "border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
           title={t("common.language")}
         >
@@ -74,8 +74,8 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
           className={cn(
             "flex items-center gap-2 cursor-pointer",
             locale === "en"
-              ? "bg-primary-50 dark:bg-primary-950/40 font-semibold text-primary-600 dark:text-primary-400"
-              : "text-gray-700 dark:text-slate-300"
+              ? "bg-primary/10 font-semibold text-primary"
+              : "text-foreground"
           )}
         >
           <FlagUK className="h-4 w-auto rounded-[2px] shadow-xs" />
@@ -87,8 +87,8 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
           className={cn(
             "flex items-center gap-2 cursor-pointer",
             locale === "id"
-              ? "bg-primary-50 dark:bg-primary-950/40 font-semibold text-primary-600 dark:text-primary-400"
-              : "text-gray-700 dark:text-slate-300"
+              ? "bg-primary/10 font-semibold text-primary"
+              : "text-foreground"
           )}
         >
           <FlagID className="h-4 w-auto rounded-[2px] shadow-xs" />

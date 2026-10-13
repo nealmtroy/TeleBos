@@ -557,7 +557,7 @@ export function Sidebar() {
                                         className={cn(
                                           "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-colors duration-150 text-left relative",
                                           isActive
-                                            ? "bg-primary-500/15 text-primary-400 font-semibold"
+                                            ? "bg-primary-500/15 text-primary-400 font-semibold border-l-2 border-primary-500 pl-[10px]"
                                             : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                                         )}
                                       >
@@ -610,7 +610,7 @@ export function Sidebar() {
                                             className={cn(
                                               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                                               isSubActive
-                                                ? "bg-primary-500/10 text-white font-semibold"
+                                                ? "bg-primary-500/15 text-primary-300 font-semibold"
                                                 : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
                                             )}
                                           >
@@ -635,7 +635,7 @@ export function Sidebar() {
                                       className={cn(
                                         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 relative",
                                         isActive
-                                          ? "bg-primary-500/15 text-primary-400 font-semibold"
+                                          ? "bg-primary-500/15 text-primary-400 font-semibold border-l-2 border-primary-500 pl-[10px]"
                                           : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                                       )}
                                     >

@@ -580,14 +580,17 @@ export default function WalletPage() {
           </p>
         </div>
 
-        <Link
-          href="/settings?tab=bank-accounts"
-          className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2 rounded-xl border border-border bg-white dark:bg-slate-900 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition shadow-2xs cursor-pointer"
+        <Button
+          asChild
+          variant="outline"
+          className="h-9 px-3.5 text-xs cursor-pointer self-start sm:self-auto"
         >
-          <CreditCard className="h-4 w-4 text-primary-500" />
-          <span>{_("wallet.manageBankAccounts")}</span>
-          <ExternalLink className="h-3 w-3 text-gray-400 ml-0.5" />
-        </Link>
+          <Link href="/settings?tab=bank-accounts">
+            <CreditCard className="h-4 w-4 text-primary-500 mr-1.5" />
+            <span>{_("wallet.manageBankAccounts")}</span>
+            <ExternalLink className="h-3 w-3 text-muted-foreground ml-1" />
+          </Link>
+        </Button>
       </div>
 
       {/* ── Balance Card ── */}
@@ -829,9 +832,9 @@ export default function WalletPage() {
                       type="button"
                       variant="outline"
                       onClick={handleDownloadQR}
-                      className="w-full flex items-center justify-center gap-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                      className="w-full h-9 text-xs cursor-pointer"
                     >
-                      <Download className="h-4 w-4 text-primary-600 dark:text-primary-400" />
+                      <Download className="h-4 w-4 text-primary-600 dark:text-primary-400 mr-1.5" />
                       <span>{_("wallet.downloadQr")}</span>
                     </Button>
                   </div>
@@ -1275,7 +1278,7 @@ export default function WalletPage() {
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+              <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
               <Input
                 id="wallet-history-search"
                 name="historySearch"
@@ -1284,13 +1287,13 @@ export default function WalletPage() {
                 onChange={(e) => setHistorySearch(e.target.value)}
                 aria-label={_("wallet.searchPlaceholder") || "Cari riwayat transaksi"}
                 placeholder={_("wallet.searchPlaceholder")}
-                className="h-9 pl-8 pr-8 rounded-lg border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-900 dark:text-slate-100 placeholder:text-gray-400 w-full sm:w-56"
+                className="h-9 pl-8 pr-8 rounded-lg border-input bg-background text-xs text-foreground placeholder:text-muted-foreground w-full sm:w-56"
               />
               {historySearch && (
                 <button
                   type="button"
                   onClick={() => setHistorySearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

@@ -33,11 +33,18 @@ Security documentation for TeleBos — a multi-account Telegram manager.
 ## Current Security Controls
 
 ### Authentication & Authorization
-- **Better Auth Integration**: Registration, login, logout, and token refresh are handled via Better Auth in the Next.js frontend (supporting email/password and Google OAuth 2.0 with automatic account linking).
-- **`get_current_user` dependency**: Validates the Better Auth session token against the database's `session` table directly in FastAPI backend, verifying expiration and linking to an active user.
-- **Password hashing**: Password hashes are managed securely by Better Auth in the PostgreSQL database.
-- **Account ownership check**: Every account/device/chat endpoint verifies `user_id` matches the authenticated user before returning data
-- **Role system**: `User.role` defaults to `basic`; supported role values are `basic`, `pro`, `premium`, and `owner`. `require_role()` enforces allowed-role lists on privileged endpoints, including owner-only administration and pro/premium/owner account operations.
+- **Better Auth Integration**: Registration, login, logout, and token refresh are handled via Better Auth in the Next.js frontend (supporting email/password and Google OAuth 2.0 with automatic account linking). Replaces legacy custom JWT (`python-jose`).
+- **Session Transport Security**: Browser requests send the session token to the FastAPI backend via the `x-better-auth-token` HTTP header (injected by client fetch interceptors) or the `better-auth.session_token` / `__Secure-better-auth.session_token` cookie for same-origin navigation and WebSockets.
+- **SHA-256 Session Token Hashing at Rest**: Better Auth stores session tokens in PostgreSQL. To mitigate token theft from database read leaks or SQL snapshots, every token is hashed via SHA-256 (`token_hash = sha256(token)`). The FastAPI `get_current_user` dependency queries the `session` table by `token_hash`, ensuring plaintext session tokens are never compared directly or stored unprotected at rest.
+- **Dual User Model Synchronization Security (`user` vs `users`)**:
+  - **Account Takeover Prevention**: Sesi Better Auth mengaitkan ID string ke UUID `users.id` secara langsung (bukan berdasarkan email yang bisa berubah), mencegah eksploitasi takeover akun.
+  - **Pre-Registration Defense**: Hook `user.create.before` memeriksa tabel `"user"` dan `users` secara serentak untuk mencegah duplikasi pendaftaran email.
+  - **Creation Synchronization**: Hook `user.create.after` secara otomatis menyisipkan data profil ke tabel `users` dengan peran default `freetrial` dan masa kedaluwarsa 5 jam.
+  - **Profile Name Synchronization**: Hook `user.update.after` menyelaraskan perubahan nama profil Better Auth ke kolom `users.full_name`.
+  - **Ban & Suspension Synchronization**: Helper `restore_user_if_ban_expired` (`dependencies.py`) memeriksa masa suspensi pada saat request ingress dan melakukan sinkronisasi status aktif dan ban reason pada kedua tabel secara atomik tanpa premature commit.
+- **Password Hashing**: Kelolaan kata sandi pengguna ditangani oleh Better Auth menggunakan bcrypt di dalam tabel `"account"`. Kolom legacy `users.password_hash` bersifat nullable dan tidak lagi digunakan untuk autentikasi aktif.
+- **Account Ownership Check**: Setiap endpoint account/device/chat memverifikasi kecocokan `user_id` terhadap pengguna terotentikasi sebelum mengembalikan data atau mengeksekusi aksi.
+- **Role System**: `User.role` memiliki nilai `freetrial`, `basic`, `pro`, `premium`, dan `owner`. `require_role()` menegakkan daftar peran terotorisasi pada endpoint terproteksi.
 
 ### Data Protection
 - **Session encryption**: All Telegram session strings encrypted with Fernet symmetric cipher before DB storage

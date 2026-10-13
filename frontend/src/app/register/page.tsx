@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
+import { PasswordStrengthIndicator } from "@/components/public/password-strength-indicator";
 import { PublicCheckbox } from "@/components/public/public-checkbox";
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
@@ -223,6 +224,7 @@ function RegisterForm() {
                   )}
                 </button>
               </div>
+              <PasswordStrengthIndicator password={password} />
             </div>
             <div>
               <label

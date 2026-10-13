@@ -191,21 +191,21 @@ export default function GroupListsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("groupLists.title")}</h1>
-          <p className="text-gray-500 mt-1">{_("groupLists.desc")}</p>
+          <h1 className="text-2xl font-bold text-foreground">{_("groupLists.title")}</h1>
+          <p className="text-muted-foreground mt-1">{_("groupLists.desc")}</p>
         </div>
-        <button
+        <Button
           onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+          className="h-10 px-4 text-xs font-semibold cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 mr-1.5" />
           {_("groupLists.newList")}
-        </button>
+        </Button>
       </div>
 
       {/* New list form */}
       {showNew && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <input
               id="new-group-list-name"
@@ -214,22 +214,24 @@ export default function GroupListsPage() {
               onChange={(e) => setNewName(e.target.value)}
               placeholder={_("groupLists.listName")}
               aria-label={_("groupLists.listName")}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="flex-1 px-4 py-2 border border-input bg-background text-foreground rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
               autoFocus
             />
-            <button
+            <Button
               onClick={handleCreate}
               disabled={!newName.trim() || createMutation.isPending}
-              className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:bg-gray-300"
+              className="h-9 px-4 text-xs font-semibold cursor-pointer"
             >
               {createMutation.isPending ? _("groupLists.saving") : _("groupLists.save")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowNew(false)}
-              className="p-2 text-gray-400 hover:text-gray-600"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -242,32 +244,35 @@ export default function GroupListsPage() {
           ))}
         </div>
       ) : !Array.isArray(lists) || lists.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-gray-500">{_("groupLists.noLists")}</p>
-          <button
+        <div className="text-center py-16 bg-card text-card-foreground rounded-xl border border-border shadow-sm">
+          <Users className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground">{_("groupLists.noLists")}</p>
+          <Button
+            variant="link"
             onClick={() => setShowNew(true)}
-            className="mt-3 text-primary-600 hover:underline text-sm font-medium"
+            className="mt-3 text-primary text-sm font-medium cursor-pointer"
           >
             {_("groupLists.createFirst")}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
           {lists.map((list) => (
             <div
               key={list.id}
-              className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+              className="bg-card text-card-foreground rounded-xl border border-border overflow-hidden shadow-sm"
             >
-              <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 gap-3 sm:gap-0">
+              <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between border-b border-border gap-3 sm:gap-0">
                 <div className="flex items-center gap-3">
-                  <h3 className="font-semibold text-gray-900">{list.name}</h3>
-                  <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                  <h3 className="font-semibold text-foreground">{list.name}</h3>
+                  <span className="text-xs font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                     {Array.isArray(list.items) ? list.items.length : 0} {_("groupLists.groups")}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       setExpandedLists((prev) => {
                         const next = new Set(prev);
@@ -276,21 +281,23 @@ export default function GroupListsPage() {
                         return next;
                       });
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition"
+                    className="h-8 text-xs cursor-pointer"
                   >
                     {expandedLists.has(list.id) ? _("groupLists.hideDetails") : _("groupLists.viewDetails")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       setDeleteTargetId(list.id);
                       setConfirmOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                    className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                     title={_("groupLists.deleteConfirm")}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
                     {_("groupLists.delete")}
-                  </button>
+                  </Button>
                 </div>
               </div>
 

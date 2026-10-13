@@ -113,9 +113,9 @@ async def _ws_rate_limit(websocket: WebSocket, key: str) -> bool:
 
 
 async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
-    """Accept connection and wait for first message containing JWT token.
+    """Accept connection and wait for first message containing Better Auth session token.
 
-    Expected format: {"type": "auth", "token": "<jwt>"}
+    Expected format: {"type": "auth", "token": "<session_token>"}
     Returns the authenticated User or None on failure.
     """
     # Validate Origin header to prevent Cross-Site WebSocket Hijacking (CSWSH).
@@ -226,6 +226,60 @@ async def _wait_for_auth_message(websocket: WebSocket) -> UserModel | None:
         return user
 
 
+WS_IDLE_TIMEOUT_SECONDS = 90.0
+
+
+async def handle_websocket_message_loop(
+    websocket: WebSocket,
+    channel: str,
+    timeout: float = WS_IDLE_TIMEOUT_SECONDS,
+) -> None:
+    """Listen for client frames with idle timeout and safe message parsing (REL-03 / TASK-30).
+
+    Guarantees:
+    1. Socket read timeout (90s): closes zombie connections cleanly with WS_1000_NORMAL_CLOSURE.
+    2. Safe parsing: non-JSON frames ('hello', 'test', invalid payloads) are ignored without crashing or disconnecting.
+    3. Heartbeats: handles both JSON ping ('{"type": "ping"}') and plain text ping ('ping') with a pong response.
+    4. Guarantees channel cleanup via manager.disconnect on exit.
+    """
+    try:
+        while True:
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=timeout)
+            except asyncio.TimeoutError:
+                logger.info("WS %s idle timeout after %ss, closing socket cleanly", channel, timeout)
+                try:
+                    await websocket.close(
+                        code=status.WS_1000_NORMAL_CLOSURE,
+                        reason="Connection idle timeout",
+                    )
+                except Exception:
+                    pass
+                break
+
+            # Handle plain-text ping heartbeat
+            stripped = data.strip()
+            if stripped.lower() == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+                continue
+
+            # Parse JSON safely without disconnecting on invalid syntax
+            try:
+                msg = json.loads(data)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                logger.debug("WS %s received non-JSON frame, ignoring: %r", channel, data[:100])
+                continue
+
+            if isinstance(msg, dict) and msg.get("type") == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        logger.warning("WS %s error: %s", channel, exc)
+    finally:
+        manager.disconnect(channel, websocket)
+
+
 @router.websocket("/ws/broadcast/{job_id}")
 async def ws_broadcast(websocket: WebSocket, job_id: str):
     """Listen for real-time progress updates on a broadcast job."""
@@ -252,18 +306,7 @@ async def ws_broadcast(websocket: WebSocket, job_id: str):
 
     if not await manager.connect(channel, websocket):
         return
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("type") == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.warning("WS %s error: %s", channel, exc)
-    finally:
-        manager.disconnect(channel, websocket)
+    await handle_websocket_message_loop(websocket, channel)
 
 
 @router.websocket("/ws/chats/{account_id}")
@@ -294,19 +337,7 @@ async def ws_chats(websocket: WebSocket, account_id: str):
         return
 
     # Connected to in-memory channel; updates from async-worker are relayed via Redis bridge
-
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("type") == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.warning("WS chats %s error: %s", channel, exc)
-    finally:
-        manager.disconnect(channel, websocket)
+    await handle_websocket_message_loop(websocket, channel)
 
 
 @router.websocket("/ws/invite/{job_id}")
@@ -335,18 +366,7 @@ async def ws_invite(websocket: WebSocket, job_id: str):
 
     if not await manager.connect(channel, websocket):
         return
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("type") == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.warning("WS invite %s error: %s", channel, exc)
-    finally:
-        manager.disconnect(channel, websocket)
+    await handle_websocket_message_loop(websocket, channel)
 
 
 @router.websocket("/ws/autojoin/{job_id}")
@@ -378,15 +398,4 @@ async def ws_autojoin(websocket: WebSocket, job_id: str):
 
     if not await manager.connect(channel, websocket):
         return
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            if msg.get("type") == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.warning("WS autojoin %s error: %s", channel, exc)
-    finally:
-        manager.disconnect(channel, websocket)
+    await handle_websocket_message_loop(websocket, channel)

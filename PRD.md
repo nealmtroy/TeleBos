@@ -94,20 +94,41 @@ The platform must support:
 
 When an account is listed for sale, the seller's automation activity and personally identifying profile presentation must be cleared or made safe before transfer. A buyer must not receive a stale seller configuration as part of the expected marketplace experience.
 
+### 3.8 Wallet, payment gateway (KlikQRIS), and withdrawals
+
+The platform must support:
+
+- **Automated dynamic QRIS deposits:** Integration with the KlikQRIS payment gateway generating dynamic, time-bounded QRIS invoices and QR payloads with real-time payment status polling.
+- **HMAC-verified webhook callbacks:** Secure payment confirmation via `POST /api/v1/wallet/webhook/klikqris`, validating HMAC-SHA256 signatures, checking idempotency, and crediting balances atomically.
+- **Double-entry ledger journaling:** Every balance credit, debit, or refund is recorded in an immutable append-only ledger (`wallet_ledgers`) protected against deletion (`ON DELETE RESTRICT`).
+- **Withdrawals with 2FA OTP:** User fund withdrawals protected by email one-time passwords (OTP) and destination bank/e-wallet accounts encrypted at rest (`user_bank_accounts`).
+- **Administrative audit & settlement:** Owner workflows for approving or rejecting withdrawal requests, with automated ledger refunding on rejected disbursements.
+
 ## 4. Roles and Entitlements
 
-The current product role vocabulary is `basic`, `pro`, `premium`, and `owner`.
+The canonical product role hierarchy is `freetrial` < `basic` < `pro` < `premium` < `owner`.
 
-| Capability | Basic | Pro | Premium | Owner |
-| --- | :---: | :---: | :---: | :---: |
-| Connect and manage accounts | Limited | Yes | Yes | Yes |
-| Real-time chats | Yes | Yes | Yes | Yes |
-| Contacts and advanced account operations | No | Yes | Yes | Yes |
-| Broadcast workflows | Limited | Yes | Yes | Yes |
-| Auto-reply and bulk invites | No | Yes | Yes | Yes |
-| Marketplace and SMM ordering | Yes | Yes | Yes | Yes |
-| Top up and withdraw balance | Yes | Yes | Yes | Yes |
-| Voucher, service, price, and user administration | No | No | No | Yes |
+### 4.1 Free Trial Policy (5-Hour Anti-Abuse Window)
+
+- **Initial Tier & Auto-Provisioning:** Every new user account is automatically assigned the `freetrial` role upon registration via the Better Auth creation hook.
+- **5-Hour Lifetime Invariant:** The trial duration is strictly set to **5 hours** from registration (`subscription_expires_at = NOW() + INTERVAL '5 hours'`). This bounded window acts as an essential platform anti-abuse defense, preventing automated disposable bot accounts from exploiting cloud broadcast queues and proxy bandwidth without commercial commitment.
+- **Trial Scope:** Users during the 5-hour trial can connect 1 Telegram account, test real-time direct chats, and evaluate the auto-reply responder engine. Heavy mass automation (broadcast campaigns, auto-join queues, bulk invitation) is gated and requires upgrading to `basic`, `pro`, or `premium`.
+- **Expiration & Downgrade Behavior:** When the 5-hour trial expires (`subscription_expires_at < NOW()`), active automation is suspended until an upgrade is completed. Similarly, when a paid subscription (`basic`, `pro`, `premium`) expires without renewal, the system automatically downgrades the role back to `freetrial` (`services/redeem_service.py:344`).
+
+### 4.2 Entitlements Matrix
+
+| Capability | Free Trial (5h) | Basic | Pro | Premium | Owner |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Connect and manage accounts | 1 Account | 1 Account | Up to 3 | Unlimited | Unlimited |
+| Real-time chats & obrolan teks | Yes | Yes | Yes | Yes | Yes |
+| Contacts and advanced account operations | No | No | Yes | Yes | Yes |
+| Auto-reply responder engine | Yes | Yes | Yes | Yes | Yes |
+| Broadcast workflows | No | Limited (Watermarked) | Yes | Yes | Yes |
+| Auto-join groups & channels | No | Yes | Yes | Yes | Yes |
+| Bulk invites & member scraping | No | No | Yes | Yes | Yes |
+| Marketplace and SMM ordering | Yes | Yes | Yes | Yes | Yes |
+| Top up and withdraw balance | Yes | Yes | Yes | Yes | Yes |
+| Voucher, service, price, and user administration | No | No | No | No | Yes |
 
 ### Broadcast free-tier rules
 

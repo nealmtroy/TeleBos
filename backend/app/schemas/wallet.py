@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class WalletTransactionResponse(BaseModel):
@@ -112,3 +112,75 @@ class BalanceReconciliationResponse(BaseModel):
     computed_balance: int
     discrepancy: int
     is_reconciled: bool
+
+
+class BankAccountCreateRequest(BaseModel):
+    type: str = Field(default="bank", description="bank or ewallet")
+    provider: str = Field(..., min_length=1, max_length=50, description="e.g. BCA, Mandiri, GoPay")
+    account_number: str = Field(..., min_length=3, max_length=50, description="Account number")
+    account_holder: str = Field(..., min_length=1, max_length=255, description="Account holder name")
+    is_default: bool = Field(default=False)
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_camel_case(cls, data):
+        if isinstance(data, dict):
+            if "accountNumber" in data and "account_number" not in data:
+                data["account_number"] = data["accountNumber"]
+            if "accountHolder" in data and "account_holder" not in data:
+                data["account_holder"] = data["accountHolder"]
+            if "isDefault" in data and "is_default" not in data:
+                data["is_default"] = data["isDefault"]
+        return data
+
+
+class BankAccountUpdateRequest(BaseModel):
+    type: str | None = Field(default=None, description="bank or ewallet")
+    provider: str | None = Field(default=None, max_length=50)
+    account_number: str | None = Field(default=None, min_length=3, max_length=50)
+    account_holder: str | None = Field(default=None, min_length=1, max_length=255)
+    is_default: bool | None = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_camel_case(cls, data):
+        if isinstance(data, dict):
+            if "accountNumber" in data and "account_number" not in data:
+                data["account_number"] = data["accountNumber"]
+            if "accountHolder" in data and "account_holder" not in data:
+                data["account_holder"] = data["accountHolder"]
+            if "isDefault" in data and "is_default" not in data:
+                data["is_default"] = data["isDefault"]
+        return data
+
+
+class BankAccountResponse(BaseModel):
+    id: str
+    user_id: UUID
+    type: str
+    provider: str
+    account_number: str
+    account_number_last4: str
+    account_holder: str
+    is_default: bool
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+    # camelCase properties for frontend convenience
+    accountNumber: str | None = None
+    accountHolder: str | None = None
+    isDefault: bool | None = None
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def sync_camel_case(self):
+        if self.accountNumber is None:
+            self.accountNumber = self.account_number
+        if self.accountHolder is None:
+            self.accountHolder = self.account_holder
+        if self.isDefault is None:
+            self.isDefault = self.is_default
+        return self
+

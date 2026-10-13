@@ -10,6 +10,7 @@ This file provides:
 - POST /change-password — changes password and invalidates all sessions
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +27,7 @@ from app.schemas.auth import (
 from app.utils.session_token import hash_session_token
 from app.utils.sanitize import sanitize_exception
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -39,9 +41,18 @@ async def me(
 
         await track_user_login(db, user_id=current_user.id)
         await db.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "Failed to track login analytics for user %s, rolling back session: %s",
+            current_user.id,
+            exc,
+        )
+        try:
+            await db.rollback()
+        except Exception:
+            pass
     return current_user
+
 
 
 @router.post("/logout", response_model=LogoutResponse)

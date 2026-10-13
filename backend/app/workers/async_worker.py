@@ -257,15 +257,26 @@ async def main() -> None:
     consumer_task = asyncio.create_task(queue_consumer_loop())
     control_task = asyncio.create_task(control_subscriber_loop())
 
-    # 5. Start background Telegram schedulers (adaptive sync, stats updater, 2FA updater)
-    from app.schedulers.background_tasks import adaptive_sequential_sync_loop
+    # 5. Start background Telegram & Maintenance schedulers
+    from app.schedulers.background_tasks import (
+        adaptive_sequential_sync_loop,
+        smm_services_sync_loop,
+        smm_orders_poll_loop,
+    )
     from app.services.stats_service import background_stats_updater
     from app.services.twofa_sync_service import background_twofa_updater
+    from app.utils.media_cleanup import background_media_cleanup_loop
 
     adaptive_sync_task = asyncio.create_task(adaptive_sequential_sync_loop())
     stats_updater_task = asyncio.create_task(background_stats_updater())
     twofa_sync_task = asyncio.create_task(background_twofa_updater())
-    logger.info("Worker background schedulers started: adaptive sync, stats updater, 2fa updater")
+    smm_sync_task = asyncio.create_task(smm_services_sync_loop())
+    smm_orders_poll_task = asyncio.create_task(smm_orders_poll_loop())
+    media_cleanup_task = asyncio.create_task(background_media_cleanup_loop())
+    logger.info(
+        "Worker background schedulers started: adaptive sync, stats updater, 2fa updater, "
+        "smm sync, smm orders poll, media cleanup"
+    )
 
     # Wait until shutdown signal
     await shutdown_event.wait()
@@ -277,14 +288,28 @@ async def main() -> None:
     adaptive_sync_task.cancel()
     stats_updater_task.cancel()
     twofa_sync_task.cancel()
+    smm_sync_task.cancel()
+    smm_orders_poll_task.cancel()
+    media_cleanup_task.cancel()
     await asyncio.gather(
         consumer_task,
         control_task,
         adaptive_sync_task,
         stats_updater_task,
         twofa_sync_task,
+        smm_sync_task,
+        smm_orders_poll_task,
+        media_cleanup_task,
         return_exceptions=True,
     )
+
+    try:
+        from app.services.smm_service import close_smm_http_client
+
+        await close_smm_http_client()
+        logger.info("Closed SMM HTTP client in worker")
+    except Exception as smm_close_exc:
+        logger.warning("Error closing SMM HTTP client in worker: %s", smm_close_exc)
 
     cancelled_b = await broadcast_service.cancel_all_broadcast_tasks()
     cancelled_i = await invite_service.cancel_all_invite_tasks()

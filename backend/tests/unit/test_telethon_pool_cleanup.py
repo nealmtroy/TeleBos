@@ -218,11 +218,14 @@ async def test_check_connections_protects_syncing_and_non_idle_accounts():
                 mock_db_factory.return_value.__aenter__.return_value = mock_db
                 mock_acc = MagicMock()
                 mock_acc.auto_reply_enabled = False
-                mock_db.execute.return_value.scalar_one_or_none.return_value = mock_acc
+                mock_res = MagicMock()
+                mock_res.scalar_one_or_none.return_value = mock_acc
+                mock_db.execute.return_value = mock_res
 
-                with patch.object(session_manager, "is_account_in_active_job", return_value=False):
+                with patch.object(session_manager, "is_account_in_active_job", new_callable=AsyncMock, return_value=False):
                     with patch("app.api.ws.manager.has_channel", return_value=False):
-                        await session_manager._check_connections()
+                        with patch("app.services.session_manager.renew_lease", new_callable=AsyncMock, return_value=True):
+                            await session_manager._check_connections()
 
             # Neither acc_syncing (sync in progress) nor acc_recent (not idle) should be removed!
             mock_remove.assert_not_called()
@@ -394,13 +397,18 @@ async def test_connect_timeout_discards_half_open_client():
         instance = mock_tc.return_value
         instance.connect = AsyncMock(side_effect=asyncio.TimeoutError())
         instance.disconnect = AsyncMock()
-        mock_db_factory.return_value.__aenter__.return_value = AsyncMock()
+        mock_db = AsyncMock()
+        mock_db_res = MagicMock()
+        mock_db_res.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_db_res
+        mock_db_factory.return_value.__aenter__.return_value = mock_db
 
         result = await pool.get(acc_id, "session-string")
 
     assert result is None
     instance.disconnect.assert_awaited_once()
     assert acc_id not in pool._clients
+    await pool.stop()
 
 
 @pytest.mark.asyncio
@@ -546,7 +554,11 @@ async def test_unauthorized_client_tasks_cancelled_when_disconnect_times_out():
             "lang_code": "en",
             "system_lang_code": "en",
         }
-        mock_db_factory.return_value.__aenter__.return_value = AsyncMock()
+        mock_db = AsyncMock()
+        mock_db_res = MagicMock()
+        mock_db_res.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_db_res
+        mock_db_factory.return_value.__aenter__.return_value = mock_db
 
         result = await pool.get(acc_id, "session-string")
 
@@ -559,3 +571,4 @@ async def test_unauthorized_client_tasks_cancelled_when_disconnect_times_out():
     # branch unguarded -- assert the branch handled the disconnect in place.
     assert client.disconnect.await_count == 1
     pool._clients.pop(acc_id, None)
+    await pool.stop()

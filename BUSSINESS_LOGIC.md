@@ -34,25 +34,29 @@ revenue actually lands. Every claim cites `file:line` in the repository.
 
 ## The One-Paragraph Version
 
-TeleBos has **no payment gateway**. Money enters only when the owner
-denominates a voucher by hand and hands it to a customer out-of-band. Once
-inside, that balance buys exactly three things: a subscription role, SMM service
-resold at a markup, and player-to-player Telegram accounts sold at a spread. The
-platform's real revenue is that spread and that markup — but the spread is
-realized *by omission* (the difference simply never reaches any `User` row)
-rather than by an explicit credit entry, and the markup defaults to **zero** if
-nobody seeds the setting. Subscription pricing does not exist in the repository
-at all.
+TeleBos supports **automated balance deposits via the KlikQRIS payment gateway** as well as manual voucher redemptions issued by the owner. Once inside, that balance buys three primary commodities: membership subscription tiers (`pro`, `premium`), SMM services resold at a markup from BuzzerPanel, and player-to-player Telegram accounts traded at a prefix-based spread. The platform's revenue consists of the SMM markup, the marketplace trading spread, and subscription purchases. Balance can also be withdrawn by users to verified bank accounts or e-wallets, protected by email OTP authorization and recorded in an immutable double-entry ledger.
 
 ---
 
 ## Revenue Model
 
-Money enters the system in **exactly four ways**. Verified: grep for
-`qris|midtrans|xendit|stripe|payment_gateway|withdraw` across `backend/app`
-returns no production hits.
+Money enters and exits the system through formalized financial pathways managed under row-level database locking and double-entry ledger accounting (`wallet_ledgers`):
 
-### 1. Redeem / voucher codes — the primary money-in
+### 1. Automated dynamic QRIS deposits (KlikQRIS) — primary money-in
+
+Users top up their balance in real-time via dynamic QRIS:
+
+| Property | Value | Source |
+|---|---|---|
+| Top-up route | `POST /api/v1/wallet/topup` | `api/wallet.py:150` |
+| Gateway integration | KlikQRIS API client | `services/klikqris_service.py:49` |
+| Webhook handler | `POST /api/v1/wallet/webhook/klikqris` | `api/wallet.py:912` |
+| Signature validation | HMAC-SHA256 constant-time comparison | `services/klikqris_service.py:132` |
+| Transaction record | `wallet_transactions` table (`type="topup"`, `status="pending" -> "approved"`) | `models/wallet_transaction.py` |
+| Ledger fulfillment | Atomic `CREDIT` entry (`category="topup"`) in `wallet_ledgers` | `services/ledger_service.py:35` |
+| Invoice expiry | Configurable (typically 15–60 minutes) | `expired_at` timestamp |
+
+### 2. Redeem / voucher codes — secondary money-in
 
 Owner issues codes; users redeem them for balance or a role.
 
@@ -64,9 +68,10 @@ Owner issues codes; users redeem them for balance or a role.
 | Unit | integer IDR credits | `bot/utils.py:82` renders as `Rp` |
 | Sellable plans | `pro`, `premium` only | `schemas/redeem.py:25` |
 
-`basic` is **not** sellable via voucher. It is the default role
-(`models/user.py:26`) and the expiry downgrade target
-(`services/redeem_service.py:244-245`).
+`basic` is **not** sellable via voucher. New signups receive the
+`freetrial` role with a 5-hour anti-abuse lifespan (`auth.ts:186`).
+When a paid subscription (`basic`, `pro`, `premium`) expires without renewal,
+the account is downgraded to `freetrial` (`services/redeem_service.py:344`).
 
 Schema bounds: `amount ≥ 1`, `max_uses` 1–9999, `duration_days` 1–36500,
 `code` ≤ 50 chars, `custom_code` matches `^[a-zA-Z0-9_-]+$`
@@ -79,7 +84,7 @@ Upgrade rules, both enforced at `services/redeem_service.py:136-140`:
 
 Face value is credited **1:1** — no voucher margin.
 
-### 2. SMM service orders (resale of BuzzerPanel.id)
+### 3. SMM service orders (resale of BuzzerPanel.id)
 
 | Property | Value | Source |
 |---|---|---|
@@ -98,7 +103,7 @@ resolves prices through.
 Enforcement is proven by `tests/unit/test_smm_allowlist.py`, which asserts a
 rejected order never awaits `db.commit` or `db.execute`.
 
-### 3. Account marketplace (P2P — this is where the margin is)
+### 4. Account marketplace (P2P — this is where the margin is)
 
 | Property | Value | Source |
 |---|---|---|
@@ -108,44 +113,164 @@ rejected order never awaits `db.commit` or `db.execute`.
 | Price | per-`telegram_id`-prefix, longest match wins | below |
 | Margin | `buy_price − sell_price` | `services/marketplace_service.py:509-513` |
 
-### 4. Subscription entitlement
+### 5. Subscription entitlement
 
 Plans gate features; they do not generate a price of their own. **Plan pricing
 does not exist in the repository** — vouchers are hand-denominated, so the
 Pro/Premium price lives entirely outside the codebase. See
 [Open Questions](#open-questions) #1.
 
+### 6. User fund withdrawals — primary money-out
+
+| Property | Value | Source |
+|---|---|---|
+| Request | `POST /wallet/withdraw` | `api/wallet.py:263` |
+| Security | Email OTP 2FA challenge | `api/wallet.py:280-310` |
+| Bank account storage | AES-256 Fernet encrypted | `models/bank_account.py` |
+| Rejection settlement | Automated double-entry refund (`CREDIT`) | `api/wallet.py:833` |
+
 ---
 
 ## Pricing Rules
 
-### A. SMM effective price — 3-tier precedence
+### A. SMM Effective Price & Markup Hierarchy
 
-`order_service.py:77-87`, duplicated verbatim in `api/orders.py:64-71`,
-`api/orders.py:109-116`, and `admin_smm_service.py:213-220`:
-
-1. `selling_price` set → use it verbatim.
-2. Else `markup = svc.markup_percent if svc.markup_percent else global_markup`
-   (per-service wins, but a falsy `0` falls through to global).
-3. `markup > 0` → `max(1, (original_price * (100 + markup)) // 100)`.
-4. `markup ≤ 0` → `original_price`.
-5. `effective_price <= 0` → hard `ValueError`.
-
-**Worked example.** `global_markup = 20`, service `original_price = 3000`,
-`markup_percent = 0`, quantity 5000:
+The SMM pricing engine applies a 4-level precedence cascade to determine the effective selling price per 1,000 units. Implemented in `services/order_service.py:77-92`, `services/admin_smm_service.py:271-279`, and `api/orders.py`:
 
 ```
-effective = 3000 * (100 + 20) // 100 = 360000 // 100 = 3600
-total     = max(1, 3600 * 5000 // 1000) = 18000
+┌────────────────────────────────────────────────────────┐
+│ 1. Admin Manual Selling Price (smm_services.selling_price)│
+│    Is selling_price is not None?                      │
+│    YES ──► Use selling_price verbatim (Overrides %)!  │
+└───────────────────────────┬────────────────────────────┘
+                            │ NO
+┌───────────────────────────▼────────────────────────────┐
+│ 2. Service-Specific Markup (smm_services.markup_percent)│
+│    Is markup_percent > 0?                             │
+│    YES ──► markup = service.markup_percent             │
+└───────────────────────────┬────────────────────────────┘
+                            │ NO (0 is falsy)
+┌───────────────────────────▼────────────────────────────┐
+│ 3. Global System Markup (smm_settings.global_markup_percent)│
+│    Fetch global_markup_percent from settings          │
+│    markup = int(global_markup_percent or 0)           │
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│ 4. Base Cost Fallback                                  │
+│    If markup <= 0 ──► effective_price = original_price │
+└────────────────────────────────────────────────────────┘
 ```
 
-The `// 1000` floor silently undercharges small quantities: quantity 1 costs
-`max(1, 3) = 3` credits, not 3.6. `max(1, …)` guarantees a 1-credit minimum.
+#### 1. Mathematical Formulas
 
-`global_markup_percent` defaults to `"0"` (`order_service.py:23`, `:71-74`).
-**With no seed data the SMM margin is exactly zero.**
+**Effective Price per 1,000 units (`effective_price`):**
+```python
+markup = svc.markup_percent if svc.markup_percent else global_markup
+if markup > 0:
+    effective_price = max(1, (svc.original_price * (100 + markup)) // 100)
+else:
+    effective_price = svc.original_price
+```
 
-### B. Marketplace prefix pricing — longest-prefix wins
+**Total Order Cost Charged to User (`total_price`):**
+```python
+total_price = max(1, (effective_price * quantity) // 1000)
+```
+
+#### 2. Calculation Properties & Constraints
+1. **Floor Integer Arithmetic (`// 100` and `// 1000`):**
+   IDR is an integer-only currency in the TeleBos domain. Fractional cents are discarded via integer floor division.
+2. **Floor Clamping (`max(1, ...)`):**
+   Guarantees that both `effective_price` and `total_price` never drop to 0 or negative numbers, even for tiny quantities (e.g. quantity 1).
+3. **Falsy Zero Fallthrough (`markup_percent = 0`):**
+   Because `0` evaluates to falsy in Python (`svc.markup_percent if svc.markup_percent else global_markup`), setting `markup_percent = 0` on a specific service causes it to fall back to the global markup rather than enforcing 0% margin. To enforce 0% margin when global markup is active, admins set a fixed `selling_price = original_price`.
+4. **Hard Error on Non-Positive Price:**
+   If `effective_price <= 0`, the service raises `ValueError(f"Service '{svc.service_name}' has invalid price configuration")` (`order_service.py:93-94`).
+5. **Allowlist Pre-Check:**
+   Every requested `service_id` must exist in `ALLOWED_SMM_SERVICE_IDS` (106 IDs in `app/smm_service_ids.py`). Requests with unlisted IDs fail immediately before balance checks or provider calls.
+
+**Worked Example:**
+* Upstream `original_price` = Rp 3.000 / 1.000 unit
+* Service `markup_percent` = 0 (falls through to global)
+* Global `global_markup_percent` = 20%
+* Quantity = 5.000 unit
+
+$$\text{effective\_price} = \max\left(1, \left\lfloor \frac{3000 \times (100 + 20)}{100} \right\rfloor\right) = 3600 \text{ IDR per 1k}$$
+
+$$\text{total\_price} = \max\left(1, \left\lfloor \frac{3600 \times 5000}{1000} \right\rfloor\right) = 18000 \text{ IDR}$$
+
+---
+
+### B. Mass Order Hierarchy & Parent-Child Model
+
+Mass orders allow users to submit batches of up to 100 SMM orders in a single HTTP request (`POST /api/v1/orders/mass`, `schemas/order.py:38`).
+
+#### 1. Entity Hierarchy & Schema Mapping
+The data model uses a flat relational hierarchy on the `orders` table (`backend/app/models/order.py:13-48`):
+
+* `Order.is_mass_order: bool = True`: Differentiates batch-originated orders from single orders in analytics and reporting.
+* `Order.mass_parent_id: UUID | None`: Nullable foreign key / UUID reference column on `orders` for parent grouping. Each item in the batch is persisted as an independent row with full transactional auditing.
+* `Order.status`: Individual lifecycle state per child order. Child orders are not tied to an all-or-nothing terminal status; each item succeeds, fails, or refunds independently.
+
+#### 2. Upfront Validation & Batch Price Resolution
+Before touching user balance, `place_mass_orders` (`services/order_service.py:329-378`) performs batch pre-flight:
+1. **Deduplicated Price Fetch:** Collects unique `service_ids = {item["service_id"] for item in orders_data}` and fetches prices in a single query pass (`N1Q-03`), avoiding N+1 DB roundtrips.
+2. **Item Validation:** Re-checks each order against `min_qty`, `max_qty`, `quantity > 0`, and `ALLOWED_SMM_SERVICE_IDS`.
+3. **Aggregated Cost:** Sums individual item costs into `total_cost = sum(item.total_price)`.
+
+#### 3. Dual Execution Pathways
+
+##### Path 1: Internal Balance Settlement (`user.balance >= total_cost`)
+1. **Atomic Fund Reservation:** The user row is locked (`select(User).where(User.id == user.id).with_for_update()`).
+2. **Double-Entry Debit:** Debits the entire `total_cost` via `record_ledger_entry(entry_type="DEBIT", category="order_smm_mass", description="Mass Order SMM N item")`.
+3. **Lock Release Before External I/O (CONS-04 / TASK-09):** The transaction commits (`await db.commit()`) immediately, releasing row locks before initiating HTTP calls to BuzzerPanel. This prevents DB thread starvation during provider delays.
+4. **Independent Upstream Dispatch:** Loops through validated orders calling `create_order(...)`:
+   - If BuzzerPanel accepts: child order status is `"Pending"` and `smm_order_id` is stored.
+   - If BuzzerPanel rejects or times out: child order status is `"Failed"` with error notes recorded.
+5. **Automatic Immediate Delta Refund:**
+   ```python
+   successful_cost = sum(o.total_price for o in created_orders if o.status == "Pending")
+   refund_amount = total_cost - successful_cost
+   if refund_amount > 0:
+       # Re-lock user row and credit refund
+       await record_ledger_entry(
+           db=db, user=refund_user, amount=refund_amount,
+           entry_type="CREDIT", category="order_smm_refund",
+           description=f"Refund item gagal pada Mass Order SMM ({len(created_orders)} item)"
+       )
+   ```
+
+##### Path 2: Consolidated KlikQRIS Dynamic QRIS Invoice (`user.balance < total_cost`)
+1. **Lock Release:** Database lock is released via `await db.rollback()`.
+2. **Consolidated QRIS Invoice:** Generates a single dynamic invoice via KlikQRIS for `total_cost` (`services/order_service.py:385-423`).
+3. **Child Orders Staged as Pending Payment:** All child orders are persisted with `status = "Awaiting Payment"`, `is_mass_order = True`, and `invoice_id = invoice_id`.
+4. **Webhook Fulfillment:** Upon webhook payment confirmation, orders are fulfilled or credited to balance if provider errors occur.
+
+#### 4. Idempotency & Concurrency (SEC-09)
+* **In-Flight Mutex (`X-Idempotency-Key`):**
+  Uses Redis `SET NX` with 60-second TTL (`cache_key = f"idempotency:order_mass:{user.id}:{key}"`). Concurrent requests with identical keys are rejected with `HTTP 409 Conflict`.
+* **Fail-Closed Semantics:**
+  If Redis is unavailable, the endpoint returns `HTTP 503 Service Unavailable` with `Retry-After: 5` rather than proceeding without deduplication, preventing double deductions.
+* **Cached Response (24h TTL):**
+  Successful mass orders store the created order UUIDs in Redis for 24 hours (`ex=86400`). Subsequent retries return existing orders without re-charging.
+
+#### 5. Order Lifecycle & Idempotent Refund Rules
+Status transitions and refund eligibility for both single and mass child orders are handled by `process_order_refund_if_eligible` (`services/order_service.py:610-710`):
+
+| Status | Category | Refund Policy | Formula |
+|---|---|---|---|
+| `Pending` / `Processing` / `In progress` | Active | No refund | — |
+| `Completed` / `Success` | Terminal Success | No refund | — |
+| `Canceled` / `Cancelled` / `Error` / `Failed` | Terminal Failure | Full 100% refund | `refund_amount = order.total_price` |
+| `Partial` | Terminal Partial | Prorated refund based on `remains` | `(order.total_price * order.remains) // order.quantity` |
+
+* **Concurrency & Double-Refund Guard (CONS-02 / TASK-03):**
+  Every refund operation locks the `Order` row with `FOR UPDATE` and verifies `order.is_refunded == False`. Setting `is_refunded = True` and recording the `CREDIT` ledger entry occur within the same atomic transaction.
+
+---
+
+### C. Marketplace prefix pricing — longest-prefix wins
 
 Rule rows in `telegram_id_prefix_prices` carry `sell_price` and a nullable
 `buy_price` (`models/user_account_price.py:32-40`).
@@ -421,16 +546,17 @@ it (`database_migrator.py:253`). `buy_account` sets `sold_at` and resets
 derived from `sold_at is not None` (`:430`) — the flag and the field disagree
 semantically.
 
-### 5. Partial SMM fills are never prorated
+### 5. Partial SMM fills are never prorated [RESOLVED]
 
-A `Partial` order's unused remainder is not refunded. Status is only ever
-*refreshed* (`order_service.py:379-407`); balance is never adjusted. Whether the
-upstream panel auto-refunds is outside this repository.
+*Status:* **Remediated.** Handled by `process_order_refund_if_eligible` (`services/order_service.py:650-657`).
+When a sync or manual refresh detects a status transition to `Partial`, the system prorates the refund based on remaining units (`remains`):
+`refund_amount = min(locked_order.total_price, max(0, (locked_order.total_price * locked_order.remains) // locked_order.quantity))`
+The user row is locked `FOR UPDATE`, `wallet_ledgers` is credited (`category="order_smm_refund"`), and `order.is_refunded` is set to `True` (CONS-02 / TASK-03).
 
-### 6. Mass-order idempotency can double-charge
+### 6. Mass-order idempotency can double-charge [RESOLVED]
 
-If the Redis idempotency lookup fails, the request proceeds without dedup
-(`api/orders.py:237-245`).
+*Status:* **Remediated.** Implemented with fail-closed semantics in `api/orders.py:264-305` (SEC-09).
+The mass order endpoint uses an atomic Redis `SET NX` in-flight mutex (60s TTL). If Redis is unavailable, rather than proceeding without deduplication, the request fails closed with `HTTP 503 Service Unavailable` (`Retry-After: 5`). Successful executions store the created order IDs with a 24-hour TTL (`ex=86400`).
 
 ---
 

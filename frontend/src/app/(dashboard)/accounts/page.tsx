@@ -175,16 +175,16 @@ export default function AccountsListPage() {
       <div className="flex flex-col gap-4">
         {/* Status filters & Search bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar border border-transparent dark:border-slate-700/60">
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-xl w-full sm:w-fit overflow-x-auto whitespace-nowrap no-scrollbar border border-border/60">
             {STATUS_FILTERS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => handleSelectStatus(value)}
                 className={cn(
-                  "px-3.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors",
+                  "px-3.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-colors",
                   statusFilter === value
-                    ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-200/60 dark:border-slate-600 shadow-xs"
-                    : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
+                    ? "bg-card text-foreground border border-border/60 shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground font-medium"
                 )}
               >
                 {_(label)}
@@ -193,7 +193,7 @@ export default function AccountsListPage() {
           </div>
 
           <div className="relative w-full sm:w-80 md:w-88 shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               id="accounts-search"
               name="search"
@@ -202,14 +202,14 @@ export default function AccountsListPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label={_("accountsList.searchPlaceholder") || "Cari akun Telegram"}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
+              className="w-full pl-9 pr-4 py-2 border border-input rounded-lg text-sm bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-primary outline-none transition-colors"
             />
           </div>
         </div>
 
         {/* Folder filter bar */}
         {folders.length > 0 && (
-          <div className="border-t border-gray-100 dark:border-slate-800 pt-3">
+          <div className="border-t border-border pt-3">
             <FolderFilterBar
               folders={folders}
               selectedFolderId={selectedFolderId}
@@ -237,9 +237,9 @@ export default function AccountsListPage() {
           </button>
         </div>
       ) : accounts.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-          <Smartphone className="h-12 w-12 text-gray-300 dark:text-slate-500 mx-auto mb-3" />
-          <p className="text-gray-500 dark:text-slate-300 mb-4">
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <Smartphone className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground mb-4">
             {selectedFolderId
               ? "No accounts in this folder."
               : debouncedSearch

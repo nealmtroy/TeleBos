@@ -164,6 +164,15 @@ export interface Dict {
     emailPlaceholder: string;
     passwordLabel: string;
     passwordPlaceholder: string;
+    passwordStrength: string;
+    strengthWeak: string;
+    strengthFair: string;
+    strengthGood: string;
+    strengthStrong: string;
+    criteriaMinLength: string;
+    criteriaUpperLower: string;
+    criteriaNumber: string;
+    criteriaSpecial: string;
     confirmPasswordLabel: string;
     confirmPasswordPlaceholder: string;
     passwordsDoNotMatch: string;

@@ -9,6 +9,7 @@ import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Link as LinkIcon, ShieldAlert,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ChatRowSkeleton } from "@/components/ui/skeleton-cards";
-import { ChatAvatar } from "@/components/chat/ChatAvatar";
 
 const getApiUrl = () => {
   if (typeof window !== "undefined") {
@@ -76,7 +76,7 @@ function PublicGroupsChannelsContent() {
   const totalPages = Math.max(1, Math.ceil(total / 50));
 
   const getInviteLink = (chat: ChatItem) => {
-    return chat.invite_link || (chat.username ? `https://t.me/${chat.username}` : "");
+    return chat.username ? `https://t.me/${chat.username}` : "";
   };
 
   const handleCopyLink = (e: React.MouseEvent, chat: ChatItem) => {
@@ -139,28 +139,29 @@ function PublicGroupsChannelsContent() {
 
   // ── 2. Pro/Premium/Owner Index Finder ─────────────────────────────────────────
   return (
-    <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-7rem)] -m-4 md:-m-6 bg-white dark:bg-slate-900 overflow-hidden border-t border-gray-200 dark:border-slate-800 flex flex-col">
+    <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-7rem)] -m-4 md:-m-6 bg-card text-card-foreground overflow-hidden border-t border-border flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-100 space-y-3">
+      <div className="p-4 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500" />
               {_("groupsChannels.publicIndex")}
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {_("groupsChannels.publicIndexDesc")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {chats.some(chat => getInviteLink(chat)) && (
-              <button
+              <Button
+                variant="outline"
                 onClick={handleCopyAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition"
+                className="h-9 px-3 text-xs cursor-pointer"
               >
-                <LinkIcon className="h-3.5 w-3.5" />
+                <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
                 {copiedAll ? _("groupsChannels.copiedAllLinks") : _("groupsChannels.copyAllLinks")}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -168,7 +169,7 @@ function PublicGroupsChannelsContent() {
         {/* Search Bar */}
         <form onSubmit={handleSearchSubmit} className="relative flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               id="public-groups-channels-search"
               name="search"
@@ -177,20 +178,20 @@ function PublicGroupsChannelsContent() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
               aria-label={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full pl-9 pr-4 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
             />
           </div>
-          <button
+          <Button
             type="submit"
-            className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition flex items-center justify-center"
+            className="h-9 px-4 text-xs font-semibold cursor-pointer"
           >
             {_("groupsChannels.join")}
-          </button>
+          </Button>
         </form>
       </div>
 
       {/* Tabs & Sort */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50/50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
         <Tabs
           value={activeTab}
           onValueChange={(val) => {
@@ -199,12 +200,18 @@ function PublicGroupsChannelsContent() {
             setSearch("");
           }}
         >
-          <TabsList className="h-8 bg-gray-100 p-0.5">
-            <TabsTrigger value="groups" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
+          <TabsList className="h-8 bg-muted p-0.5">
+            <TabsTrigger
+              value="groups"
+              className="text-xs px-3 py-1 gap-1 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
+            >
               <Users className="h-3 w-3" />
               {_("groupsChannels.groups")}
             </TabsTrigger>
-            <TabsTrigger value="channels" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
+            <TabsTrigger
+              value="channels"
+              className="text-xs px-3 py-1 gap-1 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
+            >
               <Hash className="h-3 w-3" />
               {_("groupsChannels.channels")}
             </TabsTrigger>
@@ -261,17 +268,9 @@ function PublicGroupsChannelsContent() {
                   key={chat.chat_id}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                 >
-                  {chat.account_id && (
-                    <ChatAvatar
-                      accountId={chat.account_id}
-                      chatId={chat.chat_id}
-                      chatTitle={chat.title}
-                      chatType={activeTab === "channels" ? "channel" : "group"}
-                      photoVersion={chat.photo_version}
-                      sizeClassName="w-10 h-10"
-                      className="ring-2 ring-slate-100/50"
-                    />
-                  )}
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-semibold text-sm text-slate-600 dark:text-slate-300 ring-2 ring-slate-100/50 shrink-0">
+                    {chat.title ? chat.title.charAt(0).toUpperCase() : (activeTab === "channels" ? "C" : "G")}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="text-sm font-semibold truncate text-gray-900 dark:text-slate-100">{chat.title}</h2>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">

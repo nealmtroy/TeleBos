@@ -150,20 +150,35 @@ async def redeem_code(
         if locked_user.role == "owner":
             raise ValueError("Owner accounts cannot be upgraded via redeem codes.")
 
-        # Don't downgrade premium to pro
-        if not (locked_user.role == "premium" and redeem.plan == "pro"):
-            if locked_user.role != redeem.plan:
-                locked_user.role = redeem.plan
-                await db.execute(
-                    text('UPDATE "user" SET role = :role WHERE id = :user_id'),
-                    {"role": redeem.plan, "user_id": str(locked_user.id)},
-                )
-
-        # Accumulate remaining days if existing subscription is active
         from app.utils.timezone import ensure_utc
 
         current_expiry = ensure_utc(locked_user.subscription_expires_at)
+        if locked_user.role in ("basic", "pro", "premium"):
+            is_active_sub = (current_expiry is None) or (current_expiry > now)
+        elif locked_user.role == "freetrial":
+            is_active_sub = (current_expiry is not None) and (current_expiry > now)
+        else:
+            is_active_sub = False
 
+        tier_weights = {"basic": 1, "pro": 2, "premium": 3}
+        user_tier = tier_weights.get(locked_user.role, 0)
+        voucher_tier = tier_weights.get(redeem.plan, 0)
+
+        # Prevent lower-tier voucher arbitrage on active higher-tier plan (CONS-01 / TASK-01)
+        if is_active_sub and user_tier > voucher_tier:
+            raise ValueError(
+                f"Akun Anda saat ini memiliki paket {locked_user.role.title()} aktif. "
+                f"Voucher {redeem.plan.title()} tidak dapat digunakan untuk memperpanjang paket {locked_user.role.title()}."
+            )
+
+        if locked_user.role != redeem.plan:
+            locked_user.role = redeem.plan
+            await db.execute(
+                text('UPDATE "user" SET role = :role WHERE id = :user_id'),
+                {"role": redeem.plan, "user_id": str(locked_user.id)},
+            )
+
+        # Accumulate remaining days if existing subscription is active
         base_time = max(now, current_expiry) if (current_expiry and current_expiry > now) else now
         locked_user.subscription_expires_at = base_time + timedelta(days=redeem.duration_days)
         user.role = locked_user.role

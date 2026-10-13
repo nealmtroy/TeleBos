@@ -198,7 +198,7 @@ export function UserProfileMenu({
           )}
 
             {/* Saldo summary */}
-            <div className="flex items-center justify-between px-2 py-1 text-xs text-muted-foreground border-t border-gray-100 dark:border-slate-800/80 mt-1 pt-1">
+            <div className="flex items-center justify-between px-2 py-1 text-xs text-muted-foreground border-t border-border mt-1 pt-1">
               <span className="flex items-center gap-1.5 text-[11px]">
                 <Wallet className="size-3 text-emerald-500 shrink-0" />
                 {locale === "id" ? "Saldo" : "Balance"}
@@ -208,7 +208,7 @@ export function UserProfileMenu({
               </span>
             </div>
 
-          <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-slate-800" />
+          <DropdownMenuSeparator className="my-1" />
 
           {/* ── 2. Plan / Upgrade ── */}
           <DropdownMenuGroup>
@@ -238,14 +238,14 @@ export function UserProfileMenu({
             {userRole === "owner" && (
               <DropdownMenuItem
                 onSelect={() => router.push(isAdminPage ? "/dashboard" : "/admin/dashboard")}
-                className="cursor-pointer gap-2 px-2 py-1.5 text-xs rounded-md text-rose-600 dark:text-rose-400 focus:text-rose-600 font-medium"
+                className="cursor-pointer gap-2 px-2 py-1.5 text-xs rounded-md text-rose-600 dark:text-rose-400 focus:text-rose-700 dark:focus:text-rose-300 focus:bg-rose-50 dark:focus:bg-rose-950/40 font-medium"
               >
                 <Shield className="size-4 shrink-0" />
                 <span>
                   {isAdminPage
                     ? locale === "id"
-                      ? "Kembali ke Aplikasi"
-                      : "Back to User App"
+                    ? "Kembali ke Aplikasi"
+                    : "Back to User App"
                     : locale === "id"
                     ? "Panel Admin"
                     : "Admin Panel"}
@@ -254,7 +254,7 @@ export function UserProfileMenu({
             )}
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-slate-800" />
+          <DropdownMenuSeparator className="my-1" />
 
           {/* ── 3. Quick Links ── */}
           <DropdownMenuGroup>
@@ -291,12 +291,12 @@ export function UserProfileMenu({
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="my-1" />
 
           {/* ── 4. Sign out ── */}
           <DropdownMenuItem
             onSelect={() => setShowLogoutDialog(true)}
-            className="cursor-pointer gap-2 px-2 py-1.5 text-xs rounded-md text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/40 font-semibold"
+            className="cursor-pointer gap-2 px-2 py-1.5 text-xs rounded-md text-rose-600 dark:text-rose-400 focus:text-rose-700 dark:focus:text-rose-300 focus:bg-rose-50 dark:focus:bg-rose-950/40 font-semibold"
           >
             <LogOut className="size-4 text-rose-500 shrink-0" />
             <span>{_("navbar.logout") || "Keluar"}</span>

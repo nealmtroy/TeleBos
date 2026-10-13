@@ -14,6 +14,7 @@ class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
         Index("ix_orders_user_id_status", "user_id", "status"),
+        Index("ix_orders_mass_parent_id", "mass_parent_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -34,7 +35,9 @@ class Order(Base):
     start_count: Mapped[int | None] = mapped_column(Integer)
     remains: Mapped[int | None] = mapped_column(Integer)
     is_mass_order: Mapped[bool] = mapped_column(Boolean, default=False)
-    mass_parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # For mass orders
+    mass_parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=True
+    )  # For mass orders
     is_refunded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     refunded_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)

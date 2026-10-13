@@ -533,20 +533,26 @@ export default function AutoJoinPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/broadcast/group-lists"
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-slate-200 transition-colors"
+          <Button
+            asChild
+            variant="outline"
+            className="text-xs h-9 cursor-pointer"
           >
-            <Bookmark className="h-4 w-4 text-primary-500" />
-            {_("autoJoin.manageGroupLists")}
-          </Link>
-          <Link
-            href="/groups-channels"
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-slate-200 transition-colors"
+            <Link href="/broadcast/group-lists">
+              <Bookmark className="h-4 w-4 text-primary-500 mr-1.5" />
+              {_("autoJoin.manageGroupLists")}
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="text-xs h-9 cursor-pointer"
           >
-            <Hash className="h-4 w-4 text-primary-500" />
-            {_("autoJoin.viewMyChats")}
-          </Link>
+            <Link href="/groups-channels">
+              <Hash className="h-4 w-4 text-primary-500 mr-1.5" />
+              {_("autoJoin.viewMyChats")}
+            </Link>
+          </Button>
         </div>
       </div>
 

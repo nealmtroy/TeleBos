@@ -28,12 +28,47 @@ Use one detailed owner per topic; do not copy long specifications between docume
 | Workers | Dedicated Async Worker with Redis Queue & Pub/Sub |
 | Storage | PostgreSQL 16 via asyncpg |
 | Authentication | Better Auth backed by PostgreSQL sessions |
+| Payment Gateway | KlikQRIS Dynamic QRIS with HMAC-SHA256 Webhook Verification |
+| External SMM | BuzzerPanel API Integration |
 | Real time | Native FastAPI WebSockets with Redis Pub/Sub bridge |
 
 - `backend/app/api/` holds thin request handlers; validate there and delegate business rules to `backend/app/services/`.
 - `backend/app/models/` holds SQLAlchemy models; `backend/app/schemas/` holds Pydantic v2 request/response models.
 - `backend/app/workers/` contains the dedicated async worker daemon (`async_worker.py`) processing broadcast and invite background jobs independently from the webserver.
 - `frontend/src/app/` contains routes, `components/` UI, `hooks/` React Query/WebSocket integrations, `lib/` clients/utilities, and `store/` Zustand state.
+
+### Authentication architecture: Better Auth & Dual User Model
+
+TeleBos utilizes **Better Auth** (TypeScript / Next.js 14) for identity management and session state, replacing legacy custom JWT (`python-jose`):
+
+- **Session transport:** Browser requests pass the session token to the FastAPI backend via the `x-better-auth-token` HTTP header (injected by client fetch interceptors) or the `better-auth.session_token` / `__Secure-better-auth.session_token` cookie.
+- **Token hashing at rest:** Session tokens in the `session` table are hashed via SHA-256 (`token_hash`). The backend dependency `get_current_user` (`dependencies.py`) hashes incoming tokens before querying `session`, preventing token exposure from database read leaks.
+- **Dual User Model Architecture:**
+  - **`"user"` (Better Auth):** Owned by Better Auth; uses `TEXT` ID and camelCase columns (`"emailVerified"`, `"banReason"`, `"banned"`). Manages email verification, password credentials in `"account"`, and Google OAuth.
+  - **`users` (SQLAlchemy / FastAPI):** Owned by the core application; uses `UUID` ID and snake_case columns (`balance`, `is_active`, `role`, `ban_reason`, `ban_expires`). All domain tables (`telegram_accounts`, `orders`, `wallet_ledgers`) link foreign keys to `users.id`.
+- **Bidirectional synchronization:**
+  - **Signup/Creation:** `auth.ts` `user.create.before` validates email uniqueness across both `"user"` and `users`. The `after` hook automatically inserts a corresponding row into `users` (`ON CONFLICT (id) DO NOTHING`) with default `freetrial` role and 5-hour trial expiry.
+  - **Profile updates:** `auth.ts` `user.update.after` propagates name changes from `"user".name` to `users.full_name`.
+  - **Session resolution:** FastAPI resolves `session."userId"` directly to `users.id` by UUID casting (`UUID(row.user_id)`), eliminating duplicate-email account takeover vulnerabilities.
+  - **Account suspension/unban:** `dependencies.py` helper `restore_user_if_ban_expired` synchronizes active status, ban reason, and expiry across both `"user"` and `users` atomically.
+
+### External payment gateway: KlikQRIS
+
+TeleBos integrates **KlikQRIS** (`https://klikqris.com/api`) for automated, real-time user balance top-up:
+
+- **Client service:** `backend/app/services/klikqris_service.py` provides `create_qris_transaction()`, `check_qris_status()`, and `verify_signature()`.
+- **Transaction model:** Stored in `wallet_transactions` table with status progression (`pending` -> `approved` or `rejected`).
+- **Webhook contract:** `POST /api/v1/wallet/webhook/klikqris` processes asynchronous callback payloads:
+  - **Signature verification:** Validates incoming payload `signature` against stored `tx.signature` via constant-time HMAC check (`verify_signature`).
+  - **Idempotency:** Rejects redundant mutations cleanly if status is no longer `pending`.
+  - **Atomic fulfillment:** Calls `fulfill_wallet_transaction()`, crediting user balance and generating an immutable credit record in `wallet_ledgers`.
+  - **Fail-safe retry:** Throws HTTP 500 on internal database inconsistency so KlikQRIS automatically retries unfulfilled valid payments.
+- **Environment variables:**
+  - `KLIKQRIS_API_KEY`: API key passed in `x-api-key` header.
+  - `KLIKQRIS_ID_MERCHANT`: Merchant identifier passed in `id_merchant` header.
+  - `KLIKQRIS_BASE_URL`: Base API endpoint (default: `https://klikqris.com/api`).
+  - `KLIKQRIS_CALLBACK_URL`: Webhook URL passed during invoice creation.
+  - `KLIKQRIS_ALLOWED_IPS`: Comma-separated IP whitelist for webhook sender verification.
 
 ## API capability inventory
 
@@ -50,6 +85,7 @@ All API routes use `/api/v1`; use `/api/docs` for exact schemas, methods, parame
 | Polls and votes | `/polls`, `/messages/{message_id}/votes` | `api/polls.py` |
 | Stickers and GIFs | `/stickers/*`, `/gifs/*`, `/chats/{chat_id}/stickers`, `/chats/{chat_id}/gifs` | `api/stickers.py`, `api/gifs.py` |
 | Broadcast and invite jobs | `/broadcast/*`, `/invite/*` | `api/broadcast.py`, `api/invite.py` |
+| Wallet, KlikQRIS, withdraw, bank accounts | `/wallet/topup`, `/wallet/withdraw`, `/wallet/webhook/klikqris`, `/wallet/transactions/*`, `/wallet/bank-accounts/*` | `api/wallet.py`, `services/klikqris_service.py`, `services/ledger_service.py` |
 | Marketplace, SMM, orders, redeem, administration | `/marketplace/*`, `/orders/*`, `/redeem`, `/admin/*` | corresponding API/service modules |
 
 Except for the intentionally public chat-photo endpoint, account-scoped chat/message operations validate ownership before calling the Telethon-backed service. Download routes may use the documented alternate token/header authentication path.

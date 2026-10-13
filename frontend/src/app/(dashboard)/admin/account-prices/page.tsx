@@ -247,9 +247,9 @@ function AccountPricesContent() {
       )}
 
       {/* Add new rule */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-        <h2 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
-          <Plus className="h-4 w-4 text-primary-600" />
+      <div className="bg-card text-card-foreground border border-border rounded-xl p-4 space-y-3 shadow-sm">
+        <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
+          <Plus className="h-4 w-4 text-primary" />
           Add Price Rule
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -328,9 +328,9 @@ function AccountPricesContent() {
 
       {/* Rules table */}
       {rules && rules.length > 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-sm text-gray-900">Configured Rules ({rules.length})</h2>
+        <div className="bg-card text-card-foreground border border-border rounded-xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <h2 className="font-semibold text-sm text-foreground">Configured Rules ({rules.length})</h2>
           </div>
           {/* On mobile each rule renders as a stacked card rather than a table row. */}
           <div className="hidden md:block overflow-x-auto">
@@ -569,10 +569,10 @@ function AccountPricesContent() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 bg-white border border-dashed border-gray-200 rounded-xl">
-          <Tag className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-medium text-gray-500 mb-1">No price rules configured yet</p>
-          <p className="text-sm text-gray-400">Add a prefix rule above to get started.</p>
+        <div className="text-center py-12 bg-card text-card-foreground border border-dashed border-border rounded-xl">
+          <Tag className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+          <p className="font-medium text-muted-foreground mb-1">No price rules configured yet</p>
+          <p className="text-sm text-muted-foreground/80">Add a prefix rule above to get started.</p>
         </div>
       )}
 

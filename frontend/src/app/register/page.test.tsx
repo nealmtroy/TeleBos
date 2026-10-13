@@ -10,6 +10,9 @@ vi.mock("next/navigation", () => ({
     push: vi.fn(),
     replace: vi.fn(),
   }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue(null),
+  }),
 }));
 
 afterEach(cleanup);
@@ -99,5 +102,23 @@ describe("RegisterPage", () => {
     expect(submitBtn.className).toContain("text-white");
     expect(submitBtn.className).not.toContain("border-white");
     expect(submitBtn.className).not.toContain("bg-transparent");
+  });
+
+  it("shows password strength indicator when typing password and updates level", () => {
+    const { container } = render(<RegisterPage />);
+
+    // Initially when empty, indicator is not shown
+    expect(screen.queryByTestId("password-strength-indicator")).toBeNull();
+
+    const passwordInput = container.querySelector("input#register-password") as HTMLInputElement;
+
+    // Type weak password
+    fireEvent.change(passwordInput, { target: { value: "abc" } });
+    expect(screen.getByTestId("password-strength-indicator")).toBeDefined();
+    expect(screen.getByTestId("password-strength-label").textContent).toBe("Lemah");
+
+    // Type strong password satisfying all criteria
+    fireEvent.change(passwordInput, { target: { value: "StrongPass123!" } });
+    expect(screen.getByTestId("password-strength-label").textContent).toBe("Sangat Kuat");
   });
 });

@@ -1,19 +1,9 @@
 import logging
-import uuid
-from typing import Any
-from datetime import datetime, timezone
-import datetime as dt_module
-
-from sqlalchemy import select, func, update, delete
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.telegram_account import TelegramAccount
-from app.models.chat_folder import ChatFolder
-from app.models.telegram_chat import TelegramChat
+from app.services.chat_service import resolve_chat_entity
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
-from app.services.chat_service import resolve_chat_entity
 
 logger = logging.getLogger(__name__)
 

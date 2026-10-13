@@ -20,6 +20,7 @@ class BroadcastJob(Base):
     __tablename__ = "broadcast_jobs"
     __table_args__ = (
         Index("ix_broadcast_jobs_user_id_status", "user_id", "status"),
+        Index("ix_broadcast_jobs_account_ids_gin", "account_ids", postgresql_using="gin"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface TranscriptItem {
   role: "user" | "assistant" | "system";
@@ -227,11 +228,10 @@ export default function AdminTicketsPage() {
           onClick={fetchTickets}
           disabled={loading}
           variant="outline"
-          size="sm"
-          className="gap-2 border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
+          className="text-xs h-9 cursor-pointer"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-blue-400" : ""}`} />
-          Segarkan Data
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin text-primary")} />
+          <span>Segarkan Data</span>
         </Button>
       </div>
 

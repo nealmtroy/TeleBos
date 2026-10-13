@@ -209,8 +209,10 @@ async def test_security_analytics_endpoint_authorization():
     )
     dep = require_role(["owner"])
 
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
     with pytest.raises(HTTPException) as exc_info:
-        await dep(request=None, current_user=regular_user, db=AsyncMock())
+        await dep(request=None, current_user=regular_user, db=mock_db)
     assert exc_info.value.status_code == 403
 
     # 2. Owner user is authorized
@@ -219,7 +221,9 @@ async def test_security_analytics_endpoint_authorization():
         email="owner@telebos.id",
         role="owner",
     )
-    res = await dep(request=None, current_user=owner_user, db=AsyncMock())
+    mock_db2 = AsyncMock()
+    mock_db2.add = MagicMock()
+    res = await dep(request=None, current_user=owner_user, db=mock_db2)
     assert res.id == owner_user.id
 
 

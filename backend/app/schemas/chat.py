@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any
 
 
@@ -160,7 +160,23 @@ class ForwardMessagesRequest(BaseModel):
 
 
 class SendReactionRequestSchema(BaseModel):
-    reaction: str | None = None
+    reaction: str | None = Field(
+        None,
+        description="Emoji character for reaction (e.g. '👍', '❤️', '🔥'). Pass null or omit to remove/retract reaction.",
+        examples=["👍", "❤️", "🔥", None],
+    )
+
+
+class MessageReactionItem(BaseModel):
+    peer_id: int | None = Field(None, description="Telegram User ID or Chat ID of the user who reacted")
+    peer_name: str = Field("Unknown", description="Display name of the reactor")
+    reaction: str | None = Field(None, description="Emoji character reaction")
+    date: str | None = Field(None, description="ISO-8601 formatted timestamp of the reaction")
+
+
+class MessageReactionsResponse(BaseModel):
+    count: int = Field(0, description="Total number of reactions on this message")
+    reactions: list[MessageReactionItem] = Field(default_factory=list, description="List of user reaction details")
 
 
 class PinMessageRequest(BaseModel):

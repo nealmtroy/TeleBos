@@ -114,7 +114,7 @@ describe("/settings reference layout", () => {
 
     // Every nav row carries a leading icon, per the reference design.
     const rows = within(nav).getAllByRole("button");
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
     rows.forEach((row) => {
       expect(row.querySelector("svg")).toBeTruthy();
     });

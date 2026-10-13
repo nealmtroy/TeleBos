@@ -415,9 +415,9 @@ export default function BroadcastLogsPage() {
       )}
 
       {!selectedJobId && (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Filter className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-gray-500">{_("broadcastLogs.selectJobToView")}</p>
+        <div className="text-center py-16 bg-card text-card-foreground rounded-xl border border-border shadow-sm">
+          <Filter className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground">{_("broadcastLogs.selectJobToView")}</p>
         </div>
       )}
     </div>

@@ -192,27 +192,32 @@ export default function SettingsPage() {
   const [newAccountHolder, setNewAccountHolder] = useState("");
   const [newAccountDefault, setNewAccountDefault] = useState(false);
 
-  function handleSaveAccount(e: React.FormEvent) {
+  async function handleSaveAccount(e: React.FormEvent) {
     e.preventDefault();
     if (!newAccountNumber.trim() || !newAccountHolder.trim()) {
       toast.error("Mohon lengkapi nomor rekening dan nama pemilik");
       return;
     }
 
-    addAccount({
-      type: newAccountType,
-      provider: newAccountProvider,
-      accountNumber: newAccountNumber.trim(),
-      accountHolder: newAccountHolder.trim(),
-      isDefault: newAccountDefault,
-    });
+    try {
+      await addAccount({
+        type: newAccountType,
+        provider: newAccountProvider,
+        accountNumber: newAccountNumber.trim(),
+        accountHolder: newAccountHolder.trim(),
+        isDefault: newAccountDefault,
+      });
 
-    toast.success(_("settings.accountAdded"));
-    setIsAddingAccount(false);
-    setNewAccountNumber("");
-    setNewAccountHolder("");
-    setNewAccountDefault(false);
+      toast.success(_("settings.accountAdded"));
+      setIsAddingAccount(false);
+      setNewAccountNumber("");
+      setNewAccountHolder("");
+      setNewAccountDefault(false);
+    } catch {
+      toast.error("Gagal menambahkan rekening");
+    }
   }
+
 
   // Load API keys
   useEffect(() => {
@@ -1893,9 +1898,13 @@ export default function SettingsPage() {
                           {!acc.isDefault ? (
                             <button
                               type="button"
-                              onClick={() => {
-                                setDefaultAccount(acc.id);
-                                toast.success("Rekening utama berhasil diubah");
+                              onClick={async () => {
+                                try {
+                                  await setDefaultAccount(acc.id);
+                                  toast.success("Rekening utama berhasil diubah");
+                                } catch {
+                                  toast.error("Gagal mengubah rekening utama");
+                                }
                               }}
                               className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                             >
@@ -1907,10 +1916,14 @@ export default function SettingsPage() {
 
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               if (window.confirm(_("settings.deleteAccountConfirm"))) {
-                                deleteAccount(acc.id);
-                                toast.success(_("settings.accountDeleted"));
+                                try {
+                                  await deleteAccount(acc.id);
+                                  toast.success(_("settings.accountDeleted"));
+                                } catch {
+                                  toast.error("Gagal menghapus rekening");
+                                }
                               }
                             }}
                             className="p-1.5 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
@@ -1918,6 +1931,7 @@ export default function SettingsPage() {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
+
                         </div>
                       </div>
                     ))}

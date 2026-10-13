@@ -7,7 +7,7 @@ tab closing and can be paused, resumed and inspected later.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,9 @@ from app.database import Base
 
 class AutoJoinJob(Base):
     __tablename__ = "auto_join_jobs"
+    __table_args__ = (
+        Index("ix_auto_join_jobs_account_ids_gin", "account_ids", postgresql_using="gin"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

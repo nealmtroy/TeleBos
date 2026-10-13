@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useBroadcastJob, useGroupLists, useTextLists } from "@/hooks/use-broadcast";
 import { useT } from "@/lib/i18n";
 import { CheckCircle, ArrowLeft, FileText, List, Clock, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function BroadcastSuccessPage({ params }: { params: { id: string } }) {
   const _ = useT();
@@ -40,73 +41,74 @@ export default function BroadcastSuccessPage({ params }: { params: { id: string 
 
   return (
     <div className="max-w-2xl mx-auto mt-10">
-      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center space-y-6">
+      <div className="bg-card text-card-foreground rounded-xl border border-border p-8 text-center space-y-6 shadow-sm">
         <div className="flex justify-center">
-          <CheckCircle className="h-16 w-16 text-green-500" />
+          <CheckCircle className="h-16 w-16 text-emerald-500" />
         </div>
         
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Broadcast Started Successfully</h1>
-          <p className="text-gray-500">Your broadcast has been created and is now running in the background.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Broadcast Started Successfully</h1>
+          <p className="text-muted-foreground">Your broadcast has been created and is now running in the background.</p>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-6 text-left space-y-4 border border-gray-100 mt-6">
-          <h3 className="font-semibold text-gray-900 border-b pb-2">Broadcast Details</h3>
+        <div className="bg-muted/40 rounded-lg p-6 text-left space-y-4 border border-border mt-6">
+          <h3 className="font-semibold text-foreground border-b border-border pb-2">Broadcast Details</h3>
           
           <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
             <div className="flex items-start gap-2">
-              <List className="h-4 w-4 text-gray-400 mt-0.5" />
+              <List className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-gray-500 text-xs">Group List</p>
-                <p className="font-medium text-gray-900">{groupList?.name || "Unknown"} ({job.total_groups} groups)</p>
+                <p className="text-muted-foreground text-xs">Group List</p>
+                <p className="font-medium text-foreground">{groupList?.name || "Unknown"} ({job.total_groups} groups)</p>
               </div>
             </div>
 
             <div className="flex items-start gap-2">
-              <FileText className="h-4 w-4 text-gray-400 mt-0.5" />
+              <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-gray-500 text-xs">Text Source</p>
-                <p className="font-medium text-gray-900">
+                <p className="text-muted-foreground text-xs">Text Source</p>
+                <p className="font-medium text-foreground">
                   {job.mode === "single_text" ? "Custom Text" : (textList?.name || "Unknown")}
                 </p>
               </div>
             </div>
 
             <div className="flex items-start gap-2">
-              <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
+              <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-gray-500 text-xs">Delay per Group</p>
-                <p className="font-medium text-gray-900">
+                <p className="text-muted-foreground text-xs">Delay per Group</p>
+                <p className="font-medium text-foreground">
                   {job.delay_randomized ? "5-30s (Random)" : `${job.delay_per_group}s`}
                 </p>
               </div>
             </div>
 
             <div className="flex items-start gap-2">
-              <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
+              <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-gray-500 text-xs">Delay after Cycle</p>
-                <p className="font-medium text-gray-900">{job.delay_after_all}s</p>
+                <p className="text-muted-foreground text-xs">Delay after Cycle</p>
+                <p className="font-medium text-foreground">{job.delay_after_all}s</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="flex gap-4 justify-center pt-4">
-          <button
+          <Button
+            variant="outline"
             onClick={() => router.push("/broadcast/new")}
-            className="flex items-center gap-2 px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition"
+            className="h-10 px-5 text-sm cursor-pointer"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
             Back
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => router.push(`/broadcast/logs?jobId=${job.id}`)}
-            className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition"
+            className="h-10 px-5 text-sm cursor-pointer"
           >
-            <FileText className="h-4 w-4" />
+            <FileText className="h-4 w-4 mr-1.5" />
             View Logs
-          </button>
+          </Button>
         </div>
       </div>
     </div>

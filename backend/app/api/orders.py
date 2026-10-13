@@ -18,9 +18,10 @@ from app.schemas.order import (
     OrderStatusResponse,
     MassOrderCreate,
     MassOrderItem as MassOrderItemSchema,
+    ActivityHistoryResponse,
 )
 from app.smm_service_ids import ALLOWED_SMM_SERVICE_IDS  # noqa: F401
-from app.services import order_service, smm_service, admin_smm_service
+from app.services import order_service, smm_service, admin_smm_service, activity_history_service
 from app.utils.rate_limiter import rate_limiter
 from app.utils.redis import redis_client
 from app.utils.sanitize import sanitize_exception
@@ -156,7 +157,7 @@ async def place_single_order(
     # SEC-09 Idempotency check with fail-closed semantics and concurrent in-flight lock
     cache_key = None
     lock_acquired = False
-    if x_idempotency_key and x_idempotency_key.strip():
+    if isinstance(x_idempotency_key, str) and x_idempotency_key.strip():
         clean_key = x_idempotency_key.strip()
         cache_key = f"idempotency:order:{user.id}:{clean_key}"
         try:
@@ -213,6 +214,16 @@ async def place_single_order(
             except Exception:
                 pass
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    except RuntimeError as exc:
+        if cache_key and lock_acquired:
+            try:
+                await redis_client.delete(cache_key)
+            except Exception:
+                pass
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=sanitize_exception(exc),
+        )
     except Exception:
         if cache_key and lock_acquired:
             try:
@@ -254,7 +265,7 @@ async def place_mass_order(
     # SEC-09 Idempotency check with fail-closed semantics and concurrent in-flight lock
     cache_key = None
     lock_acquired = False
-    if x_idempotency_key and x_idempotency_key.strip():
+    if isinstance(x_idempotency_key, str) and x_idempotency_key.strip():
         clean_key = x_idempotency_key.strip()
         cache_key = f"idempotency:order_mass:{user.id}:{clean_key}"
         try:
@@ -314,6 +325,16 @@ async def place_mass_order(
             except Exception:
                 pass
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    except RuntimeError as exc:
+        if cache_key and lock_acquired:
+            try:
+                await redis_client.delete(cache_key)
+            except Exception:
+                pass
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=sanitize_exception(exc),
+        )
     except Exception:
         if cache_key and lock_acquired:
             try:
@@ -336,6 +357,39 @@ async def get_order_history(
         db, str(user.id), limit=limit, offset=offset, category=category
     )
     return orders
+
+
+@router.get("/orders/activity-history", response_model=ActivityHistoryResponse)
+@router.get("/user/activity-history", response_model=ActivityHistoryResponse)
+async def get_activity_history(
+    tab: str = Query("all", pattern="^(all|smm|accounts|deposits|withdrawals|balance)$"),
+    search: str | None = Query(None),
+    status: str = Query("all"),
+    start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None),
+    sort_by: str = Query("date", pattern="^(date|price|status)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    locale: str = Query("id", pattern="^(id|en)$"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Retrieve unified activity history across SMM, accounts, and wallet with server-side pagination and metrics."""
+    return await activity_history_service.get_user_activity_history(
+        db,
+        user,
+        tab=tab,
+        search=search,
+        status=status,
+        start_date=start_date,
+        end_date=end_date,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
+        locale=locale,
+    )
 
 
 @router.get("/orders/{order_id}", response_model=OrderResponse)

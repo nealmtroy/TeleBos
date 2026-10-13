@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 def run_migrations(connection):
     """Apply idempotent schema migrations not covered by create_all."""
     inspector = inspect(connection)
+    dialect_name = getattr(getattr(connection, "dialect", None), "name", "")
+    is_pg = dialect_name == "postgresql"
 
     # ── Session token hashing (vuln-0005) ──────────────────────────────────
     # Adds a token_hash column so the backend can validate sessions by
@@ -101,7 +103,6 @@ def run_migrations(connection):
                 except Exception:
                     pass
 
-        is_pg = connection.dialect.name == "postgresql"
         json_col_type = "JSONB DEFAULT '[]'::jsonb" if is_pg else "TEXT DEFAULT '[]'"
         created_at_type = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP" if is_pg else "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
         connection.execute(text("ALTER TABLE broadcast_logs ADD COLUMN IF NOT EXISTS total_groups INTEGER DEFAULT 0 NOT NULL"))
@@ -384,6 +385,7 @@ def run_migrations(connection):
                 "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
                 "  id_prefix VARCHAR(20) NOT NULL,"
                 "  sell_price BIGINT NOT NULL DEFAULT 5500,"
+                "  buy_price BIGINT DEFAULT NULL,"
                 "  note TEXT,"
                 "  created_at TIMESTAMPTZ DEFAULT now(),"
                 "  updated_at TIMESTAMPTZ DEFAULT now()"
@@ -829,8 +831,7 @@ def run_migrations(connection):
             existing_uqs = set()
 
         if "uq_telegram_account_phone" not in existing_uqs:
-            dialect_name = getattr(getattr(connection, "dialect", None), "name", "")
-            if dialect_name == "postgresql":
+            if is_pg:
                 try:
                     connection.execute(
                         text("""
@@ -912,6 +913,7 @@ def run_migrations(connection):
         "CREATE INDEX IF NOT EXISTS ix_orders_smm_order_id ON orders (smm_order_id)",
         "CREATE INDEX IF NOT EXISTS ix_orders_status ON orders (status)",
         "CREATE INDEX IF NOT EXISTS ix_orders_user_id_status ON orders (user_id, status)",
+        "CREATE INDEX IF NOT EXISTS ix_orders_mass_parent_id ON orders (mass_parent_id)",
         "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_status ON broadcast_jobs (status)",
         "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_user_id_status ON broadcast_jobs (user_id, status)",
         "CREATE INDEX IF NOT EXISTS ix_invite_logs_job_user ON invite_logs (job_id, user_id_tg)",
@@ -921,6 +923,18 @@ def run_migrations(connection):
             connection.execute(text(idx_sql))
         except Exception as e:
             logger.warning("Could not create index %s: %s", idx_sql, e)
+
+    # GIN indexes for JSONB columns on automation job tables (PERF-01, DB-04 / TASK-29)
+    if is_pg:
+        for gin_sql in [
+            "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_account_ids_gin ON broadcast_jobs USING GIN (account_ids)",
+            "CREATE INDEX IF NOT EXISTS ix_invite_jobs_account_ids_gin ON invite_jobs USING GIN (account_ids)",
+            "CREATE INDEX IF NOT EXISTS ix_auto_join_jobs_account_ids_gin ON auto_join_jobs USING GIN (account_ids)",
+        ]:
+            try:
+                connection.execute(text(gin_sql))
+            except Exception as e:
+                logger.warning("Could not create GIN index %s: %s", gin_sql, e)
 
     # Ensure onboarding_completed column exists on users table
     try:
@@ -1064,5 +1078,46 @@ def run_migrations(connection):
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_security_audit_logs_action_created ON security_audit_logs(action, created_at)"))
         except Exception as e:
             logger.warning("Could not create security_audit_logs table: %s", e)
+
+    # ── Ensure Wallet Ledgers user FK is RESTRICT (TASK-05 / DB-03) ─────────
+    if "wallet_ledgers" in tables:
+        try:
+            fks = inspector.get_foreign_keys("wallet_ledgers")
+            for fk in fks:
+                if fk.get("referred_table") == "users" and "user_id" in fk.get("constrained_columns", []):
+                    ondelete = (fk.get("options") or {}).get("ondelete")
+                    if ondelete and ondelete.upper() == "CASCADE":
+                        fk_name = fk.get("name") or "wallet_ledgers_user_id_fkey"
+                        connection.execute(text(f"ALTER TABLE wallet_ledgers DROP CONSTRAINT IF EXISTS {fk_name}"))
+                        connection.execute(text("ALTER TABLE wallet_ledgers ADD CONSTRAINT wallet_ledgers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"))
+                        logger.info("Migrated wallet_ledgers user_id foreign key from CASCADE to RESTRICT")
+                    break
+        except Exception as e:
+            logger.warning("Could not ensure wallet_ledgers RESTRICT foreign key: %s", e)
+
+    # ── User Bank Accounts Table (SEC-03 / TASK-11) ─────────────────────────
+    if "user_bank_accounts" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS user_bank_accounts (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        account_type VARCHAR(20) NOT NULL DEFAULT 'bank',
+                        provider VARCHAR(50) NOT NULL,
+                        account_number_encrypted TEXT NOT NULL,
+                        account_number_last4 VARCHAR(4) NOT NULL,
+                        account_holder VARCHAR(255) NOT NULL,
+                        is_default BOOLEAN NOT NULL DEFAULT false,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_user_bank_accounts_user_id ON user_bank_accounts(user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_user_bank_accounts_default ON user_bank_accounts(user_id, is_default)"))
+        except Exception as e:
+            logger.warning("Could not create user_bank_accounts table: %s", e)
+
 
 

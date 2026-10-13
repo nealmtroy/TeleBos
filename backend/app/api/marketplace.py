@@ -182,6 +182,9 @@ async def buy_account(
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    except RuntimeError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail=sanitize_exception(exc))
     except Exception as exc:
         await db.rollback()
         logger.exception("Failed to buy account %s: %s", account_id, exc)

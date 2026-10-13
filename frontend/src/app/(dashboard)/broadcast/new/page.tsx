@@ -260,50 +260,50 @@ export default function NewBroadcastPage() {
           <CardSkeleton lines={3} />
         </div>
       ) : !accounts || accounts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
-          <div className="bg-primary-50 p-5 rounded-full text-primary-600 animate-pulse">
-            <UserPlus className="h-10 w-10 text-primary-600" />
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-card text-card-foreground rounded-2xl border border-border shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-primary-50 dark:bg-primary-950/50 p-5 rounded-full text-primary animate-pulse">
+            <UserPlus className="h-10 w-10 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-foreground">
               {_("broadcastDashboard.noAccountsTitle")}
             </h2>
-            <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+            <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
               {_("broadcastDashboard.noAccountsDesc")}
             </p>
           </div>
           <Link
             href="/accounts"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow active:scale-98"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition shadow-sm hover:shadow active:scale-98"
           >
             <Plus className="h-4 w-4" />
             {_("broadcastDashboard.noAccountsBtn")}
           </Link>
         </div>
       ) : !groupLists || groupLists.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
-          <div className="bg-blue-50 p-5 rounded-full text-blue-600 animate-pulse">
-            <List className="h-10 w-10 text-blue-600" />
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-card text-card-foreground rounded-2xl border border-border shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-blue-50 dark:bg-blue-950/50 p-5 rounded-full text-blue-600 dark:text-blue-400 animate-pulse">
+            <List className="h-10 w-10 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-foreground">
               {_("broadcastDashboard.noGroupListsTitle")}
             </h2>
-            <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+            <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
               {_("broadcastDashboard.noGroupListsDesc")}
             </p>
           </div>
           <Link
             href="/broadcast/group-lists"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition shadow-sm hover:shadow active:scale-98"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition shadow-sm hover:shadow active:scale-98"
           >
             <Plus className="h-4 w-4" />
             {_("broadcastDashboard.noGroupListsBtn")}
           </Link>
         </div>
       ) : (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-        <h2 className="font-semibold text-gray-900">{_("newBroadcast.configuration")}</h2>
+      <div className="bg-card text-card-foreground rounded-xl border border-border p-6 space-y-5 shadow-sm">
+        <h2 className="font-semibold text-foreground">{_("newBroadcast.configuration")}</h2>
 
         {/* Accounts Selection */}
         <AccountSelector
@@ -562,10 +562,10 @@ export default function NewBroadcastPage() {
 
       {/* Active job progress */}
       {activeJob && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-6 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-gray-900">
+              <h2 className="font-semibold text-foreground">
                 Broadcast {activeJob.id.slice(0, 8)}...
               </h2>
               {wsConnected && (

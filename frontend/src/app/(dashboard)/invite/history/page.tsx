@@ -73,29 +73,29 @@ export default function InviteHistoryPage() {
       {/* Header + Sub-navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{_("invite.inviteHistory")}</h1>
-          <p className="text-gray-500 mt-1">{_("invite.historyDesc")}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{_("invite.inviteHistory")}</h1>
+          <p className="text-muted-foreground mt-1">{_("invite.historyDesc")}</p>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border/60">
           <Link
             href="/invite"
-            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition"
+            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 transition"
           >
-            <Plus className="h-4 w-4 text-gray-400" />
+            <Plus className="h-4 w-4 text-muted-foreground" />
             {_("invite.newInvite")}
           </Link>
           <Link
             href="/invite/history"
-            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-semibold bg-white text-gray-900 shadow-xs transition"
+            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-semibold bg-card text-foreground shadow-xs border border-border/60 transition"
           >
-            <Clock className="h-4 w-4 text-primary-600" />
+            <Clock className="h-4 w-4 text-primary" />
             {_("invite.inviteHistory")}
           </Link>
           <Link
             href="/invite/logs"
-            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition"
+            className="flex items-center gap-2 py-2 px-3.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 transition"
           >
-            <ClipboardList className="h-4 w-4 text-gray-400" />
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
             {_("invite.inviteLogs")}
           </Link>
         </div>
@@ -103,33 +103,33 @@ export default function InviteHistoryPage() {
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{_("invite.metricTotalTasks")}</span>
-            <Layers className="h-4 w-4 text-gray-400" />
+            <Layers className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="text-xl font-bold text-gray-900">{jobs?.length ?? 0}</p>
+          <p className="text-xl font-bold text-foreground">{jobs?.length ?? 0}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{_("invite.metricRunning")}</span>
             <Play className="h-4 w-4 text-blue-500" />
           </div>
           <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{runningCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{_("invite.metricCompleted")}</span>
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-xl font-bold text-green-600 dark:text-green-400">{completedCount}</p>
+          <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{completedCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{_("invite.metricTotalInvited")}</span>
-            <UserPlus className="h-4 w-4 text-primary-500" />
+            <UserPlus className="h-4 w-4 text-primary" />
           </div>
-          <p className="text-xl font-bold text-primary-600 dark:text-primary-400">{totalInvited.toLocaleString()}</p>
+          <p className="text-xl font-bold text-primary">{totalInvited.toLocaleString()}</p>
         </div>
       </div>
 
@@ -137,36 +137,36 @@ export default function InviteHistoryPage() {
       {isLoading ? (
         <CardSkeleton lines={4} />
       ) : !jobs || jobs.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <UserPlus className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 font-medium mb-3">{_("invite.noJobs")}</p>
+        <div className="bg-card rounded-xl border border-border p-12 text-center">
+          <UserPlus className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+          <p className="text-muted-foreground font-medium mb-3">{_("invite.noJobs")}</p>
           <Link
             href="/invite"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold transition"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-semibold transition"
           >
             <Plus className="h-4 w-4" />
             {_("invite.newInvite")}
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
+        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <TableRow className="hover:bg-gray-50/75">
-                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.date")}</TableHead>
-                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.destination")}</TableHead>
-                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.status")}</TableHead>
-                  <TableHead className="px-4 py-3 font-semibold text-gray-500">{_("invite.progress")}</TableHead>
-                  <TableHead className="px-4 py-3 font-semibold text-gray-500">
+              <TableHeader className="bg-muted/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <TableRow className="hover:bg-muted/50">
+                  <TableHead className="px-4 py-3 font-semibold text-muted-foreground">{_("invite.date")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-muted-foreground">{_("invite.destination")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-muted-foreground">{_("invite.status")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-muted-foreground">{_("invite.progress")}</TableHead>
+                  <TableHead className="px-4 py-3 font-semibold text-muted-foreground">
                     {_("invite.invited")} / {_("invite.failed")}
                   </TableHead>
-                  <TableHead className="text-right px-4 py-3 font-semibold text-gray-500">{_("invite.actions")}</TableHead>
+                  <TableHead className="text-right px-4 py-3 font-semibold text-muted-foreground">{_("invite.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-100">
+              <TableBody className="divide-y divide-border/60">
                 {jobs.map((job: InviteJob) => (
-                  <TableRow key={job.id} className="hover:bg-gray-50/75 transition-colors">
+                  <TableRow key={job.id} className="hover:bg-muted/40 transition-colors">
                     <TableCell className="px-4 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(job.created_at).toLocaleString()}
                     </TableCell>

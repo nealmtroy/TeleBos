@@ -56,8 +56,8 @@ function PaginationLink({
       className={cn(
         "rounded-lg transition-colors",
         isActive
-          ? "border-primary bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:text-white font-bold"
-          : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700",
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-xs"
+          : "border-border bg-card text-card-foreground hover:bg-muted hover:text-foreground",
         className
       )}
       {...props}
@@ -112,7 +112,7 @@ function PaginationEllipsis({
       aria-hidden
       data-slot="pagination-ellipsis"
       className={cn(
-        "flex size-8 items-center justify-center text-gray-400 dark:text-slate-500",
+        "flex size-8 items-center justify-center text-muted-foreground",
         className
       )}
       {...props}
@@ -196,11 +196,11 @@ export function DataPagination({
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1 || disabled}
           aria-label={labels.prev || "Previous"}
-          className="rounded-lg border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+          className="rounded-lg border-border bg-card text-card-foreground hover:bg-muted hover:text-foreground"
         >
           <ChevronLeft className="size-3.5" />
         </Button>
-        <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
+        <span className="text-xs font-medium text-muted-foreground">
           {page} / {totalPages}
         </span>
         <Button
@@ -209,7 +209,7 @@ export function DataPagination({
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages || disabled}
           aria-label={labels.next || "Next"}
-          className="rounded-lg border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+          className="rounded-lg border-border bg-card text-card-foreground hover:bg-muted hover:text-foreground"
         >
           <ChevronRight className="size-3.5" />
         </Button>

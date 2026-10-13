@@ -4,6 +4,7 @@ import asyncio
 import ipaddress
 import logging
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Response, status
 from fastapi.openapi.utils import get_openapi
@@ -350,11 +351,12 @@ async def _cancel_task(task: asyncio.Task) -> None:
 
 async def _shutdown_resources(
     *,
-    cleanup_task: asyncio.Task,
-    smm_sync_task: asyncio.Task,
-    smm_orders_poll_task: asyncio.Task,
-    media_cleanup_task: asyncio.Task,
-    redis_ws_bridge_task: asyncio.Task,
+    cleanup_task: asyncio.Task | None = None,
+    smm_sync_task: asyncio.Task | None = None,
+    smm_orders_poll_task: asyncio.Task | None = None,
+    media_cleanup_task: asyncio.Task | None = None,
+    redis_ws_bridge_task: asyncio.Task | None = None,
+    **extra_tasks: Any,
 ) -> None:
     """Tear down background tasks, Telegram clients, Redis, and the DB engine.
 
@@ -365,13 +367,19 @@ async def _shutdown_resources(
     MTProto socket can legitimately fail, and a partial teardown must still
     release Redis and the connection pool.
     """
-    for task in (
-        cleanup_task,
-        smm_sync_task,
-        smm_orders_poll_task,
-        media_cleanup_task,
-        redis_ws_bridge_task,
-    ):
+    all_tasks = [
+        t
+        for t in (
+            cleanup_task,
+            smm_sync_task,
+            smm_orders_poll_task,
+            media_cleanup_task,
+            redis_ws_bridge_task,
+            *extra_tasks.values(),
+        )
+        if t is not None
+    ]
+    for task in all_tasks:
         await _cancel_task(task)
 
     try:
@@ -490,27 +498,9 @@ async def lifespan(app: FastAPI):
 
     cleanup_task = asyncio.create_task(clean_pending_logins_task())
 
-    # 3. Spawn SMM background schedulers (services sync, orders polling)
-    # Note: Telegram MTProto schedulers (adaptive sync, stats updater, 2FA updater)
-    # have been consolidated into async-worker to prevent session collisions.
-    from app.schedulers.background_tasks import (
-        smm_services_sync_loop,
-        smm_orders_poll_loop,
-    )
-
-    smm_sync_task = asyncio.create_task(smm_services_sync_loop())
-    logger.info("SMM services background sync task started (12-hour interval)")
-
-    smm_orders_poll_task = asyncio.create_task(smm_orders_poll_loop())
-    logger.info("SMM orders background status poll task started (1-min interval)")
-
-    # 7. Spawn message media cache cleanup background task (runs daily)
-    from app.utils.media_cleanup import background_media_cleanup_loop
-
-    media_cleanup_task = asyncio.create_task(background_media_cleanup_loop())
-    logger.info("Message media cache cleanup background task started (daily interval)")
-
-    # 8. Spawn Redis WebSocket bridge (relays worker progress events to frontend WebSockets)
+    # 3. Spawn Redis WebSocket bridge (relays worker progress events to frontend WebSockets)
+    # Note: SMM schedulers (services sync, orders polling) and media cache cleanup
+    # have been migrated to the dedicated async-worker daemon (ARCH-05 / TASK-27).
     from app.services.redis_ws_bridge import redis_ws_bridge_loop
 
     redis_ws_bridge_task = asyncio.create_task(redis_ws_bridge_loop())
@@ -522,9 +512,6 @@ async def lifespan(app: FastAPI):
 
     await _shutdown_resources(
         cleanup_task=cleanup_task,
-        smm_sync_task=smm_sync_task,
-        smm_orders_poll_task=smm_orders_poll_task,
-        media_cleanup_task=media_cleanup_task,
         redis_ws_bridge_task=redis_ws_bridge_task,
     )
 
@@ -544,6 +531,18 @@ app = FastAPI(
             "description": "Stable, read-only endpoints for external integrations.",
         },
         {"name": "api-keys", "description": "Create and revoke external integration keys."},
+        {
+            "name": "reactions",
+            "description": "Telegram message emoji reactions management (send, retract, and inspect reactions).",
+        },
+        {
+            "name": "admin-analytics",
+            "description": "Executive metrics, timeseries analytics, system telemetry, and retention pruning.",
+        },
+        {
+            "name": "telegram-reg-date",
+            "description": "Telegram user registration date estimation and anchor point harvesting.",
+        },
     ],
     # Keep documentation under /api so it works both through Next.js and
     # when the backend is exposed directly by a reverse proxy.

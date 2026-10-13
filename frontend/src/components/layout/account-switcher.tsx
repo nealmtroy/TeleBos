@@ -51,7 +51,7 @@ export function AccountSwitcher() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-800 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-card border border-border rounded-lg hover:bg-muted/60 transition w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {selected ? (
             <Avatar account={selected} />
@@ -60,15 +60,15 @@ export function AccountSwitcher() {
               T
             </div>
           )}
-          <span className="truncate text-gray-700 dark:text-slate-200 flex-1">
+          <span className="truncate text-foreground font-medium flex-1">
             {selected?.first_name || _("accountSwitcher.selectAccount")}
           </span>
-          <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
+          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="w-[240px] max-h-72 overflow-y-auto">
-        <DropdownMenuLabel className="text-xs text-muted-foreground dark:text-slate-400">
+        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
           {_("accountSwitcher.accounts") || "Accounts"}
         </DropdownMenuLabel>
         {accountsList.map((account) => {
@@ -79,11 +79,11 @@ export function AccountSwitcher() {
               onClick={() => setSelectedAccount(account.id)}
               className={cn(
                 "flex items-center gap-2 cursor-pointer",
-                isCurrent && "bg-primary-50 dark:bg-primary-950/50 font-medium"
+                isCurrent && "bg-primary/10 text-primary font-semibold"
               )}
             >
               <Avatar account={account} />
-              <span className="truncate flex-1 text-gray-800 dark:text-slate-200">
+              <span className="truncate flex-1 text-foreground">
                 {account.first_name || account.phone}
               </span>
               {isCurrent && (

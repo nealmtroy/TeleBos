@@ -77,3 +77,56 @@ class OrderStatusResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UnifiedActivityItem(BaseModel):
+    id: str
+    order_id_display: str
+    type: str  # "smm" | "telegram_account" | "deposit" | "withdraw" | "redeem" | "admin_adjustment"
+    type_name: str
+    service_name: str
+    service_sublabel: str
+    detail: str
+    quantity_display: str
+    quantity_raw: int
+    price_display: str
+    price_raw: int
+    status: str  # "Selesai" | "Proses" | "Menunggu" | "Dibatalkan"
+    status_raw: str
+    created_at: datetime
+    date_str: str
+    time_str: str
+    telegram_id: int | None = None
+    phone: str | None = None
+    smm_order_id: str | None = None
+    remains: int | None = None
+    start_count: int | None = None
+    target_url: str | None = None
+    payment_method: str | None = None
+    admin_note: str | None = None
+
+
+class ActivityMetrics(BaseModel):
+    total_orders: int
+    total_accounts: int
+    total_smm: int
+    total_deposits: int
+    total_withdrawals: int
+    total_balance_adj: int
+    total_spend: int
+    in_progress_count: int
+    completed_count: int
+    success_rate: str
+
+
+class ActivityPagination(BaseModel):
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+
+
+class ActivityHistoryResponse(BaseModel):
+    items: list[UnifiedActivityItem]
+    pagination: ActivityPagination
+    metrics: ActivityMetrics

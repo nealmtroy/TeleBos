@@ -11,6 +11,7 @@ import {
   Search, ChevronLeft, ChevronRight, Users, Hash, Crown, Loader2, MessageSquare, Plus, X, Link as LinkIcon, RefreshCw,
 } from "lucide-react";
 import { DataPagination } from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -220,37 +221,39 @@ function GroupsChannelsContent() {
     : chats;
 
   return (
-    <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-7rem)] -m-4 md:-m-6 bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 flex flex-col">
+    <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-7rem)] -m-4 md:-m-6 bg-card text-card-foreground rounded-xl overflow-hidden border border-border flex flex-col">
       {/* Header with account selector */}
-      <div className="p-4 border-b border-gray-100 dark:border-slate-700 space-y-3">
+      <div className="p-4 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-slate-100">{_("groupsChannels.title")}</h1>
+          <h1 className="text-lg font-bold text-foreground">{_("groupsChannels.title")}</h1>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="outline"
               onClick={handleSync}
               disabled={!selectedAccount || isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-9 px-3 text-xs cursor-pointer"
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isSyncing && "animate-spin")} />
               {isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}
-            </button>
+            </Button>
             {filtered.some(chat => getInviteLink(chat)) && (
-              <button
+              <Button
+                variant="outline"
                 onClick={handleCopyAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+                className="h-9 px-3 text-xs cursor-pointer"
               >
-                <LinkIcon className="h-3.5 w-3.5" />
+                <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
                 {copiedAll ? _("groupsChannels.copiedAllLinks") : _("groupsChannels.copyAllLinks")}
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={openJoinModal}
               disabled={!selectedAccount}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-9 px-3 text-xs font-semibold cursor-pointer"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
               {_("groupsChannels.joinNew")}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -292,7 +295,7 @@ function GroupsChannelsContent() {
         )}
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             id="groups-channels-search"
             name="search"
@@ -301,13 +304,13 @@ function GroupsChannelsContent() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
             aria-label={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary-500 outline-none"
+            className="w-full pl-9 pr-4 py-2 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
           />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="px-3 py-2 border-b border-gray-100 dark:border-slate-700">
+      <div className="px-3 py-2 border-b border-border">
         <Tabs
           value={activeTab}
           onValueChange={(val) => {
@@ -316,12 +319,18 @@ function GroupsChannelsContent() {
             setSearch("");
           }}
         >
-          <TabsList className="h-8 bg-gray-100 dark:bg-slate-700/60 p-0.5">
-            <TabsTrigger value="groups" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
+          <TabsList className="h-8 bg-muted p-0.5">
+            <TabsTrigger
+              value="groups"
+              className="text-xs px-3 py-1 gap-1 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
+            >
               <Users className="h-3 w-3" />
               {_("groupsChannels.groups")}
             </TabsTrigger>
-            <TabsTrigger value="channels" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
+            <TabsTrigger
+              value="channels"
+              className="text-xs px-3 py-1 gap-1 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
+            >
               <Hash className="h-3 w-3" />
               {_("groupsChannels.channels")}
             </TabsTrigger>
@@ -333,16 +342,16 @@ function GroupsChannelsContent() {
       <div className="flex-1 overflow-y-auto">
         {!selectedAccount ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <MessageSquare className="h-10 w-10 text-gray-200 mb-3" />
-            <p className="text-sm text-gray-400">{_("chats.selectAccount")}</p>
+            <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">{_("chats.selectAccount")}</p>
           </div>
         ) : !syncedAt && !isLoading && !isSyncing ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-sm mx-auto">
-            <div className="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center mb-3">
-              <RefreshCw className="h-6 w-6 text-primary-600 animate-pulse" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+              <RefreshCw className="h-6 w-6 text-primary animate-pulse" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">{_("groupsChannels.neverSynced")}</h3>
-            <p className="text-xs text-gray-500 mb-4">{_("groupsChannels.syncRequiredDesc")}</p>
+            <h3 className="text-sm font-semibold text-foreground mb-1">{_("groupsChannels.neverSynced")}</h3>
+            <p className="text-xs text-muted-foreground mb-4">{_("groupsChannels.syncRequiredDesc")}</p>
             <button
               onClick={handleSync}
               disabled={isSyncing}

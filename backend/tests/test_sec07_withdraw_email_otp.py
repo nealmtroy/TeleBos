@@ -16,15 +16,15 @@ Verifies:
    - Prevents replay attacks (re-submitting same OTP fails).
 """
 
-import asyncio
 import json
 import uuid
-
+import pytest
 from fastapi import HTTPException
 from sqlalchemy import select, delete
 
 from app.database import async_session_factory
 from app.models.wallet_transaction import WalletTransaction
+from app.models.wallet_ledger import WalletLedger
 from app.models.user import User
 from app.api.wallet import request_withdraw_otp, request_withdraw
 from app.schemas.wallet import WithdrawOtpRequest, WithdrawCreateRequest
@@ -42,228 +42,203 @@ class MockRequest:
         self.headers = {}
 
 
-async def run_tests():
-    print("=== STARTING SEC-07 WITHDRAW EMAIL OTP INTEGRATION TESTS ===")
-
-    test_user_id = None
+@pytest.fixture
+async def sec07_setup():
+    test_user_id = uuid.uuid4()
     test_user_email = f"sec07_test_{uuid.uuid4().hex[:8]}@example.com"
     initial_balance = 500_000
+    req = MockRequest("10.0.0.7")
 
-    try:
-        # Setup: Create test user with balance
-        async with async_session_factory() as db:
-            user = User(
-                email=test_user_email,
-                balance=initial_balance,
-                role="basic",
-                is_active=True,
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-            test_user_id = user.id
-            print(f"[SETUP] Created user {test_user_id} with balance Rp {initial_balance:,}")
+    async with async_session_factory() as db:
+        user = User(
+            id=test_user_id,
+            email=test_user_email,
+            balance=initial_balance,
+            role="basic",
+            is_active=True,
+        )
+        db.add(user)
+        await db.commit()
 
-        # Clean any preexisting keys in Redis for this test user
-        await redis_client.delete(f"withdraw:otp:{test_user_id}")
-        await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
-        await redis_client.delete(f"withdraw:otp:hourly:{test_user_id}")
+    # Clean any preexisting keys in Redis
+    await redis_client.delete(f"withdraw:otp:{test_user_id}")
+    await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
+    await redis_client.delete(f"withdraw:otp:hourly:{test_user_id}")
 
-        req = MockRequest("10.0.0.7")
+    yield test_user_id, initial_balance, req
 
-        # TEST 1: Request OTP without enough balance
-        print("\n[TEST 1] Testing OTP request with insufficient balance...")
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            otp_payload_too_high = WithdrawOtpRequest(
-                amount=1_000_000, # user only has 500,000
-                method="BCA",
-                note="1234567890 (Neal)",
-            )
-            try:
-                await request_withdraw_otp(req, otp_payload_too_high, db, user)
-                assert False, "Expected HTTPException 400 for insufficient balance"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert "Saldo tidak mencukupi" in e.detail
-                print("  ✓ Correctly rejected with HTTP 400: Saldo tidak mencukupi")
+    # Cleanup DB in strict foreign key order (RESTRICT compliance)
+    async with async_session_factory() as db:
+        await db.execute(delete(WalletLedger).where(WalletLedger.user_id == test_user_id))
+        await db.execute(delete(WalletTransaction).where(WalletTransaction.user_id == test_user_id))
+        await db.execute(delete(User).where(User.id == test_user_id))
+        await db.commit()
 
-        # TEST 2: Legitimate OTP request
-        print("\n[TEST 2] Testing legitimate OTP request...")
-        otp_amount = 50_000
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            otp_payload = WithdrawOtpRequest(
-                amount=otp_amount,
-                method="BCA",
-                note="1234567890 (Neal)",
-            )
-            res = await request_withdraw_otp(req, otp_payload, db, user)
-            assert res.expires_in_seconds == 300
-            assert res.cooldown_seconds == 60
-            assert "@" in res.email_masked
-            print(f"  ✓ OTP requested successfully! Masked email: {res.email_masked}")
-
-            # Check Redis
-            otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
-            assert otp_raw is not None, "OTP not stored in Redis!"
-            otp_data = json.loads(otp_raw)
-            generated_code = otp_data["code"]
-            assert len(generated_code) == 6
-            assert otp_data["amount"] == otp_amount
-            assert otp_data["attempts"] == 0
-            print(f"  ✓ Redis verified: OTP={generated_code}, Amount={otp_data['amount']}, TTL={await redis_client.ttl(f'withdraw:otp:{test_user_id}')}s")
-
-        # TEST 3: Cooldown enforcement
-        print("\n[TEST 3] Testing OTP cooldown enforcement (re-requesting within 60s)...")
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            try:
-                await request_withdraw_otp(req, otp_payload, db, user)
-                assert False, "Expected HTTPException 429 due to cooldown"
-            except HTTPException as e:
-                assert e.status_code == 429
-                assert "detik sebelum meminta kode OTP baru" in e.detail
-                print(f"  ✓ Cooldown enforced correctly: {e.detail}")
-
-        # TEST 4: Withdraw with wrong OTP code (attempts tracking)
-        print("\n[TEST 4] Testing withdrawal with wrong OTP code...")
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            bad_withdraw_payload = WithdrawCreateRequest(
-                amount=otp_amount,
-                method="BCA",
-                note="1234567890 (Neal)",
-                otp_code="000000" if generated_code != "000000" else "999999",
-            )
-            try:
-                await request_withdraw(req, bad_withdraw_payload, db, user)
-                assert False, "Expected HTTPException 400 for wrong OTP"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert "Kode OTP salah" in e.detail
-                print(f"  ✓ Wrong OTP rejected: {e.detail}")
-
-            # Verify attempts counter in Redis
-            otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
-            assert otp_raw is not None
-            assert json.loads(otp_raw)["attempts"] == 1
-            print("  ✓ Redis verified: attempts incremented to 1")
-
-        # TEST 5: Brute-force lockout (exceeding 3 attempts deletes OTP)
-        print("\n[TEST 5] Testing brute-force lockout on 3 wrong attempts...")
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            # Attempt 2
-            try:
-                await request_withdraw(req, bad_withdraw_payload, db, user)
-            except HTTPException as e:
-                assert "Sisa kesempatan: 1 kali" in e.detail
-                print(f"  ✓ Attempt 2: {e.detail}")
-
-            # Attempt 3 (lockout / revocation)
-            try:
-                await request_withdraw(req, bad_withdraw_payload, db, user)
-            except HTTPException as e:
-                assert "mencapai batas maksimal" in e.detail
-                print(f"  ✓ Attempt 3: {e.detail}")
-
-            # Verify OTP is revoked/deleted from Redis
-            otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
-            assert otp_raw is None, "OTP should have been deleted from Redis after 3 attempts!"
-            print("  ✓ OTP key successfully burned/deleted from Redis after 3 wrong attempts")
-
-        # TEST 6: Amount tampering (Dynamic linking protection)
-        print("\n[TEST 6] Testing amount tampering (dynamic linking protection)...")
-        # Clear cooldown so we can generate fresh OTP
-        await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            res = await request_withdraw_otp(req, WithdrawOtpRequest(amount=50_000, method="BCA", note="12345"), db, user)
-            otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
-            new_code = json.loads(otp_raw)["code"]
-
-            # Attacker tries to withdraw 100,000 using OTP generated for 50,000
-            tampered_payload = WithdrawCreateRequest(
-                amount=100_000,
-                method="BCA",
-                note="12345",
-                otp_code=new_code,
-            )
-            try:
-                await request_withdraw(req, tampered_payload, db, user)
-                assert False, "Expected rejection for tampered amount"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert "Nominal penarikan tidak cocok" in e.detail
-                print(f"  ✓ Tampered amount blocked: {e.detail}")
-
-        # TEST 7: Valid withdrawal execution & single-use atomic consumption
-        print("\n[TEST 7] Testing successful withdrawal with valid OTP and atomic burn...")
-        await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
-        async with async_session_factory() as db:
-            user = await db.get(User, test_user_id)
-            valid_amount = 75_000
-            await request_withdraw_otp(
-                req,
-                WithdrawOtpRequest(amount=valid_amount, method="MANDIRI", note="9876543210 (Test)"),
-                db,
-                user,
-            )
-            otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
-            valid_code = json.loads(otp_raw)["code"]
-
-            withdraw_payload = WithdrawCreateRequest(
-                amount=valid_amount,
-                method="MANDIRI",
-                note="9876543210 (Test)",
-                otp_code=valid_code,
-            )
-            tx_res = await request_withdraw(req, withdraw_payload, db, user)
-            assert tx_res.amount == valid_amount
-            assert tx_res.status == "pending"
-            assert tx_res.method == "MANDIRI"
-            await db.commit()
-            print(f"  ✓ Withdrawal created: ID={tx_res.id}, Status={tx_res.status}, Amount={tx_res.amount}")
-
-            # Check user balance deducted
-            await db.refresh(user)
-            expected_balance = initial_balance - valid_amount
-            assert user.balance == expected_balance
-            print(f"  ✓ Balance correctly deducted: from Rp {initial_balance:,} to Rp {user.balance:,}")
-
-            # Check OTP was burned in Redis
-            burned_otp = await redis_client.get(f"withdraw:otp:{test_user_id}")
-            assert burned_otp is None, "OTP must be deleted from Redis immediately after use!"
-            print("  ✓ OTP atomicity verified: key deleted from Redis immediately upon approval")
-
-            # TEST 8: Replay attack prevention
-            print("\n[TEST 8] Testing replay attack prevention with already consumed OTP...")
-            try:
-                await request_withdraw(req, withdraw_payload, db, user)
-                assert False, "Expected rejection for replayed OTP"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert "tidak valid atau sudah kedaluwarsa" in e.detail
-                print(f"  ✓ Replay attack blocked: {e.detail}")
-
-        print("\n🎉 ALL SEC-07 INTEGRATION TESTS PASSED PERFECTLY! 🎉")
-
-    finally:
-        # Cleanup test user & transactions
-        if test_user_id:
-            try:
-                async with async_session_factory() as db:
-                    await db.execute(delete(WalletTransaction).where(WalletTransaction.user_id == test_user_id))
-                    await db.execute(delete(User).where(User.id == test_user_id))
-                    await db.commit()
-                await redis_client.delete(f"withdraw:otp:{test_user_id}")
-                await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
-                await redis_client.delete(f"withdraw:otp:hourly:{test_user_id}")
-                print(f"[CLEANUP] Deleted test user {test_user_id}")
-            except Exception as e:
-                print(f"[CLEANUP ERROR] {e}")
+    await redis_client.delete(f"withdraw:otp:{test_user_id}")
+    await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
+    await redis_client.delete(f"withdraw:otp:hourly:{test_user_id}")
 
 
-if __name__ == "__main__":
-    asyncio.run(run_tests())
+@pytest.mark.asyncio
+async def test_sec07_withdraw_otp_insufficient_balance(sec07_setup):
+    """Test OTP request rejected when user balance is insufficient."""
+    test_user_id, _, req = sec07_setup
+
+    async with async_session_factory() as db:
+        user = await db.get(User, test_user_id)
+        otp_payload_too_high = WithdrawOtpRequest(
+            amount=1_000_000,
+            method="BCA",
+            note="1234567890 (Neal)",
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await request_withdraw_otp(req, otp_payload_too_high, db, user)
+        assert exc_info.value.status_code == 400
+        assert "Saldo tidak mencukupi" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sec07_withdraw_otp_generation_and_cooldown(sec07_setup):
+    """Test legitimate OTP request generates 6-digit code in Redis and enforces 60s cooldown."""
+    test_user_id, _, req = sec07_setup
+    otp_amount = 50_000
+
+    async with async_session_factory() as db:
+        user = await db.get(User, test_user_id)
+        otp_payload = WithdrawOtpRequest(
+            amount=otp_amount,
+            method="BCA",
+            note="1234567890 (Neal)",
+        )
+        res = await request_withdraw_otp(req, otp_payload, db, user)
+        assert res.expires_in_seconds == 300
+        assert res.cooldown_seconds == 60
+        assert "@" in res.email_masked
+
+        # Verify in Redis
+        otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
+        assert otp_raw is not None
+        otp_data = json.loads(otp_raw)
+        assert len(otp_data["code"]) == 6
+        assert otp_data["amount"] == otp_amount
+
+        # Cooldown enforcement: subsequent request within 60s must fail with HTTP 429
+        with pytest.raises(HTTPException) as exc_info:
+            await request_withdraw_otp(req, otp_payload, db, user)
+        assert exc_info.value.status_code == 429
+        assert "detik sebelum meminta kode OTP baru" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sec07_withdraw_wrong_otp_and_brute_force_lockout(sec07_setup):
+    """Test wrong OTP codes increment attempts counter and 3 failed attempts revoke OTP."""
+    test_user_id, _, req = sec07_setup
+    otp_amount = 50_000
+
+    async with async_session_factory() as db:
+        user = await db.get(User, test_user_id)
+        otp_payload = WithdrawOtpRequest(
+            amount=otp_amount,
+            method="BCA",
+            note="1234567890 (Neal)",
+        )
+        await request_withdraw_otp(req, otp_payload, db, user)
+        otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
+        real_code = json.loads(otp_raw)["code"]
+
+        wrong_code = "000000" if real_code != "000000" else "999999"
+        bad_withdraw_payload = WithdrawCreateRequest(
+            amount=otp_amount,
+            method="BCA",
+            note="1234567890 (Neal)",
+            otp_code=wrong_code,
+        )
+
+        # Attempt 1
+        with pytest.raises(HTTPException) as exc1:
+            await request_withdraw(req, bad_withdraw_payload, db, user)
+        assert exc1.value.status_code == 400
+        assert "Kode OTP salah" in exc1.value.detail
+
+        # Attempt 2
+        with pytest.raises(HTTPException) as exc2:
+            await request_withdraw(req, bad_withdraw_payload, db, user)
+        assert "Sisa kesempatan: 1 kali" in exc2.value.detail
+
+        # Attempt 3 (revocation)
+        with pytest.raises(HTTPException) as exc3:
+            await request_withdraw(req, bad_withdraw_payload, db, user)
+        assert "mencapai batas maksimal" in exc3.value.detail
+
+        # Verify burned
+        otp_after = await redis_client.get(f"withdraw:otp:{test_user_id}")
+        assert otp_after is None
+
+
+@pytest.mark.asyncio
+async def test_sec07_withdraw_amount_tampering_blocked(sec07_setup):
+    """Test amount tampering between OTP request and withdrawal submission is rejected."""
+    test_user_id, _, req = sec07_setup
+    await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
+
+    async with async_session_factory() as db:
+        user = await db.get(User, test_user_id)
+        await request_withdraw_otp(req, WithdrawOtpRequest(amount=50_000, method="BCA", note="12345"), db, user)
+        otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
+        new_code = json.loads(otp_raw)["code"]
+
+        # Attacker requests 50k OTP but tries to withdraw 100k
+        tampered_payload = WithdrawCreateRequest(
+            amount=100_000,
+            method="BCA",
+            note="12345",
+            otp_code=new_code,
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await request_withdraw(req, tampered_payload, db, user)
+        assert exc_info.value.status_code == 400
+        assert "Nominal penarikan tidak cocok" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sec07_withdraw_valid_otp_burn_and_replay_prevention(sec07_setup):
+    """Test successful withdrawal with valid OTP, atomic key burning, and replay prevention."""
+    test_user_id, initial_balance, req = sec07_setup
+    await redis_client.delete(f"withdraw:otp:cooldown:{test_user_id}")
+
+    async with async_session_factory() as db:
+        user = await db.get(User, test_user_id)
+        valid_amount = 75_000
+        await request_withdraw_otp(
+            req,
+            WithdrawOtpRequest(amount=valid_amount, method="MANDIRI", note="9876543210 (Test)"),
+            db,
+            user,
+        )
+        otp_raw = await redis_client.get(f"withdraw:otp:{test_user_id}")
+        valid_code = json.loads(otp_raw)["code"]
+
+        withdraw_payload = WithdrawCreateRequest(
+            amount=valid_amount,
+            method="MANDIRI",
+            note="9876543210 (Test)",
+            otp_code=valid_code,
+        )
+        tx_res = await request_withdraw(req, withdraw_payload, db, user)
+        assert tx_res.amount == valid_amount
+        assert tx_res.status == "pending"
+        await db.commit()
+
+        # Check user balance deducted
+        await db.refresh(user)
+        assert user.balance == initial_balance - valid_amount
+
+        # Check OTP burned in Redis
+        burned_otp = await redis_client.get(f"withdraw:otp:{test_user_id}")
+        assert burned_otp is None
+
+        # Replay attempt must fail
+        with pytest.raises(HTTPException) as exc_replay:
+            await request_withdraw(req, withdraw_payload, db, user)
+        assert exc_replay.value.status_code == 400
+        assert "tidak valid atau sudah kedaluwarsa" in exc_replay.value.detail

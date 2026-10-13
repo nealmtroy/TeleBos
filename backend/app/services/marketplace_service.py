@@ -528,6 +528,18 @@ async def buy_account(
         if not allow_invoice:
             raise ValueError("Insufficient balance to buy this account.")
 
+        if not is_klikqris_configured():
+            raise ValueError("Saldo akun tidak mencukupi dan gateway pembayaran QRIS belum dikonfigurasi.")
+
+        phone_display = account.phone or str(account.id)[:8]
+        buyer_email = buyer.email
+        account_id_str = str(account.id)
+        seller_id_str = str(seller_id)
+
+        # Release all row locks (TelegramAccount, buyer, seller) before network I/O (CONS-04 / TASK-09)
+        # Prevents database connection pool exhaustion during external HTTP calls
+        await db.rollback()
+
         invoice_id = generate_wallet_tx_id()
         now_utc = datetime.now(timezone.utc)
         settings = get_settings()
@@ -536,29 +548,31 @@ async def buy_account(
         qris_image = None
         signature = None
 
-        if is_klikqris_configured():
-            callback_url = (
-                settings.KLIKQRIS_CALLBACK_URL
-                or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+        callback_url = (
+            settings.KLIKQRIS_CALLBACK_URL
+            or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+        )
+        keterangan = f"Beli Akun #{phone_display} ({buyer_email})"
+        try:
+            kq_data = await create_qris_transaction(
+                order_id=invoice_id,
+                amount=buy_price,
+                keterangan=keterangan,
+                callback_url=callback_url,
             )
-            phone_display = account.phone or str(account.id)[:8]
-            keterangan = f"Beli Akun #{phone_display} ({buyer.email})"
-            try:
-                kq_data = await create_qris_transaction(
-                    order_id=invoice_id,
-                    amount=buy_price,
-                    keterangan=keterangan,
-                    callback_url=callback_url,
-                )
-                qris_url = kq_data.get("qris_url")
-                qris_image = kq_data.get("qris_image")
-                signature = kq_data.get("signature")
-            except Exception as e:
-                logger.warning("Failed to create KlikQRIS transaction for account %s: %s", invoice_id, e)
+            qris_url = kq_data.get("qris_url")
+            qris_image = kq_data.get("qris_image")
+            signature = kq_data.get("signature")
+        except Exception as e:
+            logger.error("Failed to create KlikQRIS transaction for account %s: %s", invoice_id, e)
+            raise RuntimeError(f"Gagal menghubungi gateway pembayaran KlikQRIS: {e}") from e
+
+        if not qris_url and not qris_image:
+            raise RuntimeError("Gateway pembayaran KlikQRIS tidak mengembalikan barcode QRIS yang valid.")
 
         note_data = json.dumps({
-            "account_id": str(account.id),
-            "seller_id": str(seller_id),
+            "account_id": account_id_str,
+            "seller_id": seller_id_str,
             "sell_price": sell_price,
             "buy_price": buy_price,
         })

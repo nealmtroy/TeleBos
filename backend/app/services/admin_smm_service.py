@@ -1,7 +1,9 @@
 """Admin SMM business logic — sync services, manage orders, settings."""
 
+import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, desc, asc, delete, or_, and_
@@ -392,50 +394,87 @@ async def refresh_order_status(db: AsyncSession, order: Order) -> Order:
     if not order.smm_order_id:
         return order
 
-    result = await smm_api.check_order_status(order.smm_order_id)
-    if result.get("status"):
-        data = result.get("data", {})
-        new_status = data.get("status", order.status)
-        order.status = new_status
-        order.start_count = _parse_int(data.get("start_count"), order.start_count)
-        order.remains = _parse_int(data.get("remains"), order.remains)
-
-    await db.flush()
-    return order
-
-
-async def refresh_all_pending(db: AsyncSession) -> int:
-    """Refresh all pending/processing orders across all users concurrently.
-
-    Returns:
-        Number of orders refreshed.
-    """
-    query = select(Order).where(
-        or_(
-            Order.status.in_(["Pending", "Processing", "In progress"]),
-            and_(Order.status == "Partial", Order.is_refunded.is_(False)),
-        )
-    )
-    result = await db.execute(query)
-    orders = list(result.scalars().all())
-
-    orders_to_check = [o for o in orders if o.smm_order_id]
-    if not orders_to_check:
-        return 0
-
-    import asyncio
-    from app.services.smm_service import check_order_status
     from app.services.order_service import (
         process_order_refund_if_eligible,
         notification_kind_for_status,
     )
     from app.services.notification_service import create_notification
 
-    tasks = [check_order_status(o.smm_order_id) for o in orders_to_check]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    result = await smm_api.check_order_status(order.smm_order_id)
+    if result.get("status"):
+        data = result.get("data", {})
+        new_status = data.get("status", order.status)
+        previous_status = order.status
+        order.status = new_status
+        order.start_count = _parse_int(data.get("start_count"), order.start_count)
+        order.remains = _parse_int(data.get("remains"), order.remains)
+
+        # Process refund if terminal status and not already refunded (CONS-03 / TASK-04)
+        await process_order_refund_if_eligible(db, order, new_status)
+
+        if new_status != previous_status:
+            create_notification(
+                db,
+                order.user_id,
+                "order.status_changed",
+                kind=notification_kind_for_status(new_status),
+                data={
+                    "order_id": str(order.id),
+                    "service": order.service_name,
+                    "status": new_status,
+                },
+                href="/orders",
+            )
+
+    await db.flush()
+    return order
+
+
+DEFAULT_SMM_POLLER_CONCURRENCY = 5
+DEFAULT_SMM_POLLER_PACING_SECONDS = 0.15
+DEFAULT_SMM_SMART_POLL_BATCH_LIMIT = 25
+
+
+async def check_orders_status_bounded(
+    smm_order_ids: list[str],
+    max_concurrency: int = DEFAULT_SMM_POLLER_CONCURRENCY,
+    pacing_seconds: float = DEFAULT_SMM_POLLER_PACING_SECONDS,
+) -> list[Any]:
+    """Check statuses of multiple SMM orders using a bounded concurrency semaphore.
+
+    Guarantees no more than `max_concurrency` HTTP requests run simultaneously against
+    the SMM provider (BuzzerPanel), avoiding connection pool saturation and IP rate limits (REL-01).
+    """
+    if not smm_order_ids:
+        return []
+
+    sem = asyncio.Semaphore(max_concurrency)
+
+    async def _check_paced(order_id: str) -> Any:
+        async with sem:
+            res = await smm_api.check_order_status(order_id)
+            if pacing_seconds > 0:
+                await asyncio.sleep(pacing_seconds)
+            return res
+
+    tasks = [_check_paced(oid) for oid in smm_order_ids]
+    return await asyncio.gather(*tasks, return_exceptions=True)
+
+
+async def _apply_order_status_updates(
+    db: AsyncSession,
+    orders: list[Order],
+    results: list[Any],
+) -> int:
+    """Apply SMM status responses to orders, issuing refunds and notifications."""
+    from app.services.order_service import (
+        process_order_refund_if_eligible,
+        notification_kind_for_status,
+    )
+    from app.services.notification_service import create_notification
 
     updated = 0
-    for order, res in zip(orders_to_check, results):
+    for order, res in zip(orders, results):
         if isinstance(res, Exception):
             logger.error("Failed to check status for order %s: %s", order.id, res)
             continue
@@ -469,24 +508,17 @@ async def refresh_all_pending(db: AsyncSession) -> int:
     return updated
 
 
-async def refresh_all_pending_smart(db: AsyncSession) -> int:
-    """Refresh pending/processing orders across all users with adaptive polling intervals concurrently.
+async def refresh_all_pending(
+    db: AsyncSession,
+    max_concurrency: int = DEFAULT_SMM_POLLER_CONCURRENCY,
+    pacing_seconds: float = DEFAULT_SMM_POLLER_PACING_SECONDS,
+    batch_limit: int | None = None,
+) -> int:
+    """Refresh all pending/processing orders across all users with bounded concurrency.
 
-    This avoids flooding the SMM API by only checking orders based on their age:
-    - Age < 15 min: Check every 2 minutes.
-    - Age 15 min to 2 hours: Check every 5 minutes.
-    - Age > 2 hours: Check every 15 minutes.
+    Returns:
+        Number of orders refreshed.
     """
-    from datetime import datetime, timezone
-    import asyncio
-    from app.services.smm_service import check_order_status
-
-    from app.services.order_service import (
-        process_order_refund_if_eligible,
-        notification_kind_for_status,
-    )
-    from app.services.notification_service import create_notification
-
     query = select(Order).where(
         or_(
             Order.status.in_(["Pending", "Processing", "In progress"]),
@@ -496,9 +528,45 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     result = await db.execute(query)
     orders = list(result.scalars().all())
 
-    now = datetime.now(timezone.utc)
-    orders_to_check = []
+    orders_to_check = [o for o in orders if o.smm_order_id]
+    if not orders_to_check:
+        return 0
 
+    if batch_limit is not None and batch_limit > 0:
+        orders_to_check = orders_to_check[:batch_limit]
+
+    results = await check_orders_status_bounded(
+        [o.smm_order_id for o in orders_to_check],
+        max_concurrency=max_concurrency,
+        pacing_seconds=pacing_seconds,
+    )
+    return await _apply_order_status_updates(db, orders_to_check, results)
+
+
+async def refresh_all_pending_smart(
+    db: AsyncSession,
+    max_concurrency: int = DEFAULT_SMM_POLLER_CONCURRENCY,
+    pacing_seconds: float = DEFAULT_SMM_POLLER_PACING_SECONDS,
+    batch_limit: int = DEFAULT_SMM_SMART_POLL_BATCH_LIMIT,
+) -> int:
+    """Refresh pending/processing orders across all users with adaptive polling intervals concurrently.
+
+    This avoids flooding the SMM API by only checking orders based on their age:
+    - Age < 15 min: Check every 2 minutes.
+    - Age 15 min to 2 hours: Check every 5 minutes.
+    - Age > 2 hours: Check every 15 minutes.
+    """
+    now = datetime.now(timezone.utc)
+    query = select(Order).where(
+        or_(
+            Order.status.in_(["Pending", "Processing", "In progress"]),
+            and_(Order.status == "Partial", Order.is_refunded.is_(False)),
+        )
+    )
+    result = await db.execute(query)
+    orders = list(result.scalars().all())
+
+    orders_to_check = []
     for order in orders:
         created_at = order.created_at
         if created_at.tzinfo is None:
@@ -530,54 +598,16 @@ async def refresh_all_pending_smart(db: AsyncSession) -> int:
     if not orders_to_check:
         return 0
 
-    # Limit to at most 25 orders per polling cycle to prevent bursting
-    orders_to_check = orders_to_check[:25]
+    # Limit to at most `batch_limit` orders per polling cycle to prevent bursting
+    if batch_limit is not None and batch_limit > 0:
+        orders_to_check = orders_to_check[:batch_limit]
 
-    # Concurrency control: max 5 concurrent requests with 150ms pacing
-    sem = asyncio.Semaphore(5)
-
-    async def _check_paced(smm_order_id: str):
-        async with sem:
-            res = await check_order_status(smm_order_id)
-            await asyncio.sleep(0.15)
-            return res
-
-    tasks = [_check_paced(o.smm_order_id) for o in orders_to_check]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    updated = 0
-    for order, res in zip(orders_to_check, results):
-        if isinstance(res, Exception):
-            logger.error("Failed to check status for order %s: %s", order.id, res)
-            continue
-        if res.get("status"):
-            data = res.get("data", {})
-            new_status = data.get("status", order.status)
-            previous_status = order.status
-            order.status = new_status
-            order.start_count = _parse_int(data.get("start_count"), order.start_count)
-            order.remains = _parse_int(data.get("remains"), order.remains)
-
-            await process_order_refund_if_eligible(db, order, new_status)
-
-            if new_status != previous_status:
-                create_notification(
-                    db,
-                    order.user_id,
-                    "order.status_changed",
-                    kind=notification_kind_for_status(new_status),
-                    data={
-                        "order_id": str(order.id),
-                        "service": order.service_name,
-                        "status": new_status,
-                    },
-                    href="/orders",
-                )
-            updated += 1
-
-    if updated:
-        await db.flush()
-    return updated
+    results = await check_orders_status_bounded(
+        [o.smm_order_id for o in orders_to_check],
+        max_concurrency=max_concurrency,
+        pacing_seconds=pacing_seconds,
+    )
+    return await _apply_order_status_updates(db, orders_to_check, results)
 
 
 # ── Stats ────────────────────────────────────────────────────────────────────

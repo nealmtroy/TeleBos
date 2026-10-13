@@ -45,7 +45,7 @@ describe("LoginPage", () => {
 
   it("uses high-contrast primary button styling for submit", () => {
     render(<LoginPage />);
-    const submitBtn = screen.getByRole("button", { name: /masuk/i });
+    const submitBtn = screen.getByRole("button", { name: /^masuk$/i });
 
     expect(submitBtn.className).toContain("bg-[var(--public-accent)]");
     expect(submitBtn.className).toContain("text-white");

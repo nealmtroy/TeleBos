@@ -28,7 +28,7 @@ export function ThemeToggle({ className, variant = "navbar" }: ThemeToggleProps)
 
   if (variant === "segmented") {
     return (
-      <div className={cn("flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-xl", className)}>
+      <div className={cn("flex items-center gap-1 p-1 bg-muted border border-border rounded-xl", className)}>
         {themeOptions.map(({ key, label, icon: Icon }) => {
           const isActive = theme === key;
           return (
@@ -39,8 +39,8 @@ export function ThemeToggle({ className, variant = "navbar" }: ThemeToggleProps)
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer",
                 isActive
-                  ? "bg-slate-800 text-white shadow-xs font-semibold"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-850"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -61,9 +61,8 @@ export function ThemeToggle({ className, variant = "navbar" }: ThemeToggleProps)
             aria-label={_("theme.toggleTheme") || "Toggle theme"}
             className={cn(
               "relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors cursor-pointer",
-              "text-gray-500 hover:bg-gray-100 hover:text-gray-900",
-              "dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              "text-muted-foreground hover:bg-muted hover:text-foreground",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             )}
             title={_("theme.title") || "Theme"}
           >
@@ -84,7 +83,7 @@ export function ThemeToggle({ className, variant = "navbar" }: ThemeToggleProps)
                 onClick={() => setTheme(key)}
                 className={cn(
                   "flex items-center justify-between gap-2 cursor-pointer",
-                  isSelected && "bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400 font-semibold"
+                  isSelected && "bg-primary/10 text-primary font-semibold"
                 )}
               >
                 <div className="flex items-center gap-2">

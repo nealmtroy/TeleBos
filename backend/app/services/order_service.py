@@ -145,33 +145,43 @@ async def place_order(
     locked_user = locked_user_result.scalar_one()
 
     if locked_user.balance < total_price:
+        if not is_klikqris_configured():
+            raise ValueError("Saldo akun tidak mencukupi dan gateway pembayaran QRIS belum dikonfigurasi.")
+
         # Insufficient balance: create QRIS invoice and pending order
+        user_email = locked_user.email
+        user_id = user.id
+
+        # Release database row lock immediately before external network I/O (CONS-04 / TASK-09)
+        # Prevents database connection exhaustion when payment gateway experiences high latency
+        await db.rollback()
+
         invoice_id = generate_wallet_tx_id()
         now_utc = datetime.now(timezone.utc)
         settings = get_settings()
 
-        qris_url = None
-        qris_image = None
-        signature = None
-
-        if is_klikqris_configured():
-            callback_url = (
-                settings.KLIKQRIS_CALLBACK_URL
-                or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+        callback_url = (
+            settings.KLIKQRIS_CALLBACK_URL
+            or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+        )
+        keterangan = f"Order {service_name[:30]} ({user_email})"
+        try:
+            kq_data = await create_qris_transaction(
+                order_id=invoice_id,
+                amount=total_price,
+                keterangan=keterangan,
+                callback_url=callback_url,
             )
-            keterangan = f"Order {service_name[:30]} ({locked_user.email})"
-            try:
-                kq_data = await create_qris_transaction(
-                    order_id=invoice_id,
-                    amount=total_price,
-                    keterangan=keterangan,
-                    callback_url=callback_url,
-                )
-                qris_url = kq_data.get("qris_url")
-                qris_image = kq_data.get("qris_image")
-                signature = kq_data.get("signature")
-            except Exception as e:
-                logger.warning("Failed to create KlikQRIS transaction for order %s: %s", invoice_id, e)
+        except Exception as e:
+            logger.error("Failed to create KlikQRIS transaction for order %s: %s", invoice_id, e)
+            raise RuntimeError(f"Gagal menghubungi gateway pembayaran KlikQRIS: {e}") from e
+
+        qris_url = kq_data.get("qris_url")
+        qris_image = kq_data.get("qris_image")
+        signature = kq_data.get("signature")
+
+        if not qris_url and not qris_image:
+            raise RuntimeError("Gateway pembayaran KlikQRIS tidak mengembalikan barcode QRIS yang valid.")
 
         order = Order(
             user_id=user.id,
@@ -373,33 +383,43 @@ async def place_mass_orders(
     locked_user = locked_user_result.scalar_one()
 
     if locked_user.balance < total_cost:
+        if not is_klikqris_configured():
+            raise ValueError("Saldo akun tidak mencukupi dan gateway pembayaran QRIS belum dikonfigurasi.")
+
         # Create mass order invoice
+        user_email = locked_user.email
+        user_id = user.id
+
+        # Release database row lock immediately before external network I/O (CONS-04 / TASK-09)
+        # Prevents database connection exhaustion when payment gateway experiences high latency
+        await db.rollback()
+
         invoice_id = generate_wallet_tx_id()
         now_utc = datetime.now(timezone.utc)
         settings = get_settings()
 
-        qris_url = None
-        qris_image = None
-        signature = None
-
-        if is_klikqris_configured():
-            callback_url = (
-                settings.KLIKQRIS_CALLBACK_URL
-                or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+        callback_url = (
+            settings.KLIKQRIS_CALLBACK_URL
+            or f"{settings.NEXT_PUBLIC_URL.rstrip('/')}/api/v1/wallet/webhook/klikqris"
+        )
+        keterangan = f"Mass Order {len(validated_orders)} items ({user_email})"
+        try:
+            kq_data = await create_qris_transaction(
+                order_id=invoice_id,
+                amount=total_cost,
+                keterangan=keterangan,
+                callback_url=callback_url,
             )
-            keterangan = f"Mass Order {len(validated_orders)} items ({locked_user.email})"
-            try:
-                kq_data = await create_qris_transaction(
-                    order_id=invoice_id,
-                    amount=total_cost,
-                    keterangan=keterangan,
-                    callback_url=callback_url,
-                )
-                qris_url = kq_data.get("qris_url")
-                qris_image = kq_data.get("qris_image")
-                signature = kq_data.get("signature")
-            except Exception as e:
-                logger.warning("Failed to create KlikQRIS transaction for mass order %s: %s", invoice_id, e)
+        except Exception as e:
+            logger.error("Failed to create KlikQRIS transaction for mass order %s: %s", invoice_id, e)
+            raise RuntimeError(f"Gagal menghubungi gateway pembayaran KlikQRIS: {e}") from e
+
+        qris_url = kq_data.get("qris_url")
+        qris_image = kq_data.get("qris_image")
+        signature = kq_data.get("signature")
+
+        if not qris_url and not qris_image:
+            raise RuntimeError("Gateway pembayaran KlikQRIS tidak mengembalikan barcode QRIS yang valid.")
 
         created_orders = []
         for vd in validated_orders:
@@ -603,33 +623,60 @@ async def process_order_refund_if_eligible(
         return 0
 
     norm_status = (new_status or "").strip().title()
-    refund_amount = 0
+    if norm_status not in ("Canceled", "Cancelled", "Error", "Partial"):
+        return 0
 
+    # Lock order row with FOR UPDATE to prevent concurrent double-refund race conditions (CONS-02 / TASK-03)
+    order_stmt = (
+        select(Order)
+        .where(Order.id == order.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    order_res = await db.execute(order_stmt)
+    locked_order = order_res.scalar_one_or_none()
+    if not locked_order:
+        logger.warning("Order %s not found when attempting refund", order.id)
+        return 0
+
+    if getattr(locked_order, "is_refunded", False):
+        order.is_refunded = True
+        order.refunded_amount = locked_order.refunded_amount
+        return 0
+
+    refund_amount = 0
     if norm_status in ("Canceled", "Cancelled", "Error"):
         # 100% full refund if canceled or errored
-        refund_amount = order.total_price
+        refund_amount = locked_order.total_price
     elif norm_status == "Partial":
         # Prorated refund based on remaining units
-        if order.remains is not None and order.remains > 0 and order.quantity > 0:
-            calculated = (order.total_price * order.remains) // order.quantity
-            refund_amount = min(order.total_price, max(0, calculated))
-        elif order.remains == 0:
+        if locked_order.remains is not None and locked_order.remains > 0 and locked_order.quantity > 0:
+            calculated = (locked_order.total_price * locked_order.remains) // locked_order.quantity
+            refund_amount = min(locked_order.total_price, max(0, calculated))
+        elif locked_order.remains == 0:
             refund_amount = 0
 
     if refund_amount <= 0:
         return 0
 
     user_res = await db.execute(
-        select(User).where(User.id == order.user_id).with_for_update()
+        select(User).where(User.id == locked_order.user_id).with_for_update()
     )
     user = user_res.scalar_one_or_none()
     if not user:
         logger.warning(
             "User %s not found when attempting to refund order %s",
-            order.user_id,
-            order.id,
+            locked_order.user_id,
+            locked_order.id,
         )
         return 0
+
+    # Mark as refunded on both locked instance and caller instance
+    locked_order.is_refunded = True
+    locked_order.refunded_amount = refund_amount
+    if order is not locked_order:
+        order.is_refunded = True
+        order.refunded_amount = refund_amount
 
     await record_ledger_entry(
         db=db,
@@ -637,11 +684,9 @@ async def process_order_refund_if_eligible(
         amount=refund_amount,
         entry_type="CREDIT",
         category="order_smm_refund",
-        reference_id=str(order.id),
-        description=f"Refund SMM ({norm_status}) pesanan #{order.id}: {order.service_name}",
+        reference_id=str(locked_order.id),
+        description=f"Refund SMM ({norm_status}) pesanan #{locked_order.id}: {locked_order.service_name}",
     )
-    order.is_refunded = True
-    order.refunded_amount = refund_amount
 
     # Send refund notification to user
     create_notification(
