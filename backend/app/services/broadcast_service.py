@@ -276,8 +276,16 @@ async def start_broadcast(
         if text_list is None:
             raise ValueError("Text list not found")
 
-    if mode == "single_text" and not custom_text and not text_list:
-        raise ValueError("single_text mode requires custom_text or text_list")
+    if mode == "single_text":
+        has_custom = bool(custom_text and custom_text.strip())
+        has_list_texts = bool(
+            text_list and text_list.texts and any(t and t.strip() for t in text_list.texts)
+        )
+        if not has_custom and not has_list_texts:
+            raise ValueError("single_text mode requires custom_text or text_list with non-empty content")
+    else:
+        if not text_list or not text_list.texts or not any(t and t.strip() for t in text_list.texts):
+            raise ValueError(f"{mode} mode requires a text_list containing at least one non-empty message")
 
     # Free-tier users have a daily send-time budget. Checking here gives an
     # immediate, explainable refusal instead of a job that starts and stalls.
@@ -418,8 +426,38 @@ async def delete_job(db: AsyncSession, job_id: str, user_id: str) -> None:
     await db.flush()
 
 
-async def retry_job(db: AsyncSession, job_id: str, user_id: str) -> BroadcastJob:
+async def retry_job(
+    db: AsyncSession,
+    job_id: str,
+    user_id: str,
+    user: User | None = None,
+) -> BroadcastJob:
     """Reset and re-queue a terminal broadcast job with the same parameters."""
+    if user is None:
+        user_res = await db.execute(select(User).where(User.id == _uuid.UUID(user_id)))
+        user = user_res.scalar_one_or_none()
+    if user is None:
+        raise ValueError("User not found")
+
+    from app.services.redeem_service import is_subscription_active, auto_downgrade_if_expired
+    from app.services.broadcast_entitlement import enforce_broadcast_allowance
+
+    await auto_downgrade_if_expired(db, user)
+    user_role = getattr(user, "role", "freetrial") or "freetrial"
+    if not is_subscription_active(user):
+        plan_display = {
+            "freetrial": "Free Trial",
+            "basic": "Starter",
+            "pro": "Pro",
+            "premium": "Business",
+        }.get(user_role, user_role.capitalize())
+        raise ValueError(
+            f"Masa aktif paket {plan_display} Anda telah berakhir. "
+            "Silakan berlangganan atau perpanjang paket Anda untuk melanjutkan siaran."
+        )
+
+    await enforce_broadcast_allowance(db, user)
+
     result = await db.execute(
         select(BroadcastJob).where(BroadcastJob.id == job_id, BroadcastJob.user_id == user_id)
     )
@@ -930,9 +968,22 @@ async def execute_broadcast(job_id: str):
                 tl_result = await db.execute(select(TextList).where(TextList.id == text_list_id))
                 text_list = tl_result.scalar_one_or_none()
                 if text_list and text_list.texts:
-                    texts = list(text_list.texts)
-            if mode == "single_text" and custom_text:
-                texts = [custom_text]
+                    texts = [t.strip() for t in text_list.texts if t and t.strip()]
+            if mode == "single_text" and custom_text and custom_text.strip():
+                texts = [custom_text.strip()]
+
+            if not texts:
+                job_orm.status = "failed"
+                await db.commit()
+                await _push_broadcast(
+                    job_id_str,
+                    "error",
+                    {
+                        "status": "failed",
+                        "message": "Broadcast text is empty or missing. Please provide at least one valid message.",
+                    },
+                )
+                return
 
             # Resolve the watermark once per job. The owner's role and the
             # watermark template cannot change mid-run, and the send loop must
@@ -1591,8 +1642,9 @@ async def execute_broadcast(job_id: str):
                             }
                 else:
                     try:
-                        if chosen_text:
-                            # Watermark once per message, not once per entity, so a
+                        if not chosen_text or not chosen_text.strip():
+                            raise ValueError("Message text is empty")
+                        # Watermark once per message, not once per entity, so a
                             # chatlist target that resolves to many groups does not
                             # pay the DB round-trip repeatedly.
                             send_text = _watermark_for_job(watermark_template, chosen_text)
@@ -2022,48 +2074,48 @@ async def execute_broadcast(job_id: str):
                         if remaining > 0:
                             await _interruptible_sleep(job_id_str, remaining)
 
-                    current_status = await _get_current_status(job_uuid)
-                    if current_status in ("cancelled", "completed", "failed"):
-                        break
+                current_status = await _get_current_status(job_uuid)
+                if current_status in ("cancelled", "completed", "failed"):
+                    break
 
-                    # Security Check (SEC-03): Check subscription & quota before starting next cycle
-                    try:
-                        async with async_session_factory() as db_cycle_check:
-                            user_res = await db_cycle_check.execute(
-                                select(User).where(User.id == _uuid.UUID(job_user_id))
-                            )
-                            loop_user = user_res.scalar_one_or_none()
-                            if loop_user:
-                                from app.services.redeem_service import is_subscription_active, auto_downgrade_if_expired
-                                from app.services.broadcast_entitlement import has_broadcast_allowance
-                                await auto_downgrade_if_expired(db_cycle_check, loop_user)
-                                if not is_subscription_active(loop_user) or not await has_broadcast_allowance(
-                                    db_cycle_check, str(loop_user.id), loop_user.role, user=loop_user
-                                ):
-                                    logger.info(
-                                        "Stopping looping broadcast job %s: subscription or daily allowance expired for user %s",
-                                        job_id_str,
-                                        job_user_id,
-                                    )
-                                    res_job = await db_cycle_check.execute(
-                                        select(BroadcastJob).where(BroadcastJob.id == job_uuid)
-                                    )
-                                    db_job_stop = res_job.scalar_one_or_none()
-                                    if db_job_stop:
-                                        db_job_stop.status = "completed"
-                                        db_job_stop.completed_at = datetime.now(timezone.utc)
-                                        await db_cycle_check.commit()
-                                    await _push_broadcast(
-                                        job_id_str,
-                                        "status",
-                                        {
-                                            "status": "completed",
-                                            "message": "Paket langganan atau kuota harian siaran Anda telah berakhir.",
-                                        },
-                                    )
-                                    break
-                    except Exception as cycle_check_exc:
-                        logger.warning("Error checking subscription in broadcast cycle loop: %s", cycle_check_exc)
+                # Security Check (SEC-03): Check subscription & quota before starting next cycle
+                try:
+                    async with async_session_factory() as db_cycle_check:
+                        user_res = await db_cycle_check.execute(
+                            select(User).where(User.id == _uuid.UUID(job_user_id))
+                        )
+                        loop_user = user_res.scalar_one_or_none()
+                        if loop_user:
+                            from app.services.redeem_service import is_subscription_active, auto_downgrade_if_expired
+                            from app.services.broadcast_entitlement import has_broadcast_allowance
+                            await auto_downgrade_if_expired(db_cycle_check, loop_user)
+                            if not is_subscription_active(loop_user) or not await has_broadcast_allowance(
+                                db_cycle_check, str(loop_user.id), loop_user.role, user=loop_user
+                            ):
+                                logger.info(
+                                    "Stopping looping broadcast job %s: subscription or daily allowance expired for user %s",
+                                    job_id_str,
+                                    job_user_id,
+                                )
+                                res_job = await db_cycle_check.execute(
+                                    select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                                )
+                                db_job_stop = res_job.scalar_one_or_none()
+                                if db_job_stop:
+                                    db_job_stop.status = "completed"
+                                    db_job_stop.completed_at = datetime.now(timezone.utc)
+                                    await db_cycle_check.commit()
+                                await _push_broadcast(
+                                    job_id_str,
+                                    "status",
+                                    {
+                                        "status": "completed",
+                                        "message": "Paket langganan atau kuota harian siaran Anda telah berakhir.",
+                                    },
+                                )
+                                break
+                except Exception as cycle_check_exc:
+                    logger.warning("Error checking subscription in broadcast cycle loop: %s", cycle_check_exc)
             else:
                 break
 

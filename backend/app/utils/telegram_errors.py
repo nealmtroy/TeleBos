@@ -301,6 +301,9 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "SESSION_REVOKED" in msg or "AUTH_KEY_UNREGISTERED" in msg or "AUTH_KEY_DUPLICATED" in msg:
         return ("session_revoked", "Telegram session has been revoked or expired")
 
+    if "MESSAGE_EMPTY" in msg.upper() or "message text is empty" in msg.lower() or "message is empty" in msg.lower():
+        return ("message_empty", "Message text is empty")
+
     if "FROZEN_METHOD_INVALID" in msg or "frozen accounts" in msg.lower():
         return (
             "account_frozen",

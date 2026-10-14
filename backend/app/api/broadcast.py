@@ -300,7 +300,7 @@ async def retry_job(
 ):
     """Reset and re-queue a completed, cancelled, or failed broadcast job."""
     try:
-        job = await broadcast_service.retry_job(db, job_id, str(user.id))
+        job = await broadcast_service.retry_job(db, job_id, str(user.id), user=user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return job
