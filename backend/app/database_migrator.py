@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 def run_migrations(connection):
     """Apply idempotent schema migrations not covered by create_all."""
+    # Defensive: ensure is_pg is always defined before any try/except blocks
+    is_pg = False
     inspector = inspect(connection)
     dialect_name = getattr(getattr(connection, "dialect", None), "name", "")
     is_pg = dialect_name == "postgresql"
@@ -925,53 +927,77 @@ def run_migrations(connection):
             logger.warning("Could not create index %s: %s", idx_sql, e)
 
     # GIN indexes for JSONB columns on automation job tables (PERF-01, DB-04 / TASK-29)
-    if is_pg:
-        for gin_sql in [
-            "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_account_ids_gin ON broadcast_jobs USING GIN (account_ids)",
-            "CREATE INDEX IF NOT EXISTS ix_invite_jobs_account_ids_gin ON invite_jobs USING GIN (account_ids)",
-            "CREATE INDEX IF NOT EXISTS ix_auto_join_jobs_account_ids_gin ON auto_join_jobs USING GIN (account_ids)",
-        ]:
-            try:
-                connection.execute(text(gin_sql))
-            except Exception as e:
-                logger.warning("Could not create GIN index %s: %s", gin_sql, e)
+        if is_pg:
+            for gin_sql in [
+                "CREATE INDEX IF NOT EXISTS ix_broadcast_jobs_account_ids_gin ON broadcast_jobs USING GIN (account_ids)",
+                "CREATE INDEX IF NOT EXISTS ix_invite_jobs_account_ids_gin ON invite_jobs USING GIN (account_ids)",
+                "CREATE INDEX IF NOT EXISTS ix_auto_join_jobs_account_ids_gin ON auto_join_jobs USING GIN (account_ids)",
+            ]:
+                try:
+                    connection.execute(text(gin_sql))
+                except Exception as e:
+                    logger.warning("Could not create GIN index %s: %s", gin_sql, e)
 
-    # Ensure onboarding_completed column exists on users table
-    try:
-        user_cols = [c["name"] for c in inspector.get_columns("users")]
-        if "onboarding_completed" not in user_cols:
-            connection.execute(
-                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE")
-            )
-    except Exception as e:
-        logger.warning("Could not add onboarding_completed column: %s", e)
-
-    # Ensure onboarding_surveys table exists if not created by create_all
-    if "onboarding_surveys" not in tables:
+        # Ensure onboarding_completed column exists on users table
         try:
-            connection.execute(
-                text("""
-                    CREATE TABLE IF NOT EXISTS onboarding_surveys (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                        role VARCHAR(50),
-                        referral VARCHAR(50),
-                        volume VARCHAR(50),
-                        features JSONB NOT NULL DEFAULT '[]'::jsonb,
-                        is_skipped BOOLEAN NOT NULL DEFAULT FALSE,
-                        completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        CONSTRAINT uq_onboarding_surveys_user_id UNIQUE (user_id)
-                    )
-                """)
-            )
-            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_user_id ON onboarding_surveys(user_id)"))
-            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_created_at ON onboarding_surveys(created_at)"))
-            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_role ON onboarding_surveys(role)"))
-            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_referral ON onboarding_surveys(referral)"))
+            user_cols = [c["name"] for c in inspector.get_columns("users")]
+            if "onboarding_completed" not in user_cols:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE")
+                )
         except Exception as e:
-            logger.warning("Could not create onboarding_surveys table: %s", e)
+            logger.warning("Could not add onboarding_completed column: %s", e)
+
+        # Ensure ban_reason and ban_expires columns exist on users table (PYTHON-FASTAPI-2K)
+        try:
+            user_cols = [c["name"] for c in inspector.get_columns("users")]
+            if "ban_reason" not in user_cols:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT")
+                )
+            if "ban_expires" not in user_cols:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_expires TIMESTAMPTZ")
+                )
+        except Exception as e:
+            logger.warning("Could not add ban_reason/ban_expires columns: %s", e)
+
+        # Ensure is_premium column exists on users table (PYTHON-FASTAPI-1B)
+        try:
+            user_cols = [c["name"] for c in inspector.get_columns("users")]
+            if "is_premium" not in user_cols:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN NOT NULL DEFAULT FALSE")
+                )
+        except Exception as e:
+            logger.warning("Could not add is_premium column: %s", e)
+
+        # Ensure onboarding_surveys table exists if not created by create_all
+        if "onboarding_surveys" not in tables:
+            try:
+                connection.execute(
+                    text("""
+                        CREATE TABLE IF NOT EXISTS onboarding_surveys (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            role VARCHAR(50),
+                            referral VARCHAR(50),
+                            volume VARCHAR(50),
+                            features JSONB NOT NULL DEFAULT '[]'::jsonb,
+                            is_skipped BOOLEAN NOT NULL DEFAULT FALSE,
+                            completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT uq_onboarding_surveys_user_id UNIQUE (user_id)
+                        )
+                    """)
+                )
+                connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_user_id ON onboarding_surveys(user_id)"))
+                connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_created_at ON onboarding_surveys(created_at)"))
+                connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_role ON onboarding_surveys(role)"))
+                connection.execute(text("CREATE INDEX IF NOT EXISTS ix_onboarding_surveys_referral ON onboarding_surveys(referral)"))
+            except Exception as e:
+                logger.warning("Could not create onboarding_surveys table: %s", e)
 
     # ── Analytics Foundation Tables & Performance Indexes ───────────────────
     if "analytics_events" not in tables:
