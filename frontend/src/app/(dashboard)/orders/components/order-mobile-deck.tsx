@@ -48,12 +48,12 @@ export function OrderMobileDeck({
                   <button
                     type="button"
                     onClick={() => onCopy(item.orderIdDisplay, item.id)}
-                    className="text-muted-foreground/60 hover:text-foreground p-0.5 rounded"
+                    className="h-5 w-5 rounded border border-slate-300 dark:border-slate-700 bg-card text-muted-foreground hover:text-foreground flex items-center justify-center transition shadow-2xs cursor-pointer"
                   >
                     {isCopied ? (
-                      <Check className="h-3 w-3 text-emerald-500" />
+                      <Check className="h-2.5 w-2.5 text-emerald-500" />
                     ) : (
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-2.5 w-2.5" />
                     )}
                   </button>
                 </div>
@@ -65,7 +65,7 @@ export function OrderMobileDeck({
                       <span>Akun</span>
                     </span>
                   ) : item.type === "smm" ? (
-                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20">
                       <ShoppingCart className="h-2.5 w-2.5" />
                       <span>SMM</span>
                     </span>
@@ -80,12 +80,12 @@ export function OrderMobileDeck({
                       <span>Tarik</span>
                     </span>
                   ) : item.type === "redeem" ? (
-                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                       <Gift className="h-2.5 w-2.5" />
                       <span>Redeem</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20">
                       <Sparkles className="h-2.5 w-2.5" />
                       <span>Saldo</span>
                     </span>

@@ -311,7 +311,7 @@ function FinancialAnalyticsContent() {
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground shrink-0">
           <Link href="/admin/analytics/security">
-            <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+            <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
             Keamanan & Audit
           </Link>
         </Button>
@@ -423,7 +423,7 @@ function FinancialAnalyticsContent() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Payment Success Rate</span>
-              <CreditCard className="h-4 w-4 text-purple-500" />
+              <CreditCard className="h-4 w-4 text-sky-500" />
             </div>
             <CardTitle className="text-xl font-bold tracking-tight mt-1">
               {isAnalyticsLoading ? "..." : `${payments?.payment_success_rate.toFixed(1)}%`}
@@ -712,7 +712,7 @@ function FinancialAnalyticsContent() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-purple-500" />
+                  <CreditCard className="h-4 w-4 text-sky-500" />
                   Keandalan Pembayaran & Gateway Gateway
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -729,13 +729,13 @@ function FinancialAnalyticsContent() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-foreground">Payment Success Ratio</span>
-                <span className="font-bold text-purple-600 dark:text-purple-400">
+                <span className="font-bold text-sky-600 dark:text-sky-400">
                   {payments?.payment_success_rate.toFixed(1)}%
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
                 <div
-                  className="bg-purple-500 h-full transition-all duration-500"
+                  className="bg-sky-500 h-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, payments?.payment_success_rate ?? 0))}%` }}
                 />
                 <div
@@ -925,7 +925,7 @@ function FinancialAnalyticsContent() {
                 ? "blue"
                 : chartMetric === "balance_consumed"
                 ? "amber"
-                : "purple"
+                : "sky"
             }
             formatValue={(v) => `Rp ${v.toLocaleString("id-ID")}`}
             isLoading={isTimeseriesLoading}

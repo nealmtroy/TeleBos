@@ -201,12 +201,13 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
               {managingFolder ? (
                 <button
                   onClick={() => setManagingFolder(null)}
-                  className="p-1 -ml-1 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-foreground shadow-2xs hover:bg-muted transition-colors cursor-pointer"
+                  aria-label="Back to folder list"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
               ) : null}
-              <DialogTitle className="text-lg font-semibold text-gray-900">
+              <DialogTitle className="text-lg font-semibold text-foreground">
                 {managingFolder
                   ? _("accountFolders.folderAccounts", { name: managingFolder.name })
                   : _("accountFolders.title")}
@@ -224,7 +225,7 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
             <div className="space-y-4">
               {/* Search */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   id="folder-member-search"
                   name="memberSearch"
@@ -233,13 +234,13 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                   onChange={(e) => setMemberSearch(e.target.value)}
                   placeholder={_("accountFolders.searchAccounts")}
                   aria-label={_("accountFolders.searchAccounts")}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 />
               </div>
 
               {/* Account checkboxes */}
               {filteredAccounts.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-8">
+                <p className="text-sm text-muted-foreground text-center py-8">
                   {memberSearch ? "No accounts match your search." : _("accountsList.noAccounts")}
                 </p>
               ) : (
@@ -249,24 +250,24 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                     return (
                       <label
                         key={account.id}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer transition group"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-colors group"
                       >
                         <Checkbox
                           checked={isInFolder}
                           onCheckedChange={() => toggleAccountInFolder(account.id)}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">
+                          <p className="text-sm font-medium text-foreground truncate">
                             {account.first_name || account.phone || "Unnamed"}
                             {account.last_name ? ` ${account.last_name}` : ""}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {account.phone && <span>{account.phone}</span>}
                             {account.username && <span>@{account.username}</span>}
                           </div>
                         </div>
                         {isInFolder && (
-                          <Check className="h-4 w-4 text-primary-500 shrink-0" />
+                          <Check className="h-4 w-4 text-primary shrink-0" />
                         )}
                       </label>
                     );
@@ -280,14 +281,14 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
               {/* Loading/Error states */}
               {foldersLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 text-gray-400 animate-spin" />
+                  <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
                 </div>
               ) : foldersError ? (
-                <p className="text-sm text-red-500 text-center py-4">{_("accountsList.failedToLoad")}</p>
+                <p className="text-sm text-rose-500 text-center py-4">{_("accountsList.failedToLoad")}</p>
               ) : folderList.length === 0 ? (
                 <div className="text-center py-8">
-                  <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">{_("accountFolders.noFolders")}</p>
+                  <FolderOpen className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">{_("accountFolders.noFolders")}</p>
                 </div>
               ) : (
                 /* Folder list */
@@ -299,7 +300,7 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                     return (
                       <div
                         key={folder.id}
-                        className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-300 transition group"
+                        className="flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-card hover:border-slate-300 dark:hover:border-slate-700 transition-colors group"
                       >
                         {isEditing ? (
                           <div className="flex items-center gap-2 flex-1 mr-2">
@@ -314,18 +315,20 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                                 if (e.key === "Enter") handleRename(folder.id);
                                 if (e.key === "Escape") setEditingFolderId(null);
                               }}
-                              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                              className="flex-1 px-2.5 py-1 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                               autoFocus
                             />
                             <button
                               onClick={() => handleRename(folder.id)}
-                              className="p-1 text-green-600 hover:bg-green-50 rounded-lg transition"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors cursor-pointer"
+                              title="Simpan nama folder"
                             >
                               <Check className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => setEditingFolderId(null)}
-                              className="p-1 text-gray-400 hover:bg-gray-100 rounded-lg transition"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
+                              title="Batal"
                             >
                               <X className="h-4 w-4" />
                             </button>
@@ -334,30 +337,30 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                           <>
                             <button
                               onClick={() => setManagingFolder(folder)}
-                              className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                              className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
                             >
-                              <FolderOpen className="h-5 w-5 text-primary-500 shrink-0" />
+                              <FolderOpen className="h-5 w-5 text-primary shrink-0" />
                               <div className="min-w-0">
-                                <p className="text-sm font-medium text-gray-800 truncate">{folder.name}</p>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-sm font-medium text-foreground truncate">{folder.name}</p>
+                                <p className="text-xs text-muted-foreground">
                                   {memberCount} account{memberCount !== 1 ? "s" : ""}
                                 </p>
                               </div>
                             </button>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={() => {
                                   setEditingFolderId(folder.id);
                                   setEditName(folder.name);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 dark:border-slate-700 bg-card text-slate-700 dark:text-slate-300 hover:bg-muted hover:text-foreground shadow-2xs transition-colors cursor-pointer"
                                 title={_("accountFolders.renameFolder")}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => setDeleteFolderId(folder.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:border-rose-600 hover:bg-rose-600 hover:text-white shadow-2xs transition-colors cursor-pointer"
                                 title={_("accountFolders.deleteFolder")}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -372,7 +375,7 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
               )}
 
               {/* Divider */}
-              {folderList.length > 0 && <div className="border-t border-gray-100" />}
+              {folderList.length > 0 && <div className="border-t border-border" />}
 
               {/* Create new folder */}
               <div className="flex items-center gap-2">
@@ -387,12 +390,12 @@ export function FolderManagerDialog({ open, onOpenChange }: FolderManagerDialogP
                     if (e.key === "Enter") handleCreate();
                   }}
                   placeholder={_("accountFolders.folderNamePlaceholder")}
-                  className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  className="flex-1 h-9 px-3 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 />
                 <button
                   onClick={handleCreate}
                   disabled={creating || !newName.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition"
+                  className="inline-flex h-9 items-center gap-1.5 px-4 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
                 >
                   {creating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -83,8 +83,10 @@ export function ChatSearchBar({
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 rounded-lg transition"
+              className="h-8 w-8 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition shadow-2xs cursor-pointer flex-shrink-0"
+              aria-label="Close Search"
             >
               <X className="h-4 w-4" />
             </button>

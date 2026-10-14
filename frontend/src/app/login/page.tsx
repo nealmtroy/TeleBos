@@ -151,7 +151,7 @@ function LoginForm() {
           </Link>
         </div>
 
-        <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
+        <div className="rounded-[16px] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-6 sm:p-9">
           <h1 className="public-display text-5xl leading-none text-[var(--public-text)]">{_("login.welcomeBack")}</h1>
           <p className="mt-4 text-[var(--public-muted)]">{_("login.signInSubtitle")}</p>
 
@@ -198,7 +198,7 @@ function LoginForm() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading || googleLoading}
-              className={`${publicButtonClass} w-full flex items-center justify-center gap-2.5`}
+              className={`${publicButtonClass} w-full flex items-center justify-center gap-2.5 border-slate-500 bg-slate-900/60 hover:bg-slate-800 text-slate-100 shadow-sm`}
             >
               {googleLoading ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--public-border)] border-t-[var(--public-accent)]" />

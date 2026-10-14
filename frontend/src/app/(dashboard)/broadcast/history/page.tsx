@@ -189,7 +189,7 @@ export default function BroadcastHistoryPage() {
               {failedCount > 0 ? `${failedCount} failed jobs` : "All runs completed"}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 dark:bg-purple-950/50 dark:text-purple-400 dark:border-purple-900/60">
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/60">
             <CheckCircle2 className="h-5 w-5" />
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function BroadcastHistoryPage() {
               {totalFailed > 0 ? `${totalFailed.toLocaleString()} failed` : "Delivered without failure"}
             </p>
           </div>
-          <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400 dark:border-indigo-900/60">
+          <div className="p-3 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-900/60">
             <Send className="h-5 w-5" />
           </div>
         </div>

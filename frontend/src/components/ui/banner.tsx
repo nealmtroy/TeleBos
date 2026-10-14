@@ -96,7 +96,7 @@ export function Banner({
       {props.children}
       {id ? (
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           aria-label="Close Banner"
           onClick={() => {
@@ -106,9 +106,9 @@ export function Banner({
               window.dispatchEvent(new Event("banner-status-changed"));
             }
           }}
-          className="absolute cursor-pointer end-2 md:end-20 top-1/2 -translate-y-1/2 text-fd-muted-foreground/50"
+          className="absolute cursor-pointer end-2 md:end-20 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition shadow-2xs"
         >
-          <X color={xColor} />
+          <X className="h-4 w-4" />
         </Button>
       ) : null}
     </div>

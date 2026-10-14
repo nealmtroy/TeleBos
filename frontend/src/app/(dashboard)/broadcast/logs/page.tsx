@@ -350,7 +350,7 @@ export default function BroadcastLogsPage() {
                           return (
                             <TableRow key={`${expandedCycle}-${idx}-${log.group_identifier}`}>
                               <TableCell className="px-4 py-3 whitespace-normal">
-                                <Badge variant="secondary" className="gap-1 bg-indigo-50 text-indigo-800 border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 font-semibold font-mono">
+                                <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/60 font-semibold font-mono">
                                   <Layers className="h-3 w-3" />
                                   C{expandedCycle}
                                 </Badge>
@@ -377,12 +377,11 @@ export default function BroadcastLogsPage() {
                                   <span
                                     className={cn(
                                       "px-2 py-0.5 rounded-full text-xs font-medium border",
-                                      log.error_type === "flood" && "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800/50",
+                                      log.error_type === "flood" && "bg-amber-500/10 text-amber-800 border-amber-500/20 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
                                       log.error_type === "banned" && "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
                                       log.error_type === "admin_only" && "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
                                       log.error_type === "slowmode" && "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50",
-                                      log.error_type === "invalid_username" && "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/50",
-                                      log.error_type === "invalid_link" && "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/50",
+                                      (log.error_type === "invalid_username" || log.error_type === "invalid_link") && "bg-rose-500/10 text-rose-800 border-rose-500/20 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
                                       !log.error_type && "bg-muted text-muted-foreground border-border"
                                     )}
                                   >

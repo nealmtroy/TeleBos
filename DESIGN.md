@@ -5,80 +5,92 @@ themes:
   - light
   - dark
 colors:
-  primary: "#3b82f6"
-  primary-hover: "#2563eb"
+  primary: "#2563eb"
+  primary-hover: "#1d4ed8"
   primary-foreground: "#ffffff"
-  # Light Theme Tokens (WCAG AA Compliant >= 4.5:1)
+  # Light theme semantic tokens. Contrast must be checked against each actual surface.
   light:
-    background: "#ffffff"
+    background: "#f8fafc"
     foreground: "#0f172a"
     card: "#ffffff"
     card-foreground: "#0f172a"
     muted: "#f1f5f9"
-    muted-foreground: "#64748b"
+    muted-foreground: "#475569"
     secondary: "#f1f5f9"
     secondary-foreground: "#0f172a"
-    accent: "#f1f5f9"
+    accent: "#e2e8f0"
     accent-foreground: "#0f172a"
-    destructive: "#ef4444"
+    destructive: "#dc2626"
+    destructive-hover: "#b91c1c"
     destructive-foreground: "#ffffff"
+    destructive-subtle: "#fef2f2"
+    destructive-subtle-foreground: "#dc2626"
+    destructive-border: "#fecaca"
     border: "#e2e8f0"
-    input: "#e2e8f0"
-    ring: "#3b82f6"
-  # Dark Theme Tokens (WCAG AA Compliant >= 4.5:1)
+    border-strong: "#cbd5e1"
+    input: "#cbd5e1"
+    ring: "#2563eb"
+  # Dark theme semantic tokens. Contrast must be checked against each actual surface.
   dark:
     background: "#0f172a"
     foreground: "#f8fafc"
     card: "#1e293b"
     card-foreground: "#f8fafc"
-    muted: "#1e293b"
+    muted: "#0f172a"
     muted-foreground: "#cbd5e1"
-    secondary: "#1e293b"
+    secondary: "#334155"
     secondary-foreground: "#f8fafc"
-    accent: "#1e293b"
+    accent: "#334155"
     accent-foreground: "#f8fafc"
-    destructive: "#7f1d1d"
+    destructive: "#dc2626"
+    destructive-hover: "#b91c1c"
     destructive-foreground: "#f8fafc"
+    destructive-subtle: "rgba(127, 29, 29, 0.35)"
+    destructive-subtle-foreground: "#f87171"
+    destructive-border: "rgba(153, 27, 27, 0.8)"
     border: "#334155"
-    input: "#334155"
+    border-strong: "#64748b"
+    input: "#64748b"
     ring: "#60a5fa"
   # Persistent Anchor (Fixed dark frame across both themes)
   sidebar:
     background: "#020617"
     surface: "#0f172a"
-    border: "#0f172a"
+    border: "#334155"
     foreground: "#94a3b8"
-    active: "#3b82f6"
-    active-bg: "rgba(59, 130, 246, 0.1)"
+    active: "#60a5fa"
+    active-bg: "rgba(59, 130, 246, 0.16)"
   # Backward-compatible flat keys
-  background: "#ffffff"
+  background: "#f8fafc"
   foreground: "#0f172a"
   card: "#ffffff"
   muted: "#f1f5f9"
-  muted-foreground: "#64748b"
+  muted-foreground: "#475569"
   secondary: "#f1f5f9"
   secondary-foreground: "#0f172a"
-  accent: "#f1f5f9"
+  accent: "#e2e8f0"
   accent-foreground: "#0f172a"
-  destructive: "#ef4444"
+  destructive: "#dc2626"
   destructive-foreground: "#ffffff"
   border: "#e2e8f0"
-  input: "#e2e8f0"
-  ring: "#3b82f6"
+  border-strong: "#cbd5e1"
+  input: "#cbd5e1"
+  ring: "#2563eb"
   sidebar-bg: "#020617"
   sidebar-surface: "#0f172a"
-  sidebar-border: "#0f172a"
+  sidebar-border: "#334155"
   sidebar-foreground: "#94a3b8"
-  sidebar-active: "#3b82f6"
+  sidebar-active: "#60a5fa"
   dark-background: "#0f172a"
   dark-foreground: "#f8fafc"
   dark-card: "#1e293b"
-  dark-secondary: "#1e293b"
-  dark-muted: "#1e293b"
+  dark-secondary: "#334155"
+  dark-muted: "#0f172a"
   dark-muted-foreground: "#cbd5e1"
-  dark-accent: "#1e293b"
+  dark-accent: "#334155"
   dark-border: "#334155"
-  dark-destructive: "#7f1d1d"
+  dark-border-strong: "#64748b"
+  dark-destructive: "#dc2626"
   dark-ring: "#60a5fa"
 typography:
   display:
@@ -110,16 +122,22 @@ typography:
     fontWeight: 500
     lineHeight: 1.25
     letterSpacing: 0
+  muted:
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 400
+    lineHeight: 1.4
   mono:
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
     fontSize: "0.8125rem"
     fontWeight: 400
     lineHeight: 1.5
 rounded:
-  sm: "0.375rem"
-  md: "0.5rem"
-  lg: "0.75rem"
-  xl: "1rem"
+  sm: "0.25rem"
+  md: "0.375rem"
+  lg: "0.5rem"
+  xl: "0.75rem"
+  2xl: "1rem"
   full: "9999px"
 spacing:
   xs: "0.5rem"
@@ -137,25 +155,60 @@ components:
     height: "2.25rem"
   button-primary-hover:
     backgroundColor: "{colors.primary-hover}"
-  button-outline:
-    backgroundColor: "transparent"
-    lightTextColor: "{colors.light.foreground}"
-    darkTextColor: "{colors.dark.foreground}"
-    lightBorder: "1px solid {colors.light.border}"
-    darkBorder: "1px solid {colors.dark.border}"
+  button-secondary:
+    lightBackground: "{colors.light.secondary}"
+    darkBackground: "{colors.dark.secondary}"
+    lightTextColor: "{colors.light.secondary-foreground}"
+    darkTextColor: "{colors.dark.secondary-foreground}"
+    lightBorder: "1px solid {colors.light.border-strong}"
+    darkBorder: "1px solid {colors.dark.border-strong}"
     rounded: "{rounded.lg}"
     padding: "0.5rem 1rem"
     height: "2.25rem"
+  button-outline:
+    lightBackground: "#ffffff"
+    darkBackground: "rgba(30, 41, 59, 0.6)"
+    lightTextColor: "{colors.light.foreground}"
+    darkTextColor: "{colors.dark.foreground}"
+    lightBorder: "1px solid {colors.light.border-strong}"
+    darkBorder: "1px solid {colors.dark.border-strong}"
+    rounded: "{rounded.lg}"
+    padding: "0.5rem 1rem"
+    height: "2.25rem"
+  button-icon:
+    lightBackground: "{colors.light.secondary}"
+    darkBackground: "{colors.dark.secondary}"
+    lightTextColor: "{colors.light.foreground}"
+    darkTextColor: "{colors.dark.foreground}"
+    lightBorder: "1px solid {colors.light.border-strong}"
+    darkBorder: "1px solid {colors.dark.border-strong}"
+    rounded: "{rounded.lg}"
+    minWidth: "2rem"
+    minHeight: "2rem"
+    iconSize: "1rem"
+  button-close:
+    lightBackground: "{colors.light.destructive-subtle}"
+    darkBackground: "{colors.dark.destructive-subtle}"
+    lightTextColor: "{colors.light.destructive-subtle-foreground}"
+    darkTextColor: "{colors.dark.destructive-subtle-foreground}"
+    lightBorder: "1px solid {colors.light.destructive-border}"
+    darkBorder: "1px solid {colors.dark.destructive-border}"
+    hoverBackground: "{colors.light.destructive}"
+    hoverTextColor: "#ffffff"
+    rounded: "{rounded.lg}"
+    minWidth: "2rem"
+    minHeight: "2rem"
+    iconSize: "1rem"
   button-ghost:
     backgroundColor: "transparent"
-    lightTextColor: "{colors.light.muted-foreground}"
-    darkTextColor: "{colors.dark.muted-foreground}"
+    lightTextColor: "{colors.light.foreground}"
+    darkTextColor: "{colors.dark.foreground}"
     rounded: "{rounded.lg}"
     padding: "0.5rem 0.75rem"
     height: "2.25rem"
   button-destructive:
-    backgroundColor: "{colors.destructive}"
-    textColor: "{colors.destructive-foreground}"
+    backgroundColor: "{colors.light.destructive}"
+    textColor: "{colors.light.destructive-foreground}"
     rounded: "{rounded.lg}"
     padding: "0.5rem 1rem"
     height: "2.25rem"
@@ -169,7 +222,7 @@ components:
     rounded: "{rounded.xl}"
     padding: "{spacing.md}"
   input:
-    lightBackground: "{colors.light.background}"
+    lightBackground: "#ffffff"
     darkBackground: "{colors.dark.background}"
     lightTextColor: "{colors.light.foreground}"
     darkTextColor: "{colors.dark.foreground}"
@@ -190,118 +243,98 @@ components:
 
 ## 1. Overview & Architecture
 
-### Creative North Star: "The Dual-Mode Workbench"
+### Creative North Star: “The Dual-Mode Workbench”
 
-TeleBos is a precision instrument designed for Telegram power users managing high-volume broadcasts, account fleets, and automated workflows. The interface functions like an engineered workbench: every tool is readily accessible, segregated by domain, and built for sustained operational focus without cognitive exhaustion.
+TeleBos is a precision workbench for Telegram account management, broadcasts, and automated workflows. The interface should feel clear, deliberate, dense without being cramped, and consistent across long work sessions. Every interactive element (buttons, icon triggers, close buttons, inputs) must have an unmistakable visual affordance at rest—never invisible or camouflaged against its parent container.
 
-TeleBos treats **Light Mode** and **Dark Mode** as first-class, equal-status themes. Both themes share identical layout geometry, information density, and interactive states, while providing rigorous WCAG 2.1 AA compliance (contrast ratio ≥ 4.5:1 for body and secondary text, ≥ 3.0:1 for large text and interactive components).
+Light and Dark are the only **visual themes**. `system` is a preference mode that selects Light or Dark from the operating system; it is not a third visual theme. Both themes share layout, spacing, component geometry, and interaction behavior.
 
-### The Dual-Layer Architecture
+### Theme behavior
 
-To maintain spatial grounding while allowing seamless theme switching, TeleBos implements a dual-layer architectural model:
+- `light`: always render the Light token set.
+- `dark`: always render the Dark token set.
+- `system`: follow the operating-system color preference and update when that preference changes.
+- Persist the selected preference using the existing theme store and storage key (`telebos_theme`) if those names match the implementation. Verify these names against source code before changing implementation.
+- Apply the resolved theme before the first visible paint where possible. Never show the wrong theme briefly while hydration completes.
+- Theme transitions may animate color changes for 150–200 ms, but must not delay theme selection or flash the wrong theme.
 
-1. **Persistent Anchor Frame (Theme-Independent)**
-   - **The Left Sidebar Navigation** (`#020617` Sidewall) remains consistently dark in **both** light and dark themes. This permanent dark mast provides an unwavering frame of reference, grounds the application hierarchy, and eliminates jarring layout shifts during theme toggling.
-   - Hardcoded dark panels (e.g., Telegram Web K chat emulator previews and terminal logs) remain on dark surfaces across both modes.
-2. **Adaptive Workspace Canvas (Theme-Responsive)**
-   - All workspace pages, dashboards, analytical tables, forms, cards, modal dialogs, and toolbars dynamically respond to the active theme (`light` or `dark`).
-   - Theme switching is orchestrated by Zustand (`theme-store.ts`), backed by `localStorage` (`telebos_theme`), and respects the user's OS preference (`system` default).
-   - Global stylesheet tokens (`tokens.css`), theme transitions (`base.css`), and the utility mapping layer (`dark-bridge.css`) ensure synchronized visual transitions without unstyled flashes or low-contrast artifacts.
+### Two surface scopes
+
+1. **Adaptive workspace:** page canvas, cards, tables, forms, dialogs, and toolbars use semantic tokens from the active theme.
+2. **Persistent dark surfaces:** the sidebar and deliberately dark previews (such as terminal output or chat previews) keep their own explicit dark-surface token scope in both themes. Text, icons, borders, and controls inside them must use that scope—not workspace foreground tokens by accident.
+
+Do not rely on a one-off selector such as `[data-keep-white]` as the only protection against theme inversion. Define explicit foreground/background tokens for each persistent surface and test every nested component.
 
 ---
 
 ## 2. Color System & Dual-Theme Tokens
 
-TeleBos enforces a disciplined slate-and-blue palette. The system rejects warm cream/beige tones, neon pastels, and decorative gradients. Every color token maps to a specific functional role and meets strict accessibility minimums.
+### Source of truth
 
-### Dual-Theme Token Specification Matrix
+The YAML token block at the top of this document is the canonical palette. The semantic token table below explains how tokens are used; it must not introduce different values for the same token. If a value changes, update the canonical token and all references in one change.
 
-| Token Name | CSS Custom Property | Tailwind Utility | Light Theme Value | Dark Theme Value | Contrast Ratio vs Surface | Primary Role |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Canvas Background** | `--background` | `bg-background` | `hsl(0 0% 100%)` (`#ffffff`) | `hsl(222.2 47.4% 11.2%)` (`#0f172a`) | Base Surface | Deep workspace canvas |
-| **Canvas Foreground** | `--foreground` | `text-foreground` | `hsl(222.2 84% 4.9%)` (`#020817`) | `hsl(210 40% 98%)` (`#f8fafc`) | ~19.5:1 (L) / ~13:1 (D) | Primary text, titles, headings |
-| **Card Surface** | `--card` | `bg-card` | `hsl(0 0% 100%)` (`#ffffff`) | `hsl(217.2 32.6% 17.5%)` (`#1e293b`) | Elevated Surface | Dashboard panels, bento boxes |
-| **Card Foreground** | `--card-foreground` | `text-card-foreground` | `hsl(222.2 84% 4.9%)` (`#020817`) | `hsl(210 40% 98%)` (`#f8fafc`) | ~19.5:1 (L) / ~10.5:1 (D) | Text inside cards |
-| **Primary Accent** | `--primary` | `bg-primary`, `text-primary` | `hsl(221.2 83.2% 53.3%)` (`#3b82f6`) | `hsl(221.2 83.2% 53.3%)` (`#3b82f6`) | ~4.6:1 on white (L) | Primary CTA fill, active marks |
-| **Primary Foreground**| `--primary-foreground` | `text-primary-foreground` | `hsl(210 40% 98%)` (`#ffffff`) | `hsl(210 40% 98%)` (`#ffffff`) | 8.2:1 against Tool Blue | Text inside filled primary buttons |
-| **Secondary Surface** | `--secondary` | `bg-secondary` | `hsl(210 40% 96.1%)` (`#f1f5f9`) | `hsl(217.2 32.6% 22%)` (`#243248`) | Subtle Surface | Secondary buttons, chips, card headers |
-| **Secondary Text** | `--secondary-foreground` | `text-secondary-foreground` | `hsl(222.2 47.4% 11.2%)` (`#0f172a`) | `hsl(210 40% 98%)` (`#f8fafc`) | ≥ 12:1 against secondary | Text on secondary elements |
-| **Muted Surface** | `--muted` | `bg-muted` | `hsl(210 40% 96.1%)` (`#f1f5f9`) | `hsl(217.2 32.6% 22%)` (`#243248`) | Recessed Surface | Disabled states, table headers |
-| **Muted Text** | `--muted-foreground` | `text-muted-foreground` | `hsl(215.4 16.3% 46.9%)` (`#64748b`) | `hsl(217 24% 78%)` (`#cbd5e1`) | **4.6:1 (L) / 6.5:1 (D)** | Metadata, descriptions, hints |
-| **Border & Divider** | `--border` | `border-border` | `hsl(214.3 31.8% 91.4%)` (`#e2e8f0`) | `hsl(217.2 25% 27%)` (`#334155`) | Hairline boundary | Card edges, inputs, dividers |
-| **Input Border** | `--input` | `border-input` | `hsl(214.3 31.8% 91.4%)` (`#e2e8f0`) | `hsl(217.2 25% 27%)` (`#334155`) | Hairline boundary | Text fields, selectors, textareas |
-| **Focus Ring** | `--ring` | `ring-ring` | `hsl(221.2 83.2% 53.3%)` (`#3b82f6`) | `hsl(217 91% 68%)` (`#60a5fa`) | ≥ 3.0:1 boundary | Keyboard focus outlines |
-| **Destructive Action**| `--destructive` | `bg-destructive` | `hsl(0 84.2% 60.2%)` (`#ef4444`) | `hsl(0 62.8% 30.6%)` (`#7f1d1d`) | Error state | Deletions, bans, critical alerts |
+Prefer semantic utilities (`bg-background`, `text-foreground`, `bg-card`, `text-card-foreground`, `text-muted-foreground`, `border-border`, `border-input`, `ring-ring`) over raw palette utilities. Raw colors are allowed only for intentional branded accents, status colors, destructive/close buttons, illustrations, or explicitly scoped persistent dark surfaces.
 
----
+The flat compatibility keys at the top represent **Light theme only** for legacy consumers. New code must not use them.
 
-### Surface Elevation Ladders
+### Canonical token mapping
 
-Depth in TeleBos is achieved via **tonal layering**, not diffuse box shadows. Each theme uses an ascending ladder of luminance:
+| Token | Light | Dark | Intended use |
+|---|---|---|---|
+| `background` / `foreground` | `#f8fafc` / `#0f172a` | `#0f172a` / `#f8fafc` | Workspace canvas (slate-50 in Light so white cards pop) and default text |
+| `card` / `card-foreground` | `#ffffff` / `#0f172a` | `#1e293b` / `#f8fafc` | Cards, modals, and elevated containers |
+| `muted` / `muted-foreground` | `#f1f5f9` / `#475569` | `#0f172a` / `#cbd5e1` | Recessed surfaces (wells, code blocks, tab tracks) and secondary text |
+| `secondary` / `secondary-foreground` | `#f1f5f9` / `#0f172a` | `#334155` / `#f8fafc` | Secondary buttons, utility icon buttons, and interactive pills inside cards |
+| `accent` / `accent-foreground` | `#e2e8f0` / `#0f172a` | `#334155` / `#f8fafc` | Hover and active surface state (must be visibly distinct from `card`) |
+| `primary` / `primary-foreground` | `#2563eb` / `#ffffff` | `#2563eb` / `#ffffff` | Filled primary actions and branded badges |
+| `destructive` / `destructive-foreground` | `#dc2626` / `#ffffff` | `#dc2626` / `#f8fafc` | Filled destructive actions and Close button hover state |
+| `destructive-subtle` / `destructive-border` | `#fef2f2` / `#fecaca` | `rgba(127,29,29,0.35)` / `rgba(153,27,27,0.8)` | Close (`X`) buttons, cancel icon buttons, and subtle destructive triggers |
+| `border` | `#e2e8f0` | `#334155` | Card boundaries and section dividers |
+| `border-strong` / `input` | `#cbd5e1` | `#64748b` | Interactive button borders, input borders, and form controls |
+| `ring` | `#2563eb` | `#60a5fa` | Keyboard focus indicator |
 
-#### Light Mode Surface Ladder (Ascending Brightness & Density)
-1. **Base Canvas:** `#ffffff` (`bg-background`) — Main background for dashboard pages.
-2. **Subtle Surface:** `#f8fafc` (`bg-slate-50`) — Table alternate rows, search filter bars.
-3. **Card Container:** `#ffffff` (`bg-card`) with a 1px border `border-slate-200` (`#e2e8f0`) — Structured bento cards.
-4. **Secondary Surface:** `#f1f5f9` (`bg-slate-100`) — Button backgrounds, active tab strips.
-5. **Floating Panels:** `#ffffff` with subtle `shadow-lg shadow-slate-900/5` and border `border-slate-200` — Modals, popovers, dropdowns.
+The sidebar uses its own invariant scope: background `#020617`, nested surface `#0f172a`, primary text `#f8fafc`, secondary text `#cbd5e1`, muted text `#94a3b8`, active accent `#60a5fa`, and active background `rgba(59, 130, 246, 0.16)`. Use a visible sidebar border such as `#334155` only where a boundary is needed; do not use the canvas color as the border.
 
-#### Dark Mode Surface Ladder (Ascending Luminance)
-1. **Base Canvas:** `#0f172a` (`hsl(222.2 47.4% 11.2%)`) — Deep Slate workspace floor.
-2. **Subtle Surface:** `hsl(215 20% 14%)` — Form control backgrounds, disabled surfaces.
-3. **Card Container:** `#1e293b` (`hsl(217.2 32.6% 17.5%)`) with 1px border `border-slate-700/60` — Primary card panels.
-4. **Secondary Surface:** `hsl(217.2 32.6% 22%)` (`#243248`) — Inner wells, table headers, hover rows.
-5. **Raised Surface:** `hsl(215 20% 30%)` (`#334155`) — Floating badges, active segmentation pills.
-6. **Floating Panels:** `#1e293b` with border `border-slate-700` and `shadow-2xl shadow-black/50` — Modals, dropdown menus.
+### Contrast & Affordance Requirements
 
----
+- **Normal text:** minimum 4.5:1 against the **actual rendered background**.
+- **Large text** (at least 24 CSS px regular, or about 18.66 CSS px bold): minimum 3:1.
+- **Interactive Control Boundaries (Buttons, Inputs, Icon Triggers):** Every clickable button or input placed inside a card MUST be visually distinguishable from the card surface at rest (without requiring hover to discover it). Use a contrasting background fill (`bg-secondary` / `bg-slate-100` in Light, `bg-slate-700` in Dark) AND/OR a strong border (`border-slate-300` `#cbd5e1` in Light, `border-slate-500` `#64748b` in Dark).
+- **Zero "White-on-White" or "Slate-on-Slate" Camouflage:** Never render a white/transparent button with a transparent or `#e2e8f0` border inside a white `#ffffff` card. Never render a `#1e293b` button inside a `#1e293b` dark card.
 
-### Text Contrast Ladders (Zero Low-Contrast Protocol)
+### Surface hierarchy
 
-To eliminate unreadable low-contrast text across the application, every text level is calibrated against its corresponding surface:
+**Light mode**
+1. **Workspace Canvas:** `#f8fafc` (`bg-slate-50`).
+2. **Card / Floating Surface:** `#ffffff` (`bg-white`), bordered with `#e2e8f0` (`border-slate-200`).
+3. **Interactive Control / Button inside Card:** `#f1f5f9` (`bg-slate-100`) with border `#cbd5e1` (`border-slate-300`), hover `#e2e8f0` (`bg-slate-200`).
+4. **Close / Cancel Button Surface:** `#fef2f2` (`bg-rose-50`) with border `#fecaca` (`border-rose-200`) and text `#dc2626` (`text-rose-600`).
 
-#### Light Mode Text Hierarchy
-- **Heading / Heavy:** `text-slate-900` (`#0f172a`) — **16:1 contrast** against white. Used for page titles and card headlines.
-- **Body / Standard:** `text-slate-700` (`#334155`) or `text-slate-800` (`#1e293b`) — **8.9:1 to 12.5:1 contrast**. Used for table content, paragraph copy, and form values.
-- **Muted / Secondary:** `text-slate-500` (`#64748b`) or `text-muted-foreground` — **4.6:1 contrast** (passes WCAG AA 4.5:1 minimum). Used for metadata, subtitles, timestamps.
-  > [!IMPORTANT]
-  > **Light Mode Rule:** Never use `text-slate-400` (`#94a3b8`) for readable text on a light canvas. Its contrast ratio is only 2.6:1 and violates accessibility requirements.
-- **Placeholders & Hints:** `placeholder:text-slate-500` (`#64748b`, 4.6:1).
-- **Disabled Text:** `text-slate-400` with disabled attribute and reduced cursor opacity.
+**Dark mode**
+1. **Workspace Canvas:** `#0f172a` (`bg-slate-900`).
+2. **Card / Floating Surface:** `#1e293b` (`bg-slate-800`), bordered with `#334155` (`border-slate-700`).
+3. **Interactive Control / Button inside Card:** `#334155` (`bg-slate-700`) with border `#64748b` (`border-slate-500`), hover `#475569` (`bg-slate-600`).
+4. **Recessed Well inside Card:** `#0f172a` (`bg-slate-900`).
+5. **Close / Cancel Button Surface:** `bg-rose-950/60` with border `border-rose-800/80` and text `text-rose-400`.
 
-#### Dark Mode Text Hierarchy
-- **Heading / Heavy:** `text-slate-50` (`#f8fafc`) or `text-foreground` — **13:1 contrast** against `#1e293b`. Used for page titles and card headlines.
-- **Body / Standard:** `text-slate-200` (`#e2e8f0`) — **10.2:1 contrast**. Used for table content, paragraphs, form entries.
-- **Muted / Secondary:** `text-slate-300` / `hsl(217 24% 78%)` (`#cbd5e1`) or `text-muted-foreground` — **6.5:1 contrast** against `#1e293b`. Used for metadata, subtitles, timestamps.
-  > [!IMPORTANT]
-  > **Dark Mode Rule:** Never leave raw `text-slate-500` unmapped on dark surfaces (it drops to 2.8:1). Use `text-muted-foreground` or `dark:text-slate-300` so contrast remains ≥ 6:1.
-- **Placeholders & Hints:** `placeholder:text-slate-400` (`hsl(215 12% 76%)`, 5.2:1).
-- **Primary Text Links on Dark:** When blue text appears on dark surfaces, use `text-blue-400` (`#60a5fa`, 5.8:1) or `text-primary-300` (`#93c5fd`, 8.1:1). Never use raw mid-blue `text-primary` (`#3b82f6`) as bare text on dark surfaces (it achieves only 2.8:1).
+### Text hierarchy
 
----
+- **Primary text:** `foreground` (`#0f172a` Light / `#f8fafc` Dark) or `card-foreground`.
+- **Secondary text:** `muted-foreground` (`#475569` `text-slate-600` on Light surfaces; `#cbd5e1` `text-slate-300` on Dark surfaces).
+- **Light-mode readable text:** NEVER use `text-slate-400` (`#94a3b8`) on white or light gray for normal text or button icons; contrast is only ~2.56:1 and makes icons look invisible or disabled.
+- **Dark-mode readable text:** NEVER use raw `text-slate-500` (`#64748b`) for normal text or active icons on dark cards.
+- **Disabled controls:** Prefer explicit disabled tokens (`bg-slate-100 text-slate-400 border-slate-200` in Light; `bg-slate-800/50 text-slate-500 border-slate-700/50` in Dark) with `cursor-not-allowed` over indiscriminate `opacity-50` on already-subtle buttons.
 
-### Status Badges & Functional Accents Matrix
+### Status colors (Canonical Palette)
 
-Status indicators must retain strong contrast and recognizability in both themes. Badges use a tinted background, subtle border, and high-contrast text:
+Use semantic status colors only when they communicate status (success, warning, error, information) or destructive/close intent. Status badges must use a tinted background, a subtle border, and text with a verified contrast ratio (≥ 4.5:1):
 
-| Status Role | Light Mode Classes | Light Preview | Dark Mode Classes | Dark Preview |
-| :--- | :--- | :--- | :--- | :--- |
-| **Success / Active** | `bg-emerald-50 text-emerald-800 border border-emerald-200` | Emerald-800 on pale green (~6.5:1) | `bg-emerald-950/40 text-emerald-400 border border-emerald-800/50` | Emerald-400 on deep green (~8.2:1) |
-| **Warning / Idle / Refill** | `bg-amber-50 text-amber-800 border border-amber-200` | Amber-800 on pale amber (~6.8:1) | `bg-amber-950/40 text-amber-300 border border-amber-800/50` | Amber-300 on deep amber (~9.1:1) |
-| **Destructive / Error / Ban** | `bg-rose-50 text-rose-800 border border-rose-200` | Rose-800 on pale rose (~7.0:1) | `bg-rose-950/40 text-rose-300 border border-rose-800/50` | Rose-300 on deep rose (~8.5:1) |
-| **Info / Telegram Primary** | `bg-blue-50 text-blue-800 border border-blue-200` | Blue-800 on pale blue (~7.4:1) | `bg-blue-950/40 text-blue-300 border border-blue-800/50` | Blue-300 on deep blue (~9.0:1) |
-| **Neutral / Offline** | `bg-slate-100 text-slate-700 border border-slate-200` | Slate-700 on slate-100 (~7.2:1) | `bg-slate-800/60 text-slate-300 border border-slate-700/60` | Slate-300 on slate-800 (~6.8:1) |
-
----
-
-### Persistent Frame (Sidebar Invariant)
-
-The sidebar is anchored in dark slate across both themes:
-- **Canvas:** `#020617` (`bg-slate-950` / Sidewall).
-- **Group Labels:** `text-slate-400` (`#94a3b8`), font-size `0.625rem`, uppercase, tracking `0.05em`.
-- **Inactive Nav Items:** `text-slate-400 hover:text-slate-100 hover:bg-slate-900/60`.
-- **Active Nav Item:** `text-blue-400 bg-blue-500/10 border-l-2 border-blue-500`.
-- **Inverted Action Buttons:** Any white button inside persistent dark panels must use `[data-keep-white]` with dark text `text-slate-900` to prevent white-on-white text inversion.
+| Status Role | Light Foreground | Light Tint BG | Dark Foreground | Dark Tint BG | Usage Context |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Success** | `#15803d` (green-700) | `#f0fdf4` (green-50) | `#4ade80` (green-400) | `rgba(34, 197, 94, 0.15)` | Active accounts, completed orders, healthy proxies |
+| **Warning** | `#b45309` (amber-700) | `#fffbeb` (amber-50) | `#fbbf24` (amber-400) | `rgba(245, 158, 11, 0.15)` | Rate limits, cooldowns, pending transactions |
+| **Error / Destructive** | `#dc2626` (red-600) | `#fef2f2` (red-50) | `#f87171` (red-400) | `rgba(239, 68, 68, 0.20)` | Flood waits, revoked sessions, failed broadcasts, **Close/Cancel buttons** |
+| **Info** | `#0369a1` (sky-700) | `#f0f9ff` (sky-50) | `#38bdf8` (sky-400) | `rgba(56, 189, 248, 0.15)` | Telegram channel metadata, informational notices |
 
 ---
 
@@ -321,65 +354,96 @@ TeleBos uses a single font family for the entire application to ensure mechanica
 | **Title** | 600 (Semibold), `1rem` (16px) | 1.4 | `-0.01em` | `text-slate-900` | `text-slate-100` | Card titles, section headers, dialog titles. |
 | **Body** | 400 (Regular), `0.875rem` (14px) | 1.6 | Normal | `text-slate-700` | `text-slate-200` | Standard table content, paragraphs, form entries. |
 | **Label** | 500 (Medium), `0.8125rem` (13px) | 1.25 | Normal | `text-slate-900` | `text-slate-200` | Form labels, table column headers, tab triggers. |
-| **Muted** | 400 (Regular), `0.8125rem` (13px) | 1.4 | Normal | `text-slate-500` | `text-slate-300` | Timestamps, secondary IDs, help descriptions. |
+| **Muted** | 400 (Regular), `0.8125rem` (13px) | 1.4 | Normal | `text-slate-600` | `text-slate-300` | Timestamps, secondary IDs, help descriptions. |
 | **Mono** | 400 (Regular), `0.8125rem` (13px) | 1.5 | Normal | `text-slate-800` | `text-slate-200` | Telegram user IDs, phone numbers, session strings. |
 
 ---
 
 ## 4. Elevation, Borders & Transitions
 
-TeleBos avoids dramatic drop shadows in favor of crisp boundaries and purposeful state transitions.
+TeleBos relies on crisp boundaries and distinct surface layering rather than heavy drop shadows.
 
 ### Border Strategy
-- **Light Mode:** 1px hairline border using `border-slate-200` (`#e2e8f0`) on cards, inputs, and dividers. Cards at rest carry `ring-1 ring-slate-900/5` or `border border-slate-200`.
-- **Dark Mode:** 1px hairline border using `border-slate-800` (`#1e293b`) or `border-slate-700/60` (`#334155`). Cards do not use drop shadows at rest; separation is delivered via the contrast between base `#0f172a` and card surface `#1e293b`.
+- **Light Mode:**
+  - Cards & Containers: `1px solid #e2e8f0` (`border-slate-200`) on a `#ffffff` card over a `#f8fafc` canvas.
+  - Interactive Controls (Buttons, Inputs, Icon Buttons): **MUST** use `1px solid #cbd5e1` (`border-slate-300`) so they never disappear against a white card.
+- **Dark Mode:**
+  - Cards & Containers: `1px solid #334155` (`border-slate-700`) on a `#1e293b` card over a `#0f172a` canvas.
+  - Interactive Controls (Buttons, Inputs, Icon Buttons): **MUST** use `1px solid #64748b` (`border-slate-500`) or `border-slate-600` paired with a `#334155` (`bg-slate-700`) surface.
 
-### Shadows (State-Triggered Only)
-- **Resting Cards:** `shadow-none` (both themes).
+### Shadows
+- **Resting Cards:** `shadow-xs` in Light Mode (`0 1px 2px 0 rgba(15, 23, 42, 0.04)`); `shadow-none` in Dark Mode.
 - **Interactive Card Hover:**
-  - Light Mode: `shadow-md shadow-slate-900/5` + subtle upward transform (`-translate-y-[1px]`).
-  - Dark Mode: Surface highlight (`bg-slate-800/80` or `border-slate-600`) without shadow blur.
+  - Light Mode: `shadow-md shadow-slate-900/5 border-slate-300` + subtle upward transform (`-translate-y-[1px]`).
+  - Dark Mode: `border-slate-500 bg-slate-800/90`.
 - **Dropdowns & Popovers:**
-  - Light Mode: `shadow-lg shadow-slate-900/10 border border-slate-200 bg-white`.
-  - Dark Mode: `shadow-2xl shadow-black/60 border border-slate-800 bg-slate-900`.
-- **Modals & Overlays:**
-  - Light Mode: Backdrop `bg-black/40 backdrop-blur-sm`, container `bg-white border border-slate-200 shadow-2xl`.
-  - Dark Mode: Backdrop `bg-black/75 backdrop-blur-sm`, container `bg-slate-900 border border-slate-800 shadow-2xl`.
-
-### Theme Transition Smoothing
-All color-shifting surfaces employ the transition tokens defined in `base.css`:
-```css
-transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
-```
-This guarantees an instantaneous, flicker-free transition when switching between Light and Dark modes.
+  - Light Mode: `shadow-lg shadow-slate-900/10 border border-slate-300 bg-white text-slate-900`.
+  - Dark Mode: `shadow-xl shadow-black/40 border border-slate-700 bg-slate-800 text-slate-100`.
 
 ---
 
 ## 5. Component Specifications (Dual-Theme Implementation)
 
-### 1. Buttons
+### 1. Buttons & Icon Triggers (CRITICAL VISIBILITY RULES)
 
-Standard button height is **2.25rem (36px)** with `rounded-lg` (8px corners) and `text-sm font-medium`.
+Standard text button height is **2.25rem (36px / `h-9`)** with `rounded-lg` (8px corners) and `text-sm font-medium`.
+**NEVER create an unboxed/naked icon button (`bg-transparent border-transparent`) on a workspace or card surface.**
 
 - **Primary Button:**
-  - Fill: `bg-primary` (`#3b82f6`).
-  - Text: `text-white` (`#ffffff`).
-  - Hover: `hover:bg-primary-hover` (`#2563eb`) or `hover:opacity-90`.
+  - Fill: `bg-primary` (`#2563eb`), Text: `text-white` (`#ffffff`).
+  - Hover: `hover:bg-primary-hover` (`#1d4ed8`).
   - Focus: `focus-visible:ring-2 focus-visible:ring-primary/50`.
-- **Secondary Button:**
-  - Light: `bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-200/60`.
-  - Dark: `bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700/60`.
+
+- **Secondary Button (Default for non-primary actions inside cards):**
+  - Light: `bg-slate-100 text-slate-900 border border-slate-300 hover:bg-slate-200 hover:border-slate-400`.
+  - Dark: `bg-slate-700 text-slate-100 border border-slate-500 hover:bg-slate-600`.
+
 - **Outline Button:**
-  - Light: `bg-transparent text-slate-800 border border-slate-200 hover:bg-slate-50`.
-  - Dark: `bg-transparent text-slate-200 border border-slate-700 hover:bg-slate-800/60`.
-- **Ghost Button:**
-  - Light: `bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900`.
-  - Dark: `bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white`.
-- **Destructive Button:**
-  - Light: `bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200`.
-  - Dark: `bg-rose-950/40 text-rose-300 hover:bg-rose-900/50 border border-rose-800/50`.
-- **Disabled State:**
-  - Both Themes: `opacity-50 pointer-events-none cursor-not-allowed`.
+  - Light: `bg-white text-slate-900 border border-slate-300 hover:bg-slate-100 hover:border-slate-400 shadow-2xs`. (Never use `border-slate-200` or `border-transparent` on a white card).
+  - Dark: `bg-slate-800/80 text-slate-100 border border-slate-500 hover:bg-slate-700`.
+
+- **Utility Icon Button (Refresh, Sync, Filter, Copy, Settings, More):**
+  - **Prohibition:** NEVER render a standalone `<svg>` inside a bare `<button class="hover:text-primary-600">` with `h-3 w-3` and no background/border.
+  - **Sizing:** Minimum `h-8 w-8` (`32px x 32px`) or `h-9 w-9` (`36px x 36px`), `rounded-lg`, centered flex container. Minimum SVG icon size is `h-4 w-4` (`16px`).
+  - **Light Mode:** `bg-slate-100 text-slate-700 border border-slate-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300`.
+  - **Dark Mode:** `bg-slate-700 text-slate-200 border border-slate-600 hover:bg-slate-600 hover:text-blue-400 hover:border-blue-500/60`.
+  - **Canonical Markup Example (Refresh Button):**
+    ```html
+    <button
+      type="button"
+      title="Refresh stats now"
+      class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-slate-100 text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-blue-500/60 dark:hover:bg-slate-600 dark:hover:text-blue-400 cursor-pointer"
+    >
+      <svg class="h-4 w-4" ...><!-- lucide-refresh-cw --></svg>
+    </button>
+    ```
+
+- **Close / Dismiss / Cancel Icon Button (`X` button on Modals, Dialogs, Drawers, Toasts, Banners, or Cancel slots):**
+  - **Requirement:** Close and Cancel (`X`) buttons MUST immediately communicate their dismissive/destructive nature at rest using a red/rose tinted surface and border, turning solid red with white icon on hover. Never style a Close (`X`) button as a gray transparent ghost button (`text-slate-500 bg-transparent border-transparent`), which becomes invisible against light surfaces.
+  - **Sizing:** `h-8 w-8` (`32px`) or `h-9 w-9` (`36px`), `rounded-lg`, icon size `h-4 w-4` (16px) or `h-5 w-5` (20px).
+  - **Light Mode:** `bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600`.
+  - **Dark Mode:** `bg-rose-950/60 text-rose-400 border border-rose-800/80 hover:bg-rose-600 hover:text-white hover:border-rose-500`.
+  - **Canonical Markup Example (Dialog Close / Cancel `X` Button):**
+    ```html
+    <button
+      type="button"
+      data-slot="dialog-close"
+      aria-label="Close"
+      class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:border-rose-600 hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:pointer-events-none disabled:opacity-50 dark:border-rose-800/80 dark:bg-rose-950/60 dark:text-rose-400 dark:hover:border-rose-500 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer"
+    >
+      <svg class="h-4 w-4" ...><!-- lucide-x --></svg>
+      <span class="sr-only">Close</span>
+    </button>
+    ```
+
+- **Destructive Action Button (Delete, Revoke, Purge):**
+  - Primary Solid Destructive: `bg-red-600 text-white hover:bg-red-700 border border-red-700 shadow-xs`.
+  - Secondary / Subtle Destructive (Cancel text button, Remove filter, Clear):
+    - Light: `bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600`.
+    - Dark: `bg-rose-950/50 text-rose-300 border border-rose-800/80 hover:bg-rose-600 hover:text-white hover:border-rose-500`.
+
+- **Ghost Button (Strictly Restricted):**
+  - **Restriction:** NEVER use `button-ghost` (`bg-transparent border-transparent`) for standalone actions inside cards, headers, or modals (such as Close, Refresh, or Cancel). Ghost style is ONLY permitted for inactive items inside a bordered navigation bar, segmented control track (`bg-slate-100 dark:bg-slate-900`), or dropdown menu rows where the parent container already frames the group.
 
 ---
 
@@ -391,37 +455,39 @@ Cards organize telemetry, account lists, and action consoles.
   - Corner Radius: `rounded-xl` (12px).
   - Padding: `p-4` (16px) or `p-6` (24px) for major sections.
 - **Surfaces:**
-  - Light: `bg-white text-slate-900 border border-slate-200 shadow-sm shadow-slate-900/5`.
-  - Dark: `bg-slate-900 text-slate-100 border border-slate-800`.
-- **Card Header & Title:**
-  - Title: `text-base font-semibold text-slate-900 dark:text-slate-100`.
-  - Subtitle: `text-sm text-slate-500 dark:text-slate-300`.
+  - Light: `bg-white text-slate-900 border border-slate-200 shadow-xs` (placed on top of `bg-slate-50` page background).
+  - Dark: `bg-slate-800 text-slate-100 border border-slate-700`.
+- **Card Header & Action Bar:**
+  - Title: `text-base font-semibold text-card-foreground`.
+  - Subtitle: `text-sm text-muted-foreground`.
+  - Header Action Buttons (e.g., Refresh, Add, Close): Must use **Utility Icon Button**, **Secondary Button**, or **Close Button** styles above—never unstyled icons.
 - **Card Footer:**
-  - Light: `bg-slate-50/60 border-t border-slate-100 px-4 py-3`.
-  - Dark: `bg-slate-800/40 border-t border-slate-800 px-4 py-3`.
+  - Light: `bg-slate-50 border-t border-slate-200 px-4 py-3`.
+  - Dark: `bg-slate-900/50 border-t border-slate-700 px-4 py-3`.
 
 ---
 
 ### 3. Form Inputs, Selects & Textareas
 
-Form controls must guarantee high contrast and unambiguous focus states.
+Form controls must guarantee high contrast and unambiguous boundaries on both page backgrounds and inside cards.
 
 - **Geometry:** Height `2.25rem` (36px), padding `px-3 py-2`, `rounded-lg` (8px).
 - **Light Theme:**
   - Surface: `bg-white`.
-  - Border: `border border-slate-300`.
+  - Border: `border border-slate-300` (`#cbd5e1`) — never use `border-slate-200` on inputs inside white cards.
+  - Hover: `hover:border-slate-400`.
   - Text: `text-slate-900`.
   - Placeholder: `placeholder:text-slate-500`.
   - Focus: `focus:border-primary focus:ring-2 focus:ring-primary/20`.
 - **Dark Theme:**
-  - Surface: `bg-slate-950/60` (or `hsl(215 20% 14%)`).
-  - Border: `border border-slate-700`.
+  - Surface: `bg-slate-900` (`#0f172a`) so inputs appear distinctly recessed inside `#1e293b` cards.
+  - Border: `border border-slate-600` (`#475569`) or `border-slate-500` (`#64748b`).
   - Text: `text-slate-100`.
   - Placeholder: `placeholder:text-slate-400`.
-  - Focus: `focus:border-primary-400 focus:ring-2 focus:ring-primary-400/25`.
+  - Focus: `focus:border-blue-400 focus:ring-2 focus:ring-blue-400/25`.
 - **Error State:**
-  - Light: `border-rose-500 focus:ring-rose-500/20 text-rose-900`.
-  - Dark: `border-rose-500 focus:ring-rose-500/25 text-rose-100`.
+  - Light: `border-red-500 focus:ring-red-500/20 text-red-900 bg-red-50/30`.
+  - Dark: `border-red-500 focus:ring-red-500/25 text-red-100 bg-red-950/20`.
 
 ---
 
@@ -429,13 +495,14 @@ Form controls must guarantee high contrast and unambiguous focus states.
 
 Tables manage high-density account sessions, proxy latency, and broadcast queues.
 
+- **Responsive Wrapper:** All multi-column data tables must be wrapped in `<div className="w-full overflow-x-auto scrollbar-thin border border-slate-200 dark:border-slate-700 rounded-xl">`.
 - **Table Header:**
-  - Light: `bg-slate-50 text-slate-700 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider`.
-  - Dark: `bg-slate-900/80 text-slate-300 border-b border-slate-800 text-xs font-semibold uppercase tracking-wider`.
+  - Light: `bg-slate-100 text-slate-700 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider`.
+  - Dark: `bg-slate-900 text-slate-300 border-b border-slate-700 text-xs font-semibold uppercase tracking-wider`.
 - **Data Rows:**
-  - Light: `border-b border-slate-100 hover:bg-slate-50/80 text-slate-700`.
-  - Dark: `border-b border-slate-800/60 hover:bg-slate-800/50 text-slate-200`.
-- **Cell Padding:** `px-4 py-3 text-sm`.
+  - Light: `bg-white border-b border-slate-200 hover:bg-slate-50 text-slate-700`.
+  - Dark: `bg-slate-800 border-b border-slate-700/70 hover:bg-slate-700/50 text-slate-200`.
+- **Row Action Buttons:** Action triggers inside table rows (Edit, Refresh, Delete/Close) must use boxed `button-icon` or `button-close` styles (`h-7 w-7` or `h-8 w-8`) with visible borders and backgrounds.
 
 ---
 
@@ -445,73 +512,79 @@ Tables manage high-density account sessions, proxy latency, and broadcast queues
   - Light: `bg-slate-950/40 backdrop-blur-sm`.
   - Dark: `bg-black/75 backdrop-blur-sm`.
 - **Modal Surface:**
-  - Light: `bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 text-slate-900`.
-  - Dark: `bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 text-slate-100`.
-- **Close Button:**
-  - Light: `text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1.5`.
-  - Dark: `text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg p-1.5`.
+  - Light: `bg-white border border-slate-300 rounded-2xl shadow-2xl p-6 text-slate-900`.
+  - Dark: `bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 text-slate-100`.
+- **Modal / Sheet Close Button (`data-slot="dialog-close"`):**
+  - Position: `absolute right-4 top-4`.
+  - **Mandatory Styling:** Must use the **Close / Dismiss Button** specification:
+    - Light: `bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 rounded-lg h-8 w-8 inline-flex items-center justify-center transition-colors`.
+    - Dark: `dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/80 dark:hover:bg-rose-600 dark:hover:text-white dark:hover:border-rose-500`.
 
 ---
 
 ### 6. Loading Skeletons & Shimmer States
 
-- **Animation:** `animate-shimmer` with 1.5s ease slide.
-- **Light Mode:** Base `bg-slate-100` shimmering to `bg-slate-200/60`.
-- **Dark Mode:** Base `bg-slate-800` shimmering to `bg-slate-700/60`.
+- **Light Mode:** Base `bg-slate-200` shimmering to `bg-slate-100`.
+- **Dark Mode:** Base `bg-slate-700` shimmering to `bg-slate-800`.
 
 ---
 
-## 6. Low-Contrast Prevention Guardrails
+### 7. Tooltips & Popovers
 
-To prevent regression and guarantee crystal-clear legibility across all screens, every UI implementation must adhere to the following 8 Golden Rules:
+- **Theme Scope:** Always render with high-contrast boundaries (`bg-slate-900 text-slate-100 border border-slate-700 shadow-lg`).
+- **Geometry:** `px-2.5 py-1 text-xs font-medium rounded-md`.
 
-### Rule 1: The Slate-400 Ban on Light Surfaces
-Never author `text-slate-400` or `text-gray-400` for readable labels, metadata, or table entries on a light canvas. Use `text-slate-500` or `text-muted-foreground` (≥ 4.6:1) instead.
+---
 
-### Rule 2: The Slate-500 Ban on Dark Surfaces
-Never author raw `text-slate-500` on dark cards. It drops contrast to 2.8:1 and fails WCAG AA. Always map through `text-muted-foreground` or use `dark:text-slate-300` (≥ 6.5:1).
+### 8. Form Controls Disabled States
 
-### Rule 3: The Primary-Text Accent Rule
-Never use mid-blue `#3b82f6` (`text-primary`) as unstyled text on dark backgrounds. For links, breadcrumbs, or text buttons on dark surfaces, use `text-blue-400` (`#60a5fa`) or `text-primary-300` (`#93c5fd`). Reserve filled `--primary` for solid buttons and badges with white text.
+- **Light Theme:** `bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed`.
+- **Dark Theme:** `bg-slate-900/60 text-slate-500 border border-slate-700/60 cursor-not-allowed`.
+- Never apply `disabled:opacity-50` to an unbordered button; the control must retain a visible box and border even when disabled.
 
-### Rule 4: Explicit Status Badge Text Contrast
-Status chips must never combine light pastel backgrounds with pale text in light mode, nor dark backgrounds with dark text in dark mode. Always enforce:
-- **Light:** Tinted-50 fill + 800-step text + 200-step border.
-- **Dark:** Tinted-950/40 fill + 300/400-step text + 800/50-step border.
+---
 
-### Rule 5: Preserved Dark Surface Text Invariant (`[data-keep-white]`)
-When an inverted white control resides on a permanent dark surface (such as the sidebar or Telegram chat bubble), apply `[data-keep-white]` and ensure the label retains dark ink `text-slate-900`. Never allow theme remapping to produce white text on a white button.
+### 9. Responsive Breakpoints & Mobile Navigation
 
-### Rule 6: Form Placeholder Standard
-Input placeholders must maintain ≥ 4.5:1 contrast against their input fill. Use `placeholder:text-slate-500` in light mode and `placeholder:text-slate-400` in dark mode. Default browser placeholders that appear washed out are strictly prohibited.
+- `sm`: `640px`, `md`: `768px`, `lg`: `1024px` (**Sidebar Collapse Threshold**), `xl`: `1280px`, `2xl`: `1536px`.
+- On screens `< 1024px` (`lg`), the persistent sidebar collapses off-canvas into a slide-over `Sheet` (drawer). The close button inside the dark mobile drawer must also use the high-visibility rose/red `button-close` style (`bg-rose-950/80 text-rose-400 border border-rose-800 hover:bg-rose-600 hover:text-white`).
 
-### Rule 7: Hairline Boundary Verification
-Cards and form fields must never bleed into the page canvas. Always verify that:
-- Light cards carry a visible 1px `border-slate-200` against `#ffffff` or `#f8fafc`.
-- Dark cards carry a visible 1px `border-slate-800` or `border-slate-700/60` against `#0f172a`.
+---
 
-### Rule 8: Smooth Theme Transitions
-Never use abrupt color flips. Ensure all dynamic surfaces inherit `transition: background-color 0.2s, border-color 0.2s, color 0.2s` from `base.css` to deliver silky, flicker-free transitions.
+## 6. Low-Contrast & "Invisible UI" Prevention Guardrails
+
+Every UI change and component review must enforce these hard rules:
+
+1. **No Invisible / Naked Buttons:** Every `<button>` (including icon-only buttons like Refresh, Sync, Edit, Close, Cancel) MUST have a visible background fill AND a visible border at rest. `border-transparent` and `bg-transparent` are strictly forbidden on standalone buttons.
+2. **Red Close & Cancel Buttons:** All Close (`X`) buttons (`data-slot="dialog-close"`, modal close, drawer close, toast close, cancel icon buttons) MUST be styled in red/rose (`bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white` in Light; `dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/80 dark:hover:bg-rose-600 dark:hover:text-white` in Dark). Never use gray text (`text-slate-500`) on a white/transparent background for close buttons.
+3. **Distinct Utility Icon Buttons:** Utility icon triggers (e.g., `lucide-refresh-cw`) must be at least `32px x 32px` (`h-8 w-8`), use at least a `16px` (`h-4 w-4`) icon, and have a contrasting surface (`bg-slate-100 border-slate-300 text-slate-700` in Light; `bg-slate-700 border-slate-600 text-slate-200` in Dark).
+4. **No Same-Color Nesting:**
+   - Light Mode: Page background is `#f8fafc` (`bg-slate-50`), Card is `#ffffff` (`bg-white`), Button inside Card is `#f1f5f9` (`bg-slate-100`) with border `#cbd5e1` (`border-slate-300`).
+   - Dark Mode: Page background is `#0f172a` (`bg-slate-900`), Card is `#1e293b` (`bg-slate-800`), Button inside Card is `#334155` (`bg-slate-700`) with border `#64748b` (`border-slate-500`).
+5. **Protect the Sidebar Scope:** Sidebar and persistent dark previews need explicit foreground, muted, active, border, and control tokens.
+
+### Required acceptance checklist
+
+- [ ] Verify no `<button>` uses `border-transparent` or lacks a background fill unless it is inside a segmented tab track or dropdown menu item.
+- [ ] Verify all Close (`X`) and Cancel icon buttons are visibly red at rest (`bg-rose-50 text-rose-600 border-rose-200`) and turn solid red with white text/icon on hover (`hover:bg-rose-600 hover:text-white`).
+- [ ] Verify all utility icon buttons (Refresh, Filter, Copy, etc.) have a visible box (`h-8 w-8` min), border (`border-slate-300` Light / `border-slate-600` Dark), and surface fill (`bg-slate-100` Light / `bg-slate-700` Dark), with icons at least `h-4 w-4`.
+- [ ] Verify white cards (`#ffffff`) sit on a `#f8fafc` (`slate-50`) background in Light mode, and buttons inside cards never use pure `#ffffff` without a `border-slate-300` border.
+- [ ] Verify dark cards (`#1e293b`) contain buttons with `#334155` (`bg-slate-700`) fill so buttons do not blend into the card.
 
 ---
 
 ## 7. Do's and Don'ts Matrix
 
 ### Do:
-- **Do** test every screen in both Light and Dark modes before finalizing changes.
-- **Do** use semantic tokens (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border`) instead of hardcoded hex colors.
-- **Do** maintain the permanent dark frame on the sidebar (`#020617`) in both themes.
-- **Do** ensure normal body text meets ≥ 4.5:1 contrast and large headings meet ≥ 3.0:1 in both themes.
-- **Do** use `text-wrap: balance` on section headings and `text-wrap: pretty` on long descriptions.
-- **Do** use visible focus rings (`focus-visible:ring-2 focus-visible:ring-primary/50`) for full keyboard navigation.
-- **Do** preserve fast, subtle micro-interactions (150–200ms) with `ease-out`.
+- **Do** style all Close (`X`) and Cancel icon buttons with a red/rose surface, red border, and solid red hover state (`bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white`).
+- **Do** give every icon button (like Refresh) a visible container (`h-8 w-8 rounded-lg border border-slate-300 bg-slate-100 text-slate-700`) and an icon size of at least `h-4 w-4`.
+- **Do** keep `light.background` at `#f8fafc` (`slate-50`) so `#ffffff` cards and controls have clear depth.
+- **Do** use `bg-slate-700` (`#334155`) for secondary buttons and hover states inside `#1e293b` dark cards.
+- **Do** use `border-slate-300` (`#cbd5e1`) on inputs and outline buttons in Light mode.
 
 ### Don't:
-- **Don't** use cream, sand, beige, or warm-tinted backgrounds (violates the serious workbench identity).
-- **Don't** use decorative gradient text (`background-clip: text` with gradient).
-- **Don't** use glassmorphism or heavy backdrop-blur surfaces inside dashboard cards.
-- **Don't** use `text-slate-400` on white or `text-slate-500` on dark card surfaces.
-- **Don't** nest cards inside cards (creates cluttered visual noise).
-- **Don't** apply blurry drop shadows to resting cards (depth is communicated through tonal layering and hairline borders).
-- **Don't** invert the sidebar canvas to white in Light mode — the sidebar is a persistent dark anchor.
-- **Don't** invent random secondary accent colors (purple, pink, amber, teal) for layout decoration. Blue is the single primary accent.
+- **Don't** create "naked" icon buttons (`<button class="hover:text-primary-600"><svg class="h-3 w-3">`) with no background, no border, and tiny `12px` icons.
+- **Don't** use `border-transparent`, `bg-transparent`, or `text-slate-500 hover:bg-slate-100` on Close (`X`) or Cancel buttons.
+- **Don't** put a `#ffffff` button with a `#e2e8f0` border inside a `#ffffff` card (causes invisible UI in Light mode).
+- **Don't** put a `#1e293b` button inside a `#1e293b` card (causes invisible UI in Dark mode).
+- **Don't** use `text-slate-400` on white or raw `text-slate-500` on dark cards for readable text or active icons.

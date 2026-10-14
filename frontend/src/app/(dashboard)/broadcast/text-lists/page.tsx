@@ -147,8 +147,10 @@ export default function TextListsPage() {
                     {_("textLists.newList")}
                   </span>
                   <button
+                    type="button"
                     onClick={() => setShowNew(false)}
-                    className="text-muted-foreground hover:text-foreground"
+                    aria-label={_("common.cancel") || "Batal"}
+                    className="h-7 w-7 rounded-md border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition shadow-2xs cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -256,10 +258,10 @@ export default function TextListsPage() {
                           key={idx}
                           className="group flex items-start justify-between bg-gray-50 dark:bg-slate-900/60 hover:bg-gray-100/70 dark:hover:bg-slate-700/40 border border-gray-100 dark:border-slate-700 rounded-lg px-3 py-2 text-xs transition"
                         >
-                          <span className="text-gray-700 dark:text-slate-200 whitespace-pre-wrap break-words flex-1 leading-relaxed">
+                          <span className="text-foreground whitespace-pre-wrap break-words flex-1 leading-relaxed">
                             {text}
                           </span>
-                          <div className="flex items-center gap-1 ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition">
+                          <div className="flex items-center gap-1.5 ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition">
                             <button
                               type="button"
                               onClick={() =>
@@ -271,7 +273,7 @@ export default function TextListsPage() {
                                   list.name
                                 )
                               }
-                              className="text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 rounded hover:bg-white dark:hover:bg-slate-800 transition"
+                              className="h-7 w-7 flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-muted-foreground hover:text-foreground transition shadow-2xs cursor-pointer"
                               title={_("textLists.editText")}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
@@ -281,7 +283,7 @@ export default function TextListsPage() {
                               onClick={() =>
                                 handleRemoveText(list.id, idx, list.texts)
                               }
-                              className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-white dark:hover:bg-slate-800 transition"
+                              className="h-7 w-7 flex items-center justify-center rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition shadow-2xs cursor-pointer"
                               title="Hapus pesan"
                             >
                               <X className="h-3.5 w-3.5" />

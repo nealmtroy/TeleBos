@@ -95,7 +95,7 @@ export default function GroupsChannelsPage() {
         <div className="flex items-center gap-3">
           <Link
             href={`/accounts/${accountId}`}
-            className="p-1.5 hover:bg-muted rounded-lg border border-border/50 text-muted-foreground hover:text-foreground transition"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-foreground hover:bg-muted shadow-2xs transition"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -110,7 +110,7 @@ export default function GroupsChannelsPage() {
           onClick={handleSync}
           disabled={!accountId || isSyncing}
           variant="outline"
-          className="text-xs h-9 cursor-pointer"
+          className="text-xs h-9 border-slate-300 dark:border-slate-700 bg-card shadow-2xs cursor-pointer"
         >
           <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isSyncing && "animate-spin text-primary")} />
           <span>{isSyncing ? _("groupsChannels.syncing") : _("groupsChannels.sync")}</span>
@@ -120,19 +120,19 @@ export default function GroupsChannelsPage() {
       {/* Sync Status / Errors */}
       <div className="px-4 pt-2 pb-0 space-y-2">
         {accountId && syncedAt && (
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-muted-foreground">
             {_("groupsChannels.lastSynced").replace("{time}", new Date(syncedAt).toLocaleString())}
           </p>
         )}
 
         {syncError && (
-          <div className="p-2 text-xs rounded-lg bg-red-50 border border-red-200 text-red-600">
+          <div className="p-2 text-xs rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300">
             {syncError}
           </div>
         )}
 
         {syncSuccessMsg && (
-          <div className="p-2 text-xs rounded-lg bg-green-50 border border-green-200 text-green-700">
+          <div className="p-2 text-xs rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">
             {syncSuccessMsg}
           </div>
         )}
@@ -141,7 +141,7 @@ export default function GroupsChannelsPage() {
       {/* Search */}
       <div className="px-4 pt-3 pb-0">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             id="account-groups-channels-search"
             name="search"
@@ -153,18 +153,18 @@ export default function GroupsChannelsPage() {
             }}
             aria-label={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
             placeholder={activeTab === "groups" ? _("groupsChannels.searchGroups") : _("groupsChannels.searchChannels")}
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            className="w-full pl-9 pr-4 py-2 bg-card border border-slate-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-2xs"
           />
         </div>
       </div>
 
       {/* Tabs: Groups | Channels */}
-      <div className="px-3 py-2 border-b border-gray-100">
+      <div className="px-3 py-2 border-b border-border">
         <Tabs
           value={activeTab}
           onValueChange={(val) => setActiveTab(val as "groups" | "channels")}
         >
-          <TabsList className="h-8 bg-gray-100 p-0.5">
+          <TabsList className="h-8 bg-muted p-0.5">
             <TabsTrigger value="groups" className="text-xs px-3 py-1 gap-1 data-[state=active]:bg-primary-600 data-[state=active]:text-white">
               <Users className="h-3 w-3" />
               {_("groupsChannels.groups")}
@@ -181,20 +181,20 @@ export default function GroupsChannelsPage() {
       <div className="flex-1 overflow-y-auto">
         {!accountId ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <MessageSquare className="h-10 w-10 text-gray-200 mb-3" />
-            <p className="text-sm text-gray-400">{_("chats.noAccounts")}</p>
+            <MessageSquare className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p className="text-sm text-muted-foreground">{_("chats.noAccounts")}</p>
           </div>
         ) : !syncedAt && !isLoading ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-sm mx-auto">
-            <div className="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center mb-3">
-              <RefreshCw className="h-6 w-6 text-primary-600 animate-pulse" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+              <RefreshCw className="h-6 w-6 text-primary animate-pulse" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">{_("groupsChannels.neverSynced")}</h3>
-            <p className="text-xs text-gray-500 mb-4">{_("groupsChannels.syncRequiredDesc")}</p>
+            <h3 className="text-sm font-semibold text-foreground mb-1">{_("groupsChannels.neverSynced")}</h3>
+            <p className="text-xs text-muted-foreground mb-4">{_("groupsChannels.syncRequiredDesc")}</p>
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-primary-600 hover:bg-primary-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
             >
               {isSyncing ? (
                 <>
@@ -210,71 +210,72 @@ export default function GroupsChannelsPage() {
             </button>
           </div>
         ) : isLoading ? (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-border/50">
             {Array.from({ length: 8 }).map((_, i) => (
               <ChatRowSkeleton key={i} />
             ))}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <p className="text-sm text-red-400 mb-2">{_("groupsChannels.failedToLoad")}</p>
+            <p className="text-sm text-rose-500 mb-2">{_("groupsChannels.failedToLoad")}</p>
             <button
               onClick={() => refetch()}
-              className="text-sm text-primary-600 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               {_("groupsChannels.retry")}
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-sm text-gray-400">
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
             {activeTab === "groups" ? _("groupsChannels.noGroups") : _("groupsChannels.noChannels")}
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-border/50">
             {filtered.map((chat) => (
               <Link
                 key={chat.chat_id}
                 href={`/chats?account=${accountId}&chat=${chat.chat_id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
               >
                 {/* Avatar */}
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
-                  style={{
-                    backgroundColor: activeTab === "channels" ? "#dbeafe" : "#f3e8ff",
-                    color: activeTab === "channels" ? "#1d4ed8" : "#7c3aed",
-                  }}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm",
+                    activeTab === "channels"
+                      ? "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                      : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                  )}
                 >
                   {(chat.title || "?")[0]?.toUpperCase()}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-semibold truncate text-gray-900">
+                    <h3 className="text-sm font-semibold truncate text-foreground">
                       {chat.title}
                     </h3>
                     {chat.is_creator && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200 flex-shrink-0">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/30 flex-shrink-0">
                         <Crown className="h-2.5 w-2.5" />
                         {_("groupsChannels.owner")}
                       </span>
                     )}
                   </div>
                   {chat.username && (
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       @{chat.username}
                     </p>
                   )}
                 </div>
 
                 {/* Chevron */}
-                <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0" />
               </Link>
             ))}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="py-2 border-t border-gray-100 dark:border-slate-800">
+              <div className="py-2 border-t border-border">
                 <DataPagination
                   page={page}
                   totalPages={totalPages}

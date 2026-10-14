@@ -159,16 +159,13 @@ export function ChatRightColumn({
         }}
       >
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             setShowRightDrawer(false);
           }}
-          className="w-8 h-8 rounded-full flex items-center justify-center transition"
-          style={{
-            backgroundColor: isScrolled ? "transparent" : "rgba(0, 0, 0, 0.4)",
-            color: isScrolled ? "var(--tg-text-primary)" : "#ffffff",
-            backdropFilter: isScrolled ? "none" : "blur(4px)",
-          }}
+          className="h-8 w-8 rounded-full border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition shadow-2xs cursor-pointer"
+          aria-label="Tutup panel info"
         >
           <X className="h-4 w-4" />
         </button>

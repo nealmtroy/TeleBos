@@ -1,23 +1,25 @@
 // Auto-detect secure WS protocol — wss:// when running over HTTPS, ws:// otherwise
 const PROTOCOL = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
 
-function getDefaultWsAddress(): string {
-  if (typeof window === "undefined") return "ws://localhost:8000";
+export function getBaseWsAddress(): string {
+  if (typeof window === "undefined") return process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
   
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const hostname = window.location.hostname;
   
-  // If running locally, connect directly to the FastAPI dev server on port 8000
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.")) {
+  // If running locally or on local network IP, connect directly to FastAPI on port 8000
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.")
+  ) {
     return `${protocol}//${hostname}:8000`;
   }
   
   // In production, route WebSocket connections through the reverse proxy on the same host/port
   return `${protocol}//${window.location.host}`;
 }
-
-const DEFAULT_WS = getDefaultWsAddress();
-const BASE_WS = process.env.NEXT_PUBLIC_WS_URL || DEFAULT_WS;
 
 // Session token is written here by the auth store — we can't read httpOnly cookies from JS.
 // See auth-store.ts's fetchMe() which calls setSocketSessionToken().
@@ -232,7 +234,7 @@ export function connectChatSocket(accountId: string): ReconnectingWebSocket {
   const existing = getSocket(key);
   if (existing) return existing;
 
-  const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/chats/${accountId}`);
+  const ws = new ReconnectingWebSocket(`${getBaseWsAddress()}/ws/chats/${accountId}`);
   ws.connect();
   registerSocket(key, ws);
   return ws;
@@ -243,7 +245,7 @@ export function connectBroadcastSocket(jobId: string): ReconnectingWebSocket {
   const existing = getSocket(key);
   if (existing) return existing;
 
-  const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/broadcast/${jobId}`);
+  const ws = new ReconnectingWebSocket(`${getBaseWsAddress()}/ws/broadcast/${jobId}`);
   ws.connect();
   registerSocket(key, ws);
   return ws;
@@ -254,7 +256,7 @@ export function connectInviteSocket(jobId: string): ReconnectingWebSocket {
   const existing = getSocket(key);
   if (existing) return existing;
 
-  const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/invite/${jobId}`);
+  const ws = new ReconnectingWebSocket(`${getBaseWsAddress()}/ws/invite/${jobId}`);
   ws.connect();
   registerSocket(key, ws);
   return ws;
@@ -265,7 +267,7 @@ export function connectAutoJoinSocket(jobId: string): ReconnectingWebSocket {
   const existing = getSocket(key);
   if (existing) return existing;
 
-  const ws = new ReconnectingWebSocket(`${BASE_WS}/ws/autojoin/${jobId}`);
+  const ws = new ReconnectingWebSocket(`${getBaseWsAddress()}/ws/autojoin/${jobId}`);
   ws.connect();
   registerSocket(key, ws);
   return ws;

@@ -444,10 +444,10 @@ export default function SellAccountsPage() {
               </div>
 
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleSelectAll}
-                className="h-8 rounded-lg text-xs font-semibold"
+                className="h-8 px-2.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-foreground shadow-2xs"
                 disabled={sellableAccounts.length === 0}
               >
                 {allFilteredSelected ? (_("orders.clearSelection") || "Clear Selection") : (_("orders.selectAllAvailable") || "Select All Available")}

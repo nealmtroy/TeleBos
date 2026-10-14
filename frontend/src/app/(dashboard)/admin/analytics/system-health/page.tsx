@@ -256,7 +256,7 @@ function SystemHealthContent() {
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground shrink-0">
           <Link href="/admin/analytics/security">
-            <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+            <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
             Keamanan & Audit
           </Link>
         </Button>
@@ -341,7 +341,7 @@ function SystemHealthContent() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Latency (p95 / p50)</span>
-              <Clock className="h-4 w-4 text-purple-500" />
+              <Clock className="h-4 w-4 text-sky-500" />
             </div>
             <CardTitle className="text-xl font-bold tracking-tight mt-1">
               {isHealthLoading ? "..." : `${apiTraffic?.latency_p95_ms ?? 0} ms`}
@@ -379,7 +379,7 @@ function SystemHealthContent() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">CPU & Memory Host</span>
-              <Cpu className="h-4 w-4 text-cyan-500" />
+              <Cpu className="h-4 w-4 text-blue-500" />
             </div>
             <CardTitle className="text-xl font-bold tracking-tight mt-1">
               {isHealthLoading ? "..." : `${resources?.cpu_percent ?? 0}% CPU`}
@@ -427,7 +427,7 @@ function SystemHealthContent() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-cyan-500" />
+                  <Cpu className="h-4 w-4 text-blue-500" />
                   Utilisasi Server & Sumber Daya Host
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -448,7 +448,7 @@ function SystemHealthContent() {
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className="bg-cyan-500 h-full transition-all duration-500"
+                  className="bg-sky-500 h-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, resources?.cpu_percent ?? 0))}%` }}
                 />
               </div>
@@ -468,7 +468,7 @@ function SystemHealthContent() {
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className="bg-purple-500 h-full transition-all duration-500"
+                  className="bg-blue-600 h-full transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, resources?.memory_percent ?? 0))}%` }}
                 />
               </div>
@@ -608,7 +608,7 @@ function SystemHealthContent() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-indigo-500" />
+                  <Bot className="h-4 w-4 text-sky-500" />
                   Antrean Tugas Redis & Kesehatan Worker
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -730,7 +730,7 @@ function SystemHealthContent() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Terminal className="h-4 w-4 text-purple-500" />
+                <Terminal className="h-4 w-4 text-sky-500" />
                 Distribusi Status HTTP & Titik Akhir (Endpoints) Bermasalah
               </CardTitle>
               <CardDescription className="text-xs">
@@ -868,11 +868,11 @@ function SystemHealthContent() {
             }
             color={
               chartMetric === "latency"
-                ? "purple"
+                ? "amber"
                 : chartMetric === "requests"
                 ? "blue"
                 : chartMetric === "cpu"
-                ? "indigo"
+                ? "sky"
                 : "rose"
             }
             formatValue={(v) =>

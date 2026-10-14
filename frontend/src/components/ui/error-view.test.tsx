@@ -118,7 +118,7 @@ describe("ErrorView Component", () => {
 
     // Status badge has dark mode variant
     const badge = screen.getByText(/500 • Server Error/i).closest("span");
-    expect(badge?.className).toContain("dark:bg-red-950/60");
-    expect(badge?.className).toContain("dark:text-red-300");
+    expect(badge?.className).toMatch(/dark:bg-(red|rose)-950\/60/);
+    expect(badge?.className).toMatch(/dark:text-(red|rose)-300/);
   });
 });

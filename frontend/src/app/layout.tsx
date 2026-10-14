@@ -140,7 +140,10 @@ export default function RootLayout({
         />
         <link rel="describedby" href="/llms.txt" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body
+        className={`${inter.variable} ${publicMono.variable} ${publicSans.variable} ${inter.className} font-sans antialiased`}
+        suppressHydrationWarning
+      >
         <GoogleAnalytics gaId={gaId} />
         <Providers>{children}</Providers>
         {/* impeccable-live-start */}

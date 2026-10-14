@@ -225,12 +225,14 @@ export default function GroupListsPage() {
               {createMutation.isPending ? _("groupLists.saving") : _("groupLists.save")}
             </Button>
             <Button
-              variant="ghost"
+              type="button"
+              variant="outline"
               size="icon"
               onClick={() => setShowNew(false)}
-              className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer"
+              aria-label={_("common.cancel") || "Batal"}
+              className="h-9 w-9 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white transition shadow-2xs cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -323,17 +325,19 @@ export default function GroupListsPage() {
                       list.items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                          className="flex items-center justify-between bg-card dark:bg-slate-900/60 border border-border/70 rounded-lg px-3 py-2 text-sm"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-xs bg-gray-200 px-1.5 py-0.5 rounded font-mono">
+                            <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-mono border border-border/40">
                               {item.type}
                             </span>
-                            <span className="text-gray-700">{item.value}</span>
+                            <span className="text-foreground">{item.value}</span>
                           </div>
                           <button
+                            type="button"
                             onClick={() => handleRemoveItem(list.id, idx, list.items)}
-                            className="text-red-400 hover:text-red-600 p-1"
+                            className="h-7 w-7 flex items-center justify-center rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition shadow-2xs cursor-pointer"
+                            title="Hapus item"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -375,19 +379,19 @@ export default function GroupListsPage() {
                         {/* Preview parsed items */}
                         {bulkPreview.length > 0 && (
                           <div className="space-y-1.5">
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                               Parsed Targets Preview ({bulkPreview.length})
                             </p>
-                            <div className="bg-gray-50 border border-gray-150 rounded-xl max-h-40 overflow-y-auto divide-y divide-gray-100/60 no-scrollbar">
+                            <div className="bg-muted/50 border border-border rounded-xl max-h-40 overflow-y-auto divide-y divide-border/60 no-scrollbar">
                               {bulkPreview.map((item, idx) => (
                                 <div
                                   key={idx}
                                   className="flex items-center gap-2 px-3.5 py-2 text-xs"
                                 >
-                                  <span className="bg-primary-50 border border-primary-100 text-primary-600 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold">
+                                  <span className="bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded font-mono text-[10px] font-bold">
                                     {item.type}
                                   </span>
-                                  <span className="text-gray-700 font-medium truncate">{item.value}</span>
+                                  <span className="text-foreground font-medium truncate">{item.value}</span>
                                 </div>
                               ))}
                             </div>

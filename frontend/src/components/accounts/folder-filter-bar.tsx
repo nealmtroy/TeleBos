@@ -18,12 +18,13 @@ export function FolderFilterBar({ folders, selectedFolderId, onSelect }: FolderF
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
       <button
+        type="button"
         onClick={() => onSelect(null)}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0 shadow-2xs cursor-pointer border",
           selectedFolderId === null
-            ? "bg-primary-600 text-white"
-            : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
+            ? "bg-primary border-primary text-primary-foreground"
+            : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted"
         )}
       >
         <FolderOpen className="h-3.5 w-3.5" />
@@ -31,13 +32,14 @@ export function FolderFilterBar({ folders, selectedFolderId, onSelect }: FolderF
       </button>
       {folders.map((folder) => (
         <button
+          type="button"
           key={folder.id}
           onClick={() => onSelect(folder.id)}
           className={cn(
-            "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0",
+            "px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0 shadow-2xs cursor-pointer border",
             selectedFolderId === folder.id
-              ? "bg-primary-600 text-white"
-              : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
+              ? "bg-primary border-primary text-primary-foreground"
+              : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted"
           )}
         >
           {folder.name}

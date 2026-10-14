@@ -315,7 +315,13 @@ export default function InvoicePage() {
     <div className="max-w-xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push(invoiceDetails.ctaHref || "/wallet")} className="rounded-full">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => router.push(invoiceDetails.ctaHref || "/wallet")}
+          className="h-9 w-9 rounded-xl border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent shrink-0 shadow-2xs"
+          aria-label="Kembali ke dompet"
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

@@ -142,10 +142,10 @@ describe("WalletPage — balance display", () => {
 });
 
 describe("WalletPage — amount validation", () => {
-  it("strips non-numeric characters from the amount field", () => {
+  it("strips non-numeric characters and auto-formats the amount field with dot separators", () => {
     const { amount } = renderWallet();
     fireEvent.change(amount(), { target: { value: "12a3.4" } });
-    expect(amount().value).toBe("1234");
+    expect(amount().value).toBe("1.234");
   });
 
   it("keeps submit disabled until an amount is entered", () => {
@@ -201,7 +201,7 @@ describe("WalletPage — top-up flow with QRIS", () => {
   it("fills the amount from a preset button", () => {
     const { amount, container } = renderWallet();
     fireEvent.click(within(container).getByRole("button", { name: "Rp 250.000" }));
-    expect(amount().value).toBe("250000");
+    expect(amount().value).toBe("250.000");
   });
 
   it("shows the deposit destination channels only for a top-up", () => {

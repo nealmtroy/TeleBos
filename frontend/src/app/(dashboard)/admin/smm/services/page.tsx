@@ -163,8 +163,12 @@ export default function SmmServicesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Link href="/admin/dashboard" className="p-2 hover:bg-muted rounded-lg transition shrink-0">
-            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+          <Link
+            href="/admin/dashboard"
+            className="h-9 w-9 flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-muted-foreground hover:text-foreground transition shadow-2xs shrink-0"
+            aria-label="Kembali ke Dashboard Admin"
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">SMM Services</h1>

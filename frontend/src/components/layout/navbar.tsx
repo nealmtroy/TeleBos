@@ -18,10 +18,10 @@ export function Navbar() {
       {/* Left: Hamburger */}
       <button
         onClick={toggleSidebar}
-        className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors duration-200 active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-card text-foreground shadow-2xs transition-colors hover:bg-muted hover:text-foreground dark:border-slate-700 dark:bg-slate-900 active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
         aria-label="Toggle Sidebar Navigation"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4 w-4" />
       </button>
 
       <div className="flex-1" />

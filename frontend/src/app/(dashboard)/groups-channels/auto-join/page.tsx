@@ -490,18 +490,18 @@ export default function AutoJoinPage() {
   if (user?.role === "freetrial") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-amber-500 shadow-sm">
+        <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-amber-600 dark:text-amber-400 shadow-2xs">
           <Shield className="h-8 w-8" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">
+        <h2 className="text-xl font-bold text-foreground mb-2">
           Fitur Khusus Paket Starter, Pro & Business
         </h2>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6 leading-relaxed">
+        <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
           Fitur Auto-Join tidak tersedia pada masa Free Trial. Silakan tingkatkan paket Anda ke Starter (Rp 5.000/bln), Pro, atau Business untuk mengakses fitur ini.
         </p>
         <Link
           href="/subscriptions"
-          className="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md transition-all hover:scale-105 active:scale-95"
+          className="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white shadow-xs transition-all active:scale-95"
         >
           <Crown className="h-4 w-4 mr-2" />
           Lihat Paket Langganan
@@ -560,7 +560,7 @@ export default function AutoJoinPage() {
         {/* Left Column: Source Input & Account Selection (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           {/* Card 1: Target Groups/Channels */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div className="bg-card text-card-foreground rounded-2xl border border-border overflow-hidden shadow-xs">
             <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs">
@@ -701,7 +701,7 @@ export default function AutoJoinPage() {
                       onValueChange={(val) => setSelectedListId(val === "_none" ? "" : val)}
                       disabled={isRunning || listsLoading}
                     >
-                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900">
+                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-card border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium text-foreground">
                         <SelectValue placeholder={_("autoJoin.selectListPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
@@ -716,10 +716,10 @@ export default function AutoJoinPage() {
                   </div>
 
                   {activeSavedList ? (
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                    <div className="bg-muted/40 border border-border rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-gray-900">{activeSavedList.name}</span>
-                        <Badge variant="outline" className="bg-white text-xs font-mono">
+                        <span className="font-bold text-foreground">{activeSavedList.name}</span>
+                        <Badge variant="outline" className="bg-card text-foreground text-xs font-mono">
                           {_("autoJoin.targetsCount", { count: activeSavedList.items.length })}
                         </Badge>
                       </div>
@@ -727,16 +727,16 @@ export default function AutoJoinPage() {
                         {activeSavedList.items.map((it, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between text-xs font-mono bg-white border border-gray-150 px-2.5 py-1 rounded-md text-gray-700 truncate"
+                            className="flex items-center justify-between text-xs font-mono bg-card border border-border px-2.5 py-1 rounded-md text-foreground truncate"
                           >
                             <span className="truncate">{it.value}</span>
-                            <span className="text-[10px] text-gray-400 uppercase font-sans ml-2">{it.type}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-sans ml-2">{it.type}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-6 border border-dashed border-gray-200 rounded-xl text-gray-400 text-xs">
+                    <div className="text-center py-6 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
                       {_("autoJoin.noListSelected")}
                     </div>
                   )}
@@ -765,7 +765,7 @@ export default function AutoJoinPage() {
         {/* Right Column: Execution Config & Live Progress (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Card 3: Execution Settings */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
+          <div className="bg-card text-card-foreground rounded-2xl border border-border p-5 space-y-4 shadow-xs">
             <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100 dark:border-slate-700">
               <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs">
                 3
@@ -901,7 +901,7 @@ export default function AutoJoinPage() {
           </div>
 
           {/* Card 4: Live Progress Stats */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
+          <div className="bg-card text-card-foreground rounded-2xl border border-border p-5 space-y-4 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700">
               <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary-500" />
@@ -982,7 +982,7 @@ export default function AutoJoinPage() {
       </div>
 
       {/* Live Log Console Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-card text-card-foreground rounded-2xl border border-border overflow-hidden shadow-xs">
         <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary-500" />
@@ -1068,7 +1068,7 @@ export default function AutoJoinPage() {
       </div>
 
       {/* Job History */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-card text-card-foreground rounded-2xl border border-border overflow-hidden shadow-xs">
         <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2">
           <History className="h-4 w-4 text-primary-500" />
           <div>

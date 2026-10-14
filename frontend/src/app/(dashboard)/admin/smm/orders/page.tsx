@@ -40,8 +40,8 @@ import {
 const STATUS_COLORS: Record<string, string> = {
   Pending: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
   Processing: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50",
-  "In progress": "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50",
-  Partial: "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800/50",
+  "In progress": "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/50",
+  Partial: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
   Success: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50",
   Error: "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
   Failed: "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
@@ -101,12 +101,16 @@ export default function SmmOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <Link href="/admin/dashboard" className="p-2 hover:bg-muted rounded-lg transition shrink-0">
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+        <Link
+          href="/admin/dashboard"
+          className="h-9 w-9 flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-muted-foreground hover:text-foreground transition shadow-2xs shrink-0"
+          aria-label="Kembali ke Dashboard Admin"
+        >
+          <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">SMM Orders</h1>
-          <p className="text-gray-500 mt-1">Monitor users&apos; SMM orders, check order status history, and update from providers</p>
+          <h1 className="text-2xl font-bold text-foreground">SMM Orders</h1>
+          <p className="text-muted-foreground text-sm mt-1">Monitor users&apos; SMM orders, check order status history, and update from providers</p>
         </div>
       </div>
 
@@ -127,7 +131,7 @@ export default function SmmOrdersPage() {
       {/* Toolbar — responsive stack */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             id="admin-smm-orders-search"
             name="search"
@@ -136,7 +140,7 @@ export default function SmmOrdersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by email or target..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-card border border-slate-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 shadow-2xs"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -144,7 +148,7 @@ export default function SmmOrdersPage() {
             value={statusFilter || "all"}
             onValueChange={(val) => setStatusFilter(val === "all" ? "" : val)}
           >
-            <SelectTrigger className="w-full sm:w-[170px] h-10 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white">
+            <SelectTrigger className="w-full sm:w-[170px] h-10 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm bg-card text-foreground shadow-2xs">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -158,7 +162,7 @@ export default function SmmOrdersPage() {
               <SelectItem value="Failed">Failed</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleRefreshAll} disabled={refreshAllMutation.isPending} size="sm">
+          <Button variant="outline" onClick={handleRefreshAll} disabled={refreshAllMutation.isPending} size="sm" className="border-slate-300 dark:border-slate-700 bg-card shadow-2xs">
             {refreshAllMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -166,7 +170,7 @@ export default function SmmOrdersPage() {
             )}
             Refresh All
           </Button>
-          <Button variant="outline" onClick={() => refetch()} size="sm">
+          <Button variant="outline" onClick={() => refetch()} size="sm" className="border-slate-300 dark:border-slate-700 bg-card shadow-2xs">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -174,9 +178,9 @@ export default function SmmOrdersPage() {
 
       {/* Summary */}
       {data && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50/50 px-4 py-2 rounded-lg border border-gray-100 max-w-max">
-          <ShoppingCart className="h-4 w-4 text-gray-400" />
-          <span>Total Orders: <span className="font-semibold text-gray-900">{data.total}</span></span>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 px-4 py-2 rounded-lg border border-border max-w-max">
+          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          <span>Total Orders: <span className="font-semibold text-foreground">{data.total}</span></span>
         </div>
       )}
 
@@ -184,49 +188,49 @@ export default function SmmOrdersPage() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-12 bg-muted rounded-xl animate-pulse" />
           ))}
         </div>
       ) : error ? (
-        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+        <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300">
           <AlertCircle className="h-5 w-5" />
           <p className="text-sm">Failed to load orders</p>
         </div>
       ) : !data?.orders.length ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-gray-500">No orders found</p>
+        <div className="text-center py-12 bg-card rounded-xl border border-border shadow-xs">
+          <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+          <p className="text-muted-foreground">No orders found</p>
         </div>
       ) : (
         <>
           {/* Mobile: card layout */}
           <div className="sm:hidden space-y-3">
             {data.orders.map((o) => (
-              <div key={o.id} className="bg-white rounded-xl border border-gray-200 p-3 space-y-2 shadow-sm">
+              <div key={o.id} className="bg-card rounded-xl border border-border p-3 space-y-2 shadow-xs text-card-foreground">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm break-all">{o.user_email}</p>
-                    <p className="text-xs text-gray-400 font-mono">{o.id.slice(0, 8)}...</p>
+                    <p className="font-medium text-foreground text-sm break-all">{o.user_email}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{o.id.slice(0, 8)}...</p>
                   </div>
                   <span
                     className={cn(
                       "inline-block text-xs font-medium px-2 py-0.5 rounded-lg border shrink-0",
-                      STATUS_COLORS[o.status] || "bg-gray-100 text-gray-700"
+                      STATUS_COLORS[o.status] || "bg-muted text-foreground border-border"
                     )}
                   >
                     {o.status}
                   </span>
                 </div>
-                <p className="text-sm text-gray-700">{o.service_name}</p>
-                <p className="text-xs text-gray-500 break-all" title={o.data_target}>
+                <p className="text-sm text-foreground">{o.service_name}</p>
+                <p className="text-xs text-muted-foreground break-all" title={o.data_target}>
                   Target: {o.data_target}
                 </p>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono text-gray-600">{o.quantity.toLocaleString()} x {o.total_price.toLocaleString()}</span>
+                  <span className="font-mono text-muted-foreground">{o.quantity.toLocaleString()} x {o.total_price.toLocaleString()}</span>
                   <button
                     onClick={() => handleRefreshOrder(o.id)}
                     disabled={refreshOrder.isPending}
-                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-foreground hover:bg-muted shadow-2xs transition-colors"
                     title="Refresh Status"
                   >
                     <RefreshCw className={cn("h-3.5 w-3.5", refreshOrder.isPending && "animate-spin")} />
@@ -237,40 +241,40 @@ export default function SmmOrdersPage() {
           </div>
 
           {/* Desktop: table layout */}
-          <div className="hidden sm:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="hidden sm:block bg-card rounded-xl border border-border shadow-xs overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                  <TableHead className="font-semibold text-gray-500 whitespace-nowrap">User</TableHead>
-                  <TableHead className="font-semibold text-gray-500">Service</TableHead>
-                  <TableHead className="font-semibold text-gray-500">Target</TableHead>
-                  <TableHead className="font-semibold text-gray-500 text-right whitespace-nowrap">Qty</TableHead>
-                  <TableHead className="font-semibold text-gray-500 text-right whitespace-nowrap">Price</TableHead>
-                  <TableHead className="font-semibold text-gray-500 text-center whitespace-nowrap">Status</TableHead>
-                  <TableHead className="font-semibold text-gray-500 text-center whitespace-nowrap">Actions</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold text-muted-foreground whitespace-nowrap">User</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground">Service</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground">Target</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground text-right whitespace-nowrap">Qty</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground text-right whitespace-nowrap">Price</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground text-center whitespace-nowrap">Status</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground text-center whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.orders.map((o) => (
-                  <TableRow key={o.id} className="hover:bg-gray-50/30">
+                  <TableRow key={o.id} className="hover:bg-muted/30">
                     <TableCell className="font-normal">
-                      <p className="font-medium text-gray-900">{o.user_email}</p>
-                      <p className="text-xs text-gray-400 font-mono">{o.id.slice(0, 8)}...</p>
+                      <p className="font-medium text-foreground">{o.user_email}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{o.id.slice(0, 8)}...</p>
                     </TableCell>
                     <TableCell>
-                      <p className="text-gray-900 font-normal">{o.service_name}</p>
-                      <p className="text-xs text-gray-400">{o.category}</p>
+                      <p className="text-foreground font-normal">{o.service_name}</p>
+                      <p className="text-xs text-muted-foreground">{o.category}</p>
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-gray-600" title={o.data_target}>
+                    <TableCell className="max-w-[200px] truncate text-muted-foreground" title={o.data_target}>
                       {o.data_target}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-gray-600 whitespace-nowrap">{o.quantity.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-mono text-gray-600 whitespace-nowrap">{o.total_price.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground whitespace-nowrap">{o.quantity.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground whitespace-nowrap">{o.total_price.toLocaleString()}</TableCell>
                     <TableCell className="text-center">
                       <span
                         className={cn(
                           "inline-block text-xs font-medium px-2.5 py-1 rounded-lg border whitespace-nowrap",
-                          STATUS_COLORS[o.status] || "bg-gray-100 text-gray-700"
+                          STATUS_COLORS[o.status] || "bg-muted text-foreground border-border"
                         )}
                       >
                         {o.status}
@@ -280,7 +284,7 @@ export default function SmmOrdersPage() {
                       <button
                         onClick={() => handleRefreshOrder(o.id)}
                         disabled={refreshOrder.isPending}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-foreground hover:bg-muted shadow-2xs transition-colors"
                         title="Refresh Status"
                       >
                         <RefreshCw className={cn("h-4 w-4", refreshOrder.isPending && "animate-spin")} />

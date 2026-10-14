@@ -311,14 +311,14 @@ export default function InvitePage() {
                   addSourceGroup();
                 }
               }}
-              className="w-full sm:flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full sm:flex-1 min-w-0 px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <button
               type="button"
               onClick={addSourceGroup}
               disabled={!newSourceValue.trim()}
               aria-label="Add source group"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400 transition self-end sm:self-auto"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition self-end sm:self-auto cursor-pointer shadow-2xs"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -329,20 +329,21 @@ export default function InvitePage() {
               {sourceGroups.map((sg, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
+                  className="flex items-center justify-between p-2 bg-muted/40 border border-border rounded-lg text-sm"
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="text-xs bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-mono">
+                    <span className="text-xs bg-muted text-muted-foreground border border-border px-1.5 py-0.5 rounded font-mono">
                       {sg.type}
                     </span>
-                    <span className="truncate text-gray-800">{sg.value}</span>
+                    <span className="truncate text-foreground">{sg.value}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeSourceGroup(idx)}
-                    className="text-gray-400 hover:text-red-500 p-1"
+                    className="h-6 w-6 rounded border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center cursor-pointer transition shadow-2xs"
+                    title="Hapus grup sumber"
                   >
-                    <XCircle className="h-4 w-4" />
+                    <XCircle className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
@@ -351,11 +352,11 @@ export default function InvitePage() {
         </div>
 
         {/* Step 4: Delays & Rate Limiting */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">{_("invite.delaysConfig")}</h2>
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 sm:p-6 space-y-4 shadow-xs">
+          <h2 className="font-semibold text-foreground">{_("invite.delaysConfig")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="invite-delay-per-invite" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-delay-per-invite" className="block text-xs font-medium text-muted-foreground mb-1">
                 {_("invite.delayPerInvite")}
               </label>
               <div className="flex items-center gap-2">
@@ -367,14 +368,14 @@ export default function InvitePage() {
                   max="3600"
                   value={delayPerInvite}
                   onChange={(e) => setDelayPerInvite(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <span className="text-xs text-gray-400 whitespace-nowrap">detik</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">detik</span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.delayPerInviteSuffix")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{_("invite.delayPerInviteSuffix")}</p>
             </div>
             <div>
-              <label htmlFor="invite-batch-size" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-batch-size" className="block text-xs font-medium text-muted-foreground mb-1">
                 {_("invite.batchSize")}
               </label>
               <input
@@ -385,12 +386,12 @@ export default function InvitePage() {
                 max="50"
                 value={batchSize}
                 onChange={(e) => setBatchSize(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.batchSizeSuffix")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{_("invite.batchSizeSuffix")}</p>
             </div>
             <div>
-              <label htmlFor="invite-delay-per-batch" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="invite-delay-per-batch" className="block text-xs font-medium text-muted-foreground mb-1">
                 {_("invite.delayPerBatch")}
               </label>
               <div className="flex items-center gap-2">
@@ -402,11 +403,11 @@ export default function InvitePage() {
                   max="3600"
                   value={delayPerBatch}
                   onChange={(e) => setDelayPerBatch(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 bg-card text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <span className="text-xs text-gray-400 whitespace-nowrap">detik</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">detik</span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{_("invite.delayPerBatchSuffix")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{_("invite.delayPerBatchSuffix")}</p>
             </div>
           </div>
         </div>
@@ -423,13 +424,13 @@ export default function InvitePage() {
                 sourceGroups.length === 0 ||
                 startMutation.isPending
               }
-              className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:bg-gray-300 disabled:text-gray-500 transition flex items-center justify-center gap-2 shadow-xs"
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
             >
               <UserPlus className="h-5 w-5" />
               {startMutation.isPending ? _("invite.starting") : _("invite.startInvite")}
             </button>
             {startMutation.isError && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-rose-600 dark:text-rose-400">
                 {(startMutation.error as any)?.response?.data?.detail || _("invite.failedToStart")}
               </p>
             )}
@@ -438,10 +439,10 @@ export default function InvitePage() {
 
         {/* Active Job Progress View */}
         {activeJob && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-4">
+          <div className="bg-card text-card-foreground rounded-xl border border-border p-4 sm:p-6 space-y-4 shadow-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-gray-900">
+                <h2 className="font-semibold text-foreground">
                   Invite Job #{activeJob.id.slice(0, 8)}
                 </h2>
                 {wsConnected && (
@@ -468,14 +469,14 @@ export default function InvitePage() {
                   <>
                     <button
                       onClick={() => actionMutation.mutate({ jobId: activeJob.id, action: "pause" })}
-                      className="p-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition"
+                      className="p-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 transition shadow-2xs cursor-pointer"
                       title={_("invite.pause")}
                     >
                       <Pause className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setStopConfirmOpen(true)}
-                      className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                      className="p-1.5 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-lg hover:bg-rose-100 transition shadow-2xs cursor-pointer"
                       title={_("invite.stop")}
                     >
                       <Square className="h-4 w-4" />
@@ -485,7 +486,7 @@ export default function InvitePage() {
                 {activeJob.status === "paused" && (
                   <button
                     onClick={() => actionMutation.mutate({ jobId: activeJob.id, action: "resume" })}
-                    className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                    className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 transition shadow-2xs cursor-pointer"
                     title={_("invite.resume")}
                   >
                     <Play className="h-4 w-4" />
@@ -496,7 +497,7 @@ export default function InvitePage() {
                   asChild
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs cursor-pointer"
+                  className="h-8 text-xs cursor-pointer border-slate-300 dark:border-slate-700 bg-card shadow-2xs"
                 >
                   <Link href={`/invite/logs?job_id=${activeJob.id}`}>
                     <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
@@ -508,27 +509,27 @@ export default function InvitePage() {
 
             {/* Phase indicator */}
             {phaseMessage && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2 flex items-center gap-2">
-                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                <span className="text-sm text-blue-700 font-medium">{phaseMessage}</span>
+              <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 rounded-lg px-4 py-2 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 text-sky-600 dark:text-sky-400 animate-spin" />
+                <span className="text-sm font-medium">{phaseMessage}</span>
               </div>
             )}
 
             {/* Progress bar */}
             <div>
               <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-gray-500">{_("invite.progress")}</span>
-                <span className="font-semibold text-gray-800">{activeJob.progress}%</span>
+                <span className="text-muted-foreground">{_("invite.progress")}</span>
+                <span className="font-semibold text-foreground">{activeJob.progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div className="w-full bg-muted border border-border rounded-full h-2.5">
                 <div
                   className={cn(
                     "h-2.5 rounded-full transition-all duration-500",
                     activeJob.status === "completed"
-                      ? "bg-green-500"
+                      ? "bg-emerald-500"
                       : activeJob.status === "failed"
-                      ? "bg-red-500"
-                      : "bg-primary-600"
+                      ? "bg-rose-500"
+                      : "bg-primary"
                   )}
                   style={{ width: `${activeJob.progress}%` }}
                 />
@@ -537,33 +538,33 @@ export default function InvitePage() {
 
             {/* Counters */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-center">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-lg sm:text-xl font-bold text-gray-900">{activeJob.total_members}</p>
-                <p className="text-xs text-gray-500">{_("invite.totalMembers")}</p>
+              <div className="bg-muted/40 border border-border rounded-lg p-3">
+                <p className="text-lg sm:text-xl font-bold text-foreground">{activeJob.total_members}</p>
+                <p className="text-xs text-muted-foreground">{_("invite.totalMembers")}</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-3">
-                <p className="text-lg sm:text-xl font-bold text-green-700">
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                <p className="text-lg sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
                   {wsProgress?.invited ?? activeJob.invited_count}
                 </p>
-                <p className="text-xs text-green-600">{_("invite.invited")}</p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">{_("invite.invited")}</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-lg sm:text-xl font-bold text-blue-700">
+              <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-lg p-3">
+                <p className="text-lg sm:text-xl font-bold text-sky-700 dark:text-sky-300">
                   {wsProgress?.already_member ?? activeJob.already_member_count}
                 </p>
-                <p className="text-xs text-blue-600">{_("invite.alreadyMember")}</p>
+                <p className="text-xs text-sky-600 dark:text-sky-400">{_("invite.alreadyMember")}</p>
               </div>
-              <div className="bg-orange-50 rounded-lg p-3">
-                <p className="text-lg sm:text-xl font-bold text-orange-700">
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-lg sm:text-xl font-bold text-amber-700 dark:text-amber-300">
                   {wsProgress?.skipped ?? activeJob.skip_count}
                 </p>
-                <p className="text-xs text-orange-600">{_("invite.skipped")}</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">{_("invite.skipped")}</p>
               </div>
-              <div className="bg-red-50 rounded-lg p-3">
-                <p className="text-lg sm:text-xl font-bold text-red-700">
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg p-3">
+                <p className="text-lg sm:text-xl font-bold text-rose-700 dark:text-rose-300">
                   {wsProgress?.failed ?? activeJob.fail_count}
                 </p>
-                <p className="text-xs text-red-600">{_("invite.failed")}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{_("invite.failed")}</p>
               </div>
             </div>
 
@@ -579,27 +580,27 @@ export default function InvitePage() {
                     Buka Log Lengkap <ExternalLink className="h-3 w-3" />
                   </Link>
                 </div>
-                <div className="border border-gray-100 rounded-lg max-h-56 overflow-y-auto divide-y divide-gray-100 bg-gray-50/50">
+                <div className="border border-border/80 rounded-xl max-h-56 overflow-y-auto divide-y divide-border/60 bg-muted/20">
                   {wsLogs.slice(-20).reverse().map((log: any, i: number) => (
                     <div key={`live-${i}`} className="px-3 py-2 text-xs flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse flex-shrink-0" />
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
                       {log.status === "success" ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                       ) : log.status === "already_member" ? (
-                        <Users className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                        <Users className="h-3.5 w-3.5 text-sky-500 flex-shrink-0" />
                       ) : log.status === "skipped" ? (
-                        <SkipForward className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />
+                        <SkipForward className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                       ) : (
-                        <XCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                        <XCircle className="h-3.5 w-3.5 text-rose-500 flex-shrink-0" />
                       )}
-                      <span className="text-gray-700 truncate font-mono">
+                      <span className="text-foreground truncate font-mono">
                         {log.username ? `@${log.username}` : log.first_name || `ID:${log.user_id_tg}`}
                       </span>
-                      <span className="text-gray-400 truncate">{log.source_group}</span>
+                      <span className="text-muted-foreground truncate">{log.source_group}</span>
                       <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
                         {log.account_name && (
                           <span
-                            className="bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-1.5 py-0.5 rounded truncate max-w-24 text-xs"
+                            className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded truncate max-w-24 text-xs"
                             title={`Account: ${log.account_name}`}
                           >
                             {log.account_name.split(" ")[0]}

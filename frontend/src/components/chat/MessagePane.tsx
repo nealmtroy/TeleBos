@@ -801,9 +801,10 @@ export function MessagePane({
               e.stopPropagation();
               unpinMessageMutation.mutate(pinnedMsgsData[0].id);
             }}
-            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500 transition"
+            className="h-6 w-6 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 flex items-center justify-center transition shadow-2xs cursor-pointer"
+            title="Unpin message"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -931,13 +932,15 @@ export function MessagePane({
           <div className="flex items-center justify-between bg-white dark:bg-[#17212b] rounded-2xl shadow-[0_1.5px_4px_rgba(0,0,0,0.12)] border border-slate-200/30 dark:border-none p-4">
             <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setMsgSelectionMode(false);
                   setSelectedMsgIds(new Set());
                 }}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
+                className="h-7 w-7 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 flex items-center justify-center transition shadow-2xs cursor-pointer"
+                title="Cancel selection"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                 {selectedMsgIds.size} messages selected
@@ -1067,10 +1070,12 @@ export function MessagePane({
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setReplyTo(null)}
-                  className="p-1 hover:bg-primary/10 rounded-lg transition"
+                  className="h-6 w-6 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 flex items-center justify-center transition shadow-2xs cursor-pointer"
+                  title="Batal balas"
                 >
-                  <X className="h-4 w-4 text-primary/60" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
@@ -1087,10 +1092,12 @@ export function MessagePane({
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setAttachedFile(null)}
-                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition"
+                  className="h-6 w-6 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 flex items-center justify-center transition shadow-2xs cursor-pointer"
+                  title="Hapus lampiran"
                 >
-                  <X className="h-4 w-4 text-slate-400" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}

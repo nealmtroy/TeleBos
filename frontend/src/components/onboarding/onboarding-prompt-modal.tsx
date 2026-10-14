@@ -62,7 +62,7 @@ export function OnboardingPromptModal({ open, onOpenChange }: OnboardingPromptMo
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition"
+            className="absolute top-4 right-4 h-7 w-7 rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:bg-rose-600 hover:text-white dark:border-rose-800/80 dark:bg-rose-950/60 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white flex items-center justify-center cursor-pointer shadow-2xs"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

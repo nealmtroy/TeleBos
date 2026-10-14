@@ -399,7 +399,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed lg:relative inset-y-0 left-0 z-50 bg-slate-950 border-r border-slate-900 flex flex-col transition-transform duration-300 ease-in-out text-slate-300 group/sidebar shrink-0",
+          "fixed lg:relative inset-y-0 left-0 z-50 bg-slate-950 border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out text-slate-300 group/sidebar shrink-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           sidebarOpen ? "w-64" : "w-64 lg:w-[72px]"
         )}
@@ -418,7 +418,7 @@ export function Sidebar() {
         </button>
 
         {/* Header */}
-        <div className="flex items-center h-16 px-5 border-b border-slate-900 shrink-0 relative overflow-hidden">
+        <div className="flex items-center h-16 px-5 border-b border-sidebar-border shrink-0 relative overflow-hidden">
           {sidebarOpen && (
             <div className="flex items-center gap-2">
               <BrandLogo
@@ -435,9 +435,10 @@ export function Sidebar() {
           {/* Close button (mobile) */}
           <button
             onClick={closeSidebar}
-            className="p-1.5 ml-auto hover:bg-slate-900 text-slate-400 hover:text-white rounded-lg transition-colors lg:hidden"
+            className="inline-flex h-8 w-8 ml-auto items-center justify-center rounded-lg border border-rose-800/80 bg-rose-950/60 text-rose-400 hover:border-rose-600 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer lg:hidden"
+            aria-label="Close Sidebar"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -585,7 +586,7 @@ export function Sidebar() {
                                       </button>
                                     </TooltipTrigger>
                                     {!sidebarOpen && (
-                                      <TooltipContent side="right">
+                                      <TooltipContent side="right" className="dark bg-slate-900 text-slate-100 border-slate-800 shadow-xl">
                                         {_(item.labelKey)}
                                       </TooltipContent>
                                     )}
@@ -655,7 +656,7 @@ export function Sidebar() {
                                     </Link>
                                   </TooltipTrigger>
                                   {!sidebarOpen && (
-                                    <TooltipContent side="right">
+                                    <TooltipContent side="right" className="dark bg-slate-900 text-slate-100 border-slate-800 shadow-xl">
                                       {_(item.labelKey)}
                                     </TooltipContent>
                                   )}

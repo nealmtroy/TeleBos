@@ -138,10 +138,10 @@ export function OrderFilterToolbar({
         {/* Reset Filter Button if active */}
         {hasActiveFilters && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="xs"
             onClick={onResetFilters}
-            className="h-8 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground gap-1"
+            className="h-8 px-2.5 rounded-lg text-xs font-medium border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 gap-1.5 shadow-2xs"
           >
             <X className="h-3 w-3" />
             {locale === "id" ? "Reset Filter" : "Clear Filters"}

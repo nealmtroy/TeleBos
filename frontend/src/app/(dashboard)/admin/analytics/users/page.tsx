@@ -319,7 +319,7 @@ function UserAnalyticsContent() {
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
           <Link href="/admin/analytics/security">
-            <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+            <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
             Keamanan & Audit
           </Link>
         </Button>
@@ -431,7 +431,7 @@ function UserAnalyticsContent() {
                 <HelpCircle className="h-3 w-3" />
               </span>
             </div>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-500">
               <Zap className="h-4 w-4" />
             </div>
           </CardHeader>
@@ -440,7 +440,7 @@ function UserAnalyticsContent() {
               <div className="text-2xl font-bold text-foreground tracking-tight">
                 {isAnalyticsLoading ? "..." : productActive.toLocaleString()}
               </div>
-              <Badge variant="outline" className="text-xs font-medium text-indigo-600 bg-indigo-500/10 border-indigo-500/20">
+              <Badge variant="outline" className="text-xs font-medium text-sky-600 bg-sky-500/10 border-sky-500/20">
                 {productActiveRate}% Dari Total
               </Badge>
             </div>
@@ -562,7 +562,7 @@ function UserAnalyticsContent() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">Retensi D30 (30 Hari)</span>
                 {retention?.d30_retention_rate !== null && retention?.d30_retention_rate !== undefined ? (
-                  <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-xs">
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
                     {retention.d30_retention_rate}%
                   </Badge>
                 ) : (
@@ -574,7 +574,7 @@ function UserAnalyticsContent() {
               <div className="space-y-1">
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-purple-500 transition-all rounded-full"
+                    className="h-full bg-primary transition-all rounded-full"
                     style={{ width: `${retention?.d30_retention_rate ?? 0}%` }}
                   />
                 </div>
@@ -661,7 +661,7 @@ function UserAnalyticsContent() {
         <Card className="rounded-2xl border-border bg-card shadow-xs">
           <CardHeader>
             <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Award className="h-4 w-4 text-purple-500" />
+              <Award className="h-4 w-4 text-sky-500" />
               Distribusi Paket Langganan
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -673,9 +673,9 @@ function UserAnalyticsContent() {
               [
                 { key: "freetrial", label: "Free Trial", color: "bg-muted-foreground" },
                 { key: "basic", label: "Basic", color: "bg-blue-500" },
-                { key: "pro", label: "Pro", color: "bg-purple-500" },
+                { key: "pro", label: "Pro", color: "bg-sky-500" },
                 { key: "premium", label: "Premium VIP", color: "bg-amber-500" },
-                { key: "owner", label: "Owner / Internal", color: "bg-emerald-500" },
+                { key: "owner", label: "Owner / Internal", color: "bg-rose-500" },
               ] as const
             ).map((plan) => {
               const count = roleDist[plan.key] ?? 0;
@@ -705,7 +705,7 @@ function UserAnalyticsContent() {
       <Card className="rounded-2xl border-border bg-card shadow-xs">
         <CardHeader>
           <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-indigo-500" />
+            <Sparkles className="h-5 w-5 text-sky-500" />
             Adopsi Fitur Utama Platform TeleBos
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -750,7 +750,7 @@ function UserAnalyticsContent() {
             <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <UserPlus className="h-3.5 w-3.5 text-purple-500" />
+                  <UserPlus className="h-3.5 w-3.5 text-sky-500" />
                   Auto-Invite & Influx
                 </span>
                 <Badge variant="outline" className="text-xs font-mono font-medium">
@@ -978,7 +978,7 @@ function UserAnalyticsContent() {
                             className={cn(
                               "text-[10px] uppercase font-bold",
                               user.role === "premium" && "text-amber-600 border-amber-500/30 bg-amber-500/10",
-                              user.role === "pro" && "text-purple-600 border-purple-500/30 bg-purple-500/10",
+                              user.role === "pro" && "text-sky-600 border-sky-500/30 bg-sky-500/10",
                               user.role === "basic" && "text-blue-600 border-blue-500/30 bg-blue-500/10",
                               user.role === "owner" && "text-emerald-600 border-emerald-500/30 bg-emerald-500/10",
                               user.role === "freetrial" && "text-muted-foreground"

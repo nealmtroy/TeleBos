@@ -295,7 +295,7 @@ export function SupportChatWidget() {
     }
     if (s.includes("partial")) {
       return (
-        <span className="inline-flex items-center gap-1 rounded bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-400 border border-orange-500/20">
+        <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500 border border-amber-500/20">
           <AlertCircle className="h-3 w-3" /> Sebagian (Refund)
         </span>
       );
@@ -326,7 +326,7 @@ export function SupportChatWidget() {
           className="group relative flex h-14 items-center gap-3 rounded-full border border-blue-500/30 bg-slate-900/90 px-4 text-white shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-blue-500 hover:shadow-blue-500/20 active:scale-95"
           aria-label="Buka AI Support"
         >
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-inner">
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-inner">
             <Bot className="h-5 w-5" />
             <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -368,17 +368,17 @@ export function SupportChatWidget() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={clearChat}
                 title={_("help.aiSupportClearChat")}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+                className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200 shadow-2xs transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-rose-800/80 bg-rose-950/60 text-rose-400 hover:bg-rose-600 hover:text-white shadow-2xs transition-colors"
                 aria-label="Tutup"
               >
                 <Minimize2 className="h-3.5 w-3.5" />
@@ -517,8 +517,10 @@ export function SupportChatWidget() {
                     Eskalasi ke Admin Manusia
                   </h4>
                   <button
+                    type="button"
                     onClick={() => setShowEscalationForm(false)}
-                    className="text-slate-400 hover:text-white"
+                    className="h-6 w-6 inline-flex items-center justify-center rounded-md border border-rose-800/80 bg-rose-950/60 text-rose-400 hover:bg-rose-600 hover:text-white shadow-2xs transition-colors cursor-pointer"
+                    aria-label="Tutup formulir eskalasi"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>

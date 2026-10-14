@@ -304,7 +304,7 @@ export function PhoneInputWithCountry({
                   <button
                     type="button"
                     onClick={() => setSearch("")}
-                    className="absolute right-2.5 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>

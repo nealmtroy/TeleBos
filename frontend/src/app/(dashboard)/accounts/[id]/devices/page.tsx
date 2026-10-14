@@ -77,13 +77,13 @@ export default function DevicesPage() {
         <Link
           href={`/accounts/${id}`}
           aria-label={_("accountDetail.backToAccounts")}
-          className="rounded-lg p-2 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-foreground shadow-2xs hover:bg-muted transition-colors cursor-pointer"
         >
-          <ArrowLeft className="h-5 w-5 text-gray-500" />
+          <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{_("devices.title")}</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">{_("devices.title")}</h1>
+          <p className="text-sm text-muted-foreground">
             {_("devices.activeSessions", { name: account?.first_name || "Account" })}
           </p>
         </div>
@@ -94,11 +94,11 @@ export default function DevicesPage() {
           {Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} lines={3} />)}
         </div>
       ) : error ? (
-        <div className="py-12 text-center text-gray-500">{_("devices.failedToLoad")}</div>
+        <div className="py-12 text-center text-muted-foreground">{_("devices.failedToLoad")}</div>
       ) : devices.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
-          <Monitor className="mx-auto mb-2 h-10 w-10 text-gray-300" />
-          <p className="text-gray-500">{_("devices.noDevices")}</p>
+        <div className="rounded-xl border border-border bg-card py-12 text-center">
+          <Monitor className="mx-auto mb-2 h-10 w-10 text-muted-foreground/60" />
+          <p className="text-muted-foreground">{_("devices.noDevices")}</p>
         </div>
       ) : (
         <>
@@ -111,16 +111,16 @@ export default function DevicesPage() {
             </section>
           )}
 
-          <section className="rounded-xl border border-red-200 bg-white p-5 sm:p-6">
-            <h2 className="flex items-center gap-2 font-semibold text-red-600">
+          <section className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 p-5 sm:p-6">
+            <h2 className="flex items-center gap-2 font-semibold text-rose-600 dark:text-rose-400">
               <Shield className="h-4 w-4" />
               {_("devices.terminateAll")}
             </h2>
-            <p className="mb-4 mt-1 text-sm text-gray-500">{_("devices.terminateAllDesc")}</p>
+            <p className="mb-4 mt-1 text-sm text-muted-foreground">{_("devices.terminateAllDesc")}</p>
             <button
               onClick={() => setTerminateAllOpen(true)}
               disabled={terminateAllMutation.isPending}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-red-500/30 disabled:bg-red-300"
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-50 cursor-pointer"
             >
               {terminateAllMutation.isPending ? _("devices.terminating") : _("devices.terminateAllBtn")}
             </button>
@@ -165,16 +165,16 @@ function DeviceCard({ device, onTerminate, pending }: { device: Device; onTermin
   return (
     <div className={cn(
       "rounded-xl border p-4 transition-colors sm:p-5",
-      device.current ? "border-emerald-200 bg-emerald-50/30 ring-1 ring-emerald-100/50" : "border-gray-200 bg-white hover:border-gray-300"
+      device.current ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20" : "border-border bg-card hover:border-slate-300 dark:hover:border-slate-700"
     )}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-          <div className={cn("rounded-lg p-2.5", device.current ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300")}>
+          <div className={cn("rounded-lg p-2.5", device.current ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" : "bg-muted text-muted-foreground border border-border")}>
             <Monitor className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{device.app_name || _("devices.unknownApp")}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{device.app_name || _("devices.unknownApp")}</h3>
               {device.current && (
                 <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/30">
                   {_("devices.thisDevice")}
@@ -182,10 +182,10 @@ function DeviceCard({ device, onTerminate, pending }: { device: Device; onTermin
               )}
             </div>
             <div className="mt-1 space-y-1">
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+              <p className="text-xs text-muted-foreground font-medium">
                 {[device.device_model, device.platform, device.system_version].filter(Boolean).join(" · ")}
               </p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {device.ip && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />{device.ip}</span>}
                 {device.country && <span>{device.country}</span>}
                 {device.created && <span>{_("devices.since", { date: formatDate(device.created) })}</span>}
@@ -194,13 +194,13 @@ function DeviceCard({ device, onTerminate, pending }: { device: Device; onTermin
           </div>
         </div>
         {device.current ? (
-          <div className="p-2 text-emerald-600" title={_("devices.thisDevice")}><Shield className="h-4.5 w-4.5" /></div>
+          <div className="p-2 text-emerald-600 dark:text-emerald-400" title={_("devices.thisDevice")}><Shield className="h-4.5 w-4.5" /></div>
         ) : (
           <button
             onClick={() => onTerminate(device.hash)}
             disabled={pending}
             aria-label={_("devices.terminate")}
-            className="rounded-lg p-2 text-red-500 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-red-500/30 disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors hover:border-rose-600 hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:opacity-50 cursor-pointer"
             title={_("devices.terminate")}
           >
             <Trash2 className="h-4 w-4" />

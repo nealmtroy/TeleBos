@@ -68,7 +68,7 @@ function getActionBadge(action: string) {
     return { label: "Ubah Password", color: "border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/5" };
   }
   if (action.startsWith("auth.2fa")) {
-    return { label: "Konfigurasi 2FA", color: "border-purple-500/40 text-purple-600 dark:text-purple-400 bg-purple-500/5" };
+    return { label: "Konfigurasi 2FA", color: "border-sky-500/40 text-sky-600 dark:text-sky-400 bg-sky-500/5" };
   }
   if (action.startsWith("api_key.created")) {
     return { label: "Buat API Key", color: "border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-500/5" };
@@ -77,7 +77,7 @@ function getActionBadge(action: string) {
     return { label: "Cabut API Key", color: "border-rose-500/40 text-rose-600 dark:text-rose-400 bg-rose-500/5" };
   }
   if (action.startsWith("admin.role")) {
-    return { label: "Ubah Role", color: "border-indigo-500/40 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5" };
+    return { label: "Ubah Role", color: "border-sky-500/40 text-sky-600 dark:text-sky-400 bg-sky-500/5" };
   }
   if (action.startsWith("admin.balance")) {
     return { label: "Penyesuaian Saldo", color: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5" };
@@ -201,7 +201,7 @@ function SecurityAnalyticsContent() {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">
               <ShieldCheck className="h-3.5 w-3.5" />
               Audit Trail & Access Governance
             </span>
@@ -301,7 +301,7 @@ function SecurityAnalyticsContent() {
           </Link>
         </Button>
         <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold shadow-xs shrink-0">
-          <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+          <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
           Keamanan & Audit
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground shrink-0">
@@ -374,7 +374,7 @@ function SecurityAnalyticsContent() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Password & 2FA</span>
-              <KeyRound className="h-4 w-4 text-purple-500" />
+              <KeyRound className="h-4 w-4 text-sky-500" />
             </div>
             <CardTitle className="text-xl font-bold tracking-tight mt-1">
               {isAnalyticsLoading ? "..." : ((kpis?.password_changes ?? 0) + (kpis?.twofa_changes ?? 0)).toLocaleString("id-ID")}
@@ -382,7 +382,7 @@ function SecurityAnalyticsContent() {
           </CardHeader>
           <CardContent className="p-4 pt-0 text-[11px] text-muted-foreground flex items-center justify-between">
             <span>{kpis?.password_changes ?? 0} kata sandi</span>
-            <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+            <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">
               {kpis?.twofa_changes ?? 0} config 2FA
             </span>
           </CardContent>
@@ -393,7 +393,7 @@ function SecurityAnalyticsContent() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Siklus API Key</span>
-              <Terminal className="h-4 w-4 text-cyan-500" />
+              <Terminal className="h-4 w-4 text-blue-500" />
             </div>
             <CardTitle className="text-xl font-bold tracking-tight mt-1">
               {isAnalyticsLoading ? "..." : (kpis?.api_key_actions ?? 0).toLocaleString("id-ID")}
@@ -410,7 +410,7 @@ function SecurityAnalyticsContent() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Perubahan Role</span>
-              <UserCheck className="h-4 w-4 text-indigo-500" />
+              <UserCheck className="h-4 w-4 text-sky-500" />
             </div>
             <CardTitle className="text-xl font-bold tracking-tight mt-1">
               {isAnalyticsLoading ? "..." : (kpis?.role_changes ?? 0).toLocaleString("id-ID")}
@@ -418,7 +418,7 @@ function SecurityAnalyticsContent() {
           </CardHeader>
           <CardContent className="p-4 pt-0 text-[11px] text-muted-foreground flex items-center justify-between">
             <span>Eskalasi hak akses</span>
-            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">Admin Update</span>
+            <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">Admin Update</span>
           </CardContent>
         </Card>
 
@@ -827,21 +827,21 @@ function SecurityAnalyticsContent() {
             <div className="p-5 border-b border-border/60 flex items-center justify-between">
               <div className="space-y-0.5">
                 <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-indigo-500" />
+                  <ShieldCheck className="h-4 w-4 text-sky-500" />
                   Rincian Peristiwa Audit
                 </h3>
                 <p className="text-xs text-muted-foreground font-mono">
                   ID: {activeLogDetail.id}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
                 onClick={() => setActiveLogDetail(null)}
-                className="h-8 w-8 rounded-full"
+                className="h-7 w-7 rounded-md border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition shadow-2xs cursor-pointer"
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
 
             {/* Modal Content */}

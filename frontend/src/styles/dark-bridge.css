@@ -226,8 +226,8 @@
      text-gray-100 is deliberately NOT in this list. Its only two uses sit
      on hardcoded dark panels (the Telegram chat-bubble preview and the
      sanitised <pre> blocks), where it is already correct. */
-  html.dark .text-gray-200,
-  html.dark .text-gray-50 {
+  html.dark .text-gray-200:not(button):not([role="button"]):not(input),
+  html.dark .text-gray-50:not(button):not([role="button"]):not(input) {
     color: hsl(215 14% 48%) !important;
   }
   html.dark .hover\:bg-gray-50:hover,
@@ -274,13 +274,13 @@
   html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   html.dark textarea,
   html.dark select {
-    background-color: hsl(215 20% 14%) !important;
-    border-color: hsl(var(--border)) !important;
-    color: hsl(var(--foreground)) !important;
+    background-color: hsl(215 20% 14%);
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
   }
   html.dark input::placeholder,
   html.dark textarea::placeholder {
-    color: hsl(215 12% 76%) !important;
+    color: hsl(215 12% 76%);
   }
 
   /* Dark mode status badges & alert boxes bridge */

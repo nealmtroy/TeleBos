@@ -44,7 +44,7 @@ export default function AccountSettingsPage() {
         <Link
           href={`/accounts/${id}`}
           aria-label="Back to account"
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition shadow-2xs focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <ArrowLeft className="size-4" />
         </Link>
@@ -99,8 +99,8 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.profilePhoto")}</h2>
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
+      <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.profilePhoto")}</h2>
       <div className="flex items-center gap-6">
         <AccountAvatar
           accountId={accountId}
@@ -113,7 +113,7 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
           isActive={account?.is_active}
           profilePhotoPath={account?.profile_photo_path}
           size="xl"
-          className="size-20 text-xl border border-gray-200"
+          className="size-20 text-xl border border-border"
           aria-label="Profile photo"
         />
         <div className="space-y-2">
@@ -218,8 +218,8 @@ function ProfileEditor({ accountId, account }: { accountId: string; account: any
   });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.profile")}</h2>
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
+      <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.profile")}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="profile-first-name">{_("accountSettings.firstName")}</Label>
@@ -409,8 +409,8 @@ export function PrivacySettings({ accountId }: { accountId: string }) {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.privacySecurity")}</h2>
+      <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
+        <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.privacySecurity")}</h2>
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-lg" />
@@ -421,8 +421,8 @@ export function PrivacySettings({ accountId }: { accountId: string }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.privacySecurity")}</h2>
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
+      <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.privacySecurity")}</h2>
 
       <div className="space-y-6">
         {PRIVACY_GROUPS.map((group) => (
@@ -573,12 +573,12 @@ export function TwoFASettings({ accountId }: { accountId: string }) {
     },
   });
 
-  if (isLoading) return <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse h-24" />;
+  if (isLoading) return <div className="bg-card rounded-xl border border-border p-6 animate-pulse h-24" />;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-900">{_("accountSettings.twoFactor")}</h2>
+        <h2 className="font-semibold text-foreground">{_("accountSettings.twoFactor")}</h2>
         <span
           className={cn(
             "px-2 py-0.5 rounded-full text-xs font-medium",
@@ -865,8 +865,8 @@ export function LoginEmailSettings({ accountId }: { accountId: string }) {
   });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
+      <h2 className="font-semibold text-foreground mb-4">
         <span className="flex items-center gap-2">
           <Mail className="h-4 w-4" />
           {_("accountSettings.loginEmail")}
@@ -982,8 +982,8 @@ function AutoReplySettings({ accountId, account }: { accountId: string; account:
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">{_("accountSettings.autoReply")}</h2>
+    <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
+      <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.autoReply")}</h2>
       <p id="auto-reply-description" className="text-sm text-gray-500 mb-4 max-w-xl">
         {_("accountSettings.autoReplyDesc")}
       </p>

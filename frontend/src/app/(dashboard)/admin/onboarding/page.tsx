@@ -66,7 +66,7 @@ const ROLE_MAP: Record<string, { labelId: string; labelEn: string; color: string
   agency: {
     labelId: "Agensi & Tim Marketing",
     labelEn: "Agency & Marketing",
-    color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+    color: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
   },
   community: {
     labelId: "Komunitas / Admin Grup",
@@ -349,7 +349,7 @@ function OnboardingAnalyticsContent() {
         <Card className="rounded-2xl border-border bg-card shadow-xs">
           <CardHeader className="pb-3 border-b border-border/50">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Share2 className="h-4 w-4 text-purple-500" />
+              <Share2 className="h-4 w-4 text-sky-500" />
               Saluran Akuisisi (Referral Source)
             </CardTitle>
             <CardDescription className="text-xs">
@@ -373,7 +373,7 @@ function OnboardingAnalyticsContent() {
                   </div>
                   <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-purple-500 transition-all duration-500 rounded-full"
+                      className="h-full bg-sky-500 transition-all duration-500 rounded-full"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -596,10 +596,10 @@ function OnboardingAnalyticsContent() {
                         </TableCell>
                         <TableCell className="py-3 text-right">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => setSelectedSurvey(survey)}
-                            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                            className="h-7 px-2.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-foreground shadow-2xs"
                           >
                             Detail
                           </Button>

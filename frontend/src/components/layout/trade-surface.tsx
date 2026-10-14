@@ -23,7 +23,7 @@ export function Eyebrow({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/90 bg-foreground/[0.04] border border-foreground/[0.06]",
+        "inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300",
         className
       )}
     >
@@ -152,11 +152,11 @@ export function DoubleBezelShell({
   tabIndex?: number;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
 }) {
-  const outerTone = {
-    default: "border-border/80 dark:border-white/10 bg-gradient-to-b from-foreground/[0.05] via-foreground/[0.02] to-transparent",
-    primary: "border-primary/40 bg-gradient-to-b from-primary/10 via-primary/5 to-transparent",
-    amber: "border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent",
-    emerald: "border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-transparent",
+  const toneBorder = {
+    default: "border-border hover:border-slate-300 dark:hover:border-slate-700",
+    primary: "border-primary/40",
+    amber: "border-amber-500/40",
+    emerald: "border-emerald-500/40",
   }[tone];
 
   return (
@@ -166,22 +166,15 @@ export function DoubleBezelShell({
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "relative rounded-2xl p-1 border shadow-xs transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-        outerTone,
-        selected && "ring-2 ring-primary border-primary/60 shadow-md shadow-primary/10",
-        hover && "hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 cursor-pointer",
-        className
+        "relative rounded-xl border bg-card text-card-foreground p-4 sm:p-5 shadow-xs transition-all duration-200",
+        toneBorder,
+        selected && "ring-2 ring-primary border-primary shadow-sm shadow-primary/10",
+        hover && "hover:shadow-sm hover:-translate-y-0.5 cursor-pointer",
+        className,
+        innerClassName
       )}
     >
-      <div
-        className={cn(
-          "relative rounded-[calc(1rem-2px)] sm:rounded-[calc(1rem)] bg-card text-card-foreground p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]",
-          selected && "bg-primary/[0.02]",
-          innerClassName
-        )}
-      >
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
@@ -288,7 +281,7 @@ export function MetricReadout({
   return (
     <div
       className={cn(
-        "relative rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs p-3 sm:p-4 flex flex-col justify-between gap-2 sm:gap-2.5 shadow-2xs min-w-0 overflow-hidden",
+        "relative rounded-xl border border-border bg-card p-3 sm:p-4 flex flex-col justify-between gap-2 sm:gap-2.5 shadow-none min-w-0 overflow-hidden",
         className
       )}
     >

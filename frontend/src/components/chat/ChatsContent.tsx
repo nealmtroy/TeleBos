@@ -7,6 +7,7 @@ import {
   prefetchMediaTokens,
 } from "./helpers";
 import { useAuthStore } from "@/store/auth-store";
+import { useThemeStore } from "@/store/theme-store";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/hooks/use-accounts";
 import { useChatSocket } from "@/hooks/use-socket";
@@ -457,17 +458,16 @@ export function ChatsContent() {
     setBatchDeleteOpen(false);
   }
 
-  // Independent chat theme (separate from global TeleBos theme)
-  const [tgTheme, setTgTheme] = useState<"light" | "dark">(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("tg-chat-theme") as "light" | "dark") || "light";
-    }
-    return "light";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("tg-chat-theme", tgTheme);
-  }, [tgTheme]);
+  // Synchronized with global TeleBos theme store (VIO-16 fix)
+  const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const tgTheme = resolvedTheme;
+  const setTgTheme = useCallback(
+    (theme: "light" | "dark") => {
+      setTheme(theme);
+    },
+    [setTheme]
+  );
 
   return (
     <div className={`tg-chat-root${tgTheme === "dark" ? " tg-dark" : ""}`} style={{ display: "flex", height: "100%", width: "100%", overflow: "hidden" }}>

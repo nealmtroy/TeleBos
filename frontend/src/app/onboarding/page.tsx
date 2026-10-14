@@ -242,7 +242,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Survey Card */}
-          <div className="relative rounded-2xl border border-border/80 bg-card/80 backdrop-blur-xl p-6 sm:p-9 shadow-2xl transition-all">
+          <div className="relative rounded-2xl border border-border bg-card p-6 sm:p-9 shadow-xl transition-all">
             <AnimatePresence mode="wait">
               {/* PERTANYAAN 1: Peran / Rencana Penggunaan */}
               {currentStep === 1 && (

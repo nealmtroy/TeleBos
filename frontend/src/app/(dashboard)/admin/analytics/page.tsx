@@ -263,7 +263,7 @@ function AnalyticsContent() {
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
           <Link href="/admin/analytics/security">
-            <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+            <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
             Keamanan & Audit
           </Link>
         </Button>
@@ -340,7 +340,7 @@ function AnalyticsContent() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">Paid Subscriptions</span>
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500">
+              <div className="p-2 rounded-xl bg-sky-500/10 text-sky-500">
                 <ShieldCheck className="h-4 w-4" />
               </div>
             </div>
@@ -349,7 +349,7 @@ function AnalyticsContent() {
                 {isOverviewLoading ? "..." : (overview?.active_paid_subscriptions ?? 0).toLocaleString()}
               </h3>
               <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300">
                   Pro & Premium Active
                 </span>
               </div>
@@ -375,7 +375,7 @@ function AnalyticsContent() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">Telegram Fleet</span>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+              <div className="p-2 rounded-xl bg-sky-500/10 text-sky-500">
                 <Layers className="h-4 w-4" />
               </div>
             </div>
@@ -569,7 +569,7 @@ function AnalyticsContent() {
                 data={transactionsTrend?.points ?? []}
                 metricLabel="Total Transaksi"
                 formatValue={(v) => `${v.toLocaleString()} orders`}
-                color="indigo"
+                color="sky"
                 height={220}
                 isLoading={isTxTrendLoading}
                 emptyMessage="Tidak ada volume order pada periode ini"
@@ -666,12 +666,12 @@ function AnalyticsContent() {
               {
                 label: "Group SlowMode Limit",
                 count: overview?.top_failure_reasons?.slowmode ?? 0,
-                color: "bg-indigo-500",
+                color: "bg-amber-500",
               },
               {
                 label: "Admin-Only Restrictions",
                 count: overview?.top_failure_reasons?.admin_only ?? 0,
-                color: "bg-purple-500",
+                color: "bg-slate-500",
               },
             ].map((f) => (
               <div key={f.label} className="space-y-1">

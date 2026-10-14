@@ -114,7 +114,7 @@ const SheetContent = React.forwardRef<
       {showCloseButton && (
         <SheetPrimitive.Close
           data-slot="sheet-close"
-          className="absolute right-4 top-4 rounded-lg p-1.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
+          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:border-rose-600 hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-800/80 dark:bg-rose-950/60 dark:text-rose-400 dark:hover:border-rose-600 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer disabled:pointer-events-none"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

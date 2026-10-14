@@ -116,7 +116,7 @@ export function OrderDesktopTable({
                     <button
                       type="button"
                       onClick={() => onCopy(item.orderIdDisplay, item.id)}
-                      className="text-muted-foreground/60 hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors"
+                      className="h-6 w-6 rounded-md border border-slate-300 dark:border-slate-700 bg-card text-muted-foreground hover:text-foreground flex items-center justify-center transition shadow-2xs cursor-pointer"
                       title="Copy Order ID"
                     >
                       {isCopied ? (
@@ -136,7 +136,7 @@ export function OrderDesktopTable({
                       <span>{locale === "id" ? "Akun TG" : "TG Account"}</span>
                     </span>
                   ) : item.type === "smm" ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20">
                       <ShoppingCart className="h-3 w-3" />
                       <span>SMM</span>
                     </span>
@@ -151,12 +151,12 @@ export function OrderDesktopTable({
                       <span>{locale === "id" ? "Penarikan" : "Withdraw"}</span>
                     </span>
                   ) : item.type === "redeem" ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20">
+                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                       <Gift className="h-3 w-3" />
                       <span>Redeem</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20">
                       <Sparkles className="h-3 w-3" />
                       <span>{locale === "id" ? "Saldo" : "Adjust"}</span>
                     </span>
@@ -286,7 +286,7 @@ export function OrderDesktopTable({
                       variant="outline"
                       size="xs"
                       onClick={() => onSelectDetail(item)}
-                      className="h-7 px-2.5 rounded-lg border-border/80 text-[11px] font-semibold hover:bg-muted"
+                      className="h-7 px-2.5 rounded-lg border-slate-300 dark:border-slate-700 bg-card shadow-2xs text-[11px] font-semibold hover:bg-muted cursor-pointer"
                     >
                       Detail
                     </Button>

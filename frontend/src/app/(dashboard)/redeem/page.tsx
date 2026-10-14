@@ -164,7 +164,7 @@ export default function RedeemPage() {
                     value={code}
                     onChange={(e) => setCode(e.target.value.toUpperCase())}
                     placeholder={_("redeem.codePlaceholder")}
-                    className="w-full border border-input rounded-lg px-4 py-3 text-base font-mono tracking-widest focus:outline-none focus:ring-3 focus:ring-ring/50 focus:border-primary uppercase bg-background text-foreground placeholder:text-muted-foreground"
+                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-3 text-base font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase bg-card text-foreground placeholder:text-muted-foreground transition-colors"
                     autoFocus
                     autoComplete="off"
                     spellCheck={false}
@@ -174,7 +174,7 @@ export default function RedeemPage() {
                 <button
                   type="button"
                   onClick={handlePaste}
-                  className="flex items-center gap-1.5 px-3.5 border border-input rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3.5 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-medium text-foreground bg-card hover:bg-muted shadow-2xs transition-colors shrink-0 cursor-pointer"
                   title={_("redeem.pasteCode")}
                 >
                   <Clipboard className="h-4 w-4" />
@@ -186,7 +186,7 @@ export default function RedeemPage() {
             <Button
               type="submit"
               disabled={redeemMutation.isPending || !code.trim()}
-              className="w-full h-11 text-sm font-medium"
+              className="w-full h-11 text-sm font-semibold shadow-xs cursor-pointer"
               size="lg"
             >
               {redeemMutation.isPending ? (
@@ -209,41 +209,41 @@ export default function RedeemPage() {
       {result && (
         <div
           className={cn(
-            "rounded-xl border p-5",
+            "rounded-xl border p-5 transition-colors",
             result.type === "success"
-              ? "bg-emerald-50 border-emerald-200"
-              : "bg-red-50 border-red-200"
+              ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+              : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300"
           )}
         >
           <div className="flex items-start gap-3">
             {result.type === "success" ? (
-              <div className="p-1.5 rounded-full bg-emerald-100">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <div className="p-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 shrink-0">
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
             ) : (
-              <div className="p-1.5 rounded-full bg-red-100">
-                <AlertCircle className="h-5 w-5 text-red-600" />
+              <div className="p-1.5 rounded-full bg-rose-100 dark:bg-rose-900/60 shrink-0">
+                <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
               </div>
             )}
             <div className="flex-1 min-w-0 space-y-1">
               <p className={cn(
                 "text-sm font-semibold",
-                result.type === "success" ? "text-emerald-800" : "text-red-800"
+                result.type === "success" ? "text-emerald-900 dark:text-emerald-200" : "text-rose-900 dark:text-rose-200"
               )}>
                 {result.message}
               </p>
               {result.type === "success" && result.data?.balance_added && (
-                <p className="text-sm text-emerald-700">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                   +{result.data.balance_added.toLocaleString()} {_("redeem.creditsAdded")}
                 </p>
               )}
               {result.type === "success" && result.data?.plan && (
-                <p className="text-sm text-emerald-700">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                   {_("redeem.planUpgraded")} <span className="font-semibold capitalize">{result.data.plan}</span>
                 </p>
               )}
               {result.type === "success" && result.data?.expires_at && (
-                <p className="text-sm text-emerald-700">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
                   {_("redeem.validUntil")} {new Date(result.data.expires_at).toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "long",

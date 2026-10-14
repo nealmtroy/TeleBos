@@ -117,10 +117,10 @@ export function PollDialog({ accountId, chatId, isOpen, onClose }: PollDialogPro
                           setPollCorrectIdx(pollCorrectIdx - 1);
                         }
                       }}
-                      className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition"
+                      className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition shadow-2xs cursor-pointer"
                       title="Remove choice"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>

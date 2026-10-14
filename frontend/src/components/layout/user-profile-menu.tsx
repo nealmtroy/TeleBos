@@ -167,7 +167,7 @@ export function UserProfileMenu({
           side={menuSide}
           align={menuAlign}
           sideOffset={variant === "navbar" ? 4 : 8}
-          className="w-56 min-w-56 rounded-lg"
+          className={cn("w-56 min-w-56 rounded-lg", variant === "sidebar" && "dark bg-slate-900 text-slate-100 border-slate-800")}
         >
           {/* ── 1. Header: Avatar + User Info (matches shadcn-admin) ── */}
           {variant === "sidebar" ? (

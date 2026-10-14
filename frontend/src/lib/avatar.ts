@@ -22,6 +22,11 @@ export function getChatPhotoUrl(
   return `${baseUrl}/accounts/${accountId}/chats/${chatId}/photo?v=${version ?? 0}`;
 }
 
+export function getPublicChatPhotoUrl(username: string) {
+  const cleanUsername = username.replace(/^@/, "").trim();
+  return `${baseUrl}/chats/public/${encodeURIComponent(cleanUsername)}/photo`;
+}
+
 export function getTelegramAvatarColor(
   stableId: string | number,
   colorId?: number | null,

@@ -27,9 +27,9 @@ export default function AdminRedeemLogsPage() {
   if (currentUser?.role !== "owner") {
     return (
       <div className="text-center py-16">
-        <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
-        <p className="text-sm text-gray-500">Only owners can access the admin panel.</p>
+        <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground/40" />
+        <h3 className="font-semibold text-foreground mb-1">Access Denied</h3>
+        <p className="text-sm text-muted-foreground">Only owners can access the admin panel.</p>
       </div>
     );
   }
@@ -46,60 +46,60 @@ function RedeemLogsContent() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{_("adminRedeem.logs")}</h1>
-        <p className="text-gray-500 mt-1">{_("adminRedeem.desc")}</p>
+        <h1 className="text-2xl font-bold text-foreground">{_("adminRedeem.logs")}</h1>
+        <p className="text-muted-foreground mt-1">{_("adminRedeem.desc")}</p>
       </div>
 
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
           ))}
         </div>
       ) : error ? (
-        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+        <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300">
           <AlertCircle className="h-5 w-5" />
           <p className="text-sm">Failed to load redemption logs</p>
         </div>
       ) : !data?.logs.length ? (
-        <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
-          <ClipboardList className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-500">{_("adminRedeem.noLogs")}</p>
+        <div className="text-center py-12 bg-card rounded-xl border border-border shadow-xs">
+          <ClipboardList className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">{_("adminRedeem.noLogs")}</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
+          <div className="overflow-x-auto bg-card rounded-xl border border-border shadow-xs">
             <Table className="w-full text-sm">
               <TableHeader>
-                <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
-                  <TableHead className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.code")}</TableHead>
-                  <TableHead className="text-left py-3 px-4 font-medium text-gray-500">{_("adminRedeem.user")}</TableHead>
-                  <TableHead className="text-center py-3 px-4 font-medium text-gray-500">{_("adminRedeem.detail")}</TableHead>
-                  <TableHead className="text-right py-3 px-4 font-medium text-gray-500">{_("adminRedeem.redeemedAt")}</TableHead>
+                <TableRow className="border-b border-border bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="text-left py-3 px-4 font-semibold text-muted-foreground">{_("adminRedeem.code")}</TableHead>
+                  <TableHead className="text-left py-3 px-4 font-semibold text-muted-foreground">{_("adminRedeem.user")}</TableHead>
+                  <TableHead className="text-center py-3 px-4 font-semibold text-muted-foreground">{_("adminRedeem.detail")}</TableHead>
+                  <TableHead className="text-right py-3 px-4 font-semibold text-muted-foreground">{_("adminRedeem.redeemedAt")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.logs.map((log) => (
-                  <TableRow key={log.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <TableRow key={log.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <TableCell className="py-3 px-4 whitespace-normal">
-                      <code className="font-mono text-xs bg-gray-100 px-2 py-1 rounded font-semibold">{log.code}</code>
+                      <code className="font-mono text-xs bg-muted px-2 py-1 rounded font-semibold">{log.code}</code>
                     </TableCell>
-                    <TableCell className="py-3 px-4 text-gray-600 whitespace-normal">{log.user_email}</TableCell>
+                    <TableCell className="py-3 px-4 text-foreground font-medium whitespace-normal">{log.user_email}</TableCell>
                     <TableCell className="py-3 px-4 text-center whitespace-normal">
                       {log.detail ? (
                         (() => {
                           try {
                             const d = JSON.parse(log.detail);
-                            if (d.type === "subscription") return <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded-lg">{d.plan?.toUpperCase()} • {d.duration_days}d</span>;
-                            if (d.type === "balance") return <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">+{d.amount} credits</span>;
+                            if (d.type === "subscription") return <span className="text-xs font-medium text-sky-700 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-md">{d.plan?.toUpperCase()} • {d.duration_days}d</span>;
+                            if (d.type === "balance") return <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">+{d.amount} credits</span>;
                           } catch {}
-                          return <span className="text-xs text-gray-500">{log.detail}</span>;
+                          return <span className="text-xs text-muted-foreground">{log.detail}</span>;
                         })()
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="py-3 px-4 text-right text-xs text-gray-500 whitespace-normal">
+                    <TableCell className="py-3 px-4 text-right text-xs text-muted-foreground whitespace-normal">
                       {log.redeemed_at ? new Date(log.redeemed_at).toLocaleString() : "—"}
                     </TableCell>
                   </TableRow>
@@ -110,8 +110,8 @@ function RedeemLogsContent() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-card rounded-xl border border-border shadow-2xs">
+              <p className="text-xs text-muted-foreground">
                 {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, data?.total || 0)} of {data?.total}
               </p>
               <DataPagination

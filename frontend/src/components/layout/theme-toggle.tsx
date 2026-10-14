@@ -62,7 +62,7 @@ export function ThemeToggle({ className, variant = "navbar" }: ThemeToggleProps)
             className={cn(
               "relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors cursor-pointer",
               "text-muted-foreground hover:bg-muted hover:text-foreground",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             )}
             title={_("theme.title") || "Theme"}
           >

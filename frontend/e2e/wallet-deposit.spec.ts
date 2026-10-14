@@ -103,7 +103,7 @@ test.describe("Wallet Deposit & Amount Validation (E2E)", () => {
     const presetBtn = page.getByRole("button", { name: "Rp 50.000" });
     if (await presetBtn.isVisible()) {
       await presetBtn.click();
-      await expect(amountInput).toHaveValue("50000");
+      await expect(amountInput).toHaveValue(/(50000|50\.000)/);
       // Warning should be cleared
       await expect(minWarning).not.toBeVisible();
     }

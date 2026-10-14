@@ -220,8 +220,8 @@ function AutomationAnalyticsContent() {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
               Live Task Telemetry
             </span>
             <Badge variant="outline" className="text-xs font-normal">
@@ -311,7 +311,7 @@ function AutomationAnalyticsContent() {
           </Link>
         </Button>
         <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold shadow-xs">
-          <Bot className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+          <Bot className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
           Automation Analytics
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
@@ -328,7 +328,7 @@ function AutomationAnalyticsContent() {
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
           <Link href="/admin/analytics/security">
-            <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+            <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
             Keamanan & Audit
           </Link>
         </Button>
@@ -341,13 +341,13 @@ function AutomationAnalyticsContent() {
       </div>
 
       {/* ── Architectural & Retry Invariant Banner ────────────────────────────── */}
-      <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 text-xs text-foreground/80 space-y-2">
+      <div className="p-4 rounded-2xl bg-sky-500/5 border border-sky-500/20 text-xs text-foreground/80 space-y-2">
         <div className="flex items-start gap-2.5">
-          <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+          <Shield className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-semibold text-foreground flex items-center gap-2">
               Integritas Eksekusi: Pemisahan Logical Jobs vs Execution Attempts & Perlindungan Idempotensi
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 font-mono">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 font-mono">
                 Safe Worker Standard
               </span>
             </p>
@@ -364,7 +364,7 @@ function AutomationAnalyticsContent() {
                 <span>Anti-blind retry: kegagalan izin admin/privasi tidak di-retry berulang.</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                <Lock className="h-3.5 w-3.5 text-sky-500 shrink-0" />
                 <span>Zero Leak: session string, OTP, dan token tidak tercatat di ringkasan error.</span>
               </div>
             </div>
@@ -393,13 +393,13 @@ function AutomationAnalyticsContent() {
       {/* ── Top Deck KPI Cards (6 Grid Items) ─────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Card 1: Total Executions & Logical Jobs */}
-        <Card className="bg-card border-border shadow-xs hover:border-indigo-500/40 transition-colors">
+        <Card className="bg-card border-border shadow-xs hover:border-sky-500/40 transition-colors">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-medium text-muted-foreground">
                 Total Percobaan & Logical Jobs
               </CardDescription>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+              <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
                 <Bot className="h-4 w-4" />
               </div>
             </div>
@@ -419,7 +419,7 @@ function AutomationAnalyticsContent() {
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
               <span>Rasio Percobaan / Job:</span>
-              <span className="font-mono font-medium text-indigo-600 dark:text-indigo-400">
+              <span className="font-mono font-medium text-sky-600 dark:text-sky-400">
                 {totalLogicalJobs > 0 ? (totalExecutions / totalLogicalJobs).toFixed(2) : "1.00"}x
               </span>
             </div>
@@ -529,18 +529,18 @@ function AutomationAnalyticsContent() {
         </Card>
 
         {/* Card 5: Queue Backlog & Waiting Time */}
-        <Card className="bg-card border-border shadow-xs hover:border-cyan-500/40 transition-colors">
+        <Card className="bg-card border-border shadow-xs hover:border-sky-500/40 transition-colors">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs font-medium text-muted-foreground">
                 Antrean Redis & Waktu Tunggu
               </CardDescription>
-              <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+              <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
                 <Layers className="h-4 w-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2 pt-1">
-              <span className="text-2xl lg:text-3xl font-bold font-mono text-cyan-600 dark:text-cyan-400">
+              <span className="text-2xl lg:text-3xl font-bold font-mono text-sky-600 dark:text-sky-400">
                 {queueBacklog.toLocaleString()}
               </span>
               <span className="text-xs text-muted-foreground">pending queue</span>
@@ -687,7 +687,7 @@ function AutomationAnalyticsContent() {
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span className="font-medium text-foreground flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-purple-500" />
+                  <span className="h-2 w-2 rounded-full bg-sky-500" />
                   Tertunda / Antre (Pending)
                 </span>
                 <span className="font-mono text-muted-foreground">
@@ -700,7 +700,7 @@ function AutomationAnalyticsContent() {
               </div>
               <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                  className="h-full bg-sky-500 rounded-full transition-all duration-500"
                   style={{
                     width: `${totalLogicalJobs > 0 ? ((statusBreakdown?.pending ?? 0) / totalLogicalJobs) * 100 : 0}%`,
                   }}
@@ -790,7 +790,7 @@ function AutomationAnalyticsContent() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Server className="h-4 w-4 text-cyan-500" />
+                <Server className="h-4 w-4 text-sky-500" />
                 Telemetri Antrean & Runtime Worker
               </CardTitle>
               <Badge variant="outline" className="text-[11px] font-mono">
@@ -805,7 +805,7 @@ function AutomationAnalyticsContent() {
             <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/40 border border-border/60 text-xs">
               <div>
                 <span className="text-muted-foreground">Live Redis Backlog:</span>
-                <p className="font-mono font-bold text-base text-cyan-600 dark:text-cyan-400 mt-0.5">
+                <p className="font-mono font-bold text-base text-primary mt-0.5">
                   {queueBacklog} jobs
                 </p>
               </div>
@@ -828,7 +828,7 @@ function AutomationAnalyticsContent() {
               </div>
               <div>
                 <span className="text-muted-foreground">Worker Failure Events:</span>
-                <p className="font-mono font-semibold text-rose-500 mt-0.5">
+                <p className="font-mono font-semibold text-destructive mt-0.5">
                   {workerFailures} error
                 </p>
               </div>
@@ -836,19 +836,19 @@ function AutomationAnalyticsContent() {
 
             <div className="space-y-2">
               <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Terminal className="h-3.5 w-3.5 text-indigo-500" />
+                <Terminal className="h-3.5 w-3.5 text-primary" />
                 Status Konsumen Worker & Antrean:
               </p>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/20 text-center">
+                <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-center">
                   <span className="text-[11px] text-muted-foreground block">Active Consumers</span>
-                  <span className="font-mono font-bold text-base text-indigo-600 dark:text-indigo-400">
+                  <span className="font-mono font-bold text-base text-primary">
                     {queueHealth?.active_worker_consumers ?? 1} worker
                   </span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-purple-500/5 border border-purple-500/20 text-center">
+                <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center">
                   <span className="text-[11px] text-muted-foreground block">Tugas Berjalan</span>
-                  <span className="font-mono font-bold text-base text-purple-600 dark:text-purple-400">
+                  <span className="font-mono font-bold text-base text-foreground">
                     {activeRunningTasks} tasks
                   </span>
                 </div>
@@ -898,7 +898,7 @@ function AutomationAnalyticsContent() {
                 id: "invite",
                 label: "Invite Member Grup",
                 icon: UserPlus,
-                color: "text-purple-500",
+                color: "text-sky-500",
                 jobs: usageByType?.invite_jobs_count ?? 0,
                 attempts: usageByType?.invite_executions_count ?? 0,
               },
@@ -906,7 +906,7 @@ function AutomationAnalyticsContent() {
                 id: "autojoin",
                 label: "Auto Join Kanal/Grup",
                 icon: LogIn,
-                color: "text-cyan-500",
+                color: "text-blue-500",
                 jobs: usageByType?.autojoin_jobs_count ?? 0,
                 attempts: usageByType?.autojoin_executions_count ?? 0,
               },
@@ -941,7 +941,7 @@ function AutomationAnalyticsContent() {
                     </div>
                     <div>
                       <span>Percobaan Eksekusi:</span>
-                      <p className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                      <p className="font-mono font-semibold text-sky-600 dark:text-sky-400">
                         {module.attempts.toLocaleString()} attempts
                       </p>
                     </div>
@@ -979,7 +979,7 @@ function AutomationAnalyticsContent() {
                     {errorBreakdown?.by_error_category?.["FloodWait / Rate Limit"] ?? errorBreakdown?.by_error_category?.["flood_wait"] ?? 0}
                   </span>
                 </div>
-                <div className="p-2 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                <div className="p-2 rounded-lg bg-sky-500/5 border border-sky-500/20">
                   <span className="text-[11px] text-muted-foreground block">Privasi Telegram</span>
                   <span className="font-mono font-bold text-foreground">
                     {errorBreakdown?.by_error_category?.["Privacy Restriction"] ?? errorBreakdown?.by_error_category?.["privacy_restricted"] ?? 0}
@@ -997,7 +997,7 @@ function AutomationAnalyticsContent() {
                     {errorBreakdown?.by_error_category?.["Dead / Expired Session"] ?? 0}
                   </span>
                 </div>
-                <div className="p-2 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                <div className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/20">
                   <span className="text-[11px] text-muted-foreground block">Eksekusi Timeout</span>
                   <span className="font-mono font-bold text-foreground">
                     {errorBreakdown?.by_error_category?.["Timeout"] ?? 0}
@@ -1051,7 +1051,7 @@ function AutomationAnalyticsContent() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-indigo-500" />
+                <TrendingUp className="h-4 w-4 text-sky-500" />
                 Grafik Tren Eksekusi Automasi
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -1100,9 +1100,9 @@ function AutomationAnalyticsContent() {
               chartMetric === "broadcasts"
                 ? "blue"
                 : chartMetric === "invites"
-                ? "purple"
+                ? "sky"
                 : chartMetric === "autojoins"
-                ? "indigo"
+                ? "amber"
                 : "emerald"
             }
             height={260}
@@ -1118,7 +1118,7 @@ function AutomationAnalyticsContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-indigo-500" />
+                <Clock className="h-4 w-4 text-sky-500" />
                 Riwayat Eksekusi Tugas Automasi
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -1206,7 +1206,7 @@ function AutomationAnalyticsContent() {
                 {isDirectoryLoading ? (
                   <tr>
                     <td colSpan={9} className="py-8 text-center text-muted-foreground">
-                      <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-indigo-500" />
+                      <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-sky-500" />
                       Memuat direktori tugas automasi...
                     </td>
                   </tr>
@@ -1227,8 +1227,8 @@ function AutomationAnalyticsContent() {
                           className={cn(
                             "capitalize text-[10px] py-0",
                             task.automation_type === "broadcast" && "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-                            task.automation_type === "invite" && "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-                            task.automation_type === "autojoin" && "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20"
+                            task.automation_type === "invite" && "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+                            task.automation_type === "autojoin" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                           )}
                         >
                           {task.automation_type}
@@ -1247,7 +1247,7 @@ function AutomationAnalyticsContent() {
                             task.status === "failed" && "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
                             task.status === "paused" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
                             task.status === "cancelled" && "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
-                            task.status === "pending" && "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                            task.status === "pending" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
                           )}
                         >
                           {task.status}
@@ -1278,10 +1278,10 @@ function AutomationAnalyticsContent() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => handleViewTaskDetail(task)}
-                          className="h-7 px-2 text-[11px] gap-1 hover:text-indigo-600"
+                          className="h-7 px-2.5 rounded-lg border-slate-300 dark:border-slate-700 bg-card shadow-2xs text-[11px] font-semibold hover:bg-muted cursor-pointer gap-1"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           Detail
@@ -1339,7 +1339,7 @@ function AutomationAnalyticsContent() {
         <DialogContent className="max-w-md sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Bot className="h-4 w-4 text-indigo-500" />
+              <Bot className="h-4 w-4 text-sky-500" />
               Detail Tugas Automasi
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground font-mono">
@@ -1369,7 +1369,7 @@ function AutomationAnalyticsContent() {
                         selectedTask.status === "failed" && "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
                         selectedTask.status === "paused" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
                         selectedTask.status === "cancelled" && "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
-                        selectedTask.status === "pending" && "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                        selectedTask.status === "pending" && "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
                       )}
                     >
                       {selectedTask.status}

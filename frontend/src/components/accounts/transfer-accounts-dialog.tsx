@@ -293,7 +293,7 @@ export function TransferAccountsDialog({
                 <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100">
                   {_("transferAccounts.dialogTitle")}
                 </DialogTitle>
-                <Badge variant="secondary" className="text-[11px] font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                <Badge variant="outline" className="text-[11px] font-semibold bg-amber-500/10 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                   {_("transferAccounts.ownerOnly")}
                 </Badge>
               </div>

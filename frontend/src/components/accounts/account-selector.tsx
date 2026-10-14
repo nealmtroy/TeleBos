@@ -153,7 +153,7 @@ export function AccountSelector({
       className={cn(
         "space-y-4",
         variant === "card" &&
-          "bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-5 shadow-xs",
+          "bg-card rounded-2xl border border-border p-5 shadow-xs",
         className
       )}
     >
@@ -167,7 +167,7 @@ export function AccountSelector({
           )}
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+              <h3 className="text-sm font-bold text-foreground">
                 {title || _("accountSelector.defaultTitle")}
               </h3>
               <Badge variant="secondary" className="text-[11px] font-semibold py-0.5 px-2">
@@ -175,7 +175,7 @@ export function AccountSelector({
               </Badge>
             </div>
             {description && (
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                 {description}
               </p>
             )}
@@ -183,23 +183,22 @@ export function AccountSelector({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 text-xs font-semibold shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={isAllFilteredSelected ? handleDeselectAll : handleSelectAll}
             disabled={disabled || accounts.length === 0}
-            className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 disabled:opacity-50 transition"
+            className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-xs font-semibold text-primary disabled:opacity-50 transition shadow-2xs cursor-pointer"
           >
             {isAllFilteredSelected
               ? _("accountSelector.deselectAll")
               : _("accountSelector.selectAll")}
           </button>
-          <span className="text-gray-300 dark:text-slate-700">|</span>
           <button
             type="button"
             onClick={() => onChange([])}
             disabled={disabled || selectedSet.size === 0}
-            className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 disabled:opacity-50 transition"
+            className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50 transition shadow-2xs cursor-pointer"
           >
             {_("accountSelector.clear")}
           </button>
@@ -220,7 +219,7 @@ export function AccountSelector({
       {/* Search Input */}
       <div className="space-y-1.5">
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             id="account-selector-search"
             name="searchQuery"
@@ -239,14 +238,14 @@ export function AccountSelector({
               searchPlaceholder ||
               _("accountSelector.searchPlaceholder")
             }
-            className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-white dark:bg-slate-800/90 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 transition shadow-2xs"
+            className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-foreground placeholder:text-muted-foreground transition shadow-2xs"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
               title={_("accountSelector.clearSearchTooltip")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -255,7 +254,7 @@ export function AccountSelector({
 
         {/* Info hasil filter jika pencarian atau folder aktif */}
         {(searchQuery.trim() !== "" || selectedFolderId !== null) && accounts.length > 0 && (
-          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 px-1 pt-0.5">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1 pt-0.5">
             <span>
               {_("accountSelector.showingResults", {
                 filtered: filteredAccounts.length,
@@ -267,7 +266,7 @@ export function AccountSelector({
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="text-primary-600 dark:text-primary-400 hover:underline"
+                  className="text-primary hover:underline cursor-pointer"
                 >
                   {_("accountSelector.resetSearch")}
                 </button>
@@ -276,7 +275,7 @@ export function AccountSelector({
                 <button
                   type="button"
                   onClick={() => setSelectedFolderId(null)}
-                  className="text-gray-500 dark:text-slate-400 hover:underline"
+                  className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
                 >
                   {_("accountSelector.allFolders")}
                 </button>
@@ -292,34 +291,34 @@ export function AccountSelector({
           "rounded-xl border p-2 transition-colors",
           error
             ? "border-destructive/60 bg-destructive/5"
-            : "border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/30"
+            : "border-border bg-muted/20"
         )}
       >
         {isLoading ? (
-          <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-slate-500 text-xs">
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-muted-foreground text-xs">
             <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <span>{_("accountSelector.loading")}</span>
           </div>
         ) : accounts.length === 0 ? (
           <div className="py-10 text-center space-y-2">
-            <Users className="h-8 w-8 text-gray-400 mx-auto opacity-40" />
-            <p className="text-xs text-gray-500 dark:text-slate-400">
+            <Users className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
+            <p className="text-xs text-muted-foreground">
               {_("accountSelector.noActiveAccounts")}
             </p>
           </div>
         ) : filteredAccounts.length === 0 ? (
-          <div className="py-8 text-center space-y-2 text-xs text-gray-500 dark:text-slate-400">
-            <p className="font-semibold text-gray-700 dark:text-slate-300">
+          <div className="py-8 text-center space-y-2 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">
               {_("accountSelector.noMatchingAccounts")}
             </p>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-muted-foreground">
               {_("accountSelector.noMatchingDesc")}
             </p>
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1 bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-200 rounded-lg text-xs font-medium hover:bg-gray-300 dark:hover:bg-slate-700 transition"
+                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1 bg-card border border-border text-foreground rounded-lg text-xs font-medium hover:bg-accent transition shadow-2xs cursor-pointer"
               >
                 {_("accountSelector.clearSearchBtn")}
               </button>
@@ -349,7 +348,7 @@ export function AccountSelector({
                     "flex items-center gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all duration-200 relative group",
                     isSelected
                       ? "border-primary bg-primary/10 dark:bg-primary-950/60 ring-2 ring-primary/20 shadow-xs"
-                      : "border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-gray-300 dark:hover:border-slate-700 hover:bg-gray-50/50 dark:hover:bg-slate-800/40",
+                      : "border-border bg-card hover:border-slate-300 dark:hover:border-slate-700 hover:bg-muted/40",
                     disabled && "pointer-events-none opacity-60"
                   )}
                 >
@@ -377,7 +376,7 @@ export function AccountSelector({
                   {/* Account Name & Handle */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-slate-100 truncate">
+                      <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
                         {displayName}
                       </p>
                       {/* Premium indicator */}
@@ -385,7 +384,7 @@ export function AccountSelector({
                         <Star className="size-3 text-amber-500 fill-amber-500 shrink-0" />
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-500 dark:text-slate-400 font-mono truncate">
+                    <p className="text-[11px] text-muted-foreground font-mono truncate">
                       {acc.username ? `@${acc.username}` : acc.phone}
                     </p>
                   </div>
@@ -406,7 +405,7 @@ export function AccountSelector({
                           "w-2 h-2 rounded-full",
                           acc.is_active
                             ? "bg-emerald-500 shadow-xs shadow-emerald-500/50"
-                            : "bg-red-400"
+                            : "bg-rose-500"
                         )}
                         title={acc.is_active ? "Aktif" : "Tidak Aktif"}
                       />

@@ -107,7 +107,7 @@ export function DateTimePicker({
               role="button"
               tabIndex={0}
               onClick={handleClear}
-              className="p-0.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors ml-1 shrink-0"
+              className="p-0.5 hover:bg-muted dark:hover:bg-slate-700 rounded-full text-muted-foreground hover:text-foreground transition-colors ml-1 shrink-0"
               title="Clear"
             >
               <X className="size-3.5" />
@@ -116,7 +116,7 @@ export function DateTimePicker({
         </PopoverTrigger>
         <PopoverContent
           positionerClassName={positionerClassName}
-          className="w-auto p-0 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl overflow-hidden"
+          className="w-auto p-0 border border-border bg-popover text-popover-foreground shadow-xl rounded-2xl overflow-hidden"
           align="start"
         >
           <Calendar

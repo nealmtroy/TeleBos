@@ -942,12 +942,12 @@ function BroadcastManagementContent() {
                         <div className="flex items-center justify-end gap-1.5">
                           {job.status === "running" && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               title="Pause Job"
                               onClick={() => handlePause(job)}
                               disabled={isMutating}
-                              className="h-8 w-8 p-0 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700"
+                              className="h-8 w-8 p-0 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 shadow-2xs"
                             >
                               <Pause className="h-4 w-4" />
                             </Button>
@@ -955,12 +955,12 @@ function BroadcastManagementContent() {
 
                           {job.status === "paused" && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               title="Resume Job"
                               onClick={() => handleResume(job)}
                               disabled={isMutating}
-                              className="h-8 w-8 p-0 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700"
+                              className="h-8 w-8 p-0 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-2xs"
                             >
                               <Play className="h-4 w-4" />
                             </Button>
@@ -968,24 +968,24 @@ function BroadcastManagementContent() {
 
                           {(job.status === "running" || job.status === "paused") && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               title="Stop Job"
                               onClick={() => handleStop(job)}
                               disabled={isMutating}
-                              className="h-8 w-8 p-0 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700"
+                              className="h-8 w-8 p-0 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 shadow-2xs"
                             >
                               <Square className="h-3.5 w-3.5" />
                             </Button>
                           )}
 
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             title="Delete Job"
                             onClick={() => handleDelete(job)}
                             disabled={isMutating}
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                            className="h-8 w-8 p-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-muted-foreground hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 shadow-2xs"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

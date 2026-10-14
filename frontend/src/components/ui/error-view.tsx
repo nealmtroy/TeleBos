@@ -55,37 +55,37 @@ const statusConfigs: Record<ErrorStatusCode, StatusConfig> = {
   401: {
     icon: KeyRound,
     badgeColor:
-      "bg-indigo-50 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60",
-    accentGlow: "from-indigo-500/15 via-violet-500/10 to-transparent",
-    gradientText: "from-indigo-500 via-violet-500 to-purple-600",
+      "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",
+    accentGlow: "from-amber-500/15 via-amber-500/10 to-transparent",
+    gradientText: "from-amber-500 via-amber-600 to-amber-700",
   },
   403: {
     icon: ShieldAlert,
     badgeColor:
       "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60",
-    accentGlow: "from-rose-500/15 via-pink-500/10 to-transparent",
-    gradientText: "from-rose-500 via-pink-500 to-red-600",
+    accentGlow: "from-rose-500/15 via-rose-500/10 to-transparent",
+    gradientText: "from-rose-500 via-rose-600 to-red-600",
   },
   404: {
     icon: Compass,
     badgeColor:
       "bg-sky-50 text-sky-700 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60",
     accentGlow: "from-sky-500/15 via-blue-500/10 to-transparent",
-    gradientText: "from-sky-500 via-blue-500 to-indigo-600",
+    gradientText: "from-sky-500 via-blue-500 to-blue-700",
   },
   500: {
     icon: ServerCrash,
     badgeColor:
-      "bg-red-50 text-red-700 border-red-200/80 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800/60",
-    accentGlow: "from-red-500/15 via-orange-500/10 to-transparent",
-    gradientText: "from-red-500 via-rose-500 to-orange-600",
+      "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60",
+    accentGlow: "from-rose-500/15 via-rose-500/10 to-transparent",
+    gradientText: "from-rose-500 via-red-600 to-rose-700",
   },
   503: {
     icon: Wrench,
     badgeColor:
       "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",
-    accentGlow: "from-amber-500/15 via-yellow-500/10 to-transparent",
-    gradientText: "from-amber-500 via-yellow-500 to-orange-600",
+    accentGlow: "from-amber-500/15 via-amber-500/10 to-transparent",
+    gradientText: "from-amber-500 via-amber-600 to-amber-700",
   },
 };
 
@@ -324,7 +324,7 @@ export function ErrorView({
               {showDetails && (
                 <div className="relative mt-2 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-mono text-xs shadow-inner overflow-hidden">
                   <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-[11px] text-slate-400">Digest / Message</span>
+                    <span className="text-[11px] text-muted-foreground">Digest / Message</span>
                     <button
                       type="button"
                       onClick={handleCopyDetails}

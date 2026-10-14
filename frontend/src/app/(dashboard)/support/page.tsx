@@ -204,9 +204,9 @@ const SUPPORT_CATEGORIES: CategoryOption[] = [
     badge: "Keamanan",
     desc: "Pengaturan 2FA, session string MTProto, bot telegram authenticator, dan privasi login.",
     icon: ShieldCheck,
-    color: "text-indigo-500",
-    bgLight: "bg-indigo-500/10",
-    borderLight: "border-indigo-500/20",
+    color: "text-blue-600 dark:text-blue-400",
+    bgLight: "bg-blue-500/10",
+    borderLight: "border-blue-500/20",
     welcomePrompt:
       "Halo! Saya asisten keamanan TeleBos. Ingin bertanya tentang autentikasi dua faktor (2FA), menghubungkan bot Telegram, atau perlindungan akun?",
     quickStarters: [
@@ -222,9 +222,9 @@ const SUPPORT_CATEGORIES: CategoryOption[] = [
     badge: "Layanan",
     desc: "Pemesanan views, reactions, members Telegram, beli/jual akun, dan kebijakan refund pesanan.",
     icon: ShoppingCart,
-    color: "text-purple-500",
-    bgLight: "bg-purple-500/10",
-    borderLight: "border-purple-500/20",
+    color: "text-primary",
+    bgLight: "bg-primary/10",
+    borderLight: "border-primary/20",
     welcomePrompt:
       "Halo! Saya siap membantu seputar **Layanan SMM & Marketplace Akun Telegram**. Anda bisa mengecek status pesanan atau menanyakan aturan refund otomatis.",
     quickStarters: [
@@ -635,10 +635,10 @@ export default function SupportPage() {
               <div className="px-5 py-3.5 bg-card border-b border-border flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={handleResetCategory}
-                    className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                    className="h-8 px-2.5 text-xs gap-1.5 border border-slate-300 dark:border-slate-700 bg-card text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg shadow-2xs"
                     title="Kembali ke pemilihan kategori"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -685,10 +685,10 @@ export default function SupportPage() {
                   </Button>
 
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
                     onClick={() => handleSelectCategory(selectedCategory)}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 border-slate-300 dark:border-slate-700 bg-card shadow-2xs text-muted-foreground hover:text-foreground"
                     title="Bersihkan riwayat percakapan saat ini"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
@@ -1112,10 +1112,10 @@ export default function SupportPage() {
 
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => setSelectedTicketDetail(t)}
-                              className="h-8 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                              className="h-7 px-2.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-primary shadow-2xs"
                             >
                               Detail
                             </Button>

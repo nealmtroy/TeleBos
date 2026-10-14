@@ -574,11 +574,11 @@ const FORMAT_LABELS: Record<SessionFormat, string> = {
 };
 
 const FORMAT_COLORS: Record<SessionFormat, string> = {
-  telethon: "border-blue-400 text-blue-700 bg-blue-50",
-  gramjs: "border-sky-400 text-sky-700 bg-sky-50",
-  pyrogram: "border-red-400 text-red-700 bg-red-50",
-  raw_base64: "border-gray-400 text-gray-600 bg-gray-50",
-  unknown: "border-amber-400 text-amber-700 bg-amber-50",
+  telethon: "border-blue-400 text-blue-700 bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-950/40",
+  gramjs: "border-sky-400 text-sky-700 bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:bg-sky-950/40",
+  pyrogram: "border-rose-400 text-rose-700 bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:bg-rose-950/40",
+  raw_base64: "border-slate-400 text-slate-600 bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:bg-slate-900/40",
+  unknown: "border-amber-400 text-amber-700 bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:bg-amber-950/40",
 };
 
 function UploadSessionForm() {
@@ -611,14 +611,14 @@ function UploadSessionForm() {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 px-4 py-3 rounded-xl text-sm flex items-start gap-2 shadow-2xs">
           <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       <div>
-        <label htmlFor="session-string" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="session-string" className="block text-sm font-medium text-foreground mb-1.5">
           {_("addAccount.sessionLabel")}
         </label>
         <textarea
@@ -628,7 +628,7 @@ function UploadSessionForm() {
           onChange={(e) => setSessionString(e.target.value)}
           rows={6}
           placeholder={_("addAccount.sessionPlaceholder")}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none font-mono text-sm"
+          className="w-full px-4 py-2.5 border border-border/80 bg-background dark:bg-slate-900/80 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-mono text-sm text-foreground shadow-2xs"
         />
 
         {/* Format detection badge */}
@@ -643,19 +643,19 @@ function UploadSessionForm() {
               {_(FORMAT_LABELS[detectedFormat])}
             </span>
             {detectedFormat !== "unknown" && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {_("addAccount.sessionFormatDetected")}
               </span>
             )}
             {detectedFormat === "unknown" && (
-              <span className="text-xs text-amber-600">
+              <span className="text-xs text-amber-600 dark:text-amber-400">
                 {_("addAccount.sessionInvalidFormat")}
               </span>
             )}
           </div>
         )}
 
-        <p className="text-xs text-gray-400 mt-2">
+        <p className="text-xs text-muted-foreground mt-2">
           {_("addAccount.sessionHint")}
         </p>
       </div>
@@ -663,7 +663,7 @@ function UploadSessionForm() {
       <button
         onClick={handleSubmit}
         disabled={loading || !sessionString}
-        className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300 transition"
+        className="w-full py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 disabled:bg-muted disabled:text-muted-foreground transition shadow-2xs"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">

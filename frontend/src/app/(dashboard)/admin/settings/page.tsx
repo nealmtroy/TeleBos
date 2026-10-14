@@ -320,7 +320,7 @@ export default function AdminSystemConfigPage() {
             value="system"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-card-foreground data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 whitespace-nowrap cursor-pointer transition-colors"
           >
-            <Lock className="h-4 w-4 text-purple-500" />
+            <Lock className="h-4 w-4 text-rose-500" />
             <span>Sistem & Keamanan</span>
           </TabsTrigger>
         </TabsList>

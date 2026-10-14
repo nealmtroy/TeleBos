@@ -9,7 +9,7 @@ interface AnalyticsChartProps {
   metricLabel: string;
   secondaryLabel?: string;
   formatValue?: (val: number) => string;
-  color?: "blue" | "emerald" | "amber" | "purple" | "indigo" | "rose";
+  color?: "blue" | "sky" | "emerald" | "amber" | "rose" | "slate";
   height?: number;
   emptyMessage?: string;
   isLoading?: boolean;
@@ -109,19 +109,19 @@ export function AnalyticsAreaChart({
       dot: "bg-amber-500",
       text: "text-amber-500",
     },
-    purple: {
-      stroke: "#a855f7",
-      fillStart: "rgba(168, 85, 247, 0.35)",
-      fillEnd: "rgba(168, 85, 247, 0.0)",
-      dot: "bg-purple-500",
-      text: "text-purple-500",
+    sky: {
+      stroke: "#0ea5e9",
+      fillStart: "rgba(14, 165, 233, 0.35)",
+      fillEnd: "rgba(14, 165, 233, 0.0)",
+      dot: "bg-sky-500",
+      text: "text-sky-500",
     },
-    indigo: {
-      stroke: "#6366f1",
-      fillStart: "rgba(99, 102, 241, 0.35)",
-      fillEnd: "rgba(99, 102, 241, 0.0)",
-      dot: "bg-indigo-500",
-      text: "text-indigo-500",
+    slate: {
+      stroke: "#64748b",
+      fillStart: "rgba(100, 116, 139, 0.35)",
+      fillEnd: "rgba(100, 116, 139, 0.0)",
+      dot: "bg-slate-500",
+      text: "text-slate-500",
     },
     rose: {
       stroke: "#f43f5e",

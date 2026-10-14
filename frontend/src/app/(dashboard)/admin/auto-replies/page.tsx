@@ -58,10 +58,10 @@ export default function AdminAutoRepliesPage() {
 
   if (currentUser?.role !== "owner") {
     return (
-      <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 mt-6">
-        <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
-        <p className="text-sm text-gray-500">Only system owners can manage platform auto-reply responders.</p>
+      <div className="text-center py-20 bg-card rounded-2xl border border-border mt-6 shadow-xs">
+        <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground/40" />
+        <h3 className="font-semibold text-foreground mb-1">Access Denied</h3>
+        <p className="text-sm text-muted-foreground">Only system owners can manage platform auto-reply responders.</p>
       </div>
     );
   }
@@ -109,14 +109,14 @@ function AutoReplyManagementContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
               <Bot className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">
                 {_("admin.manageAutoReplies") || "Auto-Reply Management"}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {_("admin.autoRepliesDesc") || "Monitor and control auto-reply bot responders across accounts"}
               </p>
             </div>
@@ -397,15 +397,15 @@ function AutoReplyManagementContent() {
                       {/* Actions */}
                       <TableCell className="py-3.5 px-4 text-right whitespace-normal">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           disabled={toggleMutation.isPending}
                           onClick={() => toggleMutation.mutate(item.id)}
                           className={cn(
-                            "h-8 px-2.5 text-xs font-medium transition rounded-lg",
+                            "h-7 px-2.5 text-xs font-semibold transition rounded-lg shadow-2xs",
                             item.auto_reply_enabled
-                              ? "text-rose-600 hover:text-rose-700 hover:bg-rose-500/10"
-                              : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                              ? "border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
+                              : "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
                           )}
                           title={item.auto_reply_enabled ? "Turn OFF Auto-Reply" : "Turn ON Auto-Reply"}
                         >

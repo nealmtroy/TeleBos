@@ -18,9 +18,11 @@ const config: Config = {
         "fd-secondary": "hsl(var(--secondary))",
         "fd-background": "hsl(var(--background))",
         "fd-muted-foreground": "hsl(var(--muted-foreground))",
+        "primary-hover": "#1d4ed8",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "#1d4ed8",
           50: "#eff6ff",
           100: "#dbeafe",
           200: "#bfdbfe",

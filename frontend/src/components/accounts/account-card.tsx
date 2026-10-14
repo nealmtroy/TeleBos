@@ -41,18 +41,18 @@ function CopyableId({ id }: { id: number | null }) {
     }
   }, [id]);
 
-  if (id === null || id === undefined) return <span className="text-sm text-gray-400">—</span>;
+  if (id === null || id === undefined) return <span className="text-sm text-muted-foreground">—</span>;
 
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center gap-1 text-sm font-mono text-gray-900 hover:text-primary-600 transition-colors group cursor-pointer"
+      className="inline-flex items-center gap-1 text-sm font-mono text-foreground hover:text-primary transition-colors group cursor-pointer"
     >
       <span>{id}</span>
       {copied ? (
-        <Check className="h-3 w-3 text-green-500" />
+        <Check className="h-3 w-3 text-emerald-500" />
       ) : (
-        <Copy className="h-3 w-3 text-gray-400 group-hover:text-primary-500 transition-colors" />
+        <Copy className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
       )}
     </button>
   );
@@ -163,16 +163,14 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
   return (
     <div
       className={cn(
-        "rounded-xl transition-all h-full flex flex-col justify-between relative overflow-hidden",
-        account.is_premium
-          ? "bg-gradient-to-b from-purple-50/70 via-white to-indigo-50/20 dark:from-purple-950/25 dark:via-slate-800 dark:to-indigo-950/20 border-2 border-purple-400/80 dark:border-purple-500/70 shadow-sm shadow-purple-500/10 hover:shadow-purple-500/20"
-          : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+        "rounded-xl transition-all h-full flex flex-col justify-between relative overflow-hidden bg-card text-card-foreground border border-border shadow-xs hover:border-slate-300 dark:hover:border-slate-700",
+        account.is_premium && "border-sky-300 dark:border-sky-700/80 shadow-xs"
       )}
     >
       {/* Telegram Premium Top-Right Badge */}
       {account.is_premium && (
-        <div className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 text-white shadow-xs shadow-purple-500/30">
-          <Star className="h-3 w-3 fill-amber-300 text-amber-300 animate-pulse" />
+        <div className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 shadow-2xs">
+          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
           <span>Premium</span>
         </div>
       )}
@@ -191,31 +189,31 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
             isActive={account.is_active}
             profilePhotoPath={account.profile_photo_path}
             size="xl"
-            className={account.is_premium ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-800" : undefined}
+            className={account.is_premium ? "ring-2 ring-sky-500 ring-offset-2 ring-offset-card" : undefined}
           />
           <div className="min-w-0 flex-1">
             <div className={cn("flex items-center gap-1.5 min-w-0", account.is_premium && "pr-20")}>
-              <h2 className="font-semibold text-sm text-gray-900 dark:text-slate-100 truncate">
+              <h2 className="font-semibold text-sm text-foreground truncate">
                 {account.first_name || _("accountCard.unnamed")} {account.last_name || ""}
               </h2>
               {account.is_premium && (
-                <span title="Telegram Premium" className="inline-flex items-center shrink-0 text-purple-600 dark:text-purple-400">
-                  <Star className="h-3.5 w-3.5 fill-purple-600 dark:fill-purple-400" />
+                <span title="Telegram Premium" className="inline-flex items-center shrink-0 text-amber-500">
+                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
                 </span>
               )}
             </div>
             {account.username && (
-              <p className="text-xs text-gray-500 dark:text-slate-300 truncate">@{account.username}</p>
+              <p className="text-xs text-muted-foreground truncate">@{account.username}</p>
             )}
-            <p className="text-xs text-gray-500 dark:text-slate-300 truncate">{account.phone}</p>
+            <p className="text-xs text-muted-foreground truncate">{account.phone}</p>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[11px] text-gray-500 dark:text-slate-300 font-medium">User ID:</span>
+              <span className="text-[11px] text-muted-foreground font-medium">User ID:</span>
               <CopyableId id={account.telegram_id} />
             </div>
             {account.est_reg_date_age && (
-              <div className="flex items-center gap-1 mt-0.5 text-[11px] text-gray-500 dark:text-slate-300">
-                <span className="text-gray-500 dark:text-slate-300 font-medium">Est. Age:</span>
-                <span className="font-semibold text-gray-800 dark:text-slate-100" title={account.est_reg_date_status || undefined}>
+              <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
+                <span className="text-muted-foreground font-medium">Est. Age:</span>
+                <span className="font-semibold text-foreground" title={account.est_reg_date_status || undefined}>
                   {account.est_reg_date_age}
                 </span>
               </div>
@@ -259,7 +257,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               <button
                 onClick={handleRefresh}
                 disabled={refreshing || isRestricted}
-                className="ml-auto hover:text-primary-600 dark:hover:text-primary-400 transition disabled:opacity-50"
+                className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 dark:border-slate-700 bg-card text-foreground shadow-2xs hover:bg-muted transition-colors disabled:opacity-50 cursor-pointer"
                 title="Refresh stats now"
               >
                 <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
@@ -267,7 +265,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
             </div>
           </>
         ) : (
-          <p className="text-xs text-gray-400 dark:text-slate-400">—</p>
+          <p className="text-xs text-muted-foreground">—</p>
         )}
       </div>
 
@@ -292,13 +290,13 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
           </Badge>
         )}
         {account.is_premium && (
-          <Badge variant="outline" className="gap-1 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-950/60 dark:to-indigo-950/60 dark:text-purple-300 border-purple-300/80 dark:border-purple-700/80 font-semibold">
-            <Star className="h-2.5 w-2.5 fill-purple-600 text-purple-600 dark:fill-purple-400 dark:text-purple-400" />
+          <Badge variant="outline" className="gap-1 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-300/80 dark:border-sky-700/80 font-semibold">
+            <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
             TG Premium
           </Badge>
         )}
         {account.is_resale && (
-          <Badge variant="secondary" className="bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-semibold">
+          <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-semibold">
             Resale
           </Badge>
         )}
@@ -309,7 +307,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
         <div className="grid grid-cols-2 gap-1.5">
           <button
             onClick={() => onView(account.id)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-100 bg-gray-50 dark:bg-slate-700/60 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent dark:border-slate-600/40 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
           >
             <Eye className="h-3.5 w-3.5" />
             {_("accountCard.viewDetails")}
@@ -317,7 +315,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
           <Link
             href={`/chats?account=${account.id}`}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-100 bg-gray-50 dark:bg-slate-700/60 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent dark:border-slate-600/40 rounded-lg transition-colors",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xs transition-colors",
               isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
             tabIndex={isRestricted ? -1 : undefined}
@@ -330,7 +328,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
           <Link
             href={`/contacts?account=${account.id}`}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-100 bg-gray-50 dark:bg-slate-700/60 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent dark:border-slate-600/40 rounded-lg transition-colors",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xs transition-colors",
               isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
             tabIndex={isRestricted ? -1 : undefined}
@@ -341,7 +339,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
           <Link
             href={`/accounts/${account.id}/groups-channels`}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-slate-100 bg-gray-50 dark:bg-slate-700/60 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent dark:border-slate-600/40 rounded-lg transition-colors",
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xs transition-colors",
               isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
             )}
             tabIndex={isRestricted ? -1 : undefined}
@@ -356,7 +354,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               setPendingDelete(account.id);
               setDeleteOpen(true);
             }}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 dark:text-rose-300 bg-red-50 dark:bg-rose-950/30 hover:bg-red-100 dark:hover:bg-rose-900/40 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/60 rounded-lg shadow-2xs transition-colors cursor-pointer"
           >
             <Trash2 className="h-3.5 w-3.5" />
             {_("accountCard.delete")}
@@ -364,7 +362,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
           {account.for_sale ? (
             <button
               onClick={() => setCancelSellOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 dark:text-rose-300 bg-red-50 dark:bg-rose-950/30 hover:bg-red-100 dark:hover:bg-rose-900/40 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/60 rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
               {_("orders.cancelSell")}
@@ -374,7 +372,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               onClick={() => setSellOpen(true)}
               disabled={isRestricted}
               className={cn(
-                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors",
+                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800/60 rounded-lg shadow-2xs transition-colors cursor-pointer",
                 isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
               )}
             >
@@ -387,8 +385,8 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               onClick={() => onTransfer(account)}
               disabled={account.for_sale}
               className={cn(
-                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-700 dark:text-sky-300 bg-blue-50 dark:bg-sky-950/30 hover:bg-blue-100 dark:hover:bg-sky-900/40 rounded-lg transition-colors",
-                account.for_sale && "opacity-50 cursor-not-allowed hover:bg-blue-50 dark:hover:bg-sky-950/30"
+                "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-800/60 rounded-lg shadow-2xs transition-colors cursor-pointer",
+                account.for_sale && "opacity-50 cursor-not-allowed hover:bg-sky-50 dark:hover:bg-sky-950/40"
               )}
               title={account.for_sale ? "Akun sedang dijual di marketplace" : "Transfer akun ke pengguna lain"}
             >
@@ -432,14 +430,14 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               </div>
               <div className="flex justify-between">
                 <span>{_("orders.pricePerAccount")}:</span>
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-foreground">
                   Rp {(account.sell_price ?? pricing?.sell_price ?? 5500).toLocaleString()}
                 </span>
               </div>
               {account.is_resale && (
-                <div className="flex justify-between items-center text-purple-700 font-medium">
+                <div className="flex justify-between items-center text-amber-700 dark:text-amber-300 font-medium">
                   <span>Status Akun:</span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                     Resale (Akun dari Marketplace)
                   </span>
                 </div>

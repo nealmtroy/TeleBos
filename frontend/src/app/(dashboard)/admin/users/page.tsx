@@ -72,7 +72,7 @@ import {
 import { cn, formatDate } from "@/lib/utils";
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/60",
+  owner: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60",
   premium: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60",
   pro: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/60",
   basic: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
@@ -375,7 +375,7 @@ function UsersContent() {
               <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-medium border border-amber-200 dark:border-amber-800/60">
                 Premium: {stats?.total_premium_users ?? 0}
               </span>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-medium border border-purple-200 dark:border-purple-800/60">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-medium border border-rose-200 dark:border-rose-800/60">
                 Owner: {stats?.total_owner_users ?? 0}
               </span>
             </div>
@@ -389,8 +389,8 @@ function UsersContent() {
           className={cn(
             "flex items-center gap-2 p-3.5 rounded-xl text-xs font-medium shadow-sm transition-all",
             actionMsg.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-700"
-              : "bg-red-50 border border-red-200 text-red-700"
+              ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300"
+              : "bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300"
           )}
         >
           {actionMsg.type === "success" ? <RefreshCw className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
@@ -770,7 +770,7 @@ function UsersContent() {
               {/* Broadcast Activity Box */}
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-foreground uppercase tracking-wider">
-                  <Radio className="h-4 w-4 text-indigo-500" />
+                  <Radio className="h-4 w-4 text-sky-500" />
                   <span>{_("admin.broadcastStats") || "Broadcasts"}</span>
                 </div>
                 <div className="space-y-1.5 text-xs pt-1">
@@ -812,7 +812,7 @@ function UsersContent() {
             <div className="flex items-center justify-between pt-2 border-t border-border/60">
               <Link
                 href={`/admin/broadcasts?search=${encodeURIComponent(detailUser.email)}`}
-                className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+                className="inline-flex items-center gap-1 text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 font-medium"
               >
                 <span>Inspect Broadcasts</span>
                 <ExternalLink className="h-3.5 w-3.5" />

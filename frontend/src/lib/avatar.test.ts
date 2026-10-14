@@ -4,6 +4,7 @@ import {
   getAccountPhotoUrl,
   getAvatarInitial,
   getChatPhotoUrl,
+  getPublicChatPhotoUrl,
   getTelegramAvatarColor,
 } from "./avatar";
 
@@ -14,6 +15,9 @@ describe("avatar helpers", () => {
     );
     expect(getChatPhotoUrl("account-1", -10042, 99)).toBe(
       "/api/v1/accounts/account-1/chats/-10042/photo?v=99",
+    );
+    expect(getPublicChatPhotoUrl("@telegram")).toBe(
+      "/api/v1/chats/public/telegram/photo",
     );
   });
 

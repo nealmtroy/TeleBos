@@ -361,7 +361,7 @@ export default function AdminTransactionsPage() {
               </TabsTrigger>
               <TabsTrigger
                 value="redeem"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-sky-700 dark:data-[state=active]:text-sky-300 data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 transition-colors"
               >
                 <Ticket className="h-3.5 w-3.5" />
                 <span>Redeem</span>
@@ -462,7 +462,7 @@ export default function AdminTransactionsPage() {
                                 : tx.type === "withdraw"
                                 ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600"
                                 : tx.type === "redeem"
-                                ? "bg-purple-50 dark:bg-purple-950/40 text-purple-600"
+                                ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600"
                                 : "bg-amber-50 dark:bg-amber-950/40 text-amber-600"
                             )}
                           >
@@ -472,7 +472,7 @@ export default function AdminTransactionsPage() {
                             {tx.type === "admin_adjustment" && <Coins className="h-3.5 w-3.5" />}
                           </div>
                           <div>
-                            <span className="text-xs font-semibold text-gray-800 dark:text-slate-200 block capitalize">
+                            <span className="text-xs font-semibold text-foreground block capitalize">
                               {tx.type === "topup"
                                 ? "Deposit Saldo"
                                 : tx.type === "withdraw"
@@ -545,7 +545,7 @@ export default function AdminTransactionsPage() {
                                   setRejectingTx(tx);
                                   setRejectReason("");
                                 }}
-                                className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer"
+                                className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition shadow-2xs cursor-pointer"
                                 title="Tolak penarikan dana"
                               >
                                 <X className="h-4 w-4" />
@@ -557,10 +557,10 @@ export default function AdminTransactionsPage() {
                             </span>
                           ) : null}
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="xs"
                             onClick={() => setSelectedTx(tx)}
-                            className="h-8 text-xs text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 cursor-pointer"
+                            className="h-7 px-2 text-xs border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer shadow-2xs"
                           >
                             <Eye className="h-3.5 w-3.5 mr-1" />
                             <span>Detail</span>

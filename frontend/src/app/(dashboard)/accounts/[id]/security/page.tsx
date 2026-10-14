@@ -25,7 +25,7 @@ export default function AccountSecurityPage() {
         <Link
           href={`/accounts/${id}`}
           aria-label={_("accountDetail.backToAccounts")}
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition shadow-2xs focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <ArrowLeft className="size-4" />
         </Link>

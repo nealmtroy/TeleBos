@@ -267,7 +267,7 @@ function DashboardContent() {
                 {
                   label: "Owner",
                   value: stats?.total_owner_users ?? 0,
-                  color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+                  color: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
                 },
               ]}
             />
@@ -312,7 +312,7 @@ function DashboardContent() {
               icon={Send}
               label={_("admin.totalBroadcastJobs") || "Broadcast Jobs"}
               value={stats?.total_broadcast_jobs ?? 0}
-              color="indigo"
+              color="sky"
               href="/admin/broadcasts"
               breakdown={[
                 {
@@ -445,7 +445,7 @@ function DashboardContent() {
               icon={ShoppingCart}
               label="SMM Orders"
               value={smmStats?.total_orders ?? 0}
-              color="indigo"
+              color="sky"
               href="/admin/smm/orders"
               breakdown={[
                 {
@@ -588,7 +588,7 @@ function DashboardContent() {
                 />
                 <div
                   style={{ width: `${userBreakdown.ownerPct}%` }}
-                  className="bg-purple-500 transition-all duration-300"
+                  className="bg-rose-500 transition-all duration-300"
                   title={`Owner: ${userBreakdown.ownerPct}%`}
                 />
               </div>
@@ -617,7 +617,7 @@ function DashboardContent() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shrink-0" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" />
                   <span className="text-muted-foreground truncate">Owner:</span>
                   <span className="font-semibold text-foreground">
                     {stats?.total_owner_users ?? 0}
@@ -739,7 +739,7 @@ function StatCard({
   icon: any;
   label: string;
   value: string | number;
-  color: "blue" | "emerald" | "amber" | "indigo" | "rose";
+  color: "blue" | "emerald" | "amber" | "sky" | "rose";
   breakdown?: Array<{ label: string; value: number | string; color?: string }>;
   prefix?: string;
   href?: string;
@@ -747,10 +747,10 @@ function StatCard({
   const router = useRouter();
 
   const colorIconMap = {
-    blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    blue: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
     emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    indigo: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+    sky: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
     rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   };
 

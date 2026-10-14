@@ -114,7 +114,7 @@ function RegisterForm() {
             {_("register.signIn")}
           </Link>
         </div>
-        <div className="rounded-[16px] border border-[var(--public-border)] p-6 sm:p-9">
+        <div className="rounded-[16px] border border-[var(--public-border)] bg-[var(--public-canvas-warm)] p-6 sm:p-9">
           <h1 className="public-display text-5xl leading-none text-[var(--public-text)]">
             {_("register.createAccount")}
           </h1>

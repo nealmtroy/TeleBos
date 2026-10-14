@@ -286,7 +286,7 @@ export function NotificationCenter() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-card text-foreground shadow-2xs transition-colors hover:bg-muted hover:text-foreground dark:border-slate-700 dark:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
           aria-label={_("notifications.open")}
         >
           <Bell className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -316,7 +316,7 @@ export function NotificationCenter() {
                 type="button"
                 onClick={() => markAllRead.mutate()}
                 disabled={markAllRead.isPending}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary-700 dark:text-primary-400 transition-colors hover:bg-primary-50 dark:hover:bg-primary-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary-200 dark:border-primary-800/80 bg-primary-50/70 dark:bg-primary-950/40 px-2 text-xs font-medium text-primary-700 dark:text-primary-300 transition-colors hover:bg-primary-100 dark:hover:bg-primary-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
               >
                 <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="hidden sm:inline">{_("notifications.markAllRead")}</span>
@@ -327,7 +327,7 @@ export function NotificationCenter() {
                 type="button"
                 onClick={() => clear.mutate()}
                 disabled={clear.isPending}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-700 dark:hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 cursor-pointer"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200/80 bg-rose-50/70 text-rose-600 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400 transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer disabled:opacity-50"
                 aria-label={_("notifications.clearAll")}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -336,7 +336,7 @@ export function NotificationCenter() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex h-8 w-8 sm:hidden items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              className="flex h-8 w-8 sm:hidden items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:border-rose-600 hover:bg-rose-600 hover:text-white dark:border-rose-800/80 dark:bg-rose-950/60 dark:text-rose-400 dark:hover:border-rose-600 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer"
               aria-label={_("common.close")}
             >
               <X className="h-4 w-4" aria-hidden="true" />

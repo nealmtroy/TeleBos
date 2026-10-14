@@ -70,9 +70,9 @@ export default function ContactsPage() {
   if (user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner") {
     return (
       <div className="text-center py-16">
-        <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="font-semibold text-gray-900 mb-1">Access Denied</h3>
-        <p className="text-sm text-gray-500">Contacts feature is not available for your plan. Upgrade to Pro or Business to access this feature.</p>
+        <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground/40" />
+        <h3 className="font-semibold text-foreground mb-1">Access Denied</h3>
+        <p className="text-sm text-muted-foreground">Contacts feature is not available for your plan. Upgrade to Pro or Business to access this feature.</p>
       </div>
     );
   }
@@ -512,14 +512,16 @@ function ContactsContent() {
         {selectedContactId ? (
           <>
             {/* Detail Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
               <button
+                type="button"
                 onClick={() => setSelectedContactId(null)}
-                className="md:hidden p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition"
+                className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-card hover:bg-accent text-muted-foreground hover:text-foreground transition shadow-2xs cursor-pointer"
+                aria-label="Kembali ke daftar kontak"
               >
-                <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-slate-400" />
+                <ArrowLeft className="h-4 w-4" />
               </button>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+              <h2 className="text-sm font-bold text-foreground">
                 {_("contacts.title")}
               </h2>
             </div>
@@ -528,10 +530,10 @@ function ContactsContent() {
             <div className="flex-1 overflow-y-auto p-6">
               {detailLoading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-300 dark:text-slate-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/60" />
                 </div>
               ) : detailError ? (
-                <div className="flex items-center justify-center py-20 text-sm text-red-400">
+                <div className="flex items-center justify-center py-20 text-sm text-rose-500">
                   {_("contacts.failedToLoad")}
                 </div>
               ) : contactDetail ? (
@@ -905,33 +907,33 @@ function ContactsContent() {
               type="button"
               disabled={exportingFormat !== null}
               onClick={() => handleExecuteExport("json")}
-              className="w-full flex items-center justify-between p-3.5 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-500 hover:bg-purple-50/20 dark:hover:bg-purple-950/20 text-left transition group cursor-pointer"
+              className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-500 hover:bg-amber-50/20 dark:hover:bg-amber-950/20 text-left transition group cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-amber-500/10 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                   <FileCode className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Format JSON (.json)</p>
-                  <p className="text-xs text-gray-400 dark:text-slate-400">Data mentah terstruktur untuk developer / integrasi API</p>
+                  <p className="text-sm font-semibold text-foreground">Format JSON (.json)</p>
+                  <p className="text-xs text-muted-foreground">Data mentah terstruktur untuk developer / integrasi API</p>
                 </div>
               </div>
               {exportingFormat === "json" ? (
-                <Loader2 className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400" />
               ) : (
-                <Download className="h-4 w-4 text-gray-400 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition" />
+                <Download className="h-4 w-4 text-muted-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition" />
               )}
             </button>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="flex justify-end p-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+        <div className="flex justify-end p-4 border-t border-border bg-muted/40">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setExportOpen(false)}
-            className="rounded-xl text-xs dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+            className="rounded-xl text-xs border-slate-300 dark:border-slate-700 bg-card shadow-2xs cursor-pointer"
           >
             Tutup
           </Button>

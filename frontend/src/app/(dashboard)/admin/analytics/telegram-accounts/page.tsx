@@ -189,8 +189,8 @@ function TelegramAccountAnalyticsContent() {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
               Live Fleet Intelligence
             </span>
             <Badge variant="outline" className="text-xs font-normal">
@@ -274,7 +274,7 @@ function TelegramAccountAnalyticsContent() {
           </Link>
         </Button>
         <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold shadow-xs">
-          <Radio className="h-3.5 w-3.5 mr-1.5 text-cyan-500" />
+          <Radio className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
           Telegram Account Analytics
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
@@ -297,7 +297,7 @@ function TelegramAccountAnalyticsContent() {
         </Button>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
           <Link href="/admin/analytics/security">
-            <Shield className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+            <Shield className="h-3.5 w-3.5 mr-1.5 text-sky-500" />
             Keamanan & Audit
           </Link>
         </Button>
@@ -310,13 +310,13 @@ function TelegramAccountAnalyticsContent() {
       </div>
 
       {/* ── System Definition & Privacy Integrity Banner ─────────────────────── */}
-      <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/20 text-xs text-foreground/80 space-y-2">
+      <div className="p-4 rounded-2xl bg-sky-500/5 border border-sky-500/20 text-xs text-foreground/80 space-y-2">
         <div className="flex items-start gap-2.5">
-          <Shield className="h-4 w-4 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
+          <Shield className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-semibold text-foreground flex items-center gap-2">
               Integritas Privasi, Status Koneksi Riil, dan Batasan Telegram
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20">
                 Zero Credential Leak Guarantee
               </span>
             </p>
@@ -334,7 +334,7 @@ function TelegramAccountAnalyticsContent() {
                 <span>Kegagalan jaringan tidak disimpulkan sebagai blokir Telegram.</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+                <Lock className="h-3.5 w-3.5 text-sky-500 shrink-0" />
                 <span>Nomor telepon disamarkan (misal: +6281****1234).</span>
               </div>
             </div>
@@ -396,7 +396,7 @@ function TelegramAccountAnalyticsContent() {
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Connection Success Rate
             </CardTitle>
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
               <Activity className="h-4 w-4" />
             </div>
           </CardHeader>
@@ -442,7 +442,7 @@ function TelegramAccountAnalyticsContent() {
             <CardTitle className="text-xs font-medium text-muted-foreground">
               Spam Limited & Dijual
             </CardTitle>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <ShieldAlert className="h-4 w-4" />
             </div>
           </CardHeader>
@@ -464,7 +464,7 @@ function TelegramAccountAnalyticsContent() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Smartphone className="h-4 w-4 text-cyan-500" />
+                <Smartphone className="h-4 w-4 text-sky-500" />
                 Status Koneksi Aktual
               </CardTitle>
               <Badge variant="outline" className="text-[11px] font-normal">
@@ -556,7 +556,7 @@ function TelegramAccountAnalyticsContent() {
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-foreground flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-purple-500" />
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
                     Dijual di Marketplace
                   </span>
                   <span className="font-mono text-muted-foreground">
@@ -569,7 +569,7 @@ function TelegramAccountAnalyticsContent() {
                 </div>
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
                     style={{
                       width: `${totalRegistered > 0 ? (sellingMarketplace / totalRegistered) * 100 : 0}%`,
                     }}
@@ -693,7 +693,7 @@ function TelegramAccountAnalyticsContent() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Users className="h-4 w-4 text-purple-500" />
+                <Users className="h-4 w-4 text-sky-500" />
                 Distribusi Paket & Kepemilikan
               </CardTitle>
               <Badge variant="outline" className="text-[11px] font-normal">
@@ -705,9 +705,9 @@ function TelegramAccountAnalyticsContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-1">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 text-xs">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-sky-500/5 border border-sky-500/20 text-xs">
               <span className="text-muted-foreground">Rata-rata Akun per User:</span>
-              <span className="font-mono font-bold text-base text-purple-600 dark:text-purple-400">
+              <span className="font-mono font-bold text-base text-sky-600 dark:text-sky-400">
                 {(planDist?.average_accounts_per_user ?? 0).toFixed(2)} akun
               </span>
             </div>
@@ -724,7 +724,7 @@ function TelegramAccountAnalyticsContent() {
                         <span className="font-mono text-muted-foreground">{count} akun</span>
                         <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-purple-500 rounded-full"
+                            className="h-full bg-sky-500 rounded-full"
                             style={{
                               width: `${totalRegistered > 0 ? (count / totalRegistered) * 100 : 0}%`,
                             }}
@@ -779,7 +779,7 @@ function TelegramAccountAnalyticsContent() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-cyan-500" />
+                <BarChart3 className="h-4 w-4 text-sky-500" />
                 Tren Penambahan & Penghapusan Akun
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -850,7 +850,7 @@ function TelegramAccountAnalyticsContent() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-cyan-500" />
+                <Clock className="h-4 w-4 text-sky-500" />
                 Riwayat Perubahan Status & Log Koneksi
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -897,7 +897,7 @@ function TelegramAccountAnalyticsContent() {
                         )}
                         {evt.phone_masked && (
                           <span className="font-mono text-muted-foreground text-[11px] flex items-center gap-1">
-                            <Lock className="h-3 w-3 text-cyan-500" />
+                            <Lock className="h-3 w-3 text-sky-500" />
                             {evt.phone_masked}
                           </span>
                         )}
@@ -933,7 +933,7 @@ function TelegramAccountAnalyticsContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Database className="h-4 w-4 text-cyan-500" />
+                <Database className="h-4 w-4 text-sky-500" />
                 Direktori Akun Telegram
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -1038,7 +1038,7 @@ function TelegramAccountAnalyticsContent() {
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
                             <span className="flex items-center gap-1">
-                              <Lock className="h-3 w-3 text-cyan-500 shrink-0" />
+                              <Lock className="h-3 w-3 text-sky-500 shrink-0" />
                               {acc.phone_masked}
                             </span>
                             {acc.username && (
@@ -1106,7 +1106,7 @@ function TelegramAccountAnalyticsContent() {
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           {acc.for_sale && (
-                            <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[9px] py-0 px-1">
+                            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] py-0 px-1">
                               Dijual
                             </Badge>
                           )}

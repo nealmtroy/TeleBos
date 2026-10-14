@@ -340,15 +340,15 @@ export default function NewBroadcastPage() {
 
         {/* Group list */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.groupList")}</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{_("newBroadcast.groupList")}</label>
           <Select
             value={groupListId || "_none"}
             onValueChange={(val) => setGroupListId(val === "_none" ? "" : val)}
           >
             <SelectTrigger
               className={cn(
-                "w-full h-11 text-sm bg-white rounded-lg",
-                attemptedSubmit && !groupListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
+                "w-full h-9 text-sm bg-card border-slate-300 dark:border-slate-700 text-foreground rounded-lg",
+                attemptedSubmit && !groupListId ? "border-rose-400 bg-rose-50/20" : ""
               )}
             >
               <SelectValue placeholder={_("newBroadcast.groupListPlaceholder")} />
@@ -366,7 +366,7 @@ export default function NewBroadcastPage() {
 
         {/* Mode */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">{_("newBroadcast.mode")}</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{_("newBroadcast.mode")}</label>
           <div className="flex gap-3">
             {[
               { value: "multi_random", label: _("newBroadcast.multiRandom"), desc: _("newBroadcast.multiRandomDesc") },
@@ -376,14 +376,14 @@ export default function NewBroadcastPage() {
                 key={opt.value}
                 onClick={() => setMode(opt.value as typeof mode)}
                 className={cn(
-                  "flex-1 p-3 rounded-lg border-2 text-left transition",
+                  "flex-1 p-3 rounded-lg border text-left transition-colors cursor-pointer",
                   mode === opt.value
-                    ? "border-primary-600 bg-primary-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-2xs"
+                    : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-card"
                 )}
               >
-                <p className="text-sm font-semibold text-gray-900">{opt.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+                <p className="text-sm font-semibold text-foreground">{opt.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
               </button>
             ))}
           </div>
@@ -392,15 +392,15 @@ export default function NewBroadcastPage() {
         {/* Text list / custom text */}
         {mode === "multi_random" ? (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.textList")}</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{_("newBroadcast.textList")}</label>
             <Select
               value={textListId || "_none"}
               onValueChange={(val) => setTextListId(val === "_none" ? "" : val)}
             >
               <SelectTrigger
                 className={cn(
-                  "w-full h-11 text-sm bg-white rounded-lg",
-                  attemptedSubmit && !textListId ? "border-red-300 bg-red-50/10" : "border-gray-300"
+                  "w-full h-9 text-sm bg-card border-slate-300 dark:border-slate-700 text-foreground rounded-lg",
+                  attemptedSubmit && !textListId ? "border-rose-400 bg-rose-50/20" : ""
                 )}
               >
                 <SelectValue placeholder={_("newBroadcast.textListPlaceholder")} />
@@ -417,7 +417,7 @@ export default function NewBroadcastPage() {
           </div>
         ) : (
           <div>
-            <label htmlFor="broadcast-custom-text" className="block text-sm font-medium text-gray-700 mb-1">{_("newBroadcast.messageText")}</label>
+            <label htmlFor="broadcast-custom-text" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{_("newBroadcast.messageText")}</label>
             <Textarea
               id="broadcast-custom-text"
               name="customText"
@@ -426,8 +426,8 @@ export default function NewBroadcastPage() {
               rows={3}
               placeholder={_("newBroadcast.messagePlaceholder")}
               className={cn(
-                "resize-none transition-all duration-200",
-                attemptedSubmit && !customText.trim() ? "border-red-300 bg-red-50/10 focus-visible:ring-red-500" : ""
+                "resize-none transition-all duration-200 border-slate-300 dark:border-slate-700 bg-card text-foreground",
+                attemptedSubmit && !customText.trim() ? "border-rose-400 bg-rose-50/20 focus-visible:ring-rose-500" : ""
               )}
             />
           </div>
@@ -441,14 +441,14 @@ export default function NewBroadcastPage() {
               checked={delayRandomized}
               onCheckedChange={(checked) => setDelayRandomized(!!checked)}
             />
-            <label htmlFor="delayRandomized" className="text-sm font-medium text-gray-700 cursor-pointer">
+            <label htmlFor="delayRandomized" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
               Randomize Delay per Group (5-30 seconds)
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="broadcast-delay-per-group" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="broadcast-delay-per-group" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {_("newBroadcast.delayPerGroup")}
               </label>
               <input
@@ -463,12 +463,12 @@ export default function NewBroadcastPage() {
                   setDelayPerGroup(val);
                 }}
                 placeholder="5"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                className="w-full h-9 px-3 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-card text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:bg-muted disabled:text-muted-foreground transition-colors"
               />
-              <p className="text-xs text-gray-400 mt-1">{_("newBroadcast.delayPerGroupSuffix")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{_("newBroadcast.delayPerGroupSuffix")}</p>
             </div>
             <div>
-              <label htmlFor="broadcast-delay-after-all" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="broadcast-delay-after-all" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {_("newBroadcast.delayAfterAll")}
               </label>
               <input
@@ -482,16 +482,16 @@ export default function NewBroadcastPage() {
                   setDelayAfterAll(val);
                 }}
                 placeholder="60"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                className="w-full h-9 px-3 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-card text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
               />
-              <p className="text-xs text-gray-400 mt-1">{_("newBroadcast.delayAfterAllSuffix")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{_("newBroadcast.delayAfterAllSuffix")}</p>
             </div>
           </div>
         </div>
 
         {/* Cycle log destination */}
         <div className="space-y-2">
-          <label htmlFor="broadcast-log-destination" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="broadcast-log-destination" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
             Cycle Log Destination
           </label>
           <div className="flex items-center gap-2">
@@ -500,7 +500,7 @@ export default function NewBroadcastPage() {
               checked={logWebOnly}
               onCheckedChange={(checked) => setLogWebOnly(!!checked)}
             />
-            <label htmlFor="logWebOnly" className="text-sm text-gray-700 cursor-pointer">
+            <label htmlFor="logWebOnly" className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
               Web only (don&apos;t send cycle logs to Telegram)
             </label>
           </div>
@@ -513,9 +513,9 @@ export default function NewBroadcastPage() {
             value={logDestination}
             onChange={(e) => setLogDestination(e.target.value)}
             placeholder="@teleboslogging_bot or user_id"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100 disabled:text-gray-500"
+            className="w-full h-9 px-3 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-card text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:bg-muted disabled:text-muted-foreground transition-colors"
           />
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             The broadcasting account will send each cycle&apos;s summary here. Default: @teleboslogging_bot
           </p>
         </div>
@@ -547,13 +547,13 @@ export default function NewBroadcastPage() {
         <button
           onClick={handlePreStart}
           disabled={startMutation.isPending}
-          className="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 transition flex items-center justify-center gap-2"
+          className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
         >
           <Send className="h-4 w-4" />
           {startMutation.isPending ? _("newBroadcast.starting") : _("newBroadcast.startBroadcast")}
         </button>
         {startMutation.isError && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-rose-600 dark:text-rose-400">
             {(startMutation.error as any)?.response?.data?.detail || _("newBroadcast.failedToStart")}
           </p>
         )}
@@ -569,7 +569,7 @@ export default function NewBroadcastPage() {
                 Broadcast {activeJob.id.slice(0, 8)}...
               </h2>
               {wsConnected && (
-                <span className="inline-flex items-center gap-1 text-green-600 text-xs">
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs">
                   <Wifi className="h-3 w-3" /> {_("newBroadcast.live")}
                 </span>
               )}
@@ -577,10 +577,10 @@ export default function NewBroadcastPage() {
             <div className="flex items-center gap-2">
               <span className={cn(
                 "px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                activeJob.status === "running" && "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
-                activeJob.status === "paused" && "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950/50 dark:text-yellow-300 dark:border-yellow-800",
-                activeJob.status === "completed" && "bg-green-100 text-green-800 border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800",
-                activeJob.status === "failed" && "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800",
+                activeJob.status === "running" && "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800",
+                activeJob.status === "paused" && "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
+                activeJob.status === "completed" && "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
+                activeJob.status === "failed" && "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
                 activeJob.status === "cancelled" && "bg-muted text-muted-foreground border-border",
               )}>
                 {activeJob.status}
@@ -591,14 +591,14 @@ export default function NewBroadcastPage() {
                 <>
                   <button
                     onClick={() => actionMutation.mutate({ jobId: activeJob.id, action: "pause" })}
-                    className="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-900/70 rounded-lg hover:bg-yellow-200 transition"
+                    className="p-1.5 bg-amber-50 text-amber-700 border border-amber-200 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-400 rounded-lg hover:bg-amber-100 transition shadow-2xs cursor-pointer"
                     title={_("newBroadcast.pause")}
                   >
                     <Pause className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setStopConfirmOpen(true)}
-                    className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
+                    className="p-1.5 bg-rose-50 text-rose-700 border border-rose-200 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-400 rounded-lg hover:bg-rose-100 transition shadow-2xs cursor-pointer"
                     title={_("newBroadcast.stop")}
                   >
                     <Square className="h-4 w-4" />
@@ -608,7 +608,7 @@ export default function NewBroadcastPage() {
               {activeJob.status === "paused" && (
                 <button
                   onClick={() => actionMutation.mutate({ jobId: activeJob.id, action: "resume" })}
-                  className="p-1.5 bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400 dark:hover:bg-green-900/70 rounded-lg hover:bg-green-200 transition"
+                  className="p-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 transition shadow-2xs cursor-pointer"
                   title={_("newBroadcast.resume")}
                 >
                   <Play className="h-4 w-4" />
@@ -620,18 +620,18 @@ export default function NewBroadcastPage() {
           {/* Progress bar */}
           <div>
             <div className="flex items-center justify-between text-sm mb-1">
-              <span className="text-gray-500">{_("newBroadcast.progress")}</span>
-              <span className="font-medium">{activeJob.progress}%</span>
+              <span className="text-muted-foreground">{_("newBroadcast.progress")}</span>
+              <span className="font-semibold text-foreground">{activeJob.progress}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-muted border border-border rounded-full h-2.5">
               <div
                 className={cn(
                   "h-2.5 rounded-full transition-all duration-500",
                   activeJob.status === "completed"
-                    ? "bg-green-500"
+                    ? "bg-emerald-500"
                     : activeJob.status === "failed"
-                    ? "bg-red-500"
-                    : "bg-primary-600"
+                    ? "bg-rose-500"
+                    : "bg-primary"
                 )}
                 style={{ width: `${activeJob.progress}%` }}
               />
@@ -640,21 +640,21 @@ export default function NewBroadcastPage() {
 
           {/* Counters */}
           <div className="grid grid-cols-4 gap-4 text-center">
-            <div className="bg-indigo-50 rounded-lg p-3">
-              <p className="text-2xl font-bold text-indigo-700">{wsProgress?.cycle || 1}</p>
-              <p className="text-xs text-indigo-600">{_("newBroadcast.cycle")}</p>
+            <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-lg p-3">
+              <p className="text-2xl font-bold text-sky-700 dark:text-sky-300">{wsProgress?.cycle || 1}</p>
+              <p className="text-xs text-sky-600 dark:text-sky-400">{_("newBroadcast.cycle")}</p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-2xl font-bold text-gray-900">{activeJob.total_groups}</p>
-              <p className="text-xs text-gray-500">{_("newBroadcast.total")}</p>
+            <div className="bg-muted/40 border border-border rounded-lg p-3">
+              <p className="text-2xl font-bold text-foreground">{activeJob.total_groups}</p>
+              <p className="text-xs text-muted-foreground">{_("newBroadcast.total")}</p>
             </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <p className="text-2xl font-bold text-green-700">{activeJob.sent_count}</p>
-              <p className="text-xs text-green-600">{_("newBroadcast.sent")}</p>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{activeJob.sent_count}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">{_("newBroadcast.sent")}</p>
             </div>
-            <div className="bg-red-50 rounded-lg p-3">
-              <p className="text-2xl font-bold text-red-700">{activeJob.fail_count}</p>
-              <p className="text-xs text-red-600">{_("newBroadcast.failed")}</p>
+            <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg p-3">
+              <p className="text-2xl font-bold text-rose-700 dark:text-rose-300">{activeJob.fail_count}</p>
+              <p className="text-xs text-rose-600 dark:text-rose-400">{_("newBroadcast.failed")}</p>
             </div>
           </div>
 
@@ -664,7 +664,7 @@ export default function NewBroadcastPage() {
               {/* Show REST logs (historical) */}
               {historicalLogs.slice(-30).reverse().map((log) => (
                 <div key={log.id} className="px-3 py-2 text-sm flex items-center gap-2">
-                  <span className="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 px-1.5 py-0.5 rounded font-semibold font-mono">
+                  <span className="text-[10px] bg-sky-50 text-sky-800 border border-sky-200/80 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/60 px-1.5 py-0.5 rounded font-semibold font-mono">
                     C{log.cycle_number || "?"}
                   </span>
                   {log.status === "success" ? (
@@ -684,7 +684,7 @@ export default function NewBroadcastPage() {
               {wsLogs.slice(-10).reverse().map((log: any, i: number) => (
                 <div key={`live-${i}`} className="px-3 py-2 text-sm flex items-center gap-2 bg-emerald-50/50 dark:bg-emerald-950/20">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0" />
-                  <span className="text-[10px] bg-indigo-50 text-indigo-800 border border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60 px-1.5 py-0.5 rounded font-semibold font-mono">
+                  <span className="text-[10px] bg-sky-50 text-sky-800 border border-sky-200/80 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/60 px-1.5 py-0.5 rounded font-semibold font-mono">
                     C{log.cycle || "?"}
                   </span>
                   <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />

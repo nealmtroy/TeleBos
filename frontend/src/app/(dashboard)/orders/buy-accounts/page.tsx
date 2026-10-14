@@ -486,10 +486,10 @@ export default function BuyAccountsPage() {
             {/* Clear Filters Button */}
             {hasActiveFilters && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={clearAllFilters}
-                className="h-9 text-xs text-muted-foreground hover:text-foreground"
+                className="h-9 px-3 rounded-lg text-xs font-medium border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 shadow-2xs"
               >
                 {_("orders.resetFilter") || "Reset"}
               </Button>

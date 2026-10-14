@@ -341,7 +341,7 @@ export function ChatLeftColumn({
                     setFolderFilter({ type: "archived" });
                   }}
                 >
-                  <div className="tg-menu-icon-bg bg-indigo-500 text-white">
+                  <div className="tg-menu-icon-bg bg-slate-600 text-white">
                     <Archive className="w-4 h-4" />
                   </div>
                   <span className="flex-1 text-left font-medium text-sm">Archived Chats</span>

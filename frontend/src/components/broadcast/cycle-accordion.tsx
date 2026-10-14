@@ -89,7 +89,7 @@ export default function CycleAccordion({
               <AccordionTrigger className="px-5 py-3.5 hover:no-underline hover:bg-muted/50">
                 <div className="flex items-center gap-3">
                   {/* Cycle badge */}
-                  <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-full font-semibold border border-indigo-200/50 dark:border-indigo-800/50">
+                  <span className="inline-flex items-center gap-1 text-xs bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 px-2.5 py-1 rounded-full font-semibold border border-sky-200/50 dark:border-sky-800/50">
                     <Layers className="h-3.5 w-3.5" />
                     C{cycle.cycleNumber}
                   </span>
