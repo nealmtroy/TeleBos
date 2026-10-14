@@ -291,6 +291,16 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "PHONE_NUMBER_FLOOD" in msg:
         return ("phone_flood", "Too many verification requests for this phone number. Please try again later.")
 
+    if (
+        "USER_DEACTIVATED" in msg.upper()
+        or "USER DEACTIVATED" in msg.upper()
+        or "HAS BEEN DEACTIVATED" in msg.upper()
+    ):
+        return ("user_deactivated", "The sending account has been banned/deactivated by Telegram")
+
+    if "SESSION_REVOKED" in msg or "AUTH_KEY_UNREGISTERED" in msg or "AUTH_KEY_DUPLICATED" in msg:
+        return ("session_revoked", "Telegram session has been revoked or expired")
+
     if "FROZEN_METHOD_INVALID" in msg or "frozen accounts" in msg.lower():
         return (
             "account_frozen",

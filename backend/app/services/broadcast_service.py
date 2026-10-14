@@ -8,6 +8,7 @@ import time
 import uuid
 _uuid = uuid
 from datetime import datetime, timezone
+from typing import Any
 
 import telethon
 import telethon.errors
@@ -874,6 +875,8 @@ async def execute_broadcast(job_id: str):
     sent: int = 0
     failed: int = 0
     last_progress: int = 0
+    account_snapshots: list[dict] = []
+    account_ids: list[str] = []
 
     try:
         # ── Initial setup: copy DB data before any Telegram/network I/O ──
@@ -1036,6 +1039,73 @@ async def execute_broadcast(job_id: str):
             return
 
         current_acc_idx = 0
+
+        async def _handle_account_failure(acc_to_remove: dict[str, Any], reason: str) -> None:
+            nonlocal current_acc_idx
+            a_id = acc_to_remove["account_id"]
+            a_name = acc_to_remove.get("account_name", a_id)
+            await _push_broadcast(
+                job_id_str,
+                "account_failed",
+                {
+                    "account": a_name,
+                    "message": f"Account {a_name} session is revoked or banned ({reason}). Removing.",
+                },
+            )
+            try:
+                await event_relay.detach(a_id)
+            except Exception as detach_err:
+                logger.warning("Could not detach event_relay for account %s: %s", a_id, detach_err)
+            try:
+                await client_pool.remove(a_id)
+            except Exception as pool_err:
+                logger.warning("Could not remove client %s from pool: %s", a_id, pool_err)
+
+            try:
+                async with async_session_factory() as db_session:
+                    acc = await _account_for_log(a_id, db_session)
+                    if acc:
+                        acc.is_active = False
+                        await db_session.commit()
+            except Exception as db_err:
+                logger.warning("Could not mark account %s inactive in DB: %s", a_id, db_err)
+
+            if acc_to_remove in active_accounts:
+                active_accounts.remove(acc_to_remove)
+            if active_accounts and current_acc_idx >= len(active_accounts):
+                current_acc_idx = 0
+
+        async def _stop_job_all_accounts_failed(current_progress_val: int) -> None:
+            if pending_cycle_details:
+                await _flush_cycle_logs(
+                    job_uuid,
+                    cycle_number=current_cycle_number,
+                    details=pending_cycle_details,
+                    total_groups=total_items_count,
+                    sent=sent,
+                    failed=failed,
+                    progress=current_progress_val,
+                )
+            async with async_session_factory() as db_fail:
+                result = await db_fail.execute(
+                    select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                )
+                db_job = result.scalar_one_or_none()
+                if db_job:
+                    db_job.status = "failed"
+                    db_job.sent_count = sent
+                    db_job.fail_count = failed
+                    db_job.completed_at = datetime.now(timezone.utc)
+                    await db_fail.commit()
+            await _push_broadcast(
+                job_id_str,
+                "error",
+                {
+                    "status": "failed",
+                    "message": "All Telegram accounts have been limited or failed. Job stopped.",
+                },
+            )
+
         # joined_pool is keyed by (account_id, pkey) to prevent cross-account access_hash pollution
         joined_pool: dict[tuple[str, str], Any] = {}
         pending_pool: dict = {}
@@ -1133,6 +1203,13 @@ async def execute_broadcast(job_id: str):
                     except Exception as resolve_exc:
                         resolve_err = classify_telegram_error(resolve_exc)
                         err_type, _ = resolve_err
+                        if err_type in ("session_revoked", "user_deactivated", "phone_banned", "auth_key"):
+                            still_pending[pkey] = pitem
+                            await _handle_account_failure(selected_acc, err_type)
+                            if not active_accounts:
+                                await _stop_job_all_accounts_failed(last_progress)
+                                return
+                            continue
                         if err_type == "slowmode":
                             # Group-local limit: keep the item pending and let
                             # this account serve other groups meanwhile.
@@ -1236,36 +1313,8 @@ async def execute_broadcast(job_id: str):
                     break
 
                 if not active_accounts:
-                    if pending_cycle_details:
-                        await _flush_cycle_logs(
-                            job_uuid,
-                            cycle_number=current_cycle_number,
-                            details=pending_cycle_details,
-                            total_groups=total_items_count,
-                            sent=sent,
-                            failed=failed,
-                            progress=last_progress,
-                        )
-                    async with async_session_factory() as db_fail:
-                        result = await db_fail.execute(
-                            select(BroadcastJob).where(BroadcastJob.id == job_uuid)
-                        )
-                        db_job = result.scalar_one_or_none()
-                        if db_job:
-                            db_job.status = "failed"
-                            db_job.sent_count = sent
-                            db_job.fail_count = failed
-                            db_job.completed_at = datetime.now(timezone.utc)
-                            await db_fail.commit()
-                    await _push_broadcast(
-                        job_id_str,
-                        "error",
-                        {
-                            "status": "failed",
-                            "message": "All Telegram accounts have been limited or failed. Job stopped.",
-                        },
-                    )
-                    break
+                    await _stop_job_all_accounts_failed(last_progress)
+                    return
 
                 if selected_acc is None:
                     # Every account is on send cooldown. The wait above has
@@ -1399,15 +1448,7 @@ async def execute_broadcast(job_id: str):
                     failed += 1
                     cycle_failed += 1
                     if err_type in ("session_revoked", "user_deactivated", "phone_banned", "auth_key"):
-                        active_accounts.remove(selected_acc)
-                        await _push_broadcast(
-                            job_id_str,
-                            "account_failed",
-                            {
-                                "account": acc_name,
-                                "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
-                            },
-                        )
+                        await _handle_account_failure(selected_acc, err_type)
 
                 if client is None:
                     current_progress = (
@@ -1452,6 +1493,9 @@ async def execute_broadcast(job_id: str):
                             "account_name": acc_name,
                         },
                     )
+                    if not active_accounts:
+                        await _stop_job_all_accounts_failed(last_progress)
+                        return
                     if delay_randomized:
                         min_d = max(1, int(delay_per_group * 0.7))
                         max_d = max(min_d + 1, int(delay_per_group * 1.3))
@@ -1722,26 +1766,13 @@ async def execute_broadcast(job_id: str):
                                 "seconds": wait,
                             }
 
-                        if err_type in ("session_revoked", "user_deactivated", "phone_banned"):
-                            await _push_broadcast(
-                                job_id_str,
-                                "account_failed",
-                                {
-                                    "account": acc_name,
-                                    "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
-                                },
-                            )
-                            await event_relay.detach(acc_id_str)
-                            await client_pool.remove(acc_id_str)
-
-                            async with async_session_factory() as db_session:
-                                acc = await _account_for_log(acc_id_str, db_session)
-                                if acc:
-                                    acc.is_active = False
-                                    await db_session.commit()
-                            active_accounts.remove(selected_acc)
-                            if current_acc_idx >= len(active_accounts) and active_accounts:
-                                current_acc_idx = 0
+                        if err_type in (
+                            "session_revoked",
+                            "user_deactivated",
+                            "phone_banned",
+                            "auth_key",
+                        ):
+                            await _handle_account_failure(selected_acc, err_type)
                 finally:
                     # Release borrowed client back to pool before any delay or sleep!
                     if client is not None:
@@ -1795,6 +1826,10 @@ async def execute_broadcast(job_id: str):
                     },
                 )
 
+                if not active_accounts:
+                    await _stop_job_all_accounts_failed(last_progress)
+                    return
+
                 # Delay between groups (use flood-controlled delay if larger)
                 if delay_randomized:
                     min_d = max(1, int(delay_per_group * 0.7))
@@ -1843,16 +1878,17 @@ async def execute_broadcast(job_id: str):
                         try:
                             from app.services.broadcast_log_sender import send_job_log_message
 
-                            sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
-                            sender_client = None
-                            try:
-                                sender_client = await borrow_client(sender)
-                                await send_job_log_message(
-                                    client=sender_client, job=db_job, message=log_msg
-                                )
-                            finally:
-                                if sender_client is not None:
-                                    await release_client(sender)
+                            if active_accounts:
+                                sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
+                                sender_client = None
+                                try:
+                                    sender_client = await borrow_client(sender)
+                                    await send_job_log_message(
+                                        client=sender_client, job=db_job, message=log_msg
+                                    )
+                                finally:
+                                    if sender_client is not None:
+                                        await release_client(sender)
                         except Exception as log_exc:
                             logger.warning("Failed to send job stopped log: %s", log_exc)
 
@@ -1912,24 +1948,25 @@ async def execute_broadcast(job_id: str):
                             i.get("value", ""): i.get("type", "username") for i in items
                         }
                         # Use the most recently active account's client to send
-                        sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
-                        sender_client = None
-                        try:
-                            sender_client = await borrow_client(sender)
-                            await send_cycle_summary(
-                                client=sender_client,
-                                job=db_job_summary,
-                                cycle_number=cycle_count,
-                                group_list_name=group_list_name or "—",
-                                total_groups=len(items),
-                                active_this_round=len(items),
-                                cycle_logs=cycle_details_snapshot,
-                                accounts_by_id=accounts_by_id,
-                                item_type_by_identifier=item_type_by_id,
-                            )
-                        finally:
-                            if sender_client is not None:
-                                await release_client(sender)
+                        if active_accounts:
+                            sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
+                            sender_client = None
+                            try:
+                                sender_client = await borrow_client(sender)
+                                await send_cycle_summary(
+                                    client=sender_client,
+                                    job=db_job_summary,
+                                    cycle_number=cycle_count,
+                                    group_list_name=group_list_name or "—",
+                                    total_groups=len(items),
+                                    active_this_round=len(items),
+                                    cycle_logs=cycle_details_snapshot,
+                                    accounts_by_id=accounts_by_id,
+                                    item_type_by_identifier=item_type_by_id,
+                                )
+                            finally:
+                                if sender_client is not None:
+                                    await release_client(sender)
                 except Exception as log_exc:
                     logger.warning("cycle log send failed for job %s: %s", job_id_str, log_exc)
                 finally:

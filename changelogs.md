@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[9b9cd05d](https://github.com/nealmtroy/TeleBos/commit/9b9cd05d)**: fix(worker): scope entity cache by account_id and evict invalid channel entities
 - **[9bb8016d](https://github.com/nealmtroy/TeleBos/commit/9bb8016d)**: feat(worker): implement bounded client pool with borrow-release for 1000+ accounts and memory limits
 - **[9473b1e1](https://github.com/nealmtroy/TeleBos/commit/9473b1e1)**: feat(api): harden media endpoints, public avatar CDN caching, and camoufox turnstile solver
 - **[412d7ec0](https://github.com/nealmtroy/TeleBos/commit/412d7ec0)**: feat(ui): complete design audit component styling, token standardization, and radio-group primitives
