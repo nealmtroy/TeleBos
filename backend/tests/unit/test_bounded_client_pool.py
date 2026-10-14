@@ -166,3 +166,30 @@ def test_shared_entity_cache():
     pool.cache_entity("target-4", "entity-4")
     assert len(pool._entity_cache) == 3
     assert pool.get_cached_entity("target-4") == "entity-4"
+
+
+def test_account_scoped_entity_cache():
+    """Verify that cached entities are properly scoped to individual accounts to prevent access_hash contamination."""
+    pool = TelegramClientPool()
+
+    # Cache target-1 for account-A
+    pool.cache_entity("target-1", "entity-A", account_id="account-A")
+    # Cache target-1 for account-B
+    pool.cache_entity("target-1", "entity-B", account_id="account-B")
+
+    # Each account retrieves its own entity
+    assert pool.get_cached_entity("target-1", account_id="account-A") == "entity-A"
+    assert pool.get_cached_entity("target-1", account_id="account-B") == "entity-B"
+    # An unknown account gets None
+    assert pool.get_cached_entity("target-1", account_id="account-C") is None
+
+
+def test_evict_cached_entity():
+    """Verify explicit entity eviction from pool cache on error."""
+    pool = TelegramClientPool()
+
+    pool.cache_entity("target-bad", "invalid-entity", account_id="account-A")
+    assert pool.get_cached_entity("target-bad", account_id="account-A") == "invalid-entity"
+
+    pool.evict_cached_entity("target-bad", account_id="account-A")
+    assert pool.get_cached_entity("target-bad", account_id="account-A") is None

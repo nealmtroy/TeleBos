@@ -147,18 +147,33 @@ class TelegramClientPool:
         )
         return False
 
-    def get_cached_entity(self, key: str) -> Any | None:
-        """Retrieve a cached entity from the shared pool cache if present."""
-        if key in self._entity_cache:
-            self._entity_cache.move_to_end(key)
-            return self._entity_cache[key]
+    def get_cached_entity(self, key: str, account_id: str | None = None) -> Any | None:
+        """Retrieve a cached entity from the shared pool cache if present.
+
+        Entities are account-scoped because Telegram access_hash values are unique
+        per account. If account_id is provided, keys are scoped as '{account_id}:{key}'.
+        """
+        cache_key = f"{account_id}:{key}" if account_id else key
+        if cache_key in self._entity_cache:
+            self._entity_cache.move_to_end(cache_key)
+            return self._entity_cache[cache_key]
         return None
 
-    def cache_entity(self, key: str, entity: Any) -> None:
-        """Cache a resolved entity with bounded LRU eviction (max 2000 entries)."""
+    def cache_entity(self, key: str, entity: Any, account_id: str | None = None) -> None:
+        """Cache a resolved entity with bounded LRU eviction (max 2000 entries).
+
+        Entities are account-scoped because Telegram access_hash values are unique
+        per account. If account_id is provided, keys are scoped as '{account_id}:{key}'.
+        """
+        cache_key = f"{account_id}:{key}" if account_id else key
         if len(self._entity_cache) >= self._max_entity_cache:
             self._entity_cache.popitem(last=False)
-        self._entity_cache[key] = entity
+        self._entity_cache[cache_key] = entity
+
+    def evict_cached_entity(self, key: str, account_id: str | None = None) -> None:
+        """Evict an invalid or stale entity from the shared pool cache."""
+        cache_key = f"{account_id}:{key}" if account_id else key
+        self._entity_cache.pop(cache_key, None)
 
     @property
     def active_count(self) -> int:

@@ -1035,9 +1035,9 @@ async def execute_broadcast(job_id: str):
             )
             return
 
-        # Setup is complete and no DB session is held during the broadcast loop.
         current_acc_idx = 0
-        joined_pool: dict = {}
+        # joined_pool is keyed by (account_id, pkey) to prevent cross-account access_hash pollution
+        joined_pool: dict[tuple[str, str], Any] = {}
         pending_pool: dict = {}
         permanent_failures_pool: set = set()
         # Slowmode is a per-group limit, not an account limit: it only stops
@@ -1090,7 +1090,7 @@ async def execute_broadcast(job_id: str):
                     if not ready_accs:
                         still_pending[pkey] = pitem
                         for k, v in pending_pool.items():
-                            if k not in newly_joined and k not in joined_pool:
+                            if k not in newly_joined and not any(k == pk for (acc_k, pk) in joined_pool):
                                 still_pending[k] = v
                         break
 
@@ -1115,8 +1115,10 @@ async def execute_broadcast(job_id: str):
                             client, pitem["group_identifier"], job_id_str
                         )
                         if entities_retry:
-                            joined_pool[pkey] = entities_retry
-                            client_pool.cache_entity(pkey, entities_retry)
+                            joined_pool[(selected_acc["account_id"], pkey)] = entities_retry
+                            client_pool.cache_entity(
+                                pkey, entities_retry, account_id=selected_acc["account_id"]
+                            )
                             newly_joined.append(pkey)
                             await _push_broadcast(
                                 job_id_str,
@@ -1151,7 +1153,7 @@ async def execute_broadcast(job_id: str):
                             selected_acc["join_cooldown_until"] = time.time() + wait
                             continue
                         elif err_type == "already_invited":
-                            joined_pool[pkey] = True
+                            joined_pool[(selected_acc["account_id"], pkey)] = True
                             newly_joined.append(pkey)
                             continue
                         continue
@@ -1279,7 +1281,9 @@ async def execute_broadcast(job_id: str):
                 item_type = item.get("type", "username")
 
                 pkey = f"{item_type}:{group_identifier}"
-                cached_entity = joined_pool.get(pkey) or client_pool.get_cached_entity(pkey)
+                cached_entity = joined_pool.get((acc_id_str, pkey)) or client_pool.get_cached_entity(
+                    pkey, account_id=acc_id_str
+                )
 
                 if pkey in pending_pool:
                     continue
@@ -1654,8 +1658,8 @@ async def execute_broadcast(job_id: str):
                             log_group_id = None
 
                         if entities:
-                            joined_pool[pkey] = entities
-                            client_pool.cache_entity(pkey, entities)
+                            joined_pool[(acc_id_str, pkey)] = entities
+                            client_pool.cache_entity(pkey, entities, account_id=acc_id_str)
 
                         log_status = "success"
                         log_duration_ms = int((time.time() - start_time) * 1000)
@@ -1673,9 +1677,13 @@ async def execute_broadcast(job_id: str):
                     except Exception as exc:
                         err_type, err_msg = classify_telegram_error(exc)
 
-                        if entities:
-                            joined_pool[pkey] = entities
-                            client_pool.cache_entity(pkey, entities)
+                        if err_type == "bad_request":
+                            # ChannelInvalidError: evict invalid entity from cache so it doesn't pollute subsequent sends
+                            joined_pool.pop((acc_id_str, pkey), None)
+                            client_pool.evict_cached_entity(pkey, account_id=acc_id_str)
+                        elif entities:
+                            joined_pool[(acc_id_str, pkey)] = entities
+                            client_pool.cache_entity(pkey, entities, account_id=acc_id_str)
 
                         log_status = "error"
                         log_err_type = err_type
