@@ -3,6 +3,7 @@
 import logging
 import time
 import asyncio
+from collections import OrderedDict
 from typing import Any, Literal
 
 from telethon import TelegramClient
@@ -52,15 +53,112 @@ class TelegramClientPool:
         import asyncio
         self.receive_updates = receive_updates
         self.is_worker = is_worker
+        self.max_connected: int = int(getattr(settings, "TELEGRAM_POOL_MAX_CONNECTED", 50))
         self._locks: dict[str, asyncio.Lock] = {}
         # dict[account_id, {"client": TelegramClient, "last_accessed": float}]
         self._clients: dict[str, dict[str, Any]] = {}
+        # In-use reference counter per account to prevent LRU eviction during active operations
+        self._borrow_counts: dict[str, int] = {}
+        self._pool_cond: asyncio.Condition = asyncio.Condition()
         self._cleanup_task: asyncio.Task[None] | None = None
+        # Shared bounded LRU cache for resolved Telegram entities (max 2000 targets)
+        self._entity_cache: OrderedDict[str, Any] = OrderedDict()
+        self._max_entity_cache: int = 2000
         # Bound account connection/restore work across different accounts. Each
         # connection can perform Telegram I/O and briefly use the DB; without a
         # global bound, a reconnect storm can exhaust the shared pool.
         self._connect_semaphore = asyncio.Semaphore(3)
         self._catch_up_tasks: set[asyncio.Task[Any]] = set()
+
+    @property
+    def borrowed_count(self) -> int:
+        """Return the number of accounts currently borrowed from the pool."""
+        return len(self._borrow_counts)
+
+    def is_borrowed(self, account_id: str) -> bool:
+        """Return True if the account is currently borrowed by an in-flight operation."""
+        return self._borrow_counts.get(account_id, 0) > 0
+
+    async def borrow(
+        self,
+        account_id: str,
+        session_string: str,
+        receive_updates: bool | None = None,
+    ) -> TelegramClient | None:
+        """Borrow an active client from the connection pool.
+
+        Increments in-use borrow count so LRU eviction will not disconnect it
+        while an operation is in-flight. Callers MUST call release(account_id)
+        when done.
+        """
+        client = await self.get(account_id, session_string, receive_updates=receive_updates)
+        if client is not None:
+            self._borrow_counts[account_id] = self._borrow_counts.get(account_id, 0) + 1
+            self.touch_client(account_id)
+        return client
+
+    async def release(self, account_id: str) -> None:
+        """Release a previously borrowed client back to the pool."""
+        if account_id in self._borrow_counts:
+            cur = self._borrow_counts[account_id] - 1
+            if cur <= 0:
+                self._borrow_counts.pop(account_id, None)
+            else:
+                self._borrow_counts[account_id] = cur
+        self.touch_client(account_id)
+        try:
+            async with self._pool_cond:
+                self._pool_cond.notify_all()
+        except Exception:
+            pass
+
+    async def _evict_lru_client(self) -> bool:
+        """Evict the least-recently-used unborrowed client to respect max_connected."""
+        for attempt in range(5):
+            # Prioritize evicting unborrowed accounts
+            unborrowed = [
+                (acc_id, data.get("last_accessed", 0.0))
+                for acc_id, data in list(self._clients.items())
+                if self._borrow_counts.get(acc_id, 0) == 0
+            ]
+            if unborrowed:
+                # Sort oldest accessed first
+                unborrowed.sort(key=lambda x: x[1])
+                oldest_acc_id = unborrowed[0][0]
+                logger.info(
+                    "TelegramClientPool capacity limit (%d/%d): evicting idle client %s",
+                    len(self._clients),
+                    self.max_connected,
+                    oldest_acc_id,
+                )
+                await self.remove(oldest_acc_id, save_state=True)
+                return True
+
+            # If every client in pool is currently borrowed, wait up to 2s for one to be released
+            try:
+                async with self._pool_cond:
+                    await asyncio.wait_for(self._pool_cond.wait(), timeout=2.0)
+            except asyncio.TimeoutError:
+                pass
+
+        logger.warning(
+            "TelegramClientPool: all %d clients currently borrowed; capacity temporarily exceeded",
+            len(self._clients),
+        )
+        return False
+
+    def get_cached_entity(self, key: str) -> Any | None:
+        """Retrieve a cached entity from the shared pool cache if present."""
+        if key in self._entity_cache:
+            self._entity_cache.move_to_end(key)
+            return self._entity_cache[key]
+        return None
+
+    def cache_entity(self, key: str, entity: Any) -> None:
+        """Cache a resolved entity with bounded LRU eviction (max 2000 entries)."""
+        if len(self._entity_cache) >= self._max_entity_cache:
+            self._entity_cache.popitem(last=False)
+        self._entity_cache[key] = entity
 
     @property
     def active_count(self) -> int:
@@ -93,6 +191,9 @@ class TelegramClientPool:
         now = time.time()
         stale_keys = []
         for acc_id, data in list(self._clients.items()):
+            # Never evict a client that is actively borrowed by an in-flight operation
+            if self._borrow_counts.get(acc_id, 0) > 0:
+                continue
             client = data["client"]
             if not client.is_connected() or (now - data["last_accessed"] > CLIENT_TTL_SECONDS):
                 stale_keys.append(acc_id)
@@ -181,6 +282,8 @@ class TelegramClientPool:
                     self._clients[k]["last_accessed"] = now
 
         for acc_id in stale_keys:
+            if self._borrow_counts.get(acc_id, 0) > 0:
+                continue
             # If the lock is held, an operation is currently using this client — skip cleanup
             lock = self._locks.get(acc_id)
             if lock and lock.locked():
@@ -315,7 +418,11 @@ class TelegramClientPool:
             if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
                 logger.warning("Telegram API ID or Hash is empty/unconfigured. Skipping client creation for account %s", account_id)
                 return None
-    
+
+            # Bounded pool capacity: evict oldest idle client if capacity reached
+            if len(self._clients) >= self.max_connected:
+                await self._evict_lru_client()
+
             # Create new client with iOS device spoofing
             try:
                 phone = None
@@ -517,6 +624,13 @@ class TelegramClientPool:
         """
         lock = self._locks.setdefault(account_id, asyncio.Lock())
         async with lock:
+            self._borrow_counts.pop(account_id, None)
+            try:
+                async with self._pool_cond:
+                    self._pool_cond.notify_all()
+            except Exception:
+                pass
+
             data = self._clients.pop(account_id, None)
             if data is None or not data["client"]:
                 return

@@ -36,6 +36,40 @@ async def get_active_client(account, receive_updates: bool | None = None) -> Tel
     return client
 
 
+async def borrow_client(account, receive_updates: bool | None = None) -> TelegramClient:
+    """Decrypt session credentials and borrow a client from the connection pool with refcount tracking.
+    
+    Supports both ORM object and dictionary.
+    Raises RuntimeError if the client could not be connected.
+    """
+    if isinstance(account, dict):
+        acc_id = account.get("id") or account.get("account_id")
+        enc_session = account.get("session_string")
+    else:
+        acc_id = account.id
+        enc_session = account.session_string
+
+    session_str = decrypt(enc_session) if enc_session else None
+    if not session_str:
+        raise RuntimeError(f"Account {acc_id} has no valid session string.")
+
+    client = await client_pool.borrow(str(acc_id), session_str, receive_updates=receive_updates)
+    if client is None:
+        raise RuntimeError(f"Account {acc_id} is disconnected. Please reconnect first.")
+    return client
+
+
+async def release_client(account) -> None:
+    """Release a previously borrowed client back to the connection pool."""
+    if isinstance(account, dict):
+        acc_id = account.get("id") or account.get("account_id")
+    else:
+        acc_id = account.id
+    if acc_id:
+        await client_pool.release(str(acc_id))
+
+
+
 def parse_invite_hash(target: str) -> str | None:
     """Parse invite link hash from various invite link formats."""
     text = target.strip()

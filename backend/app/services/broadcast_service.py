@@ -32,6 +32,8 @@ fc = flood_controller
 from app.utils.telegram_errors import classify_telegram_error
 from app.utils.telethon_helpers import (
     get_active_client,
+    borrow_client,
+    release_client,
     parse_invite_hash as _invite_hash,
     parse_public_target as _public_target,
     join_and_resolve_chat as _join_and_resolve_target,
@@ -975,7 +977,9 @@ async def execute_broadcast(job_id: str):
             },
         )
 
-        # Account connection is deliberately outside the setup DB session.
+        # Account setup: claim worker leases and prepare accounts for broadcast.
+        # Clients are borrowed on-demand per-send and released immediately before sleeps,
+        # ensuring bounded memory usage across concurrent jobs without idle connection leaks.
         active_accounts = []
         for snapshot in account_snapshots:
             acc_id_str = snapshot["account_id"]
@@ -983,38 +987,36 @@ async def execute_broadcast(job_id: str):
                 # Take exclusive ownership before connecting. A live job is the
                 # authoritative claim, so the worker takes the account even if
                 # the backend still holds a lease; the backend's health loop
-                # stands down on the next pass. Without this, both processes
-                # hold a socket for one auth key and Telegram answers the stale
-                # one ("Server replied with a wrong session ID").
+                # stands down on the next pass.
                 if not await acquire_lease(acc_id_str, OWNER_WORKER, force=True):
                     logger.warning(
                         "Could not claim ownership of account %s for broadcast", acc_id_str
                     )
-                client = await get_active_client(snapshot, receive_updates=True)
-                client_pool.touch_client(acc_id_str)
-                # Attach event_relay so auto-reply continues functioning during broadcast
-                try:
-                    decrypted_session = decrypt(snapshot.get("session_string"))
-                    if decrypted_session:
+                # Verify decryptable session string
+                decrypted_session = decrypt(snapshot.get("session_string"))
+                if not decrypted_session:
+                    logger.warning("Account %s has invalid session string, skipping", acc_id_str)
+                    continue
+
+                # Attach event_relay so auto-reply continues functioning during broadcast if enabled
+                if snapshot.get("auto_reply_enabled"):
+                    try:
                         await event_relay.attach(acc_id_str, decrypted_session)
-                except Exception as attach_exc:
-                    logger.warning("Could not attach event_relay for account %s during broadcast: %s", acc_id_str, attach_exc)
+                    except Exception as attach_exc:
+                        logger.warning("Could not attach event_relay for account %s during broadcast: %s", acc_id_str, attach_exc)
+
                 active_accounts.append(
                     {
                         "account_id": acc_id_str,
                         "account_name": snapshot["account_name"],
-                        "client": client,
+                        "session_string": snapshot.get("session_string"),
                         "cooldown_until": 0.0,
                         "join_cooldown_until": 0.0,
                     }
                 )
-            except RuntimeError as connect_exc:
-                if "disconnected" in str(connect_exc).lower():
-                    logger.warning("Account %s is disconnected and excluded from broadcast: %s", acc_id_str, connect_exc)
-                else:
-                    logger.exception("Failed to connect account %s: %s", acc_id_str, connect_exc)
-            except Exception as connect_exc:
-                logger.warning("Could not connect account %s for broadcast: %s", acc_id_str, connect_exc)
+            except Exception as prep_exc:
+                logger.warning("Could not prepare account %s for broadcast: %s", acc_id_str, prep_exc)
+
 
         if not active_accounts:
             async with async_session_factory() as db:
@@ -1057,6 +1059,16 @@ async def execute_broadcast(job_id: str):
             cycle_failed = 0
             pending_cycle_details = []
 
+            # MEM-LEAK-FIX: Clear caches at cycle start to prevent unbounded
+            # growth across looping cycles. joined_pool holds full Telethon
+            # entity objects (~50-200 KB each) that were never evicted between
+            # cycles, causing ~1-2 GB of retained memory across 72 jobs.
+            joined_pool.clear()
+
+            # Evict expired slowmode entries instead of keeping them forever.
+            now_ts = time.time()
+            slowmode_pool = {k: v for k, v in slowmode_pool.items() if v["until"] > now_ts}
+
             # ── Every cycle, retry pending groups first ──
             if pending_pool and is_looping:
                 newly_joined = []
@@ -1096,13 +1108,15 @@ async def execute_broadcast(job_id: str):
                         still_pending[pkey] = pitem
                         continue
 
-                    client = selected_acc["client"]
+                    client = None
                     try:
+                        client = await borrow_client(selected_acc, receive_updates=True)
                         entities_retry = await _broadcast_entities_for_target(
                             client, pitem["group_identifier"], job_id_str
                         )
                         if entities_retry:
                             joined_pool[pkey] = entities_retry
+                            client_pool.cache_entity(pkey, entities_retry)
                             newly_joined.append(pkey)
                             await _push_broadcast(
                                 job_id_str,
@@ -1141,6 +1155,10 @@ async def execute_broadcast(job_id: str):
                             newly_joined.append(pkey)
                             continue
                         continue
+                    finally:
+                        if client is not None:
+                            await release_client(selected_acc)
+                            client = None
 
                 pending_pool = still_pending
 
@@ -1253,7 +1271,6 @@ async def execute_broadcast(job_id: str):
                     # next cycle rather than dereferencing None.
                     continue
 
-                client = selected_acc["client"]
                 acc_id_str = selected_acc["account_id"]
                 acc_name = selected_acc["account_name"]
                 client_pool.touch_client(acc_id_str)
@@ -1262,7 +1279,7 @@ async def execute_broadcast(job_id: str):
                 item_type = item.get("type", "username")
 
                 pkey = f"{item_type}:{group_identifier}"
-                cached_entity = joined_pool.get(pkey)
+                cached_entity = joined_pool.get(pkey) or client_pool.get_cached_entity(pkey)
 
                 if pkey in pending_pool:
                     continue
@@ -1366,6 +1383,80 @@ async def execute_broadcast(job_id: str):
                             "account_name": acc_name,
                         },
                     )
+                client = None
+                try:
+                    client = await borrow_client(selected_acc, receive_updates=True)
+                except Exception as borrow_exc:
+                    logger.warning("Could not borrow client for account %s: %s", acc_id_str, borrow_exc)
+                    err_type, err_msg = classify_telegram_error(borrow_exc)
+                    log_status = "error"
+                    log_err_type = err_type
+                    log_err_msg = err_msg
+                    failed += 1
+                    cycle_failed += 1
+                    if err_type in ("session_revoked", "user_deactivated", "phone_banned", "auth_key"):
+                        active_accounts.remove(selected_acc)
+                        await _push_broadcast(
+                            job_id_str,
+                            "account_failed",
+                            {
+                                "account": acc_name,
+                                "message": f"Account {acc_name} session is revoked or banned ({err_type}). Removing.",
+                            },
+                        )
+
+                if client is None:
+                    current_progress = (
+                        int(((idx + 1) / len(items)) * 100) if len(items) > 0 else 0
+                    )
+                    last_progress = current_progress
+                    pending_cycle_details.append({
+                        "group_identifier": group_identifier,
+                        "group_id": None,
+                        "account_id_used": acc_id_str,
+                        "account_name": acc_name,
+                        "status": log_status,
+                        "error_type": log_err_type,
+                        "error_message": log_err_msg,
+                        "sent_text": chosen_text,
+                        "duration_ms": None,
+                        "sent_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    await _push_broadcast(
+                        job_id_str,
+                        "progress",
+                        {
+                            "current": idx + 1,
+                            "total": len(items),
+                            "progress": current_progress,
+                            "sent": sent,
+                            "failed": failed,
+                            "cycle": current_cycle,
+                            "status": current_status,
+                        },
+                    )
+                    await _push_broadcast(
+                        job_id_str,
+                        "log",
+                        {
+                            "group": group_identifier,
+                            "status": log_status,
+                            "error_type": log_err_type,
+                            "text": chosen_text,
+                            "cycle": current_cycle,
+                            "account_id_used": acc_id_str,
+                            "account_name": acc_name,
+                        },
+                    )
+                    if delay_randomized:
+                        min_d = max(1, int(delay_per_group * 0.7))
+                        max_d = max(min_d + 1, int(delay_per_group * 1.3))
+                        base_delay = random.randint(min_d, max_d)
+                    else:
+                        base_delay = max(1, delay_per_group)
+                    flood_delay = fc.get_delay(acc_id_str)
+                    actual_delay = max(1, max(base_delay, flood_delay))
+                    await _interruptible_sleep(job_id_str, actual_delay)
                     continue
 
                 entities = None
@@ -1564,6 +1655,7 @@ async def execute_broadcast(job_id: str):
 
                         if entities:
                             joined_pool[pkey] = entities
+                            client_pool.cache_entity(pkey, entities)
 
                         log_status = "success"
                         log_duration_ms = int((time.time() - start_time) * 1000)
@@ -1583,6 +1675,7 @@ async def execute_broadcast(job_id: str):
 
                         if entities:
                             joined_pool[pkey] = entities
+                            client_pool.cache_entity(pkey, entities)
 
                         log_status = "error"
                         log_err_type = err_type
@@ -1641,6 +1734,11 @@ async def execute_broadcast(job_id: str):
                             active_accounts.remove(selected_acc)
                             if current_acc_idx >= len(active_accounts) and active_accounts:
                                 current_acc_idx = 0
+                finally:
+                    # Release borrowed client back to pool before any delay or sleep!
+                    if client is not None:
+                        await release_client(selected_acc)
+                        client = None
 
                 # Buffer log in-memory (committed at cycle end or graceful exit)
                 current_progress = (
@@ -1738,9 +1836,15 @@ async def execute_broadcast(job_id: str):
                             from app.services.broadcast_log_sender import send_job_log_message
 
                             sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
-                            await send_job_log_message(
-                                client=sender["client"], job=db_job, message=log_msg
-                            )
+                            sender_client = None
+                            try:
+                                sender_client = await borrow_client(sender)
+                                await send_job_log_message(
+                                    client=sender_client, job=db_job, message=log_msg
+                                )
+                            finally:
+                                if sender_client is not None:
+                                    await release_client(sender)
                         except Exception as log_exc:
                             logger.warning("Failed to send job stopped log: %s", log_exc)
 
@@ -1801,19 +1905,29 @@ async def execute_broadcast(job_id: str):
                         }
                         # Use the most recently active account's client to send
                         sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
-                        await send_cycle_summary(
-                            client=sender["client"],
-                            job=db_job_summary,
-                            cycle_number=cycle_count,
-                            group_list_name=group_list_name or "—",
-                            total_groups=len(items),
-                            active_this_round=len(items),
-                            cycle_logs=cycle_details_snapshot,
-                            accounts_by_id=accounts_by_id,
-                            item_type_by_identifier=item_type_by_id,
-                        )
+                        sender_client = None
+                        try:
+                            sender_client = await borrow_client(sender)
+                            await send_cycle_summary(
+                                client=sender_client,
+                                job=db_job_summary,
+                                cycle_number=cycle_count,
+                                group_list_name=group_list_name or "—",
+                                total_groups=len(items),
+                                active_this_round=len(items),
+                                cycle_logs=cycle_details_snapshot,
+                                accounts_by_id=accounts_by_id,
+                                item_type_by_identifier=item_type_by_id,
+                            )
+                        finally:
+                            if sender_client is not None:
+                                await release_client(sender)
                 except Exception as log_exc:
                     logger.warning("cycle log send failed for job %s: %s", job_id_str, log_exc)
+                finally:
+                    # MEM-LEAK-FIX: Release the snapshot so it doesn't linger
+                    # in memory until the next cycle overwrites it.
+                    del cycle_details_snapshot
 
                 # Delay after all groups before starting next cycle
                 if delay_after_all > 0:
@@ -1965,17 +2079,23 @@ async def execute_broadcast(job_id: str):
                         }
                         if active_accounts:
                             sender = active_accounts[(current_acc_idx - 1) % len(active_accounts)]
-                            await send_cycle_summary(
-                                client=sender["client"],
-                                job=db_job_complete,
-                                cycle_number=final_cycle,
-                                group_list_name=group_list_name or "—",
-                                total_groups=len(items),
-                                active_this_round=len(items),
-                                cycle_logs=cycle_details_snapshot,
-                                accounts_by_id=accounts_by_id,
-                                item_type_by_identifier=item_type_by_id,
-                            )
+                            sender_client = None
+                            try:
+                                sender_client = await borrow_client(sender)
+                                await send_cycle_summary(
+                                    client=sender_client,
+                                    job=db_job_complete,
+                                    cycle_number=final_cycle,
+                                    group_list_name=group_list_name or "—",
+                                    total_groups=len(items),
+                                    active_this_round=len(items),
+                                    cycle_logs=cycle_details_snapshot,
+                                    accounts_by_id=accounts_by_id,
+                                    item_type_by_identifier=item_type_by_id,
+                                )
+                            finally:
+                                if sender_client is not None:
+                                    await release_client(sender)
                     except Exception as log_exc:
                         logger.warning("final log send failed for job %s: %s", job_id_str, log_exc)
 

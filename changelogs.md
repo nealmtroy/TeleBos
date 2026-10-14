@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[9473b1e1](https://github.com/nealmtroy/TeleBos/commit/9473b1e1)**: feat(api): harden media endpoints, public avatar CDN caching, and camoufox turnstile solver
 - **[412d7ec0](https://github.com/nealmtroy/TeleBos/commit/412d7ec0)**: feat(ui): complete design audit component styling, token standardization, and radio-group primitives
 
 ## 2026-10-14

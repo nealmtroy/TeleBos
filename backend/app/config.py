@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     TELEGRAM_API_HASH: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
     ENABLE_SPAM_CHECKS: bool = True
+    TELEGRAM_POOL_MAX_CONNECTED: int = 50
 
     # 2Captcha (automated Turnstile solver)
     TWOCAPTCHA_API_KEY: str = ""
