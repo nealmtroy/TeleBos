@@ -259,3 +259,27 @@ async def test_etag_short_circuits_before_telegram_call(tmp_path, monkeypatch):
 
     assert isinstance(resp, Response)
     assert resp.status_code == 304
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_img_request_serves_cached_photo(tmp_path, monkeypatch):
+    """An <img> request without session or user context can read public cached chat photos."""
+    account, chat = _account(), _chat(7)
+    account_id = str(account.id)
+
+    base = tmp_path / "app"
+    target = base / "uploads" / "chat_photos" / account_id / "42"
+    target.mkdir(parents=True)
+    (target / "7.jpg").write_bytes(b"jpegbytes")
+
+    _redirect_base_dir(monkeypatch, base)
+
+    resp = await media_mod.get_chat_photo(
+        account_id=account_id,
+        chat_id=42,
+        request=FakeRequest(),
+        db=_db(account, chat),
+        user=None,
+    )
+
+    assert getattr(resp, "path", None) == str(target / "7.jpg")

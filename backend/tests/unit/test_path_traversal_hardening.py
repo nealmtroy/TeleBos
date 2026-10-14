@@ -245,3 +245,21 @@ async def test_get_profile_photo_rejects_traversal_account_id():
         )
     assert exc.value.status_code == 400
     assert "Invalid account ID" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_get_public_chat_photo_rejects_traversal_username():
+    from app.api.chats import get_public_chat_photo
+
+    req = MagicMock()
+    db = MagicMock()
+
+    with pytest.raises(HTTPException) as exc:
+        await get_public_chat_photo(
+            username="../../etc/passwd",
+            request=req,
+            db=db,
+        )
+    assert exc.value.status_code == 400
+    assert "Invalid username format" in exc.value.detail
+

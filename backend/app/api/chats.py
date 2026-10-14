@@ -1,6 +1,7 @@
 """Chat and folder endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, UploadFile, File, Form
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -556,6 +557,93 @@ async def list_public_chats_index(
         ))
 
     return ChatListResponse(chats=chats, total=total, page=page, page_size=page_size)
+
+
+@router.get("/chats/public/{username}/photo")
+async def get_public_chat_photo(
+    username: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve public group or channel avatar by username.
+
+    Checks local cache first, then falls back to Telegram public CDN.
+    Guarded by rate limiting and username validation to prevent traversal.
+    """
+    import os
+    import re
+    import httpx
+    from sqlalchemy import select, func
+    from app.models.telegram_chat import TelegramChat
+    from app.utils.path_security import safe_join
+
+    clean_username = username.lstrip("@").strip()
+    if not re.match(r"^[a-zA-Z0-9_]{3,64}$", clean_username):
+        raise HTTPException(status_code=400, detail="Invalid username format")
+
+    # Rate limiting
+    from app.config import get_settings
+    s = get_settings()
+    req_client = getattr(request, "client", None)
+    ip = req_client.host if req_client else "unknown"
+    if not await rate_limiter.check(
+        f"photo_get:ip:{ip}",
+        max_requests=s.RATE_LIMIT_PHOTO_MAX,
+        window_seconds=s.RATE_LIMIT_PHOTO_WINDOW,
+    ):
+        raise HTTPException(status_code=429, detail="Too many requests")
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
+    etag = f'W/"public-{clean_username.lower()}"'
+    headers = {
+        "Cache-Control": "public, max-age=86400",
+        "ETag": etag,
+        "X-Content-Type-Options": "nosniff",
+    }
+
+    cache_root = os.path.join(base_dir, "uploads", "public_chat_photos")
+    os.makedirs(cache_root, exist_ok=True)
+    cached_path = safe_join(cache_root, f"{clean_username.lower()}.jpg")
+
+    if request.headers.get("if-none-match") == etag and os.path.exists(cached_path):
+        return Response(status_code=304, headers=headers)
+
+    if os.path.exists(cached_path) and os.path.getsize(cached_path) > 0:
+        return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
+
+    # Check local account chat cache if available in DB
+    chat_row = await db.execute(
+        select(TelegramChat.account_id, TelegramChat.chat_id, TelegramChat.photo_version)
+        .where(
+            func.lower(TelegramChat.username) == clean_username.lower(),
+            TelegramChat.photo_version.isnot(None),
+            TelegramChat.photo_version > 0,
+        )
+        .limit(1)
+    )
+    row = chat_row.first()
+    if row and row.account_id and row.chat_id and row.photo_version:
+        acc_chat_dir = os.path.join(base_dir, "uploads", "chat_photos", str(row.account_id), str(row.chat_id))
+        acc_cached_file = os.path.join(acc_chat_dir, f"{row.photo_version}.jpg")
+        if os.path.exists(acc_cached_file) and os.path.getsize(acc_cached_file) > 0:
+            return FileResponse(acc_cached_file, media_type="image/jpeg", headers=headers)
+
+    # Fetch from Telegram public CDN
+    telegram_url = f"https://t.me/i/userpic/320/{clean_username}.jpg"
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            resp = await client.get(telegram_url)
+            if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("image/") and len(resp.content) > 100:
+                with open(cached_path, "wb") as f:
+                    f.write(resp.content)
+                return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
+            raise HTTPException(status_code=404, detail="No profile photo")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="No profile photo") from exc
+
 
 
 

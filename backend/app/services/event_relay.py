@@ -734,6 +734,7 @@ class TelegramEventRelay:
                     photo = getattr(chat, "photo", None)
                     color_id = getattr(peer_color, "color", None) if peer_color else None
                     photo_version = getattr(photo, "photo_id", None) if photo else None
+                    member_count = getattr(chat, "participants_count", None)
                     # Build upsert statement
                     stmt = insert(TelegramChat).values(
                         id=uuid.uuid4(),
@@ -751,6 +752,7 @@ class TelegramEventRelay:
                         access_hash=access_hash,
                         is_active=True,
                         is_creator=is_creator,
+                        member_count=member_count,
                     )
 
                     set_clause = {
@@ -764,6 +766,8 @@ class TelegramEventRelay:
                         "is_active": True,
                         "updated_at": func.now(),
                     }
+                    if member_count is not None:
+                        set_clause["member_count"] = stmt.excluded.member_count
                     if not is_outgoing:
                         set_clause["unread_count"] = TelegramChat.unread_count + 1
 
@@ -893,6 +897,7 @@ class TelegramEventRelay:
         photo = getattr(chat, "photo", None)
         color_id = getattr(peer_color, "color", None) if peer_color else None
         photo_version = getattr(photo, "photo_id", None) if photo else None
+        member_count = getattr(chat, "participants_count", None)
 
         async with self._db_sem:
             async with async_session_factory() as db:
@@ -911,19 +916,23 @@ class TelegramEventRelay:
                         photo_version=photo_version,
                         is_active=True,
                         is_creator=is_creator,
+                        member_count=member_count,
                     )
+                    set_clause = {
+                        "title": stmt.excluded.title,
+                        "username": stmt.excluded.username,
+                        "type": stmt.excluded.type,
+                        "color_id": stmt.excluded.color_id,
+                        "photo_version": stmt.excluded.photo_version,
+                        "is_active": True,
+                        "is_creator": stmt.excluded.is_creator,
+                        "updated_at": func.now(),
+                    }
+                    if member_count is not None:
+                        set_clause["member_count"] = stmt.excluded.member_count
                     stmt = stmt.on_conflict_do_update(
                         constraint="uq_telegram_chat_account_chat",
-                        set_={
-                            "title": stmt.excluded.title,
-                            "username": stmt.excluded.username,
-                            "type": stmt.excluded.type,
-                            "color_id": stmt.excluded.color_id,
-                            "photo_version": stmt.excluded.photo_version,
-                            "is_active": True,
-                            "is_creator": stmt.excluded.is_creator,
-                            "updated_at": func.now(),
-                        },
+                        set_=set_clause,
                     )
                     await db.execute(stmt)
                     await db.commit()

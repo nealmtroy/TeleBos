@@ -167,13 +167,19 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
             deactivated = getattr(d.entity, "deactivated", False)
             is_active = not (left or deactivated)
             
-            # Fetch detailed member stats and invite links if active and not skip_details (bounded)
-            member_count = None
+            # Extract member count and invite link from dialog entity (0 RPC overhead), then fetch details if active and not skipped
+            member_count = getattr(d.entity, "participants_count", None)
             online_count = None
-            invite_link = None
+            invite_link = f"https://t.me/{d.entity.username}" if getattr(d.entity, "username", None) else None
             if is_active and not skip_details and details_fetched < MAX_DETAILS_PER_SYNC:
                 try:
-                    member_count, online_count, invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
+                    detailed_member_count, detailed_online_count, detailed_invite_link = await get_full_chat_details(client, d.entity, chat_type_val)
+                    if detailed_member_count is not None:
+                        member_count = detailed_member_count
+                    if detailed_online_count is not None:
+                        online_count = detailed_online_count
+                    if detailed_invite_link is not None:
+                        invite_link = detailed_invite_link
                     details_fetched += 1
                 except Exception as detail_exc:
                     logger.debug("Failed to get full chat details for %s: %s", d.id, detail_exc)

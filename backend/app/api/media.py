@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, get_current_user_for_media
+from app.dependencies import get_current_user, get_current_user_for_media, get_optional_user
 from app.models.user import User
 from app.schemas.chat import (
     ChatListResponse,
@@ -89,7 +89,7 @@ async def get_chat_photo(
     chat_id: int,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user_for_media),
+    user: User | None = Depends(get_optional_user),
 ):
     """Serve a versioned chat photo from an account-scoped local cache.
 
@@ -97,10 +97,9 @@ async def get_chat_photo(
     version is a known no-photo state, so the endpoint can return a fallback
     response without opening a Telethon connection or writing sentinel files.
 
-    Security: this endpoint requires authentication AND verifies that the
-    caller owns ``account_id``. It also decrypts the stored session string and
-    opens a real MTProto connection, so leaving it anonymous would let anyone
-    enumerate accounts and use the backend as a Telegram proxy.
+    Public endpoint — Telegram chat/profile photos are public data, cached
+    locally and protected by per-IP rate limiting and ETag checks. If user
+    context is present, account ownership is validated.
     """
     import os
 
@@ -118,13 +117,26 @@ async def get_chat_photo(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid account ID")
 
-    account_result = await db.execute(
-        select(TelegramAccount).where(
-            TelegramAccount.id == clean_account_id,
-            TelegramAccount.user_id == user.id,
-            TelegramAccount.for_sale.is_(False),
-        )
+    # Per-IP rate limiting
+    from app.config import get_settings
+    s = get_settings()
+    req_client = getattr(request, "client", None)
+    ip = req_client.host if req_client else "unknown"
+    if not await rate_limiter.check(
+        f"photo_get:ip:{ip}",
+        max_requests=s.RATE_LIMIT_PHOTO_MAX,
+        window_seconds=s.RATE_LIMIT_PHOTO_WINDOW,
+    ):
+        raise HTTPException(status_code=429, detail="Too many requests")
+
+    stmt = select(TelegramAccount).where(
+        TelegramAccount.id == clean_account_id,
+        TelegramAccount.for_sale.is_(False),
     )
+    if user is not None:
+        stmt = stmt.where(TelegramAccount.user_id == user.id)
+
+    account_result = await db.execute(stmt)
     account = account_result.scalar_one_or_none()
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")

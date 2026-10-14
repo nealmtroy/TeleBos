@@ -33,9 +33,10 @@ logging.basicConfig(
 logger = logging.getLogger("camoufox-solver")
 
 # Turnstile issues a token in a couple of seconds when it is satisfied, and one
-# is never valid for long, so polling longer than this is wasted time.
-TOKEN_POLL_SECONDS = int(os.getenv("SOLVER_POLL_SECONDS", "40"))
-NAV_TIMEOUT_MS = int(os.getenv("SOLVER_NAV_TIMEOUT_MS", "45000"))
+# is never valid for long. Setting a 15s default ensures we solve rapidly or fail fast
+# before upstream reverse proxies timeout.
+TOKEN_POLL_SECONDS = int(os.getenv("SOLVER_POLL_SECONDS", "15"))
+NAV_TIMEOUT_MS = int(os.getenv("SOLVER_NAV_TIMEOUT_MS", "30000"))
 # Serialise solves: one shared browser, and Turnstile is unhappy with a burst of
 # parallel challenges from one address.
 _SOLVE_LOCK = asyncio.Lock()
@@ -86,7 +87,13 @@ class SolveResponse(BaseModel):
 async def lifespan(app: FastAPI):
     # Launch the browser once. Per-request launch costs ~2s and a lot of memory,
     # and the profile/fingerprint warm-up helps Turnstile rather than hurting it.
-    app.state.browser_cm = AsyncCamoufox(headless=True, humanize=True)
+    # disable_coop=True is required to interact with cross-origin Turnstile iframes.
+    app.state.browser_cm = AsyncCamoufox(
+        headless=True,
+        humanize=True,
+        disable_coop=True,
+        i_know_what_im_doing=True,
+    )
     app.state.browser = await app.state.browser_cm.__aenter__()
     logger.info("camoufox browser ready")
     try:
@@ -219,7 +226,8 @@ async def solve(req: SolveRequest) -> SolveResponse:
                 )
 
             token = None
-            for _ in range(poll_seconds):
+            has_clicked = False
+            for step in range(poll_seconds):
                 await asyncio.sleep(1)
                 try:
                     token = await page.evaluate(
@@ -227,14 +235,62 @@ async def solve(req: SolveRequest) -> SolveResponse:
                             const el = document.querySelector(
                                 'input[name="cf-turnstile-response"]'
                             );
-                            return el && el.value ? el.value : null;
+                            if (el && el.value) return el.value;
+                            if (window.turnstile && typeof window.turnstile.getResponse === 'function') {
+                                const resp = window.turnstile.getResponse();
+                                if (resp) return resp;
+                            }
+                            return null;
                         }"""
                     )
                 except Exception as exc:
                     logger.warning("token poll failed: %s", exc)
                     break
+
                 if token:
                     break
+
+                # If after 2 seconds no token is generated automatically, Turnstile likely requires
+                # interaction (checkbox click / challenge stage). Perform humanized click!
+                if step >= 2 and not has_clicked:
+                    # Method A: Click inside the cross-origin Cloudflare frame directly
+                    for frame in page.frames:
+                        if "challenges.cloudflare.com" in frame.url:
+                            try:
+                                for sel in (
+                                    'input[type="checkbox"]',
+                                    '#challenge-stage',
+                                    '.ctp-checkbox-label',
+                                    '[role="checkbox"]',
+                                    'div#cf-stage',
+                                    '#cf-turnstile',
+                                ):
+                                    loc = frame.locator(sel)
+                                    if await loc.count() > 0:
+                                        logger.info("Clicking Turnstile element '%s' in frame", sel)
+                                        await loc.first.click(timeout=1500)
+                                        has_clicked = True
+                                        break
+                            except Exception as click_err:
+                                logger.debug("Frame element click ignored: %s", click_err)
+
+                    # Method B: If frame internal locator didn't click, click iframe bounding box
+                    if not has_clicked:
+                        try:
+                            cf_iframe = page.locator('iframe[src*="challenges.cloudflare.com"]').first
+                            if await cf_iframe.count() > 0:
+                                box = await cf_iframe.bounding_box()
+                                if box and box["width"] > 0 and box["height"] > 0:
+                                    click_x = box["x"] + min(32, box["width"] / 4)
+                                    click_y = box["y"] + box["height"] / 2
+                                    logger.info(
+                                        "Clicking Turnstile iframe bounding box at (%.1f, %.1f)",
+                                        click_x, click_y,
+                                    )
+                                    await page.mouse.click(click_x, click_y)
+                                    has_clicked = True
+                        except Exception as box_err:
+                            logger.debug("Iframe box click ignored: %s", box_err)
 
             state = await page.evaluate(
                 """(phrases) => {
@@ -251,6 +307,9 @@ async def solve(req: SolveRequest) -> SolveResponse:
                 _INTERACTIVE_PHRASES,
             )
 
+            has_cf_frame = any("challenges.cloudflare.com" in f.url for f in page.frames)
+            widget_rendered = state["iframe"] or has_cf_frame
+
             elapsed = asyncio.get_running_loop().time() - started
 
             if token:
@@ -264,19 +323,17 @@ async def solve(req: SolveRequest) -> SolveResponse:
                     landed_url=landed,
                     title=title,
                     widget_rendered=True,
-                    interactive=state["interactive"],
+                    interactive=state["interactive"] or has_clicked,
                     elapsed_seconds=round(elapsed, 2),
                 )
 
-            # No token: distinguish the two causes, because they need different
-            # responses from the caller.
-            if state["interactive"]:
+            # No token: distinguish the causes
+            if state["interactive"] or has_clicked:
                 detail = (
-                    "widget rendered but wants interaction — this address is "
-                    "being downgraded by Cloudflare. A residential proxy is the "
-                    "fix; retrying will not help."
+                    "widget rendered and clicked, but issued no token — this address is "
+                    "being downgraded or blocked by Cloudflare."
                 )
-            elif cloudflare_calls == 0:
+            elif cloudflare_calls == 0 and not has_cf_frame:
                 detail = (
                     "no Turnstile traffic at all — the widget never loaded. "
                     "Usually an expired or malformed captcha URL."
@@ -289,14 +346,14 @@ async def solve(req: SolveRequest) -> SolveResponse:
 
             logger.warning(
                 "no token: interactive=%s cf_calls=%d text=%r",
-                state["interactive"], cloudflare_calls, state["text"][:120],
+                state["interactive"] or has_clicked, cloudflare_calls, state["text"][:120],
             )
             return SolveResponse(
                 ok=False,
                 landed_url=landed,
                 title=title,
-                widget_rendered=state["iframe"],
-                interactive=state["interactive"],
+                widget_rendered=widget_rendered,
+                interactive=state["interactive"] or has_clicked,
                 detail=detail,
                 elapsed_seconds=round(elapsed, 2),
             )

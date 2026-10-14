@@ -1060,6 +1060,9 @@ async def start_appeal(
     from datetime import datetime, timezone
 
     session_str = decrypt(account.session_string)
+    from app.utils.account_ownership import OWNER_BACKEND, acquire_lease
+    await acquire_lease(str(account.id), OWNER_BACKEND)
+    client_pool.touch_client(str(account.id))
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
         raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")
@@ -1094,6 +1097,9 @@ async def resume_appeal(
     from datetime import datetime, timezone
 
     session_str = decrypt(account.session_string)
+    from app.utils.account_ownership import OWNER_BACKEND, acquire_lease
+    await acquire_lease(str(account.id), OWNER_BACKEND)
+    client_pool.touch_client(str(account.id))
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
         raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")

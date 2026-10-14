@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-15
+- **[412d7ec0](https://github.com/nealmtroy/TeleBos/commit/412d7ec0)**: feat(ui): complete design audit component styling, token standardization, and radio-group primitives
+
 ## 2026-10-14
 - **[dfe5b503](https://github.com/nealmtroy/TeleBos/commit/dfe5b503)**: fix: resolve Sentry issues PYTHON-FASTAPI-2K, 1B, 30
 - **[d048620f](https://github.com/nealmtroy/TeleBos/commit/d048620f)**: feat(remediation): execute comprehensive security hardening, schema reconciliation, and architecture refactoring
