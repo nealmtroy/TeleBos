@@ -74,7 +74,7 @@ const FEATURES: Record<PlanId, FeatureLine[]> = {
 
 /** One row of the comparison table. `cells` is keyed by plan id. */
 const COMPARE_ROWS: Array<{ cells: Record<PlanId, string>; labelKey: string }> = [
-  { labelKey: "accounts", cells: { freetrial: "free", basic: "free", pro: "upTo3", premium: "unlimited" } },
+  { labelKey: "accounts", cells: { freetrial: "free", basic: "free", pro: "upTo3", premium: "upTo5" } },
   { labelKey: "broadcast", cells: { freetrial: "no", basic: "no", pro: "yes", premium: "yes" } },
   { labelKey: "autoReply", cells: { freetrial: "yes", basic: "yes", pro: "yes", premium: "yes" } },
   { labelKey: "scheduling", cells: { freetrial: "no", basic: "no", pro: "yes", premium: "yes" } },

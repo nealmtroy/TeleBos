@@ -148,7 +148,7 @@ describe("Subscription Dashboard Page", () => {
     await waitFor(() => {
       expect(screen.getByText("Batas Penggunaan Akun")).toBeDefined();
       expect(screen.getByText("3")).toBeDefined();
-      expect(screen.getByText(/dari 10 akun/i)).toBeDefined();
+      expect(screen.getByText(/dari 3 akun/i)).toBeDefined();
     });
   });
 

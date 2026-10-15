@@ -2236,7 +2236,7 @@ const id: Dict = {
         pro:
           "Untuk yang sudah broadcast tiap hari dan butuh auto-reply jalan tanpa lo supervise.",
         premium:
-          "Untuk agensi dan tim yang jual akun Telegram. Unlimited, scrape member, dan antrean server paling cepat.",
+          "Untuk agensi dan tim yang butuh kapasitas lebih besar: hingga 5 akun, scrape member, dan antrean server paling cepat.",
       },
       footnote: {
         freetrial: "Gratis selama 5 jam dari saat lo mendaftar.",
@@ -2263,6 +2263,7 @@ const id: Dict = {
         values: {
           free: "1 akun",
           upTo3: "sampai 3 akun",
+          upTo5: "sampai 5 akun",
           unlimited: "sampai 5 akun",
           no: "—",
           yes: "✓",

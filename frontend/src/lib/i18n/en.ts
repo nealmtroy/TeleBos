@@ -2236,7 +2236,7 @@ const en: Dict = {
         pro:
           "For anyone already broadcasting daily and needs auto-reply running without anyone watching it.",
         premium:
-          "For agencies and teams selling Telegram accounts. Unlimited, member scraping, and the fastest server queue.",
+          "For agencies and teams needing higher capacity: up to 5 accounts, member scraping, and the fastest server queue.",
       },
       footnote: {
         freetrial: "Free for 5 hours after you sign up.",
@@ -2263,6 +2263,7 @@ const en: Dict = {
         values: {
           free: "1 account",
           upTo3: "up to 3 accounts",
+          upTo5: "up to 5 accounts",
           unlimited: "up to 5 accounts",
           no: "—",
           yes: "✓",

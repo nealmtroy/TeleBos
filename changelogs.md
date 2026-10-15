@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[ec7f152f](https://github.com/nealmtroy/TeleBos/commit/ec7f152f)**: fix(join,broadcast): handle new ImportChatInvite response shape and stop swallowing join failures
 - **[4ecfbcc3](https://github.com/nealmtroy/TeleBos/commit/4ecfbcc3)**: fix(broadcast): cancel the job when its account is spam-restricted instead of pausing
 - **[ab0427be](https://github.com/nealmtroy/TeleBos/commit/ab0427be)**: fix(broadcast): persist target state and record skipped targets so cycle logs reconcile
 - **[cc3d980e](https://github.com/nealmtroy/TeleBos/commit/cc3d980e)**: feat(ui): rework broadcast history/new, openable support chat, help copy + i18n

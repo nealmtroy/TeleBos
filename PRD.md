@@ -119,7 +119,7 @@ The canonical product role hierarchy is `freetrial` < `basic` < `pro` < `premium
 
 | Capability | Free Trial (5h) | Basic | Pro | Premium | Owner |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Connect and manage accounts | 1 Account | 1 Account | Up to 3 | Unlimited | Unlimited |
+| Connect and manage accounts | 1 Account | 1 Account | Up to 3 | Up to 5 | Unlimited |
 | Real-time chats & obrolan teks | Yes | Yes | Yes | Yes | Yes |
 | Contacts and advanced account operations | No | No | Yes | Yes | Yes |
 | Auto-reply responder engine | Yes | Yes | Yes | Yes | Yes |

@@ -40,9 +40,10 @@ class DuplicateAccountError(Exception):
 # ── Role-based account limits ──────────────────────────────────────────────
 
 ROLE_ACCOUNT_LIMITS: dict[str, int] = {
+    "freetrial": 1,
     "basic": 1,
-    "pro": 10,
-    "premium": 100,
+    "pro": 3,
+    "premium": 5,
     "owner": 999999,
 }
 

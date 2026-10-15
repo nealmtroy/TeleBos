@@ -403,9 +403,10 @@ lazy — downgraded on read rather than by a cron job
 
 | Role | Accounts |
 |---|---|
+| `freetrial` | **1** |
 | `basic` | **1** |
-| `pro` | **10** |
-| `premium` | **100** |
+| `pro` | **3** |
+| `premium` | **5** |
 | `owner` | 999999 |
 
 Enforced by `check_account_limit` (`:50-61`) on every connection route.

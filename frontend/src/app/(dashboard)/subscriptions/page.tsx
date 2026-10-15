@@ -71,8 +71,8 @@ const PLAN_DISPLAY_NAMES: Record<CurrentPlanKey, string> = {
 const ROLE_LIMITS: Record<CurrentPlanKey, number> = {
   freetrial: 1,
   basic: 1,
-  pro: 10,
-  premium: 100,
+  pro: 3,
+  premium: 5,
   owner: 999999,
 };
 
@@ -136,7 +136,7 @@ const PLAN_META: Record<
 };
 
 const FEATURE_MATRIX: { name: string; freetrial: string; basic: string; pro: string; premium: string }[] = [
-  { name: "Kapasitas Akun Telegram", freetrial: "1 Akun", basic: "1 Akun", pro: "Hingga 10 Akun", premium: "Hingga 100 Akun" },
+  { name: "Kapasitas Akun Telegram", freetrial: "1 Akun", basic: "1 Akun", pro: "Hingga 3 Akun", premium: "Hingga 5 Akun" },
   { name: "Obrolan Teks Langsung", freetrial: "Ya", basic: "Ya", pro: "Ya", premium: "Ya" },
   { name: "Sistem Auto-Reply Otomatis", freetrial: "Ya", basic: "Ya", pro: "Ya", premium: "Ya" },
   { name: "Bebas Watermark Pesan", freetrial: "Tidak (Watermark)", basic: "Tidak (Watermark)", pro: "Ya (Bebas)", premium: "Ya (Bebas)" },
@@ -393,7 +393,7 @@ export default function SubscriptionPage() {
                     : currentPlan === "premium"
                     ? "Kapasitas armada akun tinggi & antrean server prioritas #1."
                     : currentPlan === "pro"
-                    ? "Kirim siaran pesan massal tanpa watermark dan kelola hingga 10 akun."
+                    ? "Kirim siaran pesan massal tanpa watermark dan kelola hingga 3 akun."
                     : currentPlan === "basic"
                     ? "Paket esensial 1 akun dengan auto-reply dan auto-join."
                     : "Masa percobaan 5 jam untuk mencoba sistem sebelum berlangganan."}

@@ -39,7 +39,7 @@ async def test_transfer_accounts_success():
         None,
         None,
     ]
-    db.scalar.return_value = 2  # target has 2 accounts currently, pro limit is 10
+    db.scalar.return_value = 1  # target has 1 account currently, pro limit is 3
     db.commit = AsyncMock()
     db.refresh = AsyncMock()
 
