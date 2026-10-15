@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[c0b99db5](https://github.com/nealmtroy/TeleBos/commit/c0b99db5)**: fix(broadcast): enforce SEC-03 unconditionally on loop, add quota check to retry_job, and validate non-empty text
 - **[44284a80](https://github.com/nealmtroy/TeleBos/commit/44284a80)**: fix(broadcast): standardize failed account removal and prevent ZeroDivisionError
 - **[9b9cd05d](https://github.com/nealmtroy/TeleBos/commit/9b9cd05d)**: fix(worker): scope entity cache by account_id and evict invalid channel entities
 - **[9bb8016d](https://github.com/nealmtroy/TeleBos/commit/9bb8016d)**: feat(worker): implement bounded client pool with borrow-release for 1000+ accounts and memory limits

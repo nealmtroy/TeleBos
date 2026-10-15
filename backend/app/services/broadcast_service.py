@@ -1487,6 +1487,8 @@ async def execute_broadcast(job_id: str):
                             "account_name": acc_name,
                         },
                     )
+                    continue
+
                 client = None
                 try:
                     client = await borrow_client(selected_acc, receive_updates=True)
@@ -1560,7 +1562,7 @@ async def execute_broadcast(job_id: str):
 
                 entities = None
                 try:
-                    if cached_entity is not None:
+                    if cached_entity is not None and isinstance(cached_entity, list):
                         entities = cached_entity
                     else:
                         entities = await _broadcast_entities_for_target(
@@ -1666,16 +1668,21 @@ async def execute_broadcast(job_id: str):
                                     except telethon.errors.UserNotParticipantError as unpe:
                                         if retry_attempt == 0:
                                             try:
-                                                await asyncio.wait_for(
-                                                    client(
-                                                        JoinChannelRequest(
-                                                            entity
-                                                        )
-                                                    ),
-                                                    timeout=30.0,
-                                                )
-                                                await asyncio.sleep(2)
-                                                continue
+                                                from telethon.tl.types import Channel
+
+                                                if isinstance(entity, Channel):
+                                                    await asyncio.wait_for(
+                                                        client(
+                                                            JoinChannelRequest(
+                                                                entity
+                                                            )
+                                                        ),
+                                                        timeout=30.0,
+                                                    )
+                                                    await asyncio.sleep(2)
+                                                    continue
+                                                else:
+                                                    raise unpe
                                             except Exception as join_err:
                                                 raise join_err
                                         raise

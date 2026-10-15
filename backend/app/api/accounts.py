@@ -1067,6 +1067,10 @@ async def start_appeal(
     if client is None:
         raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")
 
+    # Commit read transaction before entering external appeal operation
+    # to avoid holding PostgreSQL in 'idle in transaction' during captcha solver / spambot calls (40s+)
+    await db.commit()
+
     try:
         res = await start_spam_appeal(client, payload.reason, payload.preset_id, payload.force)
         if res["status"] == "completed":
@@ -1103,6 +1107,9 @@ async def resume_appeal(
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
         raise HTTPException(status_code=400, detail="Account is disconnected. Please re-login.")
+
+    # Commit read transaction before entering external appeal operation
+    await db.commit()
 
     try:
         res = await resume_spam_appeal(client, payload.reason)

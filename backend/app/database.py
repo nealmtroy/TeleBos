@@ -41,10 +41,22 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
     async with async_session_factory() as session:
         try:
             yield session
-            await session.commit()
+            if session.in_transaction():
+                try:
+                    await session.commit()
+                except Exception as commit_err:
+                    err_msg = str(commit_err).lower()
+                    if "connection is closed" in err_msg or "interfaceerror" in type(commit_err).__name__.lower():
+                        import logging
+                        logging.getLogger("app.database").warning(
+                            "Database session commit failed because connection is closed: %s", commit_err
+                        )
+                    else:
+                        raise
         except Exception:
             try:
-                await session.rollback()
+                if session.in_transaction():
+                    await session.rollback()
             except Exception:
                 # Connection may already be closed/dead during server restart or network drop
                 pass

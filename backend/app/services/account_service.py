@@ -1152,6 +1152,7 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
                         recent_appeal = await has_submitted_appeal_recently(client, hours=24)
                         if not recent_appeal:
                             logger.info("No recent appeal in the last 24h for %s. Submitting auto-appeal...", account.phone)
+                            await db.commit()
                             res = await start_spam_appeal(client, reason="", preset_id="ai_indonesian", force=True)
                             if res["status"] == "completed":
                                 logger.info("Auto-appeal completed successfully for %s", account.phone)
