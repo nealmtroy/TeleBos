@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 from sqlalchemy import select
 
+from app.core.sharding import is_account_in_current_shard
 from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
 from app.services.admin_smm_service import (
@@ -70,12 +71,13 @@ async def adaptive_sequential_sync_loop() -> None:
 
                 stmt = stmt.order_by(
                     TelegramAccount.last_sync_at.asc().nullsfirst()
-                ).limit(1)
+                ).limit(200)
                 res = await db.execute(stmt)
-                account = res.scalar_one_or_none()
+                candidates = res.scalars().all()
+                account = next((c for c in candidates if is_account_in_current_shard(c.id)), None)
 
                 if not account:
-                    logger.debug("Adaptive Sync: No eligible active accounts found (or all currently busy in worker jobs). Sleeping for 30s.")
+                    logger.debug("Adaptive Sync: No eligible active accounts found for this shard (or all busy). Sleeping for 30s.")
                     await asyncio.sleep(30)
                     continue
 

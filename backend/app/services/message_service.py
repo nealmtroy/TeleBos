@@ -267,8 +267,21 @@ async def send_message(
     reply_to: int | None = None,
 ) -> dict:
     """Send a text message to a chat."""
-    client = await get_active_client(account)
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
 
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            return await execute_telegram_command(
+                account_id=str(account.id),
+                action="send_message",
+                params={"chat_id": chat_id, "text": text, "reply_to": reply_to},
+            )
+        except TelegramCommandError as cmd_err:
+            raise RuntimeError(str(cmd_err)) from cmd_err
+
+    client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     msg = await client.send_message(entity, text, reply_to=reply_to)
 
@@ -324,12 +337,41 @@ async def send_media(
 
 
 async def delete_messages(account: TelegramAccount, chat_id: int, message_ids: list[int], revoke: bool = True) -> None:
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            await execute_telegram_command(
+                account_id=str(account.id),
+                action="delete_messages",
+                params={"chat_id": chat_id, "message_ids": message_ids, "revoke": revoke},
+            )
+            return
+        except TelegramCommandError as cmd_err:
+            raise RuntimeError(str(cmd_err)) from cmd_err
+
     client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     await client.delete_messages(entity, message_ids, revoke=revoke)
 
 
 async def edit_message(account: TelegramAccount, chat_id: int, message_id: int, text: str) -> dict:
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            return await execute_telegram_command(
+                account_id=str(account.id),
+                action="edit_message",
+                params={"chat_id": chat_id, "message_id": message_id, "text": text},
+            )
+        except TelegramCommandError as cmd_err:
+            raise RuntimeError(str(cmd_err)) from cmd_err
+
     client = await get_active_client(account)
     entity = await resolve_chat_entity(client, account.id, chat_id)
     msg = await client.edit_message(entity, message_id, text)

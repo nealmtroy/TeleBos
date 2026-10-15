@@ -134,8 +134,14 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@telebos.app"
     SMTP_FROM_NAME: str = "TeleBos Security"
     SMTP_USE_TLS: bool = True
-    SMTP_USE_SSL: bool = False
     RESEND_API_KEY: str = ""
+
+    # Telegram Decoupling: Route interactive commands from web server through Redis RPC to worker runner
+    ENABLE_TELEGRAM_COMMAND_BUS: bool = True
+
+    # Sharded Workers Architecture (Multi-Core Scaling)
+    TOTAL_SHARDS: int = 1
+    SHARD_INDEX: int = 0
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

@@ -2201,6 +2201,11 @@ const en: Dict = {
       subtitle:
         "Every plan is paid with a voucher code, so you are not handing over a card before you have seen it work. Switch tiers whenever the work grows.",
       perMonth: "/mo",
+      perYear: "/yr",
+      saveDiscount: "Save {discount}",
+      monthly: "Monthly",
+      yearly: "Yearly",
+      equivalentMonthly: "Equivalent {price}/mo, billed yearly",
       cta: {
         freetrial: "Start free",
         basic: "Get Starter",

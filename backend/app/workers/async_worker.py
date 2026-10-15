@@ -73,10 +73,22 @@ def _handle_exit_signal(sig, frame):
 
 async def queue_consumer_loop() -> None:
     """Continuously consume new job dispatches from Redis queue."""
-    logger.info("Worker queue consumer loop started (listening on %s)", JOBS_QUEUE_KEY)
+    from app.core.sharding import get_shard_jobs_queue, DEFAULT_JOBS_QUEUE
+
+    shard_jobs_queue = get_shard_jobs_queue(worker_settings.SHARD_INDEX)
+    queues_to_watch = [shard_jobs_queue]
+    if shard_jobs_queue != DEFAULT_JOBS_QUEUE:
+        queues_to_watch.append(DEFAULT_JOBS_QUEUE)
+
+    logger.info(
+        "Worker queue consumer loop started (Shard %d/%d, listening on %s)",
+        worker_settings.SHARD_INDEX,
+        worker_settings.TOTAL_SHARDS,
+        ", ".join(queues_to_watch),
+    )
     while not shutdown_event.is_set():
         try:
-            item = await redis_client.blpop(JOBS_QUEUE_KEY, timeout=2)
+            item = await redis_client.blpop(queues_to_watch, timeout=2)
             if not item:
                 continue
 
@@ -110,6 +122,44 @@ async def queue_consumer_loop() -> None:
                 # stall is not an error worth alerting on, so log at warning.
                 logger.warning("Error in queue consumer loop: %s. Retrying in 2s...", exc)
                 await asyncio.sleep(2.0)
+
+
+async def _is_job_in_current_shard(job_type: str, job_id: str) -> bool:
+    """Determine if a job's primary account belongs to this runner's shard."""
+    if worker_settings.TOTAL_SHARDS <= 1:
+        return True
+    import uuid
+    from sqlalchemy import select
+
+    try:
+        j_uuid = uuid.UUID(job_id)
+    except (ValueError, TypeError):
+        return True
+
+    from app.core.sharding import is_account_in_current_shard
+
+    try:
+        async with async_session_factory() as db:
+            accs = None
+            if job_type == "broadcast":
+                from app.models.broadcast_job import BroadcastJob
+                res = await db.execute(select(BroadcastJob.account_ids).where(BroadcastJob.id == j_uuid))
+                accs = res.scalar_one_or_none()
+            elif job_type == "invite":
+                from app.models.invite_job import InviteJob
+                res = await db.execute(select(InviteJob.account_ids).where(InviteJob.id == j_uuid))
+                accs = res.scalar_one_or_none()
+            elif job_type == "autojoin":
+                from app.models.auto_join_job import AutoJoinJob
+                res = await db.execute(select(AutoJoinJob.account_ids).where(AutoJoinJob.id == j_uuid))
+                accs = res.scalar_one_or_none()
+
+            if accs and isinstance(accs, list) and len(accs) > 0:
+                return is_account_in_current_shard(accs[0])
+    except Exception as exc:
+        logger.warning("Could not determine shard affinity for %s job %s: %s", job_type, job_id, exc)
+
+    return True
 
 
 async def control_subscriber_loop() -> None:
@@ -146,6 +196,16 @@ async def control_subscriber_loop() -> None:
                         wake_job(job_id)
                     elif action == "resume":
                         wake_job(job_id)
+                        # In multi-runner setups, ensure ONLY the runner managing this job's shard spawns the task
+                        if not await _is_job_in_current_shard(job_type, job_id):
+                            logger.info(
+                                "Ignoring resume signal for %s job %s (not mapped to Shard %d)",
+                                job_type,
+                                job_id,
+                                worker_settings.SHARD_INDEX,
+                            )
+                            continue
+
                         if job_type == "broadcast":
                             broadcast_service.start_broadcast_task(job_id)
                         elif job_type == "invite":
@@ -247,15 +307,18 @@ async def main() -> None:
     from app.services.telegram_client import client_pool
 
     client_pool.is_worker = True
-    client_pool.receive_updates = False
-    logger.info("Worker client pool configured (is_worker=True, default receive_updates=False)")
+    client_pool.receive_updates = True
+    logger.info("Worker client pool configured (is_worker=True, receive_updates=True)")
 
     # 3. Wait for the schema, then auto-resume active jobs.
     await resume_jobs_when_schema_ready()
 
     # 4. Start background loops
+    from app.workers.command_consumer import telegram_command_consumer_loop
+
     consumer_task = asyncio.create_task(queue_consumer_loop())
     control_task = asyncio.create_task(control_subscriber_loop())
+    command_consumer_task = asyncio.create_task(telegram_command_consumer_loop(shutdown_event))
 
     # 5. Start background Telegram & Maintenance schedulers
     from app.schedulers.background_tasks import (
@@ -263,19 +326,49 @@ async def main() -> None:
         smm_services_sync_loop,
         smm_orders_poll_loop,
     )
+    from app.services.session_manager import session_manager
     from app.services.stats_service import background_stats_updater
     from app.services.twofa_sync_service import background_twofa_updater
     from app.utils.media_cleanup import background_media_cleanup_loop
+    from app.core.sharding import is_leader_shard
 
     adaptive_sync_task = asyncio.create_task(adaptive_sequential_sync_loop())
     stats_updater_task = asyncio.create_task(background_stats_updater())
     twofa_sync_task = asyncio.create_task(background_twofa_updater())
-    smm_sync_task = asyncio.create_task(smm_services_sync_loop())
-    smm_orders_poll_task = asyncio.create_task(smm_orders_poll_loop())
-    media_cleanup_task = asyncio.create_task(background_media_cleanup_loop())
+
+    leader_tasks: list[asyncio.Task] = []
+    if is_leader_shard(worker_settings.SHARD_INDEX):
+        smm_sync_task = asyncio.create_task(smm_services_sync_loop())
+        smm_orders_poll_task = asyncio.create_task(smm_orders_poll_loop())
+        media_cleanup_task = asyncio.create_task(background_media_cleanup_loop())
+        leader_tasks.extend([smm_sync_task, smm_orders_poll_task, media_cleanup_task])
+        logger.info(
+            "Leader shard (%d): Started SMM sync, SMM orders poll, and media cleanup",
+            worker_settings.SHARD_INDEX,
+        )
+    else:
+        logger.info(
+            "Follower shard (%d): Skipped leader-only schedulers (SMM sync, SMM poll, media cleanup)",
+            worker_settings.SHARD_INDEX,
+        )
+
+    # Start worker-side session manager (health checks & spam checks)
+    await session_manager.start(enable_spam_checks=True)
+
+    # Reconnect accounts with auto-reply enabled
+    async with async_session_factory() as db:
+        try:
+            reconnected_count = await session_manager.reconnect_all(db)
+            logger.info("Worker reconnected %d active auto-reply accounts on startup", reconnected_count)
+        except Exception as rec_err:
+            logger.error("Failed to lazy-reconnect auto-reply accounts in worker: %s", rec_err)
+
     logger.info(
-        "Worker background schedulers started: adaptive sync, stats updater, 2fa updater, "
-        "smm sync, smm orders poll, media cleanup"
+        "Worker background schedulers started (Shard %d/%d): adaptive sync, stats updater, 2fa updater, "
+        "telegram command consumer, session manager%s",
+        worker_settings.SHARD_INDEX,
+        worker_settings.TOTAL_SHARDS,
+        ", leader tasks (smm, media)" if leader_tasks else "",
     )
 
     # Wait until shutdown signal
@@ -285,23 +378,23 @@ async def main() -> None:
     logger.info("Shutting down worker tasks and background schedulers...")
     consumer_task.cancel()
     control_task.cancel()
+    command_consumer_task.cancel()
     adaptive_sync_task.cancel()
     stats_updater_task.cancel()
     twofa_sync_task.cancel()
-    smm_sync_task.cancel()
-    smm_orders_poll_task.cancel()
-    media_cleanup_task.cancel()
-    await asyncio.gather(
+    for lt in leader_tasks:
+        lt.cancel()
+
+    tasks_to_gather = [
         consumer_task,
         control_task,
+        command_consumer_task,
         adaptive_sync_task,
         stats_updater_task,
         twofa_sync_task,
-        smm_sync_task,
-        smm_orders_poll_task,
-        media_cleanup_task,
-        return_exceptions=True,
-    )
+        *leader_tasks,
+    ]
+    await asyncio.gather(*tasks_to_gather, return_exceptions=True)
 
     try:
         from app.services.smm_service import close_smm_http_client
@@ -321,12 +414,13 @@ async def main() -> None:
         cancelled_a,
     )
 
-    # Disconnect pooled Telegram clients while the event loop is still running.
-    # Each connected client owns Telethon-internal send/recv loop tasks; nothing
-    # else releases them. When asyncio.run() closes the loop with those tasks
-    # still pending, the interpreter logs "Task was destroyed but it is
-    # pending!" once per client (PYTHON-FASTAPI-B/C/D/E). Must run before
-    # engine.dispose() so client teardown can still reach the database.
+    # Stop session manager and pooled Telegram clients while the event loop is still running.
+    try:
+        from app.services.session_manager import session_manager
+        await session_manager.stop()
+    except Exception as sm_stop_err:
+        logger.warning("Error stopping session manager on worker shutdown: %s", sm_stop_err)
+
     from app.services.telegram_client import client_pool
 
     await client_pool.stop()

@@ -18,6 +18,21 @@ from app.services.chat_service import resolve_chat_entity
 logger = logging.getLogger(__name__)
 
 async def pin_message(account: TelegramAccount, chat_id: int, message_id: int, silent: bool = False, pm_oneside: bool = False) -> None:
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            await execute_telegram_command(
+                account_id=str(account.id),
+                action="pin_message",
+                params={"chat_id": chat_id, "message_id": message_id, "notify": not silent},
+            )
+            return
+        except TelegramCommandError as cmd_err:
+            raise RuntimeError(str(cmd_err)) from cmd_err
+
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
@@ -27,6 +42,21 @@ async def pin_message(account: TelegramAccount, chat_id: int, message_id: int, s
 
 
 async def unpin_message(account: TelegramAccount, chat_id: int, message_id: int) -> None:
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            await execute_telegram_command(
+                account_id=str(account.id),
+                action="unpin_message",
+                params={"chat_id": chat_id, "message_id": message_id},
+            )
+            return
+        except TelegramCommandError as cmd_err:
+            raise RuntimeError(str(cmd_err)) from cmd_err
+
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:

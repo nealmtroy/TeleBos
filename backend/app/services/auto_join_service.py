@@ -219,7 +219,8 @@ async def start_auto_join(
 
     from app.utils.redis_dispatcher import enqueue_job
 
-    await enqueue_job("autojoin", job.id)
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    await enqueue_job("autojoin", job.id, account_id=primary_acc)
     return job
 
 
@@ -531,6 +532,8 @@ async def cancel_all_auto_join_tasks() -> int:
 
 async def resume_running_auto_joins_on_startup(db: AsyncSession, stagger_seconds: float = 0.3) -> int:
     """Re-attach tasks to jobs left running by a previous worker process."""
+    from app.core.sharding import is_account_in_current_shard
+
     res = await db.execute(
         select(AutoJoinJob)
         .where(AutoJoinJob.status == "running")
@@ -540,6 +543,8 @@ async def resume_running_auto_joins_on_startup(db: AsyncSession, stagger_seconds
 
     count = 0
     for idx, job in enumerate(jobs):
+        if job.account_ids and not is_account_in_current_shard(job.account_ids[0]):
+            continue
         if idx > 0 and stagger_seconds > 0:
             await asyncio.sleep(stagger_seconds)
         if start_auto_join_task(job.id):

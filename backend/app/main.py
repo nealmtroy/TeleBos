@@ -390,21 +390,18 @@ async def _shutdown_resources(
         logger.warning("Error closing SMM HTTP client: %s", e)
 
     # Stop Telegram clients while Redis and DB connections are still active.
-    try:
-        await session_manager.stop()
-    except Exception as e:
-        logger.warning("Error stopping session manager: %s", e, exc_info=True)
+    if not app_settings.ENABLE_TELEGRAM_COMMAND_BUS:
+        try:
+            await session_manager.stop()
+        except Exception as e:
+            logger.warning("Error stopping session manager: %s", e, exc_info=True)
 
-    # session_manager.stop() only detaches event handlers; it does not disconnect
-    # the pooled Telethon clients. Without this, each cached client keeps its
-    # send/recv loop tasks alive and asyncio reports "Task was destroyed but it
-    # is pending!" on shutdown (PYTHON-FASTAPI-B/C/D/E).
-    try:
-        from app.services.telegram_client import client_pool
+        try:
+            from app.services.telegram_client import client_pool
 
-        await client_pool.stop()
-    except Exception as e:
-        logger.warning("Error stopping Telegram client pool: %s", e, exc_info=True)
+            await client_pool.stop()
+        except Exception as e:
+            logger.warning("Error stopping Telegram client pool: %s", e, exc_info=True)
 
     try:
         from app.utils.redis import redis_client
@@ -473,7 +470,10 @@ async def lifespan(app: FastAPI):
 
     await _init_db()
 
-    await session_manager.start(enable_spam_checks=app_settings.ENABLE_SPAM_CHECKS)
+    if not app_settings.ENABLE_TELEGRAM_COMMAND_BUS:
+        await session_manager.start(enable_spam_checks=app_settings.ENABLE_SPAM_CHECKS)
+    else:
+        logger.info("Decoupled mode active: skipping local Telegram session_manager in web server (delegated to worker runner)")
 
     # Seed: ensure nealmtroy@gmail.com is owner
     async with async_session_factory() as db:

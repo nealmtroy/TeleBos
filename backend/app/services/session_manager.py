@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.telegram_client import client_pool
 from app.services.event_relay import event_relay
+from app.core.sharding import is_account_in_current_shard
 from app.models.telegram_account import TelegramAccount
 from app.utils.account_ownership import (
     OWNER_BACKEND,
@@ -297,6 +298,8 @@ class SessionManager:
                 from app.utils.timezone import ensure_utc
 
                 for row in rows:
+                    if not is_account_in_current_shard(row.id):
+                        continue
                     last_checked = ensure_utc(row.spam_last_checked_at)
                     if last_checked is None or last_checked < twelve_hours_ago:
                         accounts_to_check.append((str(row.id), row.phone))
@@ -362,9 +365,12 @@ class SessionManager:
             except Exception as e:
                 logger.error("Failed to auto-check spam status for %s: %s", phone, e)
             finally:
-                # Release the client immediately after checking to prevent idle socket accumulation
+                # Release the client immediately unless auto-reply is enabled for this account
                 try:
-                    await client_pool.remove(account_id, save_state=True)
+                    if not (account and getattr(account, "auto_reply_enabled", False)):
+                        await client_pool.remove(account_id, save_state=True)
+                    else:
+                        client_pool.touch_client(account_id)
                 except Exception:
                     pass
 
@@ -714,7 +720,11 @@ class SessionManager:
                 TelegramAccount.auto_reply_enabled.is_(True),
             )
         )
-        account_ids = [str(account_id) for account_id in result.scalars().all()]
+        account_ids = [
+            str(account_id)
+            for account_id in result.scalars().all()
+            if is_account_in_current_shard(account_id)
+        ]
         success = 0
         for account_id in account_ids:
             if not self._running:
@@ -740,6 +750,8 @@ class SessionManager:
         from app.api.ws import manager as ws_manager
 
         for account_id in account_ids:
+            if not is_account_in_current_shard(account_id):
+                continue
             try:
                 acc_uuid = uuid.UUID(account_id)
             except (ValueError, TypeError):

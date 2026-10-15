@@ -190,6 +190,27 @@ async def get_chat_photo(
     if os.path.exists(cached_path) and os.path.getsize(cached_path) > 0:
         return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
 
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            res = await execute_telegram_command(
+                account_id=str(account.id),
+                action="download_chat_photo",
+                params={"chat_id": chat_id, "destination_path": cached_path},
+            )
+            if not res or not os.path.exists(cached_path) or os.path.getsize(cached_path) == 0:
+                if chat is not None:
+                    chat.photo_version = None
+                    await db.flush()
+                raise HTTPException(status_code=404, detail="No profile photo")
+            return FileResponse(cached_path, media_type="image/jpeg", headers=headers)
+        except TelegramCommandError as exc:
+            logger.warning("Command bus photo download failed for %s: %s", account.id, exc)
+            raise HTTPException(status_code=404, detail="No profile photo")
+
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
@@ -345,10 +366,24 @@ async def get_message_media_endpoint(
     if cached_file and os.path.exists(cached_file):
         return create_safe_file_response(cached_file, allowed_root=media_cache_dir)
 
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise HTTPException(status_code=400, detail="Account is disconnected")
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            dest_prefix = safe_join(media_cache_dir, str(message_id))
+            res = await execute_telegram_command(
+                account_id=str(account.id),
+                action="download_media_to_file",
+                params={"chat_id": chat_id, "message_id": message_id, "destination_path": dest_prefix},
+            )
+            saved_path = res.get("saved_path") if isinstance(res, dict) else None
+            if saved_path and os.path.exists(saved_path):
+                return create_safe_file_response(saved_path, allowed_root=media_cache_dir)
+            raise HTTPException(status_code=404, detail="Media not found or failed to download")
+        except TelegramCommandError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
 
     try:
         entity = await resolve_chat_entity(client, account.id, chat_id)
@@ -461,10 +496,32 @@ async def stream_message_video_endpoint(
                     continue
 
     if not video_path or not os.path.exists(video_path):
+        from app.config import get_settings
+        from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+
+        settings = get_settings()
+        if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+            try:
+                dest_prefix = safe_join(media_cache_dir, f"{message_id}.mp4")
+                res = await execute_telegram_command(
+                    account_id=str(account.id),
+                    action="download_media_to_file",
+                    params={"chat_id": chat_id, "message_id": message_id, "destination_path": dest_prefix},
+                    timeout=30.0,
+                )
+                saved_path = res.get("saved_path") if isinstance(res, dict) else None
+                if saved_path and os.path.exists(saved_path):
+                    video_path = saved_path
+                else:
+                    raise HTTPException(status_code=404, detail="Video media failed to download")
+            except TelegramCommandError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+    if not video_path or not os.path.exists(video_path):
         session_str = decrypt(account.session_string)
         client = await client_pool.get(str(account.id), session_str)
         if client is None:
-                raise HTTPException(status_code=400, detail="Account is disconnected")
+            raise HTTPException(status_code=400, detail="Account is disconnected")
 
         try:
             entity = await resolve_chat_entity(client, account.id, chat_id)

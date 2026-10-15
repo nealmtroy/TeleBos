@@ -75,7 +75,8 @@ async def start_invite(
 
     # Enqueue invite job to Redis for dedicated async worker
     from app.utils.redis_dispatcher import enqueue_job
-    await enqueue_job("invite", job.id)
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    await enqueue_job("invite", job.id, account_id=primary_acc)
 
     return job
 
@@ -143,7 +144,8 @@ async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> Invit
 
     # Enqueue invite job to Redis for dedicated async worker
     from app.utils.redis_dispatcher import enqueue_job
-    await enqueue_job("invite", job.id)
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    await enqueue_job("invite", job.id, account_id=primary_acc)
 
     return job
 
@@ -1379,6 +1381,8 @@ async def resume_running_invites_on_startup(
 ) -> int:
     """Find all invite jobs with status 'running' and resume them on worker startup.
     Staggers startup slightly between multiple jobs to prevent connection spikes."""
+    from app.core.sharding import is_account_in_current_shard
+
     query = select(InviteJob).where(InviteJob.status == "running").order_by(InviteJob.updated_at.desc())
     if max_jobs:
         query = query.limit(max_jobs)
@@ -1386,6 +1390,8 @@ async def resume_running_invites_on_startup(
     jobs = result.scalars().all()
     count = 0
     for idx, job in enumerate(jobs):
+        if job.account_ids and not is_account_in_current_shard(job.account_ids[0]):
+            continue
         if idx > 0 and stagger_seconds > 0:
             await asyncio.sleep(stagger_seconds)
         if start_invite_task(job.id):

@@ -13,6 +13,8 @@ import { LandingHero } from "@/components/landing/landing-hero";
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
 import { Navbar5 } from "@/components/ui/navbar-5";
+import { PricingSection, PricingCard } from "@/components/ui/pricing";
+import { PLANS } from "@/data/plans";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -22,6 +24,7 @@ export default function LandingPage() {
   const router = useRouter();
   const _ = useT();
   const [mounted, setMounted] = useState(false);
+  const [pricingCycle, setPricingCycle] = useState<"monthly" | "yearly">("monthly");
 
   useEffect(() => {
     setMounted(true);
@@ -187,6 +190,78 @@ export default function LandingPage() {
           </ol>
         </div>
       </section>
+
+      {/* Pricing Section */}
+      <PricingSection
+        id="pricing"
+        kicker={_("pricing.kicker") || "PAKET & HARGA"}
+        title={_("pricing.title") || "Mulai gratis. Naik kelas kalau memang perlu."}
+        subtitle={
+          _("pricing.subtitle") ||
+          "Semua paket aktif langsung dengan dukungan pembayaran QRIS otomatis dan saldo dompet. Pindah paket kapan saja saat bisnis Anda bertumbuh."
+        }
+        frequency={pricingCycle}
+        onFrequencyChange={setPricingCycle}
+        variant="public"
+      >
+        {PLANS.map((plan) => {
+          const isYearly = pricingCycle === "yearly";
+          const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+          const period =
+            plan.id === "freetrial"
+              ? undefined
+              : isYearly
+              ? _("pricing.perYear")
+              : _("pricing.perMonth");
+          const yearlyEquivalent =
+            isYearly && plan.id !== "freetrial"
+              ? _("pricing.equivalentMonthly", { price: plan.yearlyEquivalentPrice })
+              : undefined;
+          const discountBadge =
+            isYearly && plan.id !== "freetrial"
+              ? _("pricing.saveDiscount", { discount: plan.yearlyDiscount })
+              : undefined;
+
+          const ctaHref =
+            plan.id === "freetrial"
+              ? isAuthenticated
+                ? "/subscriptions"
+                : "/register"
+              : isAuthenticated
+              ? `/subscriptions?plan=${plan.id}&cycle=${pricingCycle}`
+              : `/login?redirect=/subscriptions`;
+
+          const ctaText =
+            plan.id === "freetrial"
+              ? isAuthenticated
+                ? "Coba di Dashboard"
+                : "Mulai Uji Coba Gratis"
+              : isAuthenticated
+              ? `Pilih ${plan.name}`
+              : `Ambil ${plan.name}`;
+
+          return (
+            <PricingCard
+              key={plan.id}
+              id={plan.id}
+              name={plan.name}
+              tagline={plan.tagline}
+              description={plan.description}
+              price={price}
+              period={period}
+              yearlyEquivalent={yearlyEquivalent}
+              discountBadge={discountBadge}
+              features={plan.features}
+              isPopular={plan.isPopular}
+              popularBadgeText="Paling Populer"
+              ctaText={ctaText}
+              ctaHref={ctaHref}
+              footnote={plan.footnote}
+              variant="public"
+            />
+          );
+        })}
+      </PricingSection>
 
       {/* Trust & Security */}
       <section className="bg-[var(--public-canvas)]">

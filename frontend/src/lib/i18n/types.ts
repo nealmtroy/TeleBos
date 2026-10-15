@@ -2383,6 +2383,11 @@ export interface Dict {
     title: string;
     subtitle: string;
     perMonth: string;
+    perYear: string;
+    saveDiscount: string;
+    monthly: string;
+    yearly: string;
+    equivalentMonthly: string;
     cta: {
       freetrial: string;
       basic: string;

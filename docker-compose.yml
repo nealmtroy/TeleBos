@@ -51,6 +51,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-1}
       CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:3000"]}'
       # Set CAMOUFOX_SOLVER_ENABLED in .env to prefer the local solver (default: true).
       # The URL default already matches the compose service name.
@@ -83,6 +84,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-1}
+      SHARD_INDEX: 0
     volumes:
       - backend_uploads:/app/app/uploads
     # Bound worker memory: without a cap, 72+ looping broadcast jobs accumulate
@@ -93,6 +96,82 @@ services:
       resources:
         limits:
           memory: 4G
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Additional Sharded Runners (Multi-Core Scaling, run with: docker compose --profile sharded up) ──
+  async-runner-1:
+    profiles: ["sharded"]
+    init: true
+    build: ./backend
+    restart: unless-stopped
+    command: python -m app.workers.async_worker
+    env_file: ./.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
+      DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-4}
+      SHARD_INDEX: 1
+    volumes:
+      - backend_uploads:/app/app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  async-runner-2:
+    profiles: ["sharded"]
+    init: true
+    build: ./backend
+    restart: unless-stopped
+    command: python -m app.workers.async_worker
+    env_file: ./.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
+      DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-4}
+      SHARD_INDEX: 2
+    volumes:
+      - backend_uploads:/app/app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  async-runner-3:
+    profiles: ["sharded"]
+    init: true
+    build: ./backend
+    restart: unless-stopped
+    command: python -m app.workers.async_worker
+    env_file: ./.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
+      DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
+      REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-4}
+      SHARD_INDEX: 3
+    volumes:
+      - backend_uploads:/app/app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     depends_on:
       postgres:
         condition: service_healthy

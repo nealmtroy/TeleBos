@@ -802,20 +802,6 @@ async def update_profile(
     bio: str | None,
 ) -> TelegramAccount:
     """Update Telegram profile and DB cache."""
-    session_str = decrypt(account.session_string)
-    client = await client_pool.get(str(account.id), session_str)
-    if client is None:
-        raise AccountDisconnectedError("Account is disconnected. Please re-login.")
-
-    from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
-    from telethon.errors import (
-        UsernameOccupiedError,
-        UsernameInvalidError,
-        AboutTooLongError,
-        FloodWaitError,
-        RPCError,
-    )
-
     # An empty string means "clear this field"; None means the caller omitted
     # it. Telegram requires a first name, so reject an empty one here instead
     # of letting it surface as an opaque RPC error.
@@ -831,25 +817,57 @@ async def update_profile(
     # value is pushed.
     new_username = username if username else None
 
-    try:
-        await client(UpdateProfileRequest(
-            first_name=tg_first_name,
-            last_name=tg_last_name,
-            about=tg_bio,
-        ))
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
 
-        if new_username is not None and new_username != account.username:
-            await client(UpdateUsernameRequest(username=new_username))
-    except UsernameOccupiedError:
-        raise RuntimeError("Username sudah digunakan oleh akun lain.")
-    except UsernameInvalidError:
-        raise RuntimeError("Format username tidak valid. Username minimal 5 karakter, hanya boleh berisi huruf, angka, dan underscore.")
-    except AboutTooLongError:
-        raise RuntimeError("Bio terlalu panjang.")
-    except FloodWaitError as exc:
-        raise RuntimeError(f"Terlalu banyak permintaan. Silakan coba lagi setelah {exc.seconds} detik.")
-    except RPCError as exc:
-        raise RuntimeError(f"Gagal memperbarui profil: {exc.message}")
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            await execute_telegram_command(
+                account_id=str(account.id),
+                action="update_profile",
+                params={
+                    "first_name": tg_first_name,
+                    "last_name": tg_last_name,
+                    "about": tg_bio,
+                },
+            )
+        except TelegramCommandError as exc:
+            raise RuntimeError(str(exc))
+    else:
+        session_str = decrypt(account.session_string)
+        client = await client_pool.get(str(account.id), session_str)
+        if client is None:
+            raise AccountDisconnectedError("Account is disconnected. Please re-login.")
+
+        from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
+        from telethon.errors import (
+            UsernameOccupiedError,
+            UsernameInvalidError,
+            AboutTooLongError,
+            FloodWaitError,
+            RPCError,
+        )
+
+        try:
+            await client(UpdateProfileRequest(
+                first_name=tg_first_name,
+                last_name=tg_last_name,
+                about=tg_bio,
+            ))
+
+            if new_username is not None and new_username != account.username:
+                await client(UpdateUsernameRequest(username=new_username))
+        except UsernameOccupiedError:
+            raise RuntimeError("Username sudah digunakan oleh akun lain.")
+        except UsernameInvalidError:
+            raise RuntimeError("Format username tidak valid. Username minimal 5 karakter, hanya boleh berisi huruf, angka, dan underscore.")
+        except AboutTooLongError:
+            raise RuntimeError("Bio terlalu panjang.")
+        except FloodWaitError as exc:
+            raise RuntimeError(f"Terlalu banyak permintaan. Silakan coba lagi setelah {exc.seconds} detik.")
+        except RPCError as exc:
+            raise RuntimeError(f"Gagal memperbarui profil: {exc.message}")
 
     # Persist exactly what Telegram accepted, so a cleared field reads back as
     # cleared instead of snapping to the previous value on the next fetch.

@@ -21,19 +21,35 @@ WS_EVENTS_CHANNEL = "telebos:ws:events"
 JOBS_COMPLETED_CHANNEL = "telebos:jobs:completed"
 
 
-async def enqueue_job(job_type: str, job_id: str | uuid.UUID) -> bool:
+async def enqueue_job(
+    job_type: str,
+    job_id: str | uuid.UUID,
+    account_id: str | uuid.UUID | None = None,
+    shard_index: int | None = None,
+) -> bool:
     """Push a job to the Redis queue for the async worker daemon to process."""
+    from app.config import get_settings
+    from app.core.sharding import DEFAULT_JOBS_QUEUE, get_account_shard, get_shard_jobs_queue
+
+    settings = get_settings()
+    if shard_index is None and account_id is not None and settings.TOTAL_SHARDS > 1:
+        shard_index = get_account_shard(account_id, settings.TOTAL_SHARDS)
+
+    target_queue = get_shard_jobs_queue(shard_index) if shard_index is not None else DEFAULT_JOBS_QUEUE
+
     try:
         payload = json.dumps({
             "action": "start",
             "job_type": job_type,
             "job_id": str(job_id),
+            "account_id": str(account_id) if account_id is not None else None,
+            "shard_index": shard_index,
         })
-        await redis_client.rpush(JOBS_QUEUE_KEY, payload)
-        logger.info("Enqueued %s job %s to %s", job_type, job_id, JOBS_QUEUE_KEY)
+        await redis_client.rpush(target_queue, payload)
+        logger.info("Enqueued %s job %s to %s", job_type, job_id, target_queue)
         return True
     except Exception as exc:
-        logger.error("Failed to enqueue %s job %s: %s", job_type, job_id, exc)
+        logger.error("Failed to enqueue %s job %s to %s: %s", job_type, job_id, target_queue, exc)
         return False
 
 

@@ -2201,6 +2201,11 @@ const id: Dict = {
       subtitle:
         "Semua paket dibayar lewat voucher, jadi lo nggak perlu nyantumin kartu kredit dulu. Pindah paket kapan saja saat bisnis lo tumbuh.",
       perMonth: "/bln",
+      perYear: "/thn",
+      saveDiscount: "Hemat {discount}",
+      monthly: "Bulanan",
+      yearly: "Tahunan",
+      equivalentMonthly: "Setara {price}/bln, ditagih tahunan",
       cta: {
         freetrial: "Mulai gratis",
         basic: "Ambil Starter",

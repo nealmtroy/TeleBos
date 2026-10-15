@@ -58,6 +58,7 @@ async def refresh_all_accounts(db: AsyncSession | None = None) -> int:
 
     Returns the number of accounts successfully refreshed.
     """
+    from app.core.sharding import is_account_in_current_shard
     from app.models.telegram_account import TelegramAccount
     from app.database import async_session_factory
 
@@ -66,13 +67,13 @@ async def refresh_all_accounts(db: AsyncSession | None = None) -> int:
         result = await db.execute(
             select(TelegramAccount.id).where(TelegramAccount.is_active == True)
         )
-        account_ids = [str(row[0]) for row in result.all()]
+        account_ids = [str(row[0]) for row in result.all() if is_account_in_current_shard(row[0])]
     else:
         async with async_session_factory() as fetch_db:
             result = await fetch_db.execute(
                 select(TelegramAccount.id).where(TelegramAccount.is_active == True)
             )
-            account_ids = [str(row[0]) for row in result.all()]
+            account_ids = [str(row[0]) for row in result.all() if is_account_in_current_shard(row[0])]
 
     refreshed = 0
     # Phase 2: Refresh each account with its own short-lived DB session

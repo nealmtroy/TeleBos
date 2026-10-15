@@ -317,7 +317,8 @@ async def start_broadcast(
 
     # Enqueue broadcast job to Redis for dedicated async worker
     from app.utils.redis_dispatcher import enqueue_job
-    await enqueue_job("broadcast", job.id)
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    await enqueue_job("broadcast", job.id, account_id=primary_acc)
 
     return job
 
@@ -479,7 +480,8 @@ async def retry_job(
 
     # Enqueue broadcast job to Redis for dedicated async worker
     from app.utils.redis_dispatcher import enqueue_job
-    await enqueue_job("broadcast", job.id)
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    await enqueue_job("broadcast", job.id, account_id=primary_acc)
 
     return job
 
@@ -2335,6 +2337,8 @@ async def resume_running_broadcasts_on_startup(
 ) -> int:
     """Find broadcast jobs with status 'running' and resume them on worker startup.
     Staggers startup slightly between multiple jobs to prevent connection spikes."""
+    from app.core.sharding import is_account_in_current_shard
+
     query = select(BroadcastJob).where(BroadcastJob.status == "running").order_by(BroadcastJob.updated_at.desc())
     if max_jobs:
         query = query.limit(max_jobs)
@@ -2342,6 +2346,8 @@ async def resume_running_broadcasts_on_startup(
     jobs = result.scalars().all()
     count = 0
     for idx, job in enumerate(jobs):
+        if job.account_ids and not is_account_in_current_shard(job.account_ids[0]):
+            continue
         if idx > 0 and stagger_seconds > 0:
             await asyncio.sleep(stagger_seconds)
         if start_broadcast_task(job.id):

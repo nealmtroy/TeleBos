@@ -25,6 +25,7 @@ import { PublicShell } from "@/components/public/public-shell";
 import { publicButtonClass } from "@/components/public/public-ui";
 import { LandingReveal } from "@/components/landing/landing-motion";
 import { Navbar5 } from "@/components/ui/navbar-5";
+import { BorderTrail } from "@/components/ui/pricing";
 import { PLANS, type PlanId } from "@/data/plans";
 import {
   Table,
@@ -112,7 +113,7 @@ export default function PricingPage() {
           <LandingReveal delay={0.1}>
             <div className="mt-8 flex justify-center items-center gap-3">
               <span className={cn("text-sm font-medium", billingCycle === "monthly" ? "text-[var(--public-text)]" : "text-[var(--public-muted)]")}>
-                Monthly
+                {_("pricing.monthly")}
               </span>
               <button
                 type="button"
@@ -130,82 +131,93 @@ export default function PricingPage() {
                   )}
                 />
               </button>
-              <span className={cn("text-sm font-medium", billingCycle === "yearly" ? "text-[var(--public-text)]" : "text-[var(--public-muted)]")}>
-                Yearly
+              <span className={cn("text-sm font-medium inline-flex items-center gap-1.5", billingCycle === "yearly" ? "text-[var(--public-text)]" : "text-[var(--public-muted)]")}>
+                <span>{_("pricing.yearly")}</span>
+                <span className="inline-flex items-center rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                  {_("pricing.saveDiscount", { discount: "17%" })}
+                </span>
               </span>
             </div>
           </LandingReveal>
         </div>
 
         {/* ── Plan cards ─────────────────────────────────────────────────── */}
-        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4 md:items-start">
+        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4 items-stretch">
           {PLANS.map((plan, index) => (
             <LandingReveal key={plan.id} delay={0.06 * index}>
               <article
                 className={[
-                  "relative flex h-full flex-col rounded-[var(--public-radius-card)] border bg-[var(--public-canvas-warm)] p-6 transition-colors duration-200",
+                  "relative flex h-full flex-col justify-between rounded-[var(--public-radius-card)] border bg-[var(--public-canvas-warm)] pt-8 px-6 pb-6 transition-colors duration-200",
                   plan.isPopular
                     ? "border-[var(--public-accent)] shadow-[0_0_60px_rgba(45,143,255,0.14)]"
                     : "border-[var(--public-border)] hover:border-[var(--public-accent)]",
                 ].join(" ")}
               >
+                {/* Border trail for popular card */}
                 {plan.isPopular && (
-                  <span className="public-mono absolute -top-3 left-6 rounded-full bg-[var(--public-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--public-canvas)]">
-                    {_("pricing.popular")}
-                  </span>
+                  <BorderTrail size={100} className="via-[var(--public-accent)]" />
                 )}
 
-                <h2 className="text-lg font-bold text-[var(--public-text)] flex items-center gap-2">
-                  {_(`pricing.headers.${plan.id}`)}
-                  {billingCycle === "yearly" && plan.id !== "basic" && plan.id !== "freetrial" && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-                      Hemat {plan.yearlyDiscount}
-                    </span>
-                  )}
-                </h2>
-                <p className="mt-2.5 min-h-[3.5rem] text-sm leading-6 text-[var(--public-muted)]">
-                  {_(`pricing.desc.${plan.id}`)}
-                </p>
-
-                <div className="mt-6 flex flex-col gap-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="public-display text-[2.4rem] font-bold leading-none text-[var(--public-text)]">
-                      {billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice}
-                    </span>
-                    <span className="text-sm text-[var(--public-subtle)]">
-                      {billingCycle === "monthly" ? _("pricing.perMonth") : "/tahun"}
+                {/* Floating Top Badge */}
+                {plan.isPopular && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
+                    <span className="public-mono rounded-full bg-[var(--public-accent)] px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--public-canvas)] shadow-md whitespace-nowrap">
+                      {_("pricing.popular")}
                     </span>
                   </div>
-                  {billingCycle === "yearly" && plan.id !== "basic" && plan.id !== "freetrial" && (
-                    <span className="text-xs text-[var(--public-muted)] font-medium">
-                      Setara {plan.yearlyEquivalentPrice}/bulan, ditagih tahunan
-                    </span>
-                  )}
-                  {billingCycle === "yearly" && (plan.id === "basic" || plan.id === "freetrial") && (
-                    <span className="text-xs text-transparent select-none font-medium">
-                      Spacer
-                    </span>
-                  )}
+                )}
+
+                {/* TOP: Header info (Title, Description, Price) */}
+                <div className="flex flex-col">
+                  {/* Row 1: Title & Discount Badge */}
+                  <div className="flex items-center justify-between gap-2 h-8">
+                    <h2 className="text-xl sm:text-2xl font-bold text-[var(--public-text)] tracking-tight">
+                      {_(`pricing.headers.${plan.id}`)}
+                    </h2>
+                    {billingCycle === "yearly" && plan.id !== "basic" && plan.id !== "freetrial" && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20 whitespace-nowrap">
+                        {_("pricing.saveDiscount", { discount: plan.yearlyDiscount })}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 2: Description slot - 48px uniform height locks price position */}
+                  <div className="h-12 mt-2 flex items-start">
+                    <p className="text-xs leading-relaxed text-[var(--public-muted)] line-clamp-2">
+                      {_(`pricing.desc.${plan.id}`)}
+                    </p>
+                  </div>
+
+                  {/* Row 3: Price Display - Uniform height, centered, aligned borders */}
+                  <div className="mt-4 flex flex-col justify-center min-h-[82px] py-3 border-y border-[var(--public-border)]">
+                    <div className="flex items-baseline gap-1.5 h-10">
+                      <span className="public-display text-3xl font-extrabold leading-none text-[var(--public-text)] whitespace-nowrap tabular-nums">
+                        {billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice}
+                      </span>
+                      {plan.id !== "freetrial" && (
+                        <span className="text-xs font-medium text-[var(--public-subtle)] whitespace-nowrap">
+                          {billingCycle === "monthly" ? _("pricing.perMonth") : _("pricing.perYear")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="h-5 mt-1 flex items-center">
+                      {billingCycle === "yearly" && plan.id !== "basic" && plan.id !== "freetrial" ? (
+                        <span className="text-[11px] text-[var(--public-muted)] font-medium leading-none truncate">
+                          {_("pricing.equivalentMonthly", { price: plan.yearlyEquivalentPrice })}
+                        </span>
+                      ) : (
+                        <span className="h-5 block" aria-hidden="true" />
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <a
-                  href={plan.id === "freetrial" ? "/register" : "/login"}
-                  className={cn(
-                    publicButtonClass,
-                    "mt-6 w-full justify-center",
-                    plan.isPopular &&
-                      "border-[var(--public-accent)] bg-[var(--public-accent)] font-semibold text-[var(--public-canvas)] hover:bg-[var(--public-accent-strong)] hover:text-[var(--public-canvas)]",
-                  )}
-                >
-                  {_(`pricing.cta.${plan.id}`)}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </a>
-
-                <ul className="mt-7 space-y-3 border-t border-[var(--public-border)] pt-6">
+                {/* Feature List - flex-1 expands to fill vertical space */}
+                <ul className="flex-1 mt-6 space-y-2.5">
                   {FEATURES[plan.id].map((f) => (
-                    <li key={f.text} className="flex gap-2.5 text-sm leading-6 text-[var(--public-body)]">
+                    <li key={f.text} className="flex gap-2.5 text-xs leading-relaxed text-[var(--public-body)]">
                       <Check
-                        className="mt-1 h-3.5 w-3.5 shrink-0 text-[var(--public-success)]"
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--public-success)]"
                         aria-hidden="true"
                       />
                       <span>{f.text}</span>
@@ -213,9 +225,27 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                <p className="mt-6 text-xs leading-5 text-[var(--public-subtle)]">
-                  {_(`pricing.footnote.${plan.id}`)}
-                </p>
+                {/* CTA Action & Footnote - Anchored at the very bottom */}
+                <div className="mt-auto pt-5 border-t border-[var(--public-border)] flex flex-col gap-2">
+                  <a
+                    href={plan.id === "freetrial" ? "/register" : "/login"}
+                    className={cn(
+                      publicButtonClass,
+                      "w-full h-11 justify-center rounded-xl text-xs font-bold",
+                      plan.isPopular &&
+                        "border-[var(--public-accent)] bg-[var(--public-accent)] font-semibold text-[var(--public-canvas)] hover:bg-[var(--public-accent-strong)] hover:text-[var(--public-canvas)]",
+                    )}
+                  >
+                    <span>{_(`pricing.cta.${plan.id}`)}</span>
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </a>
+
+                  <div className="h-10 flex items-center justify-center">
+                    <p className="text-[11px] leading-tight text-[var(--public-subtle)] text-center line-clamp-2">
+                      {_(`pricing.footnote.${plan.id}`)}
+                    </p>
+                  </div>
+                </div>
               </article>
             </LandingReveal>
           ))}
