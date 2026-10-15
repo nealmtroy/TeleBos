@@ -1325,18 +1325,18 @@ async def execute_broadcast(job_id: str):
                 limited_accounts.add(a_id)
                 logger.warning(
                     "Account %s is spam-restricted by Telegram (spam_status=limited); "
-                    "pausing broadcast job %s",
+                    "stopping broadcast job %s",
                     a_id,
                     job_id_str,
                 )
             return is_limited
 
-        async def _pause_job_account_limited(a_id: str, a_name: str, current_progress_val: int) -> None:
-            """Pause (not fail) a broadcast job whose account is spam-restricted.
+        async def _stop_job_account_limited(a_id: str, a_name: str, current_progress_val: int) -> None:
+            """Stop a broadcast job whose account is spam-restricted by Telegram.
 
-            Telegram restrictions are temporary (SpamBot reports an expiry), so the
-            job is left resumable instead of being marked failed, and the account
-            can be resumed once the restriction is lifted.
+            The account cannot post to supergroups/channels while limited, so the
+            job is stopped (cancelled) instead of pausing and burning cycles. The
+            worker task returns right after this and the job will not auto-resume.
             """
             if pending_cycle_details:
                 await _flush_cycle_logs(
@@ -1348,25 +1348,25 @@ async def execute_broadcast(job_id: str):
                     failed=failed,
                     progress=current_progress_val,
                 )
-            async with async_session_factory() as db_pause:
-                result = await db_pause.execute(
+            async with async_session_factory() as db_stop:
+                result = await db_stop.execute(
                     select(BroadcastJob).where(BroadcastJob.id == job_uuid)
                 )
                 db_job = result.scalar_one_or_none()
                 if db_job:
-                    db_job.status = "paused"
+                    db_job.status = "cancelled"
                     db_job.sent_count = sent
                     db_job.fail_count = failed
-                    await db_pause.commit()
+                    db_job.completed_at = datetime.now(timezone.utc)
+                    await db_stop.commit()
             await _push_broadcast(
                 job_id_str,
                 "status",
                 {
-                    "status": "paused",
+                    "status": "cancelled",
                     "account": a_name,
                     "message": (
-                        f"Akun {a_name} sedang dibatasi oleh Telegram (spam limit). "
-                        "Job dijeda sampai pembatasan berakhir."
+                        f"Akun {a_name} dibatasi oleh Telegram (spam limit). Job dihentikan."
                     ),
                 },
             )
@@ -1900,7 +1900,7 @@ async def execute_broadcast(job_id: str):
                     if err_type == "banned" and await _ensure_account_spam_checked(acc_id_str):
                         failed += 1
                         cycle_failed += 1
-                        await _pause_job_account_limited(acc_id_str, acc_name, last_progress)
+                        await _stop_job_account_limited(acc_id_str, acc_name, last_progress)
                         return
 
                     if err_type in (
@@ -2163,7 +2163,7 @@ async def execute_broadcast(job_id: str):
                             log_err_msg = err_msg
                             failed += 1
                             cycle_failed += 1
-                            await _pause_job_account_limited(acc_id_str, acc_name, last_progress)
+                            await _stop_job_account_limited(acc_id_str, acc_name, last_progress)
                             return
 
                         if err_type == "bad_request":
