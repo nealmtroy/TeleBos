@@ -96,7 +96,10 @@ export default function HelpPage() {
         <section className="mt-12 rounded-[16px] border border-[var(--public-border)] p-7 text-center sm:p-9">
           <h2 className="text-xl font-medium text-white">{_("help.stillStuck")}</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[var(--public-muted)]">{_("help.stillStuckDesc")}</p>
-          <a href="https://github.com/yourusername/telebo/issues" target="_blank" rel="noopener noreferrer" className={`${publicButtonClass} mt-6`}>{_("help.githubIssues")}</a>
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("telebos:open-support"))} className={`${publicButtonClass} mt-6`}>
+            <Bot className="h-4 w-4" aria-hidden="true" />
+            {_("help.contactSupport")}
+          </button>
         </section>
       </div>
     </PublicShell>

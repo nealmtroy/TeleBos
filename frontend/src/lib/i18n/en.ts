@@ -500,6 +500,9 @@ const en: Dict = {
     noGroupListsTitle: "No Group Lists Created",
     noGroupListsDesc: "You need to create at least one Group List with your target groups before starting a broadcast.",
     noGroupListsBtn: "Create Group List",
+    allAccountsBusyTitle: "All Accounts Are Broadcasting",
+    allAccountsBusyDesc: "Every sending account currently has an active broadcast. Stop them or wait for completion before starting a new one.",
+    allAccountsBusyBtn: "View Broadcast History",
   },
 
   // ── New Broadcast ───────────────────────────────────────────────────────
@@ -629,6 +632,10 @@ const en: Dict = {
     summaryTotalSent: "Messages Sent",
     summaryTotalFailed: "Messages Failed",
     summaryTotalJobs: "Total Broadcasts",
+    showing: "Showing",
+    jobsLabel: "broadcasts",
+    prev: "Prev",
+    next: "Next",
   },
 
   // ── Broadcast Logs ──────────────────────────────────────────────────────
@@ -1389,7 +1396,7 @@ const en: Dict = {
     billingContent4: "To check your plan and subscription period, open the Subscriptions page. Your subscription status decides which features are available to your account.",
     billingContent5: "If your balance does not look reduced after a transaction, check the status in Order History — a 'Proses' (In Process) transaction has not settled yet, and balance is only deducted once the order completes.",
     stillStuck: "Still Stuck?",
-    stillStuckDesc: "If you're experiencing issues not covered here, check the project's GitHub repository for open issues or reach out to the maintainers.",
+    stillStuckDesc: "If you're experiencing issues not covered here, chat with our AI Support — it's online 24/7 and can help resolve most problems right away.",
     searchLabel: "Search help articles",
     searchPlaceholder: "Search help articles…",
     apiTitle: "API Documentation",
@@ -1398,6 +1405,7 @@ const en: Dict = {
     clearSearch: "Clear search",
     articleCount: "{count} articles",
     githubIssues: "GitHub Issues",
+    contactSupport: "Chat with AI Support",
     topicNotFound: "Help topic not found",
     topicNotFoundDesc: "The page you're looking for doesn't exist.",
     backToHelp: "Back to Help",

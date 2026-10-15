@@ -500,6 +500,9 @@ const id: Dict = {
     noGroupListsTitle: "Belum Ada Daftar Grup",
     noGroupListsDesc: "Anda perlu membuat setidaknya satu Daftar Grup dengan grup target Anda sebelum memulai siaran.",
     noGroupListsBtn: "Buat Daftar Grup",
+    allAccountsBusyTitle: "Semua Akun Sedang Siaran",
+    allAccountsBusyDesc: "Setiap akun pengirim saat ini memiliki siaran aktif. Hentikan atau tunggu hingga selesai sebelum memulai siaran baru.",
+    allAccountsBusyBtn: "Lihat Riwayat Siaran",
   },
 
   // ── Siaran Baru ─────────────────────────────────────────────────────────
@@ -629,6 +632,10 @@ const id: Dict = {
     summaryTotalSent: "Pesan Terkirim",
     summaryTotalFailed: "Pesan Gagal",
     summaryTotalJobs: "Total Broadcast",
+    showing: "Menampilkan",
+    jobsLabel: "siaran",
+    prev: "Sebelumnya",
+    next: "Berikutnya",
   },
 
   // ── Log Siaran ──────────────────────────────────────────────────────────
@@ -1389,7 +1396,7 @@ const id: Dict = {
     billingContent4: "Untuk memeriksa paket dan masa langganan Anda, buka halaman Langganan. Status langganan menentukan fitur mana yang tersedia untuk akun Anda.",
     billingContent5: "Jika saldo tampak tidak berkurang setelah transaksi, periksa status di Riwayat Order — transaksi berstatus 'Proses' belum selesai dan saldo baru dipotong saat pesanan diselesaikan.",
     stillStuck: "Masih Mengalami Masalah?",
-    stillStuckDesc: "Jika Anda mengalami masalah yang tidak tercakup di sini, periksa repositori GitHub proyek untuk masalah yang terbuka atau hubungi pengelola.",
+    stillStuckDesc: "Jika Anda mengalami masalah yang tidak tercakup di sini, hubungi Bantuan AI kami — online 24/7 dan siap membantu menyelesaikan sebagian besar kendala.",
     searchLabel: "Cari artikel bantuan",
     searchPlaceholder: "Cari artikel bantuan…",
     apiTitle: "Dokumentasi API",
@@ -1398,6 +1405,7 @@ const id: Dict = {
     clearSearch: "Hapus pencarian",
     articleCount: "{count} artikel",
     githubIssues: "Isu GitHub",
+    contactSupport: "Hubungi Bantuan AI",
     topicNotFound: "Topik bantuan tidak ditemukan",
     topicNotFoundDesc: "Halaman yang Anda cari tidak ada.",
     backToHelp: "Kembali ke Bantuan",

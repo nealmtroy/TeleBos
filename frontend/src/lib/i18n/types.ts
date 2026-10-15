@@ -500,6 +500,9 @@ export interface Dict {
     noGroupListsTitle: string;
     noGroupListsDesc: string;
     noGroupListsBtn: string;
+    allAccountsBusyTitle: string;
+    allAccountsBusyDesc: string;
+    allAccountsBusyBtn: string;
   };
 
   // New Broadcast
@@ -629,6 +632,10 @@ export interface Dict {
     summaryTotalSent: string;
     summaryTotalFailed: string;
     summaryTotalJobs: string;
+    showing: string;
+    jobsLabel: string;
+    prev: string;
+    next: string;
   };
 
   // Broadcast Logs
@@ -1344,6 +1351,7 @@ export interface Dict {
     clearSearch: string;
     articleCount: string;
     githubIssues: string;
+    contactSupport: string;
     topicNotFound: string;
     topicNotFoundDesc: string;
     backToHelp: string;

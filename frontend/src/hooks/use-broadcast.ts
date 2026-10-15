@@ -54,6 +54,8 @@ export interface BroadcastUserSummary {
   failed_jobs: number;
   cancelled_jobs: number;
   active_accounts_count: number;
+  /** IDs of accounts attached to a running/paused job. */
+  active_account_ids: string[];
   total_accounts_used: number;
   total_sent: number;
   total_failed: number;
@@ -200,11 +202,14 @@ export function useDeleteTextList() {
 
 // ── Broadcast Jobs ──────────────────────────────────────────────────────────
 
-export function useBroadcastJobs() {
+export function useBroadcastJobs(params?: { limit?: number }) {
+  const limit = params?.limit;
   return useQuery<BroadcastJob[]>({
-    queryKey: ["broadcast-jobs"],
+    queryKey: limit ? ["broadcast-jobs", { limit }] : ["broadcast-jobs"],
     queryFn: async () => {
-      const { data } = await api.get("/broadcast/history");
+      const { data } = await api.get(
+        limit ? `/broadcast/history?limit=${limit}` : "/broadcast/history"
+      );
       return data;
     },
   });

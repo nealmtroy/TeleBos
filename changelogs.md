@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[ce68b0ea](https://github.com/nealmtroy/TeleBos/commit/ce68b0ea)**: fix(broadcast,autoreply,transfer): repair delivery, HTML rendering and per-account lifecycle
 - **[082f1f4e](https://github.com/nealmtroy/TeleBos/commit/082f1f4e)**: fix(autoreply): preserve event handlers in sync loop and add auto-reply runner watchdog
 - **[4552610d](https://github.com/nealmtroy/TeleBos/commit/4552610d)**: fix(workers): prevent session_manager from disconnecting active worker jobs and enforce shard affinity
 - **[b16c6a9f](https://github.com/nealmtroy/TeleBos/commit/b16c6a9f)**: feat: decouple backend webserver and implement multi-core sharded async runners

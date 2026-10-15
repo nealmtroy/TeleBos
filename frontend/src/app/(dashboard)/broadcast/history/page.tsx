@@ -40,10 +40,13 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useAccounts } from "@/hooks/use-accounts";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { DataPagination } from "@/components/ui/pagination";
+
+const PAGE_SIZE = 10;
 
 const statusColors: Record<string, string> = {
   pending: "bg-gray-100 text-gray-600",
@@ -57,7 +60,7 @@ const statusColors: Record<string, string> = {
 export default function BroadcastHistoryPage() {
   const router = useRouter();
   const _ = useT();
-  const { data: jobs, isLoading } = useBroadcastJobs();
+  const { data: jobs, isLoading } = useBroadcastJobs({ limit: 100 });
   const { data: summary } = useBroadcastSummary();
   const actionMutation = useBroadcastAction();
   const deleteMutation = useDeleteBroadcastJob();
@@ -117,6 +120,198 @@ export default function BroadcastHistoryPage() {
       setConfirmOpen(true);
     },
     []
+  );
+
+  // ── Client-side pagination ──────────────────────────────────────────────
+  const [page, setPage] = useState(1);
+  const totalItems = jobs?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pagedJobs = useMemo(
+    () => (jobs ?? []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [jobs, page]
+  );
+
+  // ── Shared display helpers (desktop table & mobile cards) ───────────────
+  const statusVariant = (status: string): BadgeProps["variant"] =>
+    status === "completed"
+      ? "success"
+      : status === "running"
+      ? "info"
+      : status === "failed"
+      ? "destructive"
+      : status === "paused"
+      ? "warning"
+      : "secondary";
+
+  const progressColor = (status: string) =>
+    status === "completed"
+      ? "bg-emerald-500"
+      : status === "failed"
+      ? "bg-rose-500"
+      : "bg-primary";
+
+  const accountName = (accId: string) => {
+    const acc = accounts?.find((a) => a.id === accId);
+    return acc ? acc.first_name || acc.phone : "Unknown";
+  };
+
+  const accountLabel = (accId: string) => {
+    const acc = accounts?.find((a) => a.id === accId);
+    return acc ? `${acc.first_name || ""} (${acc.phone})` : accId;
+  };
+
+  // ── Shared row actions (used by both desktop table & mobile cards) ───────
+  const renderJobActions = (job: BroadcastJob) => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {/* Running controls */}
+      {job.status === "running" && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  actionMutation.mutate({ jobId: job.id, action: "pause" })
+                }
+                className="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-900/70 rounded-lg hover:bg-yellow-200 transition"
+              >
+                <Pause className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{_("broadcastHistory.pause")}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  openConfirm(
+                    _("broadcastHistory.stop"),
+                    _("broadcastHistory.stopConfirm"),
+                    () => actionMutation.mutate({ jobId: job.id, action: "stop" })
+                  )
+                }
+                className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{_("broadcastHistory.stop")}</TooltipContent>
+          </Tooltip>
+        </>
+      )}
+
+      {/* Paused controls */}
+      {job.status === "paused" && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  actionMutation.mutate({ jobId: job.id, action: "resume" })
+                }
+                className="p-1.5 bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400 dark:hover:bg-green-900/70 rounded-lg hover:bg-green-200 transition"
+              >
+                <Play className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{_("broadcastHistory.resume")}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  openConfirm(
+                    _("broadcastHistory.stop"),
+                    _("broadcastHistory.stopConfirm"),
+                    () => actionMutation.mutate({ jobId: job.id, action: "stop" })
+                  )
+                }
+                className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{_("broadcastHistory.stop")}</TooltipContent>
+          </Tooltip>
+        </>
+      )}
+
+      {/* Pending — allow stop to cancel before execution */}
+      {job.status === "pending" && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() =>
+                openConfirm(
+                  _("broadcastHistory.cancel"),
+                  _("broadcastHistory.cancelConfirm"),
+                  () => actionMutation.mutate({ jobId: job.id, action: "stop" })
+                )
+              }
+              className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
+            >
+              <Square className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{_("broadcastHistory.cancel")}</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Terminal states — retry + delete */}
+      {["completed", "cancelled", "failed"].includes(job.status) && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => retryMutation.mutate(job.id)}
+                disabled={retryMutation.isPending}
+                className="p-1.5 bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/70 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
+              >
+                <RotateCw className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{_("broadcastHistory.retry")}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  openConfirm(
+                    _("broadcastHistory.delete"),
+                    _("broadcastHistory.deleteConfirm"),
+                    () => deleteMutation.mutate(job.id)
+                  )
+                }
+                disabled={deleteMutation.isPending}
+                className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{_("broadcastHistory.delete")}</TooltipContent>
+          </Tooltip>
+        </>
+      )}
+
+      {/* View Logs — for all non-pending jobs */}
+      {job.status !== "pending" && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => router.push(`/broadcast/logs?jobId=${job.id}`)}
+              className="p-1.5 bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground rounded-lg transition"
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{_("broadcastHistory.viewLogs")}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 
   return (
@@ -229,8 +424,10 @@ export default function BroadcastHistoryPage() {
           </button>
         </div>
       ) : (
-        <div className="bg-card text-card-foreground rounded-xl border border-border overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+        <div className="space-y-4">
+          {/* ── Desktop table ─────────────────────────────────────────── */}
+          <div className="hidden lg:block bg-card text-card-foreground rounded-xl border border-border overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
             <Table className="text-sm">
               <TableHeader>
                 <TableRow className="bg-muted/50 border-b border-border hover:bg-muted/50 text-xs">
@@ -244,7 +441,7 @@ export default function BroadcastHistoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border/60">
-                {jobs.map((job: BroadcastJob) => (
+                {pagedJobs.map((job: BroadcastJob) => (
                   <TableRow key={job.id}>
                     <TableCell className="px-4 py-3 text-muted-foreground whitespace-nowrap text-xs">
                       {formatDate(job.created_at)}
@@ -348,183 +545,147 @@ export default function BroadcastHistoryPage() {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
-                      <div className="flex items-center gap-1.5">
-                        {/* Running controls */}
-                        {job.status === "running" && (
-                          <>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    actionMutation.mutate({
-                                      jobId: job.id,
-                                      action: "pause",
-                                    })
-                                  }
-                                  className="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-900/70 rounded-lg hover:bg-yellow-200 transition"
-                                >
-                                  <Pause className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("broadcastHistory.pause")}</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    openConfirm(
-                                      _("broadcastHistory.stop"),
-                                      _("broadcastHistory.stopConfirm"),
-                                      () =>
-                                        actionMutation.mutate({
-                                          jobId: job.id,
-                                          action: "stop",
-                                        })
-                                    )
-                                  }
-                                  className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
-                                >
-                                  <Square className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("broadcastHistory.stop")}</TooltipContent>
-                            </Tooltip>
-                          </>
-                        )}
-
-                        {/* Paused controls */}
-                        {job.status === "paused" && (
-                          <>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    actionMutation.mutate({
-                                      jobId: job.id,
-                                      action: "resume",
-                                    })
-                                  }
-                                  className="p-1.5 bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400 dark:hover:bg-green-900/70 rounded-lg hover:bg-green-200 transition"
-                                >
-                                  <Play className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("broadcastHistory.resume")}</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    openConfirm(
-                                      _("broadcastHistory.stop"),
-                                      _("broadcastHistory.stopConfirm"),
-                                      () =>
-                                        actionMutation.mutate({
-                                          jobId: job.id,
-                                          action: "stop",
-                                        })
-                                    )
-                                  }
-                                  className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
-                                >
-                                  <Square className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("broadcastHistory.stop")}</TooltipContent>
-                            </Tooltip>
-                          </>
-                        )}
-
-                        {/* Pending — allow stop to cancel before execution */}
-                        {job.status === "pending" && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() =>
-                                  openConfirm(
-                                    _("broadcastHistory.cancel"),
-                                    _("broadcastHistory.cancelConfirm"),
-                                    () =>
-                                      actionMutation.mutate({
-                                        jobId: job.id,
-                                        action: "stop",
-                                      })
-                                  )
-                                }
-                                className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition"
-                              >
-                                <Square className="h-4 w-4" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>{_("broadcastHistory.cancel")}</TooltipContent>
-                          </Tooltip>
-                        )}
-
-                        {/* Terminal states — retry + delete */}
-                        {["completed", "cancelled", "failed"].includes(
-                          job.status
-                        ) && (
-                          <>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    retryMutation.mutate(job.id)
-                                  }
-                                  disabled={retryMutation.isPending}
-                                  className="p-1.5 bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/70 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
-                                >
-                                  <RotateCw className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("broadcastHistory.retry")}</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    openConfirm(
-                                      _("broadcastHistory.delete"),
-                                      _("broadcastHistory.deleteConfirm"),
-                                      () => deleteMutation.mutate(job.id)
-                                    )
-                                  }
-                                  disabled={deleteMutation.isPending}
-                                  className="p-1.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 dark:hover:bg-red-900/70 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{_("broadcastHistory.delete")}</TooltipContent>
-                            </Tooltip>
-                          </>
-                        )}
-
-                        {/* View Logs — for all non-pending jobs */}
-                        {job.status !== "pending" && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() =>
-                                  router.push(
-                                    `/broadcast/logs?jobId=${job.id}`
-                                  )
-                                }
-                                className="p-1.5 bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground rounded-lg transition"
-                              >
-                                <FileText className="h-4 w-4" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>{_("broadcastHistory.viewLogs")}</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
+                      {renderJobActions(job)}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            </div>
           </div>
+
+          {/* ── Mobile card deck ──────────────────────────────────────── */}
+          <div className="lg:hidden space-y-3">
+            {pagedJobs.map((job: BroadcastJob) => (
+              <div
+                key={job.id}
+                className="bg-card text-card-foreground rounded-xl border border-border p-4 space-y-3 shadow-sm"
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge
+                      variant={statusVariant(job.status)}
+                      className="capitalize font-semibold text-xs shrink-0"
+                    >
+                      {job.status}
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {formatDate(job.created_at)}
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground shrink-0">
+                    {job.progress}%
+                  </span>
+                </div>
+
+                {/* Setup */}
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground shrink-0">
+                      {_("broadcastHistory.groupList")}:
+                    </span>
+                    <span className="text-foreground font-medium truncate">
+                      {getGroupListName(job.group_list_id)}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground shrink-0">
+                      {_("broadcastHistory.textList")}:
+                    </span>
+                    <span className="text-foreground font-medium truncate">
+                      {job.mode === "single_text"
+                        ? job.custom_text
+                          ? `"${job.custom_text.slice(0, 24)}${
+                              job.custom_text.length > 24 ? "..." : ""
+                            }"`
+                          : _("broadcastHistory.customText")
+                        : getTextListName(job.text_list_id)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Accounts */}
+                <div className="flex flex-wrap gap-1">
+                  {job.account_ids.map((accId) => (
+                    <span
+                      key={accId}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 text-[11px] font-semibold border border-blue-200/80 dark:border-blue-800/60"
+                      title={accountLabel(accId)}
+                    >
+                      <User className="h-3 w-3 shrink-0" />
+                      <span className="max-w-[120px] truncate">
+                        {accountName(accId)}
+                      </span>
+                    </span>
+                  ))}
+                  {job.account_ids.length === 0 && (
+                    <span className="text-xs text-muted-foreground/60 italic">
+                      —
+                    </span>
+                  )}
+                </div>
+
+                {/* Progress */}
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                  <div
+                    className={cn("h-2 rounded-full", progressColor(job.status))}
+                    style={{ width: `${job.progress}%` }}
+                  />
+                </div>
+
+                {/* Footer: counts + actions */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-mono">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                      {job.sent_count}
+                    </span>
+                    <span className="text-muted-foreground/60">/</span>
+                    <span className="text-rose-700 dark:text-rose-400 font-bold">
+                      {job.fail_count}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-sans">
+                      ({_("broadcastHistory.of")} {job.total_groups})
+                    </span>
+                  </div>
+                  {renderJobActions(job)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Pagination ────────────────────────────────────────────── */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 sm:px-6 shadow-2xs">
+              <p className="text-xs text-muted-foreground text-center sm:text-left">
+                {_("broadcastHistory.showing")}{" "}
+                <span className="font-bold text-foreground tabular-nums">
+                  {(page - 1) * PAGE_SIZE + 1}
+                </span>
+                {" – "}
+                <span className="font-bold text-foreground tabular-nums">
+                  {Math.min(page * PAGE_SIZE, totalItems)}
+                </span>{" "}
+                {_("broadcastHistory.of")}{" "}
+                <span className="font-bold text-foreground tabular-nums">
+                  {totalItems}
+                </span>{" "}
+                {_("broadcastHistory.jobsLabel")}
+              </p>
+              <DataPagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                labels={{
+                  prev: _("broadcastHistory.prev"),
+                  next: _("broadcastHistory.next"),
+                }}
+                className="w-auto mx-0"
+              />
+            </div>
+          )}
         </div>
       )}
 

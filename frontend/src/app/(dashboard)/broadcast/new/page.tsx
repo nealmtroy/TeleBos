@@ -14,6 +14,7 @@ import {
   useStartBroadcast,
   useBroadcastJob,
   useBroadcastJobs,
+  useBroadcastSummary,
   useBroadcastLogs,
   useBroadcastAction,
 } from "@/hooks/use-broadcast";
@@ -22,7 +23,7 @@ import type { Account } from "@/hooks/use-accounts";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { CardSkeleton } from "@/components/ui/skeleton-cards";
-import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle, Wifi, RefreshCw, Info, Search, UserPlus, Plus, List } from "lucide-react";
+import { Send, Play, Pause, Square, Loader2, CheckCircle, XCircle, AlertTriangle, Wifi, RefreshCw, Info, Search, UserPlus, Plus, List, Radio, Clock } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { BroadcastEntitlementBanner } from "@/components/broadcast/broadcast-entitlement-banner";
@@ -41,11 +42,15 @@ export default function NewBroadcastPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { data: rawAccounts, isLoading: accountsLoading } = useAccounts();
-  const accounts = rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale);
+  const allAccounts = useMemo(
+    () => rawAccounts?.filter((acc) => acc.is_active && !acc.for_sale) ?? [],
+    [rawAccounts]
+  );
   const { data: folders } = useAccountFolders();
   const { data: groupLists, isLoading: groupListsLoading } = useGroupLists();
   const { data: textLists, isLoading: textListsLoading } = useTextLists();
   const { data: allJobs } = useBroadcastJobs();
+  const { data: summary } = useBroadcastSummary();
   const startMutation = useStartBroadcast();
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -64,6 +69,30 @@ export default function NewBroadcastPage() {
   const [conflictNames, setConflictNames] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  // Accounts already tied to an active broadcast (running/paused) must not be
+  // offered again — only stopped/failed/completed jobs free their accounts.
+  const busyAccountIds = useMemo(() => {
+    const set = new Set<string>(summary?.active_account_ids ?? []);
+    (allJobs || [])
+      .filter((j) => j.status === "running" || j.status === "paused")
+      .forEach((j) => (j.account_ids || []).forEach((id) => set.add(id)));
+    return set;
+  }, [summary, allJobs]);
+
+  const accounts = useMemo(
+    () => allAccounts.filter((acc) => !busyAccountIds.has(acc.id)),
+    [allAccounts, busyAccountIds]
+  );
+
+  // Drop any selection that became busy while the form was open.
+  useEffect(() => {
+    if (busyAccountIds.size === 0) return;
+    setSelectedAccountIds((prev) => {
+      const next = prev.filter((id) => !busyAccountIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [busyAccountIds]);
 
   // Active job tracking — via WebSocket for real-time updates
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -198,16 +227,10 @@ export default function NewBroadcastPage() {
       return;
     }
 
-    // Check for running jobs with selected accounts
-    const runningJobs = (allJobs || []).filter(j => j.status === "running");
-    const runningAccIds = new Set<string>();
-    runningJobs.forEach(j => {
-      (j.account_ids || []).forEach(id => runningAccIds.add(id));
-    });
-
-    const conflicts = selectedAccountIds.filter(id => runningAccIds.has(id));
+    // Safety net: an account may have become busy after it was selected.
+    const conflicts = selectedAccountIds.filter((id) => busyAccountIds.has(id));
     if (conflicts.length > 0) {
-      const names = accounts?.filter(a => conflicts.includes(a.id)).map(a => a.first_name || a.phone) || [];
+      const names = allAccounts.filter(a => conflicts.includes(a.id)).map(a => a.first_name || a.phone);
       setConflictNames(names);
       setWarningOpen(true);
     } else {
@@ -259,7 +282,7 @@ export default function NewBroadcastPage() {
           <CardSkeleton lines={2} />
           <CardSkeleton lines={3} />
         </div>
-      ) : !accounts || accounts.length === 0 ? (
+      ) : !allAccounts || allAccounts.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center p-12 bg-card text-card-foreground rounded-2xl border border-border shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
           <div className="bg-primary-50 dark:bg-primary-950/50 p-5 rounded-full text-primary animate-pulse">
             <UserPlus className="h-10 w-10 text-primary" />
@@ -278,6 +301,27 @@ export default function NewBroadcastPage() {
           >
             <Plus className="h-4 w-4" />
             {_("broadcastDashboard.noAccountsBtn")}
+          </Link>
+        </div>
+      ) : accounts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center p-12 bg-card text-card-foreground rounded-2xl border border-border shadow-sm max-w-2xl mx-auto my-8 space-y-6 transition duration-300 hover:shadow-md">
+          <div className="bg-amber-50 dark:bg-amber-950/50 p-5 rounded-full text-amber-600 dark:text-amber-400">
+            <Radio className="h-10 w-10" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-foreground">
+              {_("broadcastDashboard.allAccountsBusyTitle")}
+            </h2>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
+              {_("broadcastDashboard.allAccountsBusyDesc")}
+            </p>
+          </div>
+          <Link
+            href="/broadcast/history"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition shadow-sm hover:shadow active:scale-98"
+          >
+            <Clock className="h-4 w-4" />
+            {_("broadcastDashboard.allAccountsBusyBtn")}
           </Link>
         </div>
       ) : !groupLists || groupLists.length === 0 ? (
@@ -720,7 +764,7 @@ export default function NewBroadcastPage() {
           setConfirmOpen(true);
         }}
         title="Active Broadcast Detected"
-        message={`The following accounts already have a running broadcast: ${conflictNames.join(", ")}. Are you sure you want to start another broadcast with them? This might cause rate limits or conflicts.`}
+        message={`The following accounts already have an active broadcast: ${conflictNames.join(", ")}. Are you sure you want to start another broadcast with them? This might cause rate limits or conflicts.`}
         confirmText="Continue Anyway"
         cancelText="Cancel"
         variant="danger"

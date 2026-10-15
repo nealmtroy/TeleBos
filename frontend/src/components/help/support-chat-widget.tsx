@@ -84,6 +84,16 @@ export function SupportChatWidget() {
     }
   }, [messages, isOpen, isLoading]);
 
+  // Allow other pages (e.g. the help "Still Stuck?" button) to open this widget.
+  useEffect(() => {
+    const openHandler = () => {
+      setIsOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 150);
+    };
+    window.addEventListener("telebos:open-support", openHandler);
+    return () => window.removeEventListener("telebos:open-support", openHandler);
+  }, []);
+
   // Initial welcome message
   useEffect(() => {
     if (messages.length === 0) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Bot, ChevronRight } from "lucide-react";
 
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
@@ -75,7 +75,10 @@ export default function HelpDetailPage() {
         <section className="mt-10 rounded-[16px] border border-[var(--public-border)] p-7 text-center">
           <h2 className="text-xl font-medium text-white">{_("help.stillStuck")}</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[var(--public-muted)]">{_("help.stillStuckDesc")}</p>
-          <a href="https://github.com/yourusername/telebo/issues" target="_blank" rel="noopener noreferrer" className={`${publicButtonClass} mt-6`}>{_("help.githubIssues")}</a>
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("telebos:open-support"))} className={`${publicButtonClass} mt-6`}>
+            <Bot className="h-4 w-4" aria-hidden="true" />
+            {_("help.contactSupport")}
+          </button>
         </section>
       </article>
     </PublicShell>
