@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import require_role
+from app.dependencies import require_role, UuidPath
 from app.models.user import User
 from app.schemas.auto_join import (
     AutoJoinJobCreate,
@@ -67,7 +67,7 @@ async def auto_join_history(
 
 @router.get("/auto-join/{job_id}", response_model=AutoJoinJobResponse)
 async def get_auto_join(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
@@ -79,7 +79,7 @@ async def get_auto_join(
 
 @router.post("/auto-join/{job_id}/pause")
 async def pause_auto_join(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
@@ -98,7 +98,7 @@ async def pause_auto_join(
 
 @router.post("/auto-join/{job_id}/resume")
 async def resume_auto_join(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
@@ -118,7 +118,7 @@ async def resume_auto_join(
 
 @router.post("/auto-join/{job_id}/stop")
 async def stop_auto_join(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
@@ -137,7 +137,7 @@ async def stop_auto_join(
 
 @router.delete("/auto-join/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_auto_join(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["basic", "pro", "premium", "owner"])),
 ):
@@ -149,7 +149,7 @@ async def delete_auto_join(
 
 @router.get("/auto-join/{job_id}/logs", response_model=list[AutoJoinLogResponse])
 async def auto_join_logs(
-    job_id: str,
+    job_id: UuidPath,
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),

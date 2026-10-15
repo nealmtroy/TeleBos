@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, UuidPath
 from app.models.user import User
 from app.schemas.broadcast import (
     GroupListCreate,
@@ -50,7 +50,7 @@ async def create_group_list(
 
 @router.put("/group-lists/{gl_id}", response_model=GroupListResponse)
 async def update_group_list(
-    gl_id: str,
+    gl_id: UuidPath,
     payload: GroupListUpdate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -66,7 +66,7 @@ async def update_group_list(
 
 @router.delete("/group-lists/{gl_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_group_list(
-    gl_id: str,
+    gl_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -99,7 +99,7 @@ async def create_text_list(
 
 @router.put("/text-lists/{tl_id}", response_model=TextListResponse)
 async def update_text_list(
-    tl_id: str,
+    tl_id: UuidPath,
     payload: TextListUpdate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -114,7 +114,7 @@ async def update_text_list(
 
 @router.delete("/text-lists/{tl_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_text_list(
-    tl_id: str,
+    tl_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -217,7 +217,7 @@ async def broadcast_entitlement(
 
 @router.get("/broadcast/{job_id}", response_model=BroadcastJobResponse)
 async def get_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -229,7 +229,7 @@ async def get_job(
 
 @router.post("/broadcast/{job_id}/pause")
 async def pause_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -246,7 +246,7 @@ async def pause_job(
 
 @router.post("/broadcast/{job_id}/resume")
 async def resume_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -264,7 +264,7 @@ async def resume_job(
 
 @router.post("/broadcast/{job_id}/stop")
 async def stop_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -281,7 +281,7 @@ async def stop_job(
 
 @router.delete("/broadcast/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -294,7 +294,7 @@ async def delete_job(
 
 @router.post("/broadcast/{job_id}/retry", response_model=BroadcastJobResponse)
 async def retry_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -311,7 +311,7 @@ async def retry_job(
 
 @router.get("/broadcast/{job_id}/logs", response_model=list[BroadcastLogResponse])
 async def get_logs(
-    job_id: str,
+    job_id: UuidPath,
     status_filter: str | None = Query(None, alias="status"),
     error_type: str | None = Query(None),
     search: str | None = Query(None),
@@ -340,7 +340,7 @@ async def get_logs(
 
 @router.get("/broadcast/{job_id}/logs/export")
 async def export_logs(
-    job_id: str,
+    job_id: UuidPath,
     format: str = Query("csv", pattern="^(csv|json)$"),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),

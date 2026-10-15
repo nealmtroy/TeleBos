@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, require_role, UuidPath
 from app.models.user import User
 from app.schemas.invite import (
     InviteJobCreate,
@@ -76,7 +76,7 @@ async def invite_history(
 
 @router.get("/invite/{job_id}", response_model=InviteJobResponse)
 async def get_invite_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -88,7 +88,7 @@ async def get_invite_job(
 
 @router.post("/invite/{job_id}/pause")
 async def pause_invite_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -105,7 +105,7 @@ async def pause_invite_job(
 
 @router.post("/invite/{job_id}/resume")
 async def resume_invite_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -123,7 +123,7 @@ async def resume_invite_job(
 
 @router.post("/invite/{job_id}/stop")
 async def stop_invite_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -140,7 +140,7 @@ async def stop_invite_job(
 
 @router.delete("/invite/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_invite_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -152,7 +152,7 @@ async def delete_invite_job(
 
 @router.post("/invite/{job_id}/retry", response_model=InviteJobResponse)
 async def retry_invite_job(
-    job_id: str,
+    job_id: UuidPath,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
@@ -168,7 +168,7 @@ async def retry_invite_job(
 
 @router.get("/invite/{job_id}/logs", response_model=list[InviteLogResponse])
 async def get_invite_logs(
-    job_id: str,
+    job_id: UuidPath,
     status_filter: str | None = Query(None, alias="status"),
     error_type: str | None = Query(None),
     search: str | None = Query(None),

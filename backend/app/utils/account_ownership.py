@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.auto_join_job import AutoJoinJob
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
 
@@ -93,7 +94,7 @@ async def is_worker_claimed(db: AsyncSession, account_id: str) -> bool:
     except (ValueError, TypeError):
         return False
 
-    for model in (BroadcastJob, InviteJob):
+    for model in (BroadcastJob, InviteJob, AutoJoinJob):
         try:
             result = await db.execute(
                 select(model.account_ids).where(
@@ -113,6 +114,37 @@ async def is_worker_claimed(db: AsyncSession, account_id: str) -> bool:
             ):
                 return True
     return False
+
+
+async def find_busy_accounts(db: AsyncSession, account_ids) -> list[str]:
+    """Return the subset of ``account_ids`` that an active job already holds.
+
+    Used to refuse starting a second job on an account the worker is already
+    sending from: two jobs sharing one MTProto session interleave sends and burn
+    the account. One query per job model, not one per account.
+    """
+    wanted = {str(a) for a in account_ids}
+    if not wanted:
+        return []
+
+    busy: set[str] = set()
+    for model in (BroadcastJob, InviteJob, AutoJoinJob):
+        try:
+            result = await db.execute(
+                select(model.account_ids).where(
+                    model.status.in_(list(_ACTIVE_JOB_STATUSES))
+                )
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug("Busy-account check failed for %s: %s", model.__name__, exc)
+            continue
+        for accs in result.scalars():
+            if not isinstance(accs, list):
+                continue
+            for a in accs:
+                if str(a) in wanted:
+                    busy.add(str(a))
+    return sorted(busy)
 
 
 async def decide_owner(db: AsyncSession, account_id: str) -> OwnershipDecision:

@@ -22,10 +22,15 @@ from telethon.errors import (
 )
 
 from app.config import get_settings
-from app.core.sharding import DEFAULT_CMD_QUEUE, get_shard_command_queue
+from app.core.sharding import (
+    DEFAULT_CMD_QUEUE,
+    get_account_shard,
+    get_shard_command_queue,
+)
 from app.database import async_session_factory
 from app.models.telegram_account import TelegramAccount
 from app.services.chat_service import resolve_chat_entity
+from app.services.telegram_client import client_pool
 from app.services.telegram_command_bus import (
     TELEGRAM_COMMANDS_QUEUE,
     TELEGRAM_RESPONSE_PREFIX,
@@ -35,6 +40,14 @@ from app.utils.telethon_helpers import borrow_client, release_client
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
+
+# Bound how many commands a runner executes at once. Each in-flight command may
+# borrow a Telegram client, so an unbounded fan-out on a burst of chat traffic
+# would connect an unbounded number of sockets and thrash the client pool.
+MAX_CONCURRENT_COMMANDS = 20
+
+_command_semaphore = asyncio.Semaphore(MAX_CONCURRENT_COMMANDS)
+_command_tasks: set[asyncio.Task[None]] = set()
 
 
 async def _get_account_by_id(account_id: str) -> TelegramAccount | None:
@@ -47,6 +60,62 @@ async def _get_account_by_id(account_id: str) -> TelegramAccount | None:
     async with async_session_factory() as db:
         res = await db.execute(select(TelegramAccount).where(TelegramAccount.id == acc_uuid))
         return res.scalar_one_or_none()
+
+
+async def _active_job_owner_shard(account_id: str) -> int | None:
+    """Return the shard that runs the active job using this account (or None).
+
+    Job routing is keyed on the job's first account, so a command for an account
+    used by a running job must be executed on the *job's* shard (where the account
+    is already connected), not necessarily on the account's own shard. Otherwise
+    the account's home shard would open a second MTProto connection for an auth
+    key the job already holds.
+    """
+    from app.models.auto_join_job import AutoJoinJob
+    from app.models.broadcast_job import BroadcastJob
+    from app.models.invite_job import InviteJob
+
+    try:
+        acc_uuid = uuid.UUID(str(account_id))
+    except (ValueError, TypeError):
+        return None
+
+    try:
+        async with async_session_factory() as db:
+            for model in (BroadcastJob, InviteJob, AutoJoinJob):
+                res = await db.execute(
+                    select(model.account_ids).where(
+                        model.status.in_(["pending", "running", "paused"])
+                    )
+                )
+                for accs in res.scalars():
+                    if not isinstance(accs, list):
+                        continue
+                    if account_id in accs or str(acc_uuid) in accs or acc_uuid in accs:
+                        return get_account_shard(accs[0]) if accs else None
+    except Exception as exc:
+        logger.warning("Could not determine job owner shard for %s: %s", account_id, exc)
+    return None
+
+
+async def _run_command(raw_payload: str) -> None:
+    """Execute one command under the concurrency bound."""
+    async with _command_semaphore:
+        await process_single_command(raw_payload)
+
+
+async def drain_command_tasks(timeout: float = 10.0) -> None:
+    """Wait for in-flight command tasks so clients are released before shutdown."""
+    pending = [t for t in list(_command_tasks) if not t.done()]
+    if not pending:
+        return
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(*pending, return_exceptions=True), timeout=timeout
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Timed out draining %d in-flight command task(s)", len(pending))
+
 
 
 async def _handle_command_action(
@@ -303,10 +372,31 @@ async def process_single_command(raw_payload: str) -> None:
 
     client = None
     account = None
+    forwarded = False
 
     try:
         # Resolve target account and client
         if account_id:
+            # W2: an account held by a job on another shard must be driven on
+            # that shard (where it is connected). Forward the command instead of
+            # opening a second MTProto connection for the same auth key.
+            settings = get_settings()
+            if settings.TOTAL_SHARDS > 1:
+                connected = await client_pool.get_connected_clients()
+                if account_id not in connected:
+                    owner_shard = await _active_job_owner_shard(account_id)
+                    if owner_shard is not None and owner_shard != settings.SHARD_INDEX:
+                        await redis_client.rpush(
+                            get_shard_command_queue(owner_shard), raw_payload
+                        )
+                        logger.info(
+                            "Forwarded command '%s' (acc=%s) to job owner shard %d",
+                            action,
+                            account_id,
+                            owner_shard,
+                        )
+                        forwarded = True
+                        return
             account = await _get_account_by_id(account_id)
             if not account or not account.session_string:
                 raise ValueError(f"Account {account_id} not found or has no active session")
@@ -351,13 +441,15 @@ async def process_single_command(raw_payload: str) -> None:
             except Exception as rel_err:
                 logger.warning("Error releasing client for account %s: %s", account_id, rel_err)
 
-        # Publish response to caller via Redis
-        try:
-            raw_res = json.dumps(res_payload, default=str)
-            await redis_client.rpush(res_key, raw_res)
-            await redis_client.expire(res_key, 60)
-        except Exception as res_err:
-            logger.error("Failed to write RPC response to %s: %s", res_key, res_err)
+        # Publish response to caller via Redis. A forwarded command is answered
+        # by the owning shard, so this runner must not write a (bogus) response.
+        if not forwarded:
+            try:
+                raw_res = json.dumps(res_payload, default=str)
+                await redis_client.rpush(res_key, raw_res)
+                await redis_client.expire(res_key, 60)
+            except Exception as res_err:
+                logger.error("Failed to write RPC response to %s: %s", res_key, res_err)
 
 
 async def telegram_command_consumer_loop(
@@ -386,8 +478,13 @@ async def telegram_command_consumer_loop(
                 continue
 
             _, data_raw = item
-            # Spawn processing asynchronously so commands do not block each other
-            asyncio.create_task(process_single_command(data_raw))
+            # Spawn processing asynchronously so commands do not block each
+            # other, but bound concurrency and keep a reference so in-flight
+            # commands are not garbage-collected mid-flight and can be drained
+            # on shutdown (releasing their borrowed Telegram clients).
+            task = asyncio.create_task(_run_command(data_raw))
+            _command_tasks.add(task)
+            task.add_done_callback(_command_tasks.discard)
 
         except asyncio.CancelledError:
             logger.info("Telegram command consumer cancelled")

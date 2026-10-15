@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GroupListItem(BaseModel):
@@ -61,6 +61,22 @@ class BroadcastStartRequest(BaseModel):
     loop_enabled: bool = True
     delay_randomized: bool = False
     log_destination: str | None = None  # None=default, "web_only"=skip Telegram, else=@username/user_id
+
+    @field_validator("log_destination")
+    @classmethod
+    def _validate_log_destination(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        # The DB column is VARCHAR(255); a longer value used to surface as a raw
+        # DB error, and embedded whitespace breaks the destination parser.
+        if len(v) > 255:
+            raise ValueError("log_destination maksimal 255 karakter.")
+        if any(c.isspace() for c in v):
+            raise ValueError("log_destination tidak boleh mengandung spasi.")
+        return v
 
 
 class BroadcastJobResponse(BaseModel):

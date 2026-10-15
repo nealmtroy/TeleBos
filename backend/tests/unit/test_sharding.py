@@ -127,49 +127,67 @@ async def test_command_bus_routes_to_correct_shard():
 
 
 @pytest.mark.asyncio
-async def test_session_manager_worker_retains_active_jobs_and_evicts_other_shards():
-    """Verify that in worker mode, session_manager retains accounts in active jobs and disconnects other shards."""
+async def test_session_manager_worker_keeps_own_job_accounts_and_evicts_foreign_claims():
+    """Worker health pass keeps the accounts THIS runner's job holds, releases the rest.
+
+    A job is executed on the shard of its first account and holds every one of
+    its accounts there — even accounts whose own shard differs. Another runner
+    must release those, and any account not in this shard and not in this
+    runner's job is released too.
+    """
     from app.services.session_manager import session_manager
     from app.services.telegram_client import client_pool
 
-    acc_our_shard = str(uuid.uuid4())
-    acc_other_shard = str(uuid.uuid4())
+    acc_job_here = str(uuid.uuid4())       # this runner's job holds it
+    acc_job_elsewhere = str(uuid.uuid4())  # a job on another shard holds it
+    acc_local = str(uuid.uuid4())          # no job, in our shard
+    acc_foreign = str(uuid.uuid4())        # no job, not in our shard
+
+    def _conn():
+        c = MagicMock()
+        c.is_connected.return_value = True
+        return c
 
     with patch("app.core.sharding.get_settings") as mock_settings:
         mock_settings.return_value.TOTAL_SHARDS = 4
         mock_settings.return_value.SHARD_INDEX = 1
 
-        # Force shard mapping in session_manager module namespace
-        with patch("app.services.session_manager.is_account_in_current_shard", side_effect=lambda a: str(a) == acc_our_shard):
+        with patch(
+            "app.services.session_manager.is_account_in_current_shard",
+            side_effect=lambda a: str(a) in (acc_local,),
+        ):
             client_pool.is_worker = True
-
-            mock_c1 = MagicMock()
-            mock_c1.is_connected.return_value = True
-            mock_c2 = MagicMock()
-            mock_c2.is_connected.return_value = True
-
-            client_pool._clients[acc_our_shard] = {"client": mock_c1, "last_accessed": 100.0}
-            client_pool._clients[acc_other_shard] = {"client": mock_c2, "last_accessed": 100.0}
+            for aid in (acc_job_here, acc_job_elsewhere, acc_local, acc_foreign):
+                client_pool._clients[aid] = {"client": _conn(), "last_accessed": 100.0}
 
             with patch.object(client_pool, "remove", new_callable=AsyncMock) as mock_remove:
                 with patch("app.database.async_session_factory") as mock_db_factory:
                     mock_db = AsyncMock()
                     mock_db_factory.return_value.__aenter__.return_value = mock_db
                     mock_acc = MagicMock()
-                    mock_acc.auto_reply_enabled = False
+                    mock_acc.auto_reply_enabled = True  # keeps a no-job local account
                     mock_res = MagicMock()
                     mock_res.scalar_one_or_none.return_value = mock_acc
                     mock_db.execute.return_value = mock_res
 
-                    # Account in our shard is in an active job!
-                    with patch.object(session_manager, "is_account_in_active_job", return_value=True):
-                        with patch("app.api.ws.manager.has_channel", return_value=False):
-                            await session_manager._check_connections()
+                    with patch.object(
+                        session_manager,
+                        "is_account_in_active_job",
+                        side_effect=lambda db, aid: str(aid) in (acc_job_here, acc_job_elsewhere),
+                    ):
+                        with patch.object(
+                            session_manager,
+                            "_active_job_in_current_shard",
+                            side_effect=lambda db, aid: str(aid) == acc_job_here,
+                        ):
+                            with patch("app.api.ws.manager.has_channel", return_value=False):
+                                await session_manager._check_connections()
 
-                    # acc_other_shard should be removed because it's not in our shard
-                    mock_remove.assert_called_once_with(acc_other_shard)
-                    # acc_our_shard must NOT be removed because it's in an active worker job in this worker!
-                    assert acc_our_shard in client_pool._clients
+                removed = {c.args[0] for c in mock_remove.call_args_list}
+                assert acc_job_here not in removed, "this runner's own job account must be kept"
+                assert acc_local not in removed, "local no-job account must be kept"
+                assert acc_job_elsewhere in removed, "account held by another shard's job must be released"
+                assert acc_foreign in removed, "account not in this shard must be released"
 
             client_pool._clients.clear()
             client_pool.is_worker = False
@@ -209,4 +227,76 @@ async def test_session_manager_auto_reply_watchdog_reconnects_missing_accounts()
                     mock_ensure.assert_called_once_with(auto_acc_id)
 
             client_pool.is_worker = False
+
+
+# ── _active_job_in_current_shard (Design B: cross-shard job ownership) ───────
+
+
+class _ScalarResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def scalars(self):
+        return iter(self._rows)
+
+
+class _JobDB:
+    """Returns account_ids rows per model table name found in the statement."""
+
+    def __init__(self, rows_by_table):
+        self.rows_by_table = rows_by_table
+
+    async def execute(self, stmt):
+        text = str(stmt)
+        for table, rows in self.rows_by_table.items():
+            if table in text:
+                return _ScalarResult(rows)
+        return _ScalarResult([])
+
+
+@pytest.mark.asyncio
+async def test_active_job_in_current_shard_true_when_primary_is_local():
+    from app.services.session_manager import session_manager
+
+    primary = str(uuid.uuid4())
+    other = str(uuid.uuid4())
+    db = _JobDB({"broadcast_jobs": [[primary, other]]})
+
+    with patch(
+        "app.services.session_manager.is_account_in_current_shard",
+        side_effect=lambda a: str(a) == primary,
+    ):
+        # `other` is claimed by a job whose first account runs on this shard.
+        assert await session_manager._active_job_in_current_shard(db, other) is True
+
+
+@pytest.mark.asyncio
+async def test_active_job_in_current_shard_false_when_primary_is_remote():
+    from app.services.session_manager import session_manager
+
+    primary = str(uuid.uuid4())  # on another shard
+    account = str(uuid.uuid4())
+    db = _JobDB({"invite_jobs": [[primary, account]]})
+
+    with patch(
+        "app.services.session_manager.is_account_in_current_shard",
+        side_effect=lambda a: False,
+    ):
+        assert await session_manager._active_job_in_current_shard(db, account) is False
+
+
+@pytest.mark.asyncio
+async def test_active_job_in_current_shard_defaults_true_without_a_job():
+    from app.services.session_manager import session_manager
+
+    account = str(uuid.uuid4())
+    db = _JobDB({})
+
+    with patch(
+        "app.services.session_manager.is_account_in_current_shard",
+        side_effect=lambda a: False,
+    ):
+        # No job claims the account → callers must not treat it as a foreign claim.
+        assert await session_manager._active_job_in_current_shard(db, account) is True
+
 

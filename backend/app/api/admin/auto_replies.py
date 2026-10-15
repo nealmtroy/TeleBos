@@ -230,6 +230,13 @@ async def toggle_admin_auto_reply(
 
     acc.auto_reply_enabled = not acc.auto_reply_enabled
     await db.commit()
+
+    # The worker reads the auto-reply config from a 24h Redis cache, so without
+    # this the admin kill switch would not take effect for up to a day.
+    from app.utils.redis import set_auto_reply_config
+
+    await set_auto_reply_config(str(acc.id), acc.auto_reply_enabled, acc.auto_reply_text)
+
     return {
         "message": f"Auto-reply set to {acc.auto_reply_enabled}",
         "account_id": acc.id,

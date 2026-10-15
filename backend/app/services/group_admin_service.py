@@ -13,6 +13,7 @@ from app.models.chat_folder import ChatFolder
 from app.models.telegram_chat import TelegramChat
 from app.services.telegram_client import client_pool
 from app.utils.encryption import decrypt
+from app.utils.telegram_errors import TelegramRateLimitError
 from app.services.chat_service import resolve_chat_entity, _classify_chat
 
 logger = logging.getLogger(__name__)
@@ -104,13 +105,15 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                                     entity = dialog.entity
                                     break
         except telethon.errors.FloodWaitError as fwe:
-            raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+            raise TelegramRateLimitError("flood", fwe.seconds) from fwe
         except telethon.errors.UserAlreadyParticipantError:
             already_joined = True
             try:
                 entity = await client.get_entity(hash_clean)
             except Exception:
                 pass
+        except telethon.errors.PeerFloodError as pfe:
+            raise TelegramRateLimitError("peer_flood", 0) from pfe
         except Exception as exc:
             # Maybe we are already a member — try get_entity from the chat link
             err_msg = str(exc)
@@ -127,7 +130,7 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                         except Exception:
                             pass
             except telethon.errors.FloodWaitError as fwe:
-                raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+                raise TelegramRateLimitError("flood", fwe.seconds) from fwe
             except Exception:
                 raise RuntimeError(f"Failed to join: {err_msg}") from exc
     else:
@@ -137,7 +140,7 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         try:
             entity = await client.get_entity(username)
         except telethon.errors.FloodWaitError as fwe:
-            raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+            raise TelegramRateLimitError("flood", fwe.seconds) from fwe
         except Exception:
             pass
 
@@ -147,7 +150,9 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                 await client(funcs.channels.JoinChannelRequest(username))
                 entity = await client.get_entity(username)
             except telethon.errors.FloodWaitError as fwe:
-                raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+                raise TelegramRateLimitError("flood", fwe.seconds) from fwe
+            except telethon.errors.PeerFloodError as pfe:
+                raise TelegramRateLimitError("peer_flood", 0) from pfe
             except telethon.errors.UserAlreadyParticipantError:
                 already_joined = True
                 entity = await client.get_entity(username)
@@ -162,7 +167,9 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                 try:
                     await client(funcs.channels.JoinChannelRequest(entity))
                 except telethon.errors.FloodWaitError as fwe:
-                    raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
+                    raise TelegramRateLimitError("flood", fwe.seconds) from fwe
+                except telethon.errors.PeerFloodError as pfe:
+                    raise TelegramRateLimitError("peer_flood", 0) from pfe
                 except telethon.errors.UserAlreadyParticipantError:
                     already_joined = True
                 except Exception:

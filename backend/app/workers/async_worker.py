@@ -396,6 +396,12 @@ async def main() -> None:
     ]
     await asyncio.gather(*tasks_to_gather, return_exceptions=True)
 
+    # The command consumer spawns one task per in-flight RPC command; let them
+    # finish so borrowed Telegram clients are released before the pool stops.
+    from app.workers.command_consumer import drain_command_tasks
+
+    await drain_command_tasks()
+
     try:
         from app.services.smm_service import close_smm_http_client
 

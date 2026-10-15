@@ -290,12 +290,30 @@ async def start_broadcast(
             f"Anda memilih {len(valid_account_ids)} akun. Silakan upgrade paket Anda."
         )
 
+    # Refuse to start on an account another active job is already sending from:
+    # two jobs sharing one MTProto session interleave sends and burn the account.
+    from app.utils.account_ownership import find_busy_accounts
+
+    busy_accounts = await find_busy_accounts(db, valid_account_ids)
+    if busy_accounts:
+        raise ValueError(
+            "Akun berikut sedang dipakai job lain yang aktif: "
+            + ", ".join(busy_accounts)
+            + ". Hentikan job tersebut atau tunggu selesai sebelum memulai yang baru."
+        )
+
     gl_result = await db.execute(
         select(GroupList).where(GroupList.id == group_list_id, GroupList.user_id == user.id)
     )
     group_list = gl_result.scalar_one_or_none()
     if group_list is None:
         raise ValueError("Group list not found")
+
+    # An empty list with loop enabled would spin forever doing nothing.
+    if not group_list.items:
+        raise ValueError(
+            "Group list kosong. Tambahkan minimal satu grup sebelum memulai siaran."
+        )
 
     text_list = None
     if text_list_id:
@@ -346,11 +364,28 @@ async def start_broadcast(
     await db.refresh(job)
 
     # Enqueue broadcast job to Redis for dedicated async worker
-    from app.utils.redis_dispatcher import enqueue_job
-    primary_acc = job.account_ids[0] if job.account_ids else None
-    await enqueue_job("broadcast", job.id, account_id=primary_acc)
+    await _dispatch_broadcast(db, job)
 
     return job
+
+
+async def _dispatch_broadcast(db: AsyncSession, job: BroadcastJob) -> None:
+    """Enqueue a broadcast job, failing it explicitly when Redis is unavailable.
+
+    The job row is committed as "running" before dispatch, so a silently dropped
+    enqueue would leave it hung forever and keep its accounts marked busy.
+    """
+    from app.utils.redis_dispatcher import enqueue_job
+
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    if not await enqueue_job("broadcast", job.id, account_id=primary_acc):
+        job.status = "failed"
+        job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.error("Broadcast job %s could not be enqueued; marked failed", job.id)
+        raise ValueError(
+            "Gagal mengirim job siaran ke worker (Redis). Job dibatalkan, silakan coba lagi."
+        )
 
 
 # _wake_job is replaced by wake_job imported from app.utils.async_helpers
@@ -505,14 +540,16 @@ async def retry_job(
     job.sent_count = 0
     job.fail_count = 0
     job.completed_at = None
+    # Clear target bookkeeping so a retry re-attempts every target instead of
+    # re-skipping the permanently-failed ones and self-failing on a dead list.
+    job.permanent_failures = []
+    job.pending_items = []
     await db.flush()
     await db.commit()
     await db.refresh(job)
 
     # Enqueue broadcast job to Redis for dedicated async worker
-    from app.utils.redis_dispatcher import enqueue_job
-    primary_acc = job.account_ids[0] if job.account_ids else None
-    await enqueue_job("broadcast", job.id, account_id=primary_acc)
+    await _dispatch_broadcast(db, job)
 
     return job
 
@@ -799,7 +836,6 @@ async def _flush_cycle_logs(
         job_uuid_obj = job_uuid
 
     cycle_details_copy = list(details)
-    details.clear()
 
     async with async_session_factory() as db:
         # Always resolve the job, even with no counters to write: its absence is
@@ -815,6 +851,9 @@ async def _flush_cycle_logs(
                 cycle_number,
                 job_uuid_obj,
             )
+            # The job is gone for good, so its buffered details have nowhere to
+            # go — safe to drop the caller's buffer here.
+            details.clear()
             return
 
         if sent is not None:
@@ -874,6 +913,11 @@ async def _flush_cycle_logs(
                 logger.debug("Could not record analytics broadcast cycle event: %s", exc)
 
         await db.commit()
+
+    # Drop the caller's buffer only after the write is durable. Clearing it
+    # before the commit (as this once did) lost the cycle's send-time accounting
+    # for free-tier users whenever the commit failed.
+    details.clear()
 
 
 async def _resolve_job_watermark(db, user_id) -> str | None:
@@ -2296,13 +2340,15 @@ async def execute_broadcast(job_id: str):
                 break
 
             # Auto stop broadcast job if there are no valid groups. Trigger when
-            # the list is effectively dead (>= BROADCAST_MAX_DEAD_RATIO permanent
-            # failures) and nothing is left to retry, so a mostly-invalid group
-            # list stops looping instead of re-sending to a couple of groups forever.
+            # the list is empty or effectively dead (>= BROADCAST_MAX_DEAD_RATIO
+            # permanent failures) with nothing left to retry, so a mostly-invalid
+            # group list stops looping instead of re-sending forever.
             if (
-                len(items) > 0
-                and not pending_pool
-                and len(permanent_failures_pool) >= BROADCAST_MAX_DEAD_RATIO * len(items)
+                len(items) == 0
+                or (
+                    not pending_pool
+                    and len(permanent_failures_pool) >= BROADCAST_MAX_DEAD_RATIO * len(items)
+                )
             ):
                 logger.warning(
                     "Broadcast Job %s has been stopped because there is no valid group", job_id_str

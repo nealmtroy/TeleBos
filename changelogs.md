@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-16
+- **[a391a1d3](https://github.com/nealmtroy/TeleBos/commit/a391a1d3)**: fix(plans): align account limits for pro (3) and business (5) with subscription specifications
+
 ## 2026-10-15
 - **[ec7f152f](https://github.com/nealmtroy/TeleBos/commit/ec7f152f)**: fix(join,broadcast): handle new ImportChatInvite response shape and stop swallowing join failures
 - **[4ecfbcc3](https://github.com/nealmtroy/TeleBos/commit/4ecfbcc3)**: fix(broadcast): cancel the job when its account is spam-restricted instead of pausing

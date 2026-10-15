@@ -23,10 +23,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.auto_join_job import AutoJoinJob
 from app.models.auto_join_log import AutoJoinLog
 from app.utils.async_helpers import clear_job_event, interruptible_sleep, wake_job
+from app.utils.flood_control import flood_controller
 
 logger = logging.getLogger(__name__)
 
 _running_auto_join_tasks: dict[str, asyncio.Task] = {}
+
+# Hard bounds so a rate-limited run backs off instead of hammering Telegram.
+# Mirrors the anti-ban behaviour broadcast/invite already have.
+MAX_RATE_LIMIT_RETRIES = 3
+FLOOD_DEFAULT_WAIT_SECONDS = 30
+MAX_FLOOD_WAIT_SECONDS = 300
+PEER_FLOOD_BACKOFF_SECONDS = 300
 
 
 def _session_factory():
@@ -200,6 +208,17 @@ async def start_auto_join(
             raise ValueError(f"Account {acc_id} not found")
         accounts.append(account)
 
+    # Refuse to start on an account another active job already holds.
+    from app.utils.account_ownership import find_busy_accounts
+
+    busy_accounts = await find_busy_accounts(db, [str(a) for a in account_ids])
+    if busy_accounts:
+        raise ValueError(
+            "Akun berikut sedang dipakai job lain yang aktif: "
+            + ", ".join(busy_accounts)
+            + ". Hentikan job tersebut atau tunggu selesai sebelum memulai yang baru."
+        )
+
     job = AutoJoinJob(
         account_ids=[str(a) for a in account_ids],
         user_id=user_id,
@@ -220,7 +239,14 @@ async def start_auto_join(
     from app.utils.redis_dispatcher import enqueue_job
 
     primary_acc = job.account_ids[0] if job.account_ids else None
-    await enqueue_job("autojoin", job.id, account_id=primary_acc)
+    if not await enqueue_job("autojoin", job.id, account_id=primary_acc):
+        job.status = "failed"
+        job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.error("Auto-join job %s could not be enqueued; marked failed", job.id)
+        raise ValueError(
+            "Gagal mengirim job auto-join ke worker (Redis). Job dibatalkan, silakan coba lagi."
+        )
     return job
 
 
@@ -396,31 +422,77 @@ async def execute_auto_join(job_id: str) -> None:
                 account_name=entry["account_name"],
             )
 
-            try:
-                result = await group_admin_service.join_chat(entry["account"], target)
+            # Back off and retry the same target on a rate-limit instead of
+            # writing it off, and honour Telegram's requested wait. Previously a
+            # FloodWait was downgraded to a generic error with no delay, so a
+            # throttled account kept hammering joins.
+            rate_limit_retries = 0
+            cancelled = False
+            while True:
+                try:
+                    result = await group_admin_service.join_chat(entry["account"], target)
 
-                is_already = bool(result.get("already_joined"))
-                log.status = "already_member" if is_already else "success"
-                log.chat_id = result.get("chat_id")
-                log.chat_title = result.get("title")
-                log.chat_username = result.get("username")
-                log.chat_type = result.get("chat_type")
-                if is_already:
-                    already += 1
-                else:
-                    success += 1
+                    is_already = bool(result.get("already_joined"))
+                    log.status = "already_member" if is_already else "success"
+                    log.chat_id = result.get("chat_id")
+                    log.chat_title = result.get("title")
+                    log.chat_username = result.get("username")
+                    log.chat_type = result.get("chat_type")
+                    if is_already:
+                        already += 1
+                    else:
+                        success += 1
+                    flood_controller.record_success(entry["account_id"])
+                    break
 
-            except Exception as exc:
-                err_type, err_msg = classify_telegram_error(exc)
-                log.status = "error"
-                log.error_type = err_type
-                log.error_message = err_msg
-                failed += 1
-                await _push(job_id, "flood_wait", {
-                    "wait_seconds": 0,
-                    "account": entry["account_name"],
-                    "message": f"{entry['account_name']}: {err_msg}",
-                })
+                except Exception as exc:
+                    err_type, err_msg = classify_telegram_error(exc)
+
+                    if (
+                        err_type in ("flood", "peer_flood")
+                        and rate_limit_retries < MAX_RATE_LIMIT_RETRIES
+                    ):
+                        rate_limit_retries += 1
+                        if err_type == "flood":
+                            wait = int(getattr(exc, "seconds", 0) or 0) or FLOOD_DEFAULT_WAIT_SECONDS
+                            wait = min(wait, MAX_FLOOD_WAIT_SECONDS)
+                        else:
+                            wait = PEER_FLOOD_BACKOFF_SECONDS
+                        # Escalate this account's cooldown so later tasks wait too.
+                        flood_controller.record_flood(entry["account_id"], wait)
+                        await _push(job_id, "flood_wait", {
+                            "wait_seconds": int(wait),
+                            "account": entry["account_name"],
+                            "message": (
+                                f"{entry['account_name']}: {err_msg} — retry "
+                                f"{rate_limit_retries}/{MAX_RATE_LIMIT_RETRIES} in {int(wait)}s"
+                            ),
+                        })
+                        if not await interruptible_sleep(job_id, wait):
+                            # Woken early by pause/stop. Re-check before retrying.
+                            status = await _get_job_status(job_uuid)
+                            if status == "cancelled":
+                                cancelled = True
+                                break
+                            while status == "paused":
+                                await interruptible_sleep(job_id, 86400)
+                                status = await _get_job_status(job_uuid)
+                                if status == "cancelled":
+                                    cancelled = True
+                                    break
+                            if cancelled:
+                                break
+                        continue
+
+                    # Non-retryable, or retries exhausted.
+                    log.status = "error"
+                    log.error_type = err_type
+                    log.error_message = err_msg
+                    failed += 1
+                    break
+
+            if cancelled:
+                break
 
             progress = int(((idx + 1) / total_tasks) * 100) if total_tasks else 0
             await _save_log_and_counters(
@@ -445,12 +517,14 @@ async def execute_auto_join(job_id: str) -> None:
                 "account_name": entry["account_name"],
             })
 
-            # Pace per group, not per join.
+            # Pace per group, not per join. Also respect any per-account cooldown
+            # the flood controller accumulated.
             if should_delay_before_next(tasks, idx):
                 actual_delay = delay_per_group
                 if delay_randomized:
                     jitter = _jitter(-2, 2)
                     actual_delay = max(1, delay_per_group + jitter)
+                actual_delay = max(actual_delay, flood_controller.get_delay(entry["account_id"]))
                 await _push(job_id, "group_delay", {
                     "delay": round(actual_delay),
                     "message": f"Jeda {round(actual_delay)} detik sebelum grup berikutnya...",

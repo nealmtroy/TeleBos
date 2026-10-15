@@ -57,6 +57,35 @@ async def start_invite(
     if not source_groups:
         raise ValueError("At least one source group is required")
 
+    # Refuse to start on an account another active job already holds.
+    from app.utils.account_ownership import find_busy_accounts
+
+    busy_accounts = await find_busy_accounts(db, valid_account_ids)
+    if busy_accounts:
+        raise ValueError(
+            "Akun berikut sedang dipakai job lain yang aktif: "
+            + ", ".join(busy_accounts)
+            + ". Hentikan job tersebut atau tunggu selesai sebelum memulai yang baru."
+        )
+
+    # Cap sender accounts per plan (mirrors broadcast). Without this a paid user
+    # could attach unlimited sending accounts to one invite job.
+    from app.services.account_service import ROLE_ACCOUNT_LIMITS
+
+    user_role = getattr(user, "role", "freetrial") or "freetrial"
+    max_allowed = ROLE_ACCOUNT_LIMITS.get(user_role, 1)
+    if len(valid_account_ids) > max_allowed:
+        plan_display = {
+            "freetrial": "Free Trial",
+            "basic": "Starter",
+            "pro": "Pro",
+            "premium": "Business",
+        }.get(user_role, user_role.capitalize())
+        raise ValueError(
+            f"Paket {plan_display} hanya mengizinkan maksimal {max_allowed} akun pengirim invite. "
+            f"Anda memilih {len(valid_account_ids)} akun. Silakan upgrade paket Anda."
+        )
+
     job = InviteJob(
         account_ids=valid_account_ids,
         user_id=user.id,
@@ -74,11 +103,24 @@ async def start_invite(
     await db.refresh(job)
 
     # Enqueue invite job to Redis for dedicated async worker
-    from app.utils.redis_dispatcher import enqueue_job
-    primary_acc = job.account_ids[0] if job.account_ids else None
-    await enqueue_job("invite", job.id, account_id=primary_acc)
+    await _dispatch_invite(db, job)
 
     return job
+
+
+async def _dispatch_invite(db: AsyncSession, job: InviteJob) -> None:
+    """Enqueue an invite job, failing it explicitly when Redis is unavailable."""
+    from app.utils.redis_dispatcher import enqueue_job
+
+    primary_acc = job.account_ids[0] if job.account_ids else None
+    if not await enqueue_job("invite", job.id, account_id=primary_acc):
+        job.status = "failed"
+        job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.error("Invite job %s could not be enqueued; marked failed", job.id)
+        raise ValueError(
+            "Gagal mengirim job invite ke worker (Redis). Job dibatalkan, silakan coba lagi."
+        )
 
 
 async def get_invite_job(db: AsyncSession, job_id: str, user_id: str) -> InviteJob | None:
@@ -143,9 +185,7 @@ async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> Invit
     await db.refresh(job)
 
     # Enqueue invite job to Redis for dedicated async worker
-    from app.utils.redis_dispatcher import enqueue_job
-    primary_acc = job.account_ids[0] if job.account_ids else None
-    await enqueue_job("invite", job.id, account_id=primary_acc)
+    await _dispatch_invite(db, job)
 
     return job
 
@@ -739,7 +779,14 @@ async def execute_invite(job_id: str):
         last_acc = None  # Account that last hit a flood, reused on retry
         retry_delay_sec = 0.0
 
-        for idx, member_entry in enumerate(members_list):
+        # Manual index instead of `for ... enumerate`: on a flood the flood
+        # branch `continue`s WITHOUT advancing `idx`, so the SAME member is
+        # retried once its cooldown elapses. A `for` loop always advanced the
+        # iterator, which made the retry branch below unreachable dead code.
+        idx = 0
+        total_members = len(members_list)
+        while idx < total_members:
+            member_entry = members_list[idx]
             # Retry the same member after a flood wait instead of dropping it.
             # A flood is a temporary server-side throttle, not a verdict on
             # this member, so the inner loop re-runs the same member once the
@@ -835,6 +882,12 @@ async def execute_invite(job_id: str):
             if await _get_invite_job_status(job_uuid) == "cancelled":
                 break
 
+            # The retry loop exhausted max_member_retries for this member:
+            # count it and advance without attempting again.
+            if member_done:
+                idx += 1
+                continue
+
             if not active_accounts:
                 await _finalize_invite_job(
                     job_uuid,
@@ -928,6 +981,7 @@ async def execute_invite(job_id: str):
                 )
                 # Already a member — no invite needed for this one.
                 member_done = True
+                idx += 1
                 continue
 
             try:
@@ -1051,6 +1105,7 @@ async def execute_invite(job_id: str):
 
                 elif err_type == "peer_flood":
                     log.status = "error"
+                    failed += 1
                     selected_acc["consecutive_peer_floods"] += 1
 
                     backoff_time = 300  # 5 minutes
@@ -1251,6 +1306,8 @@ async def execute_invite(job_id: str):
 
             # CON-01: NO DB connection held during inter-invite delay!
             await interruptible_sleep(job_id, actual_delay)
+
+            idx += 1
 
         # Mark completed if still running
         curr_status = await _get_invite_job_status(job_uuid)

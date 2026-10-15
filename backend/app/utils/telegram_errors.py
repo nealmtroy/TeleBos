@@ -140,6 +140,23 @@ except ImportError:
     FrozenMethodInvalidError = None
 
 
+class TelegramRateLimitError(RuntimeError):
+    """A Telegram rate-limit surfaced by a service wrapper as a RuntimeError.
+
+    Helpers such as ``join_chat`` catch telethon's ``FloodWaitError`` /
+    ``PeerFloodError`` and re-raise a ``RuntimeError`` so HTTP callers return a
+    400 rather than a 500. That rewrite previously erased the classification —
+    ``classify_telegram_error`` only matched the telethon types — so worker jobs
+    (auto-join) could not back off. This type preserves the kind and the
+    requested wait so the classifier still recovers them.
+    """
+
+    def __init__(self, error_type: str, seconds: float = 0, message: str | None = None):
+        self.error_type = error_type
+        self.seconds = int(seconds or 0)
+        super().__init__(message or f"{error_type}: wait {self.seconds}s")
+
+
 def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     """
     Classify a Telegram exception into an error_type and a human-readable message.
@@ -161,6 +178,13 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if isinstance(exc, FloodWaitError):
         wait = exc.seconds if hasattr(exc, "seconds") else "unknown"
         return ("flood", f"Flood wait: {wait} seconds")
+
+    # A rate-limit wrapped into a RuntimeError by a service helper keeps its kind
+    # here (see TelegramRateLimitError).
+    if isinstance(exc, TelegramRateLimitError):
+        if exc.error_type == "peer_flood":
+            return ("peer_flood", str(exc))
+        return ("flood", f"Flood wait: {exc.seconds} seconds")
 
     if isinstance(exc, SlowModeWaitError):
         wait = exc.seconds if hasattr(exc, "seconds") else "unknown"

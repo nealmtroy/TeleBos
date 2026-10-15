@@ -1,8 +1,9 @@
 """FastAPI dependency injection helpers."""
 
 import logging
+from typing import Annotated
 
-from fastapi import Depends, HTTPException, status, Query, Request, Security
+from fastapi import Depends, HTTPException, Path, status, Query, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
 from datetime import datetime, timezone
@@ -19,6 +20,12 @@ from app.utils.session_token import hash_session_token
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+# Path params that must be a UUID. A malformed value otherwise reaches the UUID
+# column and surfaces as a 500 (DBAPIError); enforcing the shape at the edge
+# returns a clean 422 instead.
+UUID_PATH_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+UuidPath = Annotated[str, Path(pattern=UUID_PATH_PATTERN)]
 
 
 async def restore_user_if_ban_expired(db: AsyncSession, user: User) -> bool:

@@ -380,7 +380,8 @@ class SessionManager:
         logger.info("Periodic spam status check completed for batch.")
 
     async def is_account_in_active_job(self, db: AsyncSession, account_id: str) -> bool:
-        """Check if an account is currently assigned to an active broadcast or invite job."""
+        """Check if an account is currently assigned to an active automation job."""
+        from app.models.auto_join_job import AutoJoinJob
         from app.models.broadcast_job import BroadcastJob
         from app.models.invite_job import InviteJob
         import uuid
@@ -415,7 +416,58 @@ class SessionManager:
         except Exception as e:
             logger.debug("Failed to check InviteJob for account %s: %s", account_id, e)
 
+        # 3. Check active AutoJoinJobs (pending, running, paused jobs hold the session in worker)
+        try:
+            autojoin_query = await db.execute(
+                select(AutoJoinJob.account_ids).where(
+                    AutoJoinJob.status.in_(["pending", "running", "paused"])
+                )
+            )
+            for job_accs in autojoin_query.scalars():
+                if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
+                    return True
+        except Exception as e:
+            logger.debug("Failed to check AutoJoinJob for account %s: %s", account_id, e)
+
         return False
+
+    async def _active_job_in_current_shard(self, db: AsyncSession, account_id: str) -> bool:
+        """Whether an active job using this account is executed on this shard.
+
+        Job routing is keyed on the job's first account, so a job that spans
+        shards runs — and holds every one of its accounts — on the shard of
+        ``account_ids[0]``. This returns True when no active job uses the account
+        so callers only treat a False result as "claimed by a foreign shard".
+        """
+        from app.models.auto_join_job import AutoJoinJob
+        from app.models.broadcast_job import BroadcastJob
+        from app.models.invite_job import InviteJob
+        import uuid
+
+        try:
+            acc_uuid = uuid.UUID(account_id)
+        except ValueError:
+            return True
+
+        found = False
+        for model in (BroadcastJob, InviteJob, AutoJoinJob):
+            try:
+                result = await db.execute(
+                    select(model.account_ids).where(
+                        model.status.in_(["pending", "running", "paused"])
+                    )
+                )
+                for accs in result.scalars():
+                    if not isinstance(accs, list):
+                        continue
+                    if account_id in accs or str(acc_uuid) in accs or acc_uuid in accs:
+                        found = True
+                        if accs and is_account_in_current_shard(accs[0]):
+                            return True
+            except Exception as exc:
+                logger.debug("Shard affinity check failed for %s: %s", model.__name__, exc)
+                continue
+        return True if not found else False
 
     async def ensure_connected_on_demand(self, account_id: str) -> bool:
         """Ensure an account is connected, coalescing duplicate requests."""
@@ -499,8 +551,11 @@ class SessionManager:
                 account = result.scalar_one_or_none()
                 if account is None:
                     return False
-                if not client_pool.is_worker and await self.is_account_in_active_job(db, account_id):
-                    logger.info("Lazy Connection: skipping account %s (claimed by active worker job)", account_id)
+                # A live job owns this account's single MTProto connection even
+                # when the job runs on another shard (multi-runner). Standing
+                # down here prevents a second connection to the same auth key.
+                if await self.is_account_in_active_job(db, account_id):
+                    logger.info("Lazy Connection: skipping account %s (claimed by an active job)", account_id)
                     return False
                 account_id_value = str(account.id)
                 session_string = account.session_string
@@ -627,15 +682,6 @@ class SessionManager:
                 async with async_session_factory() as db:
                     for account_id in healthy_ids:
                         try:
-                            # 1. Shard affinity: If account doesn't belong to this runner's shard, release it immediately.
-                            if not is_account_in_current_shard(account_id):
-                                logger.info(
-                                    "Lazy Connection: releasing account %s (not in current runner shard)",
-                                    account_id,
-                                )
-                                lazy_disconnect_ids.append(account_id)
-                                continue
-
                             result = await db.execute(
                                 select(TelegramAccount).where(
                                     TelegramAccount.id == account_id,
@@ -647,16 +693,34 @@ class SessionManager:
                                 has_auto_reply = account.auto_reply_enabled
                                 has_active_ws = ws_manager.has_channel(f"chats:{account_id}")
                                 has_active_job = await self.is_account_in_active_job(db, account_id)
+                                in_shard = is_account_in_current_shard(account_id)
+                                # A job holds every one of its accounts on the shard
+                                # that executes it (the shard of the job's first
+                                # account). A runner must keep a claimed account even
+                                # when the account's own shard differs, and must
+                                # release one claimed by a job that runs on another
+                                # shard — otherwise two runners hold one auth key.
+                                job_here = (
+                                    has_active_job
+                                    and await self._active_job_in_current_shard(db, account_id)
+                                )
                                 is_syncing = account_id in _sync_tasks and not _sync_tasks[account_id].done()
                                 is_idle = client_pool.is_client_idle(account_id, max_idle_seconds=300.0)
 
                                 if client_pool.is_worker:
-                                    if has_active_job:
-                                        # In worker runner: Keep client connected for the active broadcast/invite job
+                                    if job_here:
+                                        # Keep the connection for the job this runner executes.
+                                        continue
+                                    if has_active_job or not in_shard:
+                                        logger.info(
+                                            "Lazy Connection: releasing account %s (claimed by a foreign shard's job or not in this shard)",
+                                            account_id,
+                                        )
+                                        lazy_disconnect_ids.append(account_id)
                                         continue
                                 else:
-                                    if has_active_job:
-                                        logger.info("Lazy Connection: disconnecting client %s (claimed by worker job)", account_id)
+                                    if has_active_job or not in_shard:
+                                        logger.info("Lazy Connection: disconnecting client %s (claimed by worker job or not in shard)", account_id)
                                         lazy_disconnect_ids.append(account_id)
                                         continue
 
@@ -778,8 +842,8 @@ class SessionManager:
         for account_id in account_ids:
             if not self._running:
                 break
-            if not client_pool.is_worker and await self.is_account_in_active_job(db, account_id):
-                logger.info("Skipping backend startup reconnect for %s (claimed by worker job)", account_id)
+            if await self.is_account_in_active_job(db, account_id):
+                logger.info("Skipping startup reconnect for %s (claimed by an active job)", account_id)
                 continue
             if await self._connect_account(account_id):
                 success += 1

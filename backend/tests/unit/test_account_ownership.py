@@ -31,21 +31,24 @@ class FakeResult:
 
 
 class FakeDB:
-    """Answers the two account_ids queries the ownership check issues."""
+    """Answers the account_ids queries the ownership check issues."""
 
-    def __init__(self, broadcast_ids=None, invite_ids=None):
+    def __init__(self, broadcast_ids=None, invite_ids=None, auto_join_ids=None):
         self.broadcast_ids = broadcast_ids or []
         self.invite_ids = invite_ids or []
+        self.auto_join_ids = auto_join_ids or []
         self.order = []
 
     async def execute(self, stmt):
         text = str(stmt)
-        # The check queries BroadcastJob first, then InviteJob.
+        # The check queries BroadcastJob, then InviteJob, then AutoJoinJob.
         self.order.append(text)
         if "broadcast_jobs" in text:
             return FakeResult([self.broadcast_ids] if self.broadcast_ids else [])
         if "invite_jobs" in text:
             return FakeResult([self.invite_ids] if self.invite_ids else [])
+        if "auto_join_jobs" in text:
+            return FakeResult([self.auto_join_ids] if self.auto_join_ids else [])
         return FakeResult([])
 
 
@@ -62,6 +65,14 @@ async def test_account_with_running_broadcast_is_worker_owned():
 async def test_account_with_running_invite_is_worker_owned():
     account_id = str(uuid.uuid4())
     db = FakeDB(invite_ids=[account_id])
+
+    decision = await own.decide_owner(db, account_id)
+    assert decision.owner == own.OWNER_WORKER
+
+
+async def test_account_with_running_auto_join_is_worker_owned():
+    account_id = str(uuid.uuid4())
+    db = FakeDB(auto_join_ids=[account_id])
 
     decision = await own.decide_owner(db, account_id)
     assert decision.owner == own.OWNER_WORKER
@@ -97,6 +108,26 @@ async def test_invalid_account_id_is_treated_as_unclaimed():
 async def test_job_list_of_other_accounts_does_not_claim():
     db = FakeDB(broadcast_ids=[str(uuid.uuid4()), str(uuid.uuid4())])
     assert await own.is_worker_claimed(db, str(uuid.uuid4())) is False
+
+
+async def test_find_busy_accounts_returns_overlap():
+    busy_acc = str(uuid.uuid4())
+    free_acc = str(uuid.uuid4())
+    db = FakeDB(broadcast_ids=[busy_acc])
+
+    assert await own.find_busy_accounts(db, [busy_acc, free_acc]) == [busy_acc]
+
+
+async def test_find_busy_accounts_spans_job_types():
+    acc = str(uuid.uuid4())
+    db = FakeDB(auto_join_ids=[acc])
+
+    assert await own.find_busy_accounts(db, [acc]) == [acc]
+
+
+async def test_find_busy_accounts_none_when_idle():
+    db = FakeDB()
+    assert await own.find_busy_accounts(db, [str(uuid.uuid4())]) == []
 
 
 async def test_db_failure_does_not_invent_a_claim():
