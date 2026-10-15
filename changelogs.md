@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[4ecfbcc3](https://github.com/nealmtroy/TeleBos/commit/4ecfbcc3)**: fix(broadcast): cancel the job when its account is spam-restricted instead of pausing
 - **[ab0427be](https://github.com/nealmtroy/TeleBos/commit/ab0427be)**: fix(broadcast): persist target state and record skipped targets so cycle logs reconcile
 - **[cc3d980e](https://github.com/nealmtroy/TeleBos/commit/cc3d980e)**: feat(ui): rework broadcast history/new, openable support chat, help copy + i18n
 - **[ce68b0ea](https://github.com/nealmtroy/TeleBos/commit/ce68b0ea)**: fix(broadcast,autoreply,transfer): repair delivery, HTML rendering and per-account lifecycle

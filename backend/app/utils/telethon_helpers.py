@@ -8,7 +8,14 @@ from telethon import TelegramClient
 from telethon.tl.functions.channels import JoinChannelRequest, GetFullChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest, CheckChatInviteRequest
 from telethon.tl.types import ChatInviteAlready, Channel
-from telethon.errors import UserAlreadyParticipantError, InviteRequestSentError, FloodWaitError
+from telethon.errors import (
+    UserAlreadyParticipantError,
+    InviteRequestSentError,
+    FloodWaitError,
+    ChannelsTooMuchError,
+    UserBannedInChannelError,
+    ChannelPrivateError,
+)
 
 from app.utils.encryption import decrypt
 from app.services.telegram_client import client_pool
@@ -110,7 +117,12 @@ async def join_and_resolve_chat(client: TelegramClient, target: str, job_id_str:
             for attempt in range(2):
                 try:
                     updates = await client(ImportChatInviteRequest(invite))
-                    chats = getattr(updates, "chats", None)
+                    # Newer API layers return messages.ChatInviteJoinResultOk,
+                    # which nests the Updates under ``.updates``; older layers
+                    # return a bare Updates. Read both shapes.
+                    chats = getattr(updates, "chats", None) or getattr(
+                        getattr(updates, "updates", None), "chats", None
+                    )
                     if chats:
                         entity = chats[0]
                     else:
@@ -198,10 +210,23 @@ async def join_and_resolve_chat(client: TelegramClient, target: str, job_id_str:
                     if attempt == 0:
                         continue
                 raise
-            except Exception:
-                if attempt == 1:
-                    # Fallback in case JoinChannelRequest fails but entity is accessible
-                    pass
+            except (ChannelsTooMuchError, UserBannedInChannelError, ChannelPrivateError):
+                # Account-level join limits/bans. Swallowing these made the send
+                # step fail later with UserNotParticipantError ("not a member"),
+                # which hid the real cause and looped forever. Propagate so the
+                # caller reports the actual reason.
+                raise
+            except Exception as exc:
+                # Any other join failure means the account is NOT a member, so
+                # there is nothing to send to. The old code swallowed this and
+                # returned the entity anyway ("in case it's accessible"), which
+                # made the broadcast try to post to a group it never joined and
+                # surface as the impossible-sounding "Account is not a member".
+                # Retry once for a transient blip, then propagate.
+                if attempt == 0:
+                    logger.warning("JoinChannelRequest failed for %s, retrying once: %s", target, exc)
+                    continue
+                raise
 
     if not entity:
         raise ValueError(f"Could not resolve or join target: {target}")

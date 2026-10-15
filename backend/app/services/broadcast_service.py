@@ -59,6 +59,8 @@ RESOLVE_PERMANENT_ERROR_TYPES = frozenset({
     "muted",
     "channel_forbidden",
     "bad_request",
+    "not_member",
+    "too_many_channels",
 })
 
 # Unknown/transient resolve failures (e.g. "Could not resolve or join target"
@@ -2187,6 +2189,8 @@ async def execute_broadcast(job_id: str):
                             "invalid_link",
                             "private_channel",
                             "muted",
+                            "not_member",
+                            "too_many_channels",
                         ):
                             permanent_failures_pool.add(pkey)
 

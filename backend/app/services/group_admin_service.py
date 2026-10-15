@@ -17,6 +17,28 @@ from app.services.chat_service import resolve_chat_entity, _classify_chat
 
 logger = logging.getLogger(__name__)
 
+def _entity_from_invite_join(result: Any):
+    """Extract the joined chat entity from an ``ImportChatInvite`` response.
+
+    Telegram has two response shapes for ``messages.ImportChatInvite``:
+      * a bare ``Updates`` (older API layers) exposing ``.chats``;
+      * ``messages.ChatInviteJoinResultOk`` (newer API layers) which nests the
+        ``Updates`` under ``.updates``.
+
+    The old code only read ``result.chats``, so on a server that switches to the
+    new shape every fresh invite join returned no entity and was reported as the
+    misleading "Could not resolve or join the group/channel." even though the
+    join had actually succeeded.
+    """
+    chats = getattr(result, "chats", None)
+    if not chats:
+        updates = getattr(result, "updates", None)
+        chats = getattr(updates, "chats", None)
+    if chats:
+        return chats[0]
+    return None
+
+
 async def join_chat(account: TelegramAccount, identifier: str) -> dict:
     """Join a Telegram group or channel.
 
@@ -64,8 +86,23 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                 already_joined = True
             else:
                 result = await client(telethon.tl.functions.messages.ImportChatInviteRequest(hash=hash_clean))
-                if hasattr(result, "chats") and result.chats:
-                    entity = result.chats[0]
+                entity = _entity_from_invite_join(result)
+                if entity is None:
+                    # The join may have succeeded but the response carried no
+                    # chat entity (see _entity_from_invite_join) — re-check the
+                    # invite, which now reports ChatInviteAlready for a member.
+                    recheck = await client(
+                        telethon.tl.functions.messages.CheckChatInviteRequest(hash=hash_clean)
+                    )
+                    if isinstance(recheck, telethon.tl.types.ChatInviteAlready):
+                        entity = recheck.chat
+                    if entity is None:
+                        expected_title = getattr(recheck, "title", None) or getattr(info, "title", None)
+                        if expected_title:
+                            async for dialog in client.iter_dialogs():
+                                if dialog.name == expected_title:
+                                    entity = dialog.entity
+                                    break
         except telethon.errors.FloodWaitError as fwe:
             raise RuntimeError(f"Flood wait: please wait {fwe.seconds} seconds") from fwe
         except telethon.errors.UserAlreadyParticipantError:
