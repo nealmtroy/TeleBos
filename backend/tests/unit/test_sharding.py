@@ -3,7 +3,7 @@
 import json
 import uuid
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 from app.core.sharding import (
     get_account_shard,
@@ -91,10 +91,13 @@ async def test_command_bus_routes_to_correct_shard():
     acc_id = uuid.uuid4()
 
     with patch("app.services.telegram_command_bus.get_settings") as mock_settings, \
+         patch("app.core.sharding.get_settings") as mock_core_settings, \
          patch("app.services.telegram_command_bus.redis_client") as mock_redis:
 
         mock_settings.return_value.TOTAL_SHARDS = 4
         mock_settings.return_value.SHARD_INDEX = 0
+        mock_core_settings.return_value.TOTAL_SHARDS = 4
+        mock_core_settings.return_value.SHARD_INDEX = 0
 
         expected_shard = get_account_shard(acc_id, total_shards=4)
         expected_queue = f"telebos:cmd:telegram:shard_{expected_shard}"
@@ -121,3 +124,52 @@ async def test_command_bus_routes_to_correct_shard():
         payload = json.loads(called_payload_raw)
         assert payload["account_id"] == str(acc_id)
         assert payload["action"] == "send_message"
+
+
+@pytest.mark.asyncio
+async def test_session_manager_worker_retains_active_jobs_and_evicts_other_shards():
+    """Verify that in worker mode, session_manager retains accounts in active jobs and disconnects other shards."""
+    from app.services.session_manager import session_manager
+    from app.services.telegram_client import client_pool
+
+    acc_our_shard = str(uuid.uuid4())
+    acc_other_shard = str(uuid.uuid4())
+
+    with patch("app.core.sharding.get_settings") as mock_settings:
+        mock_settings.return_value.TOTAL_SHARDS = 4
+        mock_settings.return_value.SHARD_INDEX = 1
+
+        # Force shard mapping in session_manager module namespace
+        with patch("app.services.session_manager.is_account_in_current_shard", side_effect=lambda a: str(a) == acc_our_shard):
+            client_pool.is_worker = True
+
+            mock_c1 = MagicMock()
+            mock_c1.is_connected.return_value = True
+            mock_c2 = MagicMock()
+            mock_c2.is_connected.return_value = True
+
+            client_pool._clients[acc_our_shard] = {"client": mock_c1, "last_accessed": 100.0}
+            client_pool._clients[acc_other_shard] = {"client": mock_c2, "last_accessed": 100.0}
+
+            with patch.object(client_pool, "remove", new_callable=AsyncMock) as mock_remove:
+                with patch("app.database.async_session_factory") as mock_db_factory:
+                    mock_db = AsyncMock()
+                    mock_db_factory.return_value.__aenter__.return_value = mock_db
+                    mock_acc = MagicMock()
+                    mock_acc.auto_reply_enabled = False
+                    mock_res = MagicMock()
+                    mock_res.scalar_one_or_none.return_value = mock_acc
+                    mock_db.execute.return_value = mock_res
+
+                    # Account in our shard is in an active job!
+                    with patch.object(session_manager, "is_account_in_active_job", return_value=True):
+                        with patch("app.api.ws.manager.has_channel", return_value=False):
+                            await session_manager._check_connections()
+
+                    # acc_other_shard should be removed because it's not in our shard
+                    mock_remove.assert_called_once_with(acc_other_shard)
+                    # acc_our_shard must NOT be removed because it's in an active worker job in this worker!
+                    assert acc_our_shard in client_pool._clients
+
+            client_pool._clients.clear()
+            client_pool.is_worker = False

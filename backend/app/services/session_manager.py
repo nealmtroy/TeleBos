@@ -421,6 +421,8 @@ class SessionManager:
         """Ensure an account is connected, coalescing duplicate requests."""
         if _shutdown:
             return False
+        if not is_account_in_current_shard(account_id):
+            return False
         clients = await client_pool.get_connected_clients()
         if account_id in clients:
             client_pool.touch_client(account_id)
@@ -428,7 +430,7 @@ class SessionManager:
             import uuid
             try:
                 async with async_session_factory() as db:
-                    if await self.is_account_in_active_job(db, account_id):
+                    if not client_pool.is_worker and await self.is_account_in_active_job(db, account_id):
                         logger.info("ensure_connected_on_demand: disconnecting account %s (claimed by active worker job)", account_id)
                         await event_relay.detach(account_id)
                         await client_pool.remove(account_id)
@@ -478,6 +480,10 @@ class SessionManager:
 
     async def _connect_account(self, account_id: str) -> bool:
         """Load an account in a short session, then connect outside that session."""
+        if not is_account_in_current_shard(account_id):
+            logger.info("Lazy Connection: skipping account %s (not in current runner shard)", account_id)
+            return False
+
         from app.database import async_session_factory
         import uuid
 
@@ -493,7 +499,7 @@ class SessionManager:
                 account = result.scalar_one_or_none()
                 if account is None:
                     return False
-                if await self.is_account_in_active_job(db, account_id):
+                if not client_pool.is_worker and await self.is_account_in_active_job(db, account_id):
                     logger.info("Lazy Connection: skipping account %s (claimed by active worker job)", account_id)
                     return False
                 account_id_value = str(account.id)
@@ -513,16 +519,15 @@ class SessionManager:
         if not account_snapshot["is_active"] or not account_snapshot["session_string"]:
             return False
 
-        # Exclusive ownership. The job check above is a read, so a job created
-        # in the window between it and this connect would leave both processes
-        # holding a socket for the same auth key. The lease closes that gap.
-        # The backend stands down whenever it does not win.
-        if not await acquire_lease(account_id_value, OWNER_BACKEND):
-            logger.info(
-                "Lazy Connection: account %s is owned by the worker; backend standing down",
-                account_id_value,
-            )
-            return False
+        # Exclusive ownership for non-worker (e.g. backend webserver fallback).
+        # Workers are already partitioned by shard index.
+        if not client_pool.is_worker:
+            if not await acquire_lease(account_id_value, OWNER_BACKEND):
+                logger.info(
+                    "Lazy Connection: account %s is owned by the worker; backend standing down",
+                    account_id_value,
+                )
+                return False
 
         try:
             async with _connect_semaphore:
@@ -621,6 +626,15 @@ class SessionManager:
                 async with async_session_factory() as db:
                     for account_id in healthy_ids:
                         try:
+                            # 1. Shard affinity: If account doesn't belong to this runner's shard, release it immediately.
+                            if not is_account_in_current_shard(account_id):
+                                logger.info(
+                                    "Lazy Connection: releasing account %s (not in current runner shard)",
+                                    account_id,
+                                )
+                                lazy_disconnect_ids.append(account_id)
+                                continue
+
                             result = await db.execute(
                                 select(TelegramAccount).where(
                                     TelegramAccount.id == account_id,
@@ -635,26 +649,29 @@ class SessionManager:
                                 is_syncing = account_id in _sync_tasks and not _sync_tasks[account_id].done()
                                 is_idle = client_pool.is_client_idle(account_id, max_idle_seconds=300.0)
 
-                                if has_active_job:
-                                    logger.info("Lazy Connection: disconnecting client %s (claimed by worker job)", account_id)
-                                    lazy_disconnect_ids.append(account_id)
-                                    continue
+                                if client_pool.is_worker:
+                                    if has_active_job:
+                                        # In worker runner: Keep client connected for the active broadcast/invite job
+                                        continue
+                                else:
+                                    if has_active_job:
+                                        logger.info("Lazy Connection: disconnecting client %s (claimed by worker job)", account_id)
+                                        lazy_disconnect_ids.append(account_id)
+                                        continue
 
-                                # Renew before deciding. This must run for every
-                                # client we keep, so it cannot sit inside the
-                                # elif chain below, where an earlier match would
-                                # skip it and silently drop the lease.
-                                still_ours = await renew_lease(account_id, OWNER_BACKEND)
-                                if not still_ours:
-                                    # Another process took the claim while this
-                                    # client was connected. Stand down so Telegram
-                                    # is not answering a stale socket.
-                                    logger.info(
-                                        "Lazy Connection: releasing account %s, ownership moved to another process",
-                                        account_id,
-                                    )
-                                    lazy_disconnect_ids.append(account_id)
-                                    continue
+                                # Renew backend lease only when running in non-worker mode
+                                if not client_pool.is_worker:
+                                    still_ours = await renew_lease(account_id, OWNER_BACKEND)
+                                    if not still_ours:
+                                        # Another process took the claim while this
+                                        # client was connected. Stand down so Telegram
+                                        # is not answering a stale socket.
+                                        logger.info(
+                                            "Lazy Connection: releasing account %s, ownership moved to another process",
+                                            account_id,
+                                        )
+                                        lazy_disconnect_ids.append(account_id)
+                                        continue
 
                                 if not (has_auto_reply or has_active_ws or is_syncing) and is_idle:
                                     logger.info("Lazy Connection: disconnecting idle unneeded client for account %s", account_id)
@@ -674,13 +691,15 @@ class SessionManager:
         for account_id in stale_ids:
             await event_relay.detach(account_id)
             await client_pool.remove(account_id)
-            await release_lease(account_id, OWNER_BACKEND)
+            if not client_pool.is_worker:
+                await release_lease(account_id, OWNER_BACKEND)
 
         # Disconnect unneeded clients
         for account_id in lazy_disconnect_ids:
             await event_relay.detach(account_id)
             await client_pool.remove(account_id)
-            await release_lease(account_id, OWNER_BACKEND)
+            if not client_pool.is_worker:
+                await release_lease(account_id, OWNER_BACKEND)
 
         # Phase 3: Reconnect stale accounts. The account check is short-lived;
         # Telegram connection and handler attachment happen after it closes.
@@ -729,7 +748,7 @@ class SessionManager:
         for account_id in account_ids:
             if not self._running:
                 break
-            if await self.is_account_in_active_job(db, account_id):
+            if not client_pool.is_worker and await self.is_account_in_active_job(db, account_id):
                 logger.info("Skipping backend startup reconnect for %s (claimed by worker job)", account_id)
                 continue
             if await self._connect_account(account_id):
