@@ -43,7 +43,8 @@ async def test_transfer_accounts_success():
     db.commit = AsyncMock()
     db.refresh = AsyncMock()
 
-    with patch("app.services.session_manager.session_manager.is_account_in_active_job", AsyncMock(return_value=False)), \
+    with patch("app.services.account_service.detach_accounts_from_active_jobs", AsyncMock(return_value=([], []))), \
+         patch("app.utils.redis.invalidate_auto_reply_config", AsyncMock()), \
          patch("app.services.event_relay.event_relay.detach", AsyncMock()), \
          patch("app.services.telegram_client.client_pool.remove", AsyncMock()):
         count, user_res, transferred = await account_service.transfer_accounts(
@@ -141,10 +142,36 @@ async def test_transfer_accounts_quota_exceeded_and_override():
         None,
         None,
     ]
-    with patch("app.services.session_manager.session_manager.is_account_in_active_job", AsyncMock(return_value=False)), \
+    with patch("app.services.account_service.detach_accounts_from_active_jobs", AsyncMock(return_value=([], []))), \
+         patch("app.utils.redis.invalidate_auto_reply_config", AsyncMock()), \
          patch("app.services.event_relay.event_relay.detach", AsyncMock()), \
          patch("app.services.telegram_client.client_pool.remove", AsyncMock()):
         count, _, _ = await account_service.transfer_accounts(
             db, owner, [acc1.id, acc2.id], "basic@test.com", override_limit=True
         )
     assert count == 2
+
+
+@pytest.mark.asyncio
+async def test_detach_accounts_from_active_jobs_stops_solo_and_trims_multi():
+    acc_a = str(uuid.uuid4())
+    acc_b = str(uuid.uuid4())
+    other_acc = str(uuid.uuid4())
+    solo_job = SimpleNamespace(id=uuid.uuid4(), status="running", account_ids=[acc_a], updated_at=None)
+    multi_job = SimpleNamespace(id=uuid.uuid4(), status="running", account_ids=[acc_a, acc_b], updated_at=None)
+    other_job = SimpleNamespace(id=uuid.uuid4(), status="running", account_ids=[other_acc], updated_at=None)
+
+    db = AsyncMock()
+    db.execute.side_effect = [
+        FakeResult([solo_job, multi_job, other_job]),  # broadcast
+        FakeResult([]),  # invite
+        FakeResult([]),  # autojoin
+    ]
+
+    to_stop, to_restart = await account_service.detach_accounts_from_active_jobs(db, [acc_a])
+
+    assert to_stop == [("broadcast", str(solo_job.id))]
+    assert to_restart == [("broadcast", str(multi_job.id), [acc_b])]
+    assert solo_job.status == "cancelled"
+    assert multi_job.account_ids == [acc_b]
+    assert other_job.account_ids == [other_acc]

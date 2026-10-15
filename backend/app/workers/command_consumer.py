@@ -171,6 +171,7 @@ async def _handle_command_action(
                 "ip": getattr(a, "ip", ""),
                 "country": getattr(a, "country", ""),
                 "region": getattr(a, "region", ""),
+                "city": None,
                 "current": bool(getattr(a, "current", False)),
             })
         return {"authorizations": auths}

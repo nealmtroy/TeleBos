@@ -1307,6 +1307,53 @@ async def update_profile_color(
     ))
 
 
+async def detach_accounts_from_active_jobs(
+    db: AsyncSession, account_ids: list[str]
+) -> tuple[list[tuple[str, str]], list[tuple[str, str, list[str]]]]:
+    """Remove accounts from active broadcast/invite/auto-join jobs on transfer.
+
+    A job left with no accounts is cancelled; a job that still has other accounts
+    is kept and returned as ``(job_type, job_id, remaining_account_ids)`` so the
+    caller can restart it without the transferred account. Other jobs are
+    untouched.
+
+    Returns ``(jobs_to_stop, jobs_to_restart)``.
+    """
+    from app.models.auto_join_job import AutoJoinJob
+    from app.models.broadcast_job import BroadcastJob
+    from app.models.invite_job import InviteJob
+
+    ids_set = {str(a) for a in account_ids}
+    jobs_to_stop: list[tuple[str, str]] = []
+    jobs_to_restart: list[tuple[str, str, list[str]]] = []
+    now = datetime.now(timezone.utc)
+
+    for model, job_type in (
+        (BroadcastJob, "broadcast"),
+        (InviteJob, "invite"),
+        (AutoJoinJob, "autojoin"),
+    ):
+        rows = (
+            await db.execute(
+                select(model).where(model.status.in_(("pending", "running", "paused")))
+            )
+        ).scalars().all()
+        for job in rows:
+            current = [str(x) for x in (job.account_ids or [])]
+            if not ids_set.intersection(current):
+                continue
+            remaining = [x for x in current if x not in ids_set]
+            job.account_ids = remaining
+            job.updated_at = now
+            if remaining:
+                jobs_to_restart.append((job_type, str(job.id), remaining))
+            else:
+                job.status = "cancelled"
+                jobs_to_stop.append((job_type, str(job.id)))
+
+    return jobs_to_stop, jobs_to_restart
+
+
 async def transfer_accounts(
     db: AsyncSession,
     owner_user: User,
@@ -1339,18 +1386,12 @@ async def transfer_accounts(
     if not to_transfer:
         raise ValueError(f"Semua akun yang dipilih ({len(accounts)}) sudah dimiliki oleh {target_user.email}.")
 
-    # Validate each account is transferable
-    from app.services.session_manager import session_manager
+    # ── Validate before mutating anything ──────────────────────────────────
     for acc in to_transfer:
         if acc.for_sale:
             raise ValueError(
                 f"Akun {acc.phone} sedang didaftarkan jual di marketplace. "
                 "Batalkan penjualan terlebih dahulu sebelum mentransfer."
-            )
-        if await session_manager.is_account_in_active_job(db, str(acc.id)):
-            raise ValueError(
-                f"Akun {acc.phone} sedang aktif dalam tugas broadcast atau invite. "
-                "Tunggu hingga tugas selesai atau batalkan tugas sebelum mentransfer."
             )
 
     # Check target user quota unless overridden
@@ -1364,6 +1405,23 @@ async def transfer_accounts(
                 f"Batas kuota akun user tujuan terlampaui (Role: {target_user.role}, Maksimal: {limit}, Saat ini: {cur_count}, Ditransfer: {len(to_transfer)}). "
                 "Aktifkan opsi 'Abaikan batasan kuota' untuk melanjutkan transfer."
             )
+
+    # ── Mutate: turn off each account's auto-reply and stop only ITS jobs ──
+    # Each transferred account stops acting under the previous owner; other
+    # accounts' running broadcast/invite jobs are left untouched.
+    from app.utils.redis import invalidate_auto_reply_config
+
+    for acc in to_transfer:
+        acc.auto_reply_enabled = False
+        acc.auto_reply_text = None
+        try:
+            await invalidate_auto_reply_config(str(acc.id))
+        except Exception as cache_exc:
+            logger.debug("Could not clear auto-reply cache for %s: %s", acc.id, cache_exc)
+
+    jobs_to_stop, jobs_to_restart = await detach_accounts_from_active_jobs(
+        db, [str(a.id) for a in to_transfer]
+    )
 
     from app.models.account_folder_member import AccountFolderMember
     from app.services.event_relay import event_relay
@@ -1387,6 +1445,25 @@ async def transfer_accounts(
     await db.commit()
     for acc in to_transfer:
         await db.refresh(acc)
+
+    # Signal the workers to actually stop the transferred account's activity now.
+    # A fully-emptied job is cancelled; a job that still has other accounts is
+    # restarted so it re-reads account_ids without the transferred account.
+    if jobs_to_stop or jobs_to_restart:
+        from app.utils.redis_dispatcher import enqueue_job, publish_job_control
+
+        for job_type, job_id in jobs_to_stop:
+            await publish_job_control(job_type, job_id, "stop")
+            logger.info("Stopped %s job %s (only account transferred away)", job_type, job_id)
+        for job_type, job_id, remaining in jobs_to_restart:
+            await publish_job_control(job_type, job_id, "stop")
+            await enqueue_job(job_type, job_id, account_id=remaining[0])
+            logger.info(
+                "Restarting %s job %s without transferred account (%d account(s) remain)",
+                job_type,
+                job_id,
+                len(remaining),
+            )
 
     logger.info(
         "Transferred %d Telegram account(s) to %s (ID: %s) by owner %s",

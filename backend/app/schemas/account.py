@@ -300,6 +300,7 @@ class TransferAccountRequest(BaseModel):
 class TransferAccountResponse(BaseModel):
     transferred_count: int
     target_user_id: UUID
-    target_user_email: str
+    target_email: str
+    target_name: str
     message: str
     account_ids: list[UUID]

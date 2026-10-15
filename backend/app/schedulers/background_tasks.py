@@ -160,6 +160,7 @@ async def adaptive_sequential_sync_loop() -> None:
                         else:
                             client_pool.touch_client(account_id)
                             from app.services.event_relay import event_relay
+                            from app.utils.encryption import decrypt
                             if not event_relay.is_attached(account_id):
                                 decrypted_session = decrypt(db_acc.session_string)
                                 if decrypted_session:

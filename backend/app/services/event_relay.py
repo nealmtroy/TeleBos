@@ -54,6 +54,22 @@ class TelegramEventRelay:
             10
         )  # Limit concurrent DB writes to prevent pool exhaustion
         self._background_tasks: set[asyncio.Task] = set()
+        # Serializes attach() per account so the "already attached" check and the
+        # handler registration cannot interleave across concurrent callers
+        # (session watchdog, broadcast job prep, adaptive sync).
+        self._attach_locks: dict[str, asyncio.Lock] = {}
+
+    def _attach_lock(self, account_id: str) -> asyncio.Lock:
+        lock = self._attach_locks.get(account_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._attach_locks[account_id] = lock
+        return lock
+
+    def _drop_attach_lock(self, account_id: str) -> None:
+        lock = self._attach_locks.get(account_id)
+        if lock is not None and not lock.locked():
+            self._attach_locks.pop(account_id, None)
 
     def _spawn_task(self, coro) -> asyncio.Task:
         """Spawn a background task with strong reference tracking and error handling (MEM-03)."""
@@ -81,88 +97,98 @@ class TelegramEventRelay:
     # ── Public API ───────────────────────────────────────────────────────────
 
     async def attach(self, account_id: str, session_string: str) -> bool:
-        """Register event handlers on a Telethon client for this account."""
-        if account_id in self._handlers:
-            return True  # already attached
+        """Register event handlers on a Telethon client for this account.
 
-        client = await client_pool.get(account_id, session_string, receive_updates=True)
-        if client is None:
-            return False
+        The guard check and the handler registration are performed under a
+        per-account lock. Previously two concurrent callers could both pass the
+        ``account_id in self._handlers`` check before either registered, which
+        attached duplicate handlers to the same client (observed in worker logs
+        as two "Event handlers attached" lines for one account) and leaked the
+        first handler set because the second overwrote ``self._handlers``.
+        """
+        async with self._attach_lock(account_id):
+            if account_id in self._handlers:
+                return True  # already attached
 
-        # New incoming message (private / small group)
-        new_msg_handler = client.on(events.NewMessage(incoming=True))(
-            lambda event: self._spawn_task(self._on_new_message(account_id, event))
-        )
+            client = await client_pool.get(account_id, session_string, receive_updates=True)
+            if client is None:
+                return False
 
-        # Outgoing message (so frontend sees what the user sent)
-        outgoing_handler = client.on(events.NewMessage(outgoing=True))(
-            lambda event: self._spawn_task(self._on_outgoing_message(account_id, event))
-        )
+            # New incoming message (private / small group)
+            new_msg_handler = client.on(events.NewMessage(incoming=True))(
+                lambda event: self._spawn_task(self._on_new_message(account_id, event))
+            )
 
-        # Message edited
-        edit_handler = client.on(events.MessageEdited())(
-            lambda event: self._spawn_task(self._on_message_edited(account_id, event))
-        )
+            # Outgoing message (so frontend sees what the user sent)
+            outgoing_handler = client.on(events.NewMessage(outgoing=True))(
+                lambda event: self._spawn_task(self._on_outgoing_message(account_id, event))
+            )
 
-        # Message read (someone read our messages)
-        read_handler = client.on(events.MessageRead())(
-            lambda event: self._spawn_task(self._on_message_read(account_id, event))
-        )
+            # Message edited
+            edit_handler = client.on(events.MessageEdited())(
+                lambda event: self._spawn_task(self._on_message_edited(account_id, event))
+            )
 
-        # User typing / online status (only process if a client is actively subscribed to chats:{account_id})
-        async def _on_user_update_filter(event):
-            if manager.has_channel(f"chats:{account_id}"):
-                await self._on_user_update(account_id, event)
+            # Message read (someone read our messages)
+            read_handler = client.on(events.MessageRead())(
+                lambda event: self._spawn_task(self._on_message_read(account_id, event))
+            )
 
-        typing_handler = client.on(events.UserUpdate())(_on_user_update_filter)
+            # User typing / online status (only process if a client is actively subscribed to chats:{account_id})
+            async def _on_user_update_filter(event):
+                if manager.has_channel(f"chats:{account_id}"):
+                    await self._on_user_update(account_id, event)
 
-        # Chat action (someone joined/left/pinned/typing)
-        chat_action_handler = client.on(events.ChatAction())(
-            lambda event: self._spawn_task(self._on_chat_action(account_id, event))
-        )
+            typing_handler = client.on(events.UserUpdate())(_on_user_update_filter)
 
-        # Raw TL handler for profile changes (instant detection)
-        # Synchronously filters events: only process if event matches our own user_id
-        async def _on_raw_profile_filter(event):
-            tg_user_id = getattr(event, "user_id", None)
-            my_tg_id = self._tg_id_map.get(account_id)
-            if my_tg_id is not None and tg_user_id == my_tg_id:
-                await self._on_profile_change(account_id, event)
+            # Chat action (someone joined/left/pinned/typing)
+            chat_action_handler = client.on(events.ChatAction())(
+                lambda event: self._spawn_task(self._on_chat_action(account_id, event))
+            )
 
-        raw_profile_handler = client.on(
-            events.Raw(types=(UpdateUserName, UpdateUserPhone, UpdateUser))
-        )(_on_raw_profile_filter)
+            # Raw TL handler for profile changes (instant detection)
+            # Synchronously filters events: only process if event matches our own user_id
+            async def _on_raw_profile_filter(event):
+                tg_user_id = getattr(event, "user_id", None)
+                my_tg_id = self._tg_id_map.get(account_id)
+                if my_tg_id is not None and tg_user_id == my_tg_id:
+                    await self._on_profile_change(account_id, event)
 
-        # Message deleted
-        delete_handler = client.on(events.MessageDeleted())(
-            lambda event: self._spawn_task(self._on_message_deleted(account_id, event))
-        )
+            raw_profile_handler = client.on(
+                events.Raw(types=(UpdateUserName, UpdateUserPhone, UpdateUser))
+            )(_on_raw_profile_filter)
 
-        # Cache our own telegram_id for self-detection in raw handlers
-        try:
-            me = await client.get_me()
-            if me:
-                self._tg_id_map[account_id] = me.id
-        except Exception:
-            pass
+            # Message deleted
+            delete_handler = client.on(events.MessageDeleted())(
+                lambda event: self._spawn_task(self._on_message_deleted(account_id, event))
+            )
 
-        self._handlers[account_id] = [
-            new_msg_handler,
-            outgoing_handler,
-            edit_handler,
-            read_handler,
-            typing_handler,
-            chat_action_handler,
-            raw_profile_handler,
-            delete_handler,
-        ]
-        logger.info("Event handlers attached for account %s", account_id)
-        return True
+            # Cache our own telegram_id for self-detection in raw handlers
+            try:
+                me = await client.get_me()
+                if me:
+                    self._tg_id_map[account_id] = me.id
+            except Exception:
+                pass
+
+            self._handlers[account_id] = [
+                new_msg_handler,
+                outgoing_handler,
+                edit_handler,
+                read_handler,
+                typing_handler,
+                chat_action_handler,
+                raw_profile_handler,
+                delete_handler,
+            ]
+            logger.info("Event handlers attached for account %s", account_id)
+            return True
 
     def detach_client(self, account_id: str, client: Any) -> None:
         """Remove handlers using an already-held client without pool I/O."""
         handlers = self._handlers.pop(account_id, None)
         self._tg_id_map.pop(account_id, None)
+        self._drop_attach_lock(account_id)
         if handlers is None:
             return
         for handler in handlers:
@@ -181,6 +207,7 @@ class TelegramEventRelay:
             return
         self._handlers.pop(account_id, None)
         self._tg_id_map.pop(account_id, None)
+        self._drop_attach_lock(account_id)
 
     def is_attached(self, account_id: str) -> bool:
         """Check if event handlers are currently attached for an account."""
@@ -432,10 +459,19 @@ class TelegramEventRelay:
                     chat, reply_text, reply_to=msg.id, parse_mode=None
                 )
 
-            # 8. Log the reply in DB and Redis so we never reply to this user again
+            # 8. Log the reply in DB and Redis so we never reply to this user again.
+            # ON CONFLICT DO NOTHING keeps this idempotent: if a concurrent path
+            # already recorded (account_id, sender_id) the reply has still been
+            # sent, so a unique-constraint violation must not surface as an error.
             async with self._db_sem:
                 async with async_session_factory() as db:
-                    db.add(AutoReplyLog(account_id=acc_uuid, sender_id=sender_id))
+                    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+                    await db.execute(
+                        pg_insert(AutoReplyLog)
+                        .values(account_id=acc_uuid, sender_id=sender_id)
+                        .on_conflict_do_nothing(index_elements=["account_id", "sender_id"])
+                    )
                     await db.commit()
 
             await mark_auto_reply_sent_to_user(account_id, sender_id)

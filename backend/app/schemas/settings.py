@@ -87,17 +87,17 @@ class LoginEmailSetRequest(BaseModel):
 
 class DeviceInfo(BaseModel):
     hash: str
-    app_name: str
-    app_version: str | None
-    device_model: str | None
-    platform: str | None
-    system_version: str | None
-    ip: str | None
-    country: str | None
-    region: str | None
-    city: str | None
+    app_name: str = ""
+    app_version: str | None = None
+    device_model: str | None = None
+    platform: str | None = None
+    system_version: str | None = None
+    ip: str | None = None
+    country: str | None = None
+    region: str | None = None
+    city: str | None = None
     current: bool = False
-    created: str | None  # ISO datetime string
+    created: str | None = None  # ISO datetime string
 
 
 class DeviceListResponse(BaseModel):

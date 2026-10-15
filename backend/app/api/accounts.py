@@ -1184,6 +1184,13 @@ async def transfer_accounts(
             override_limit=payload.override_limit,
         )
     except ValueError as exc:
+        logger.warning(
+            "Transfer accounts rejected for owner %s (accounts=%s, target=%s): %s",
+            current_user.email,
+            payload.account_ids,
+            payload.target_email,
+            exc,
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=sanitize_exception(exc))
     except Exception as exc:
         logger.exception("Transfer accounts failed")
@@ -1195,7 +1202,8 @@ async def transfer_accounts(
     return TransferAccountResponse(
         transferred_count=count,
         target_user_id=target_user.id,
-        target_user_email=target_user.email,
+        target_email=target_user.email,
+        target_name=target_user.full_name or target_user.email,
         message=f"Berhasil memindahkan {count} akun ke {target_user.email}.",
         account_ids=[acc.id for acc in accounts],
     )

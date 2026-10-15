@@ -134,6 +134,9 @@ class BroadcastUserSummaryResponse(BaseModel):
     failed_jobs: int = 0
     cancelled_jobs: int = 0
     active_accounts_count: int = 0
+    # IDs of accounts currently tied to a running/paused job. Used by the UI to
+    # keep busy senders out of new-broadcast account pickers.
+    active_account_ids: list[str] = []
     total_accounts_used: int = 0
     total_sent: int = 0
     total_failed: int = 0

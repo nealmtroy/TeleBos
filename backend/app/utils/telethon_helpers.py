@@ -110,8 +110,26 @@ async def join_and_resolve_chat(client: TelegramClient, target: str, job_id_str:
             for attempt in range(2):
                 try:
                     updates = await client(ImportChatInviteRequest(invite))
-                    if getattr(updates, "chats", None):
-                        entity = updates.chats[0]
+                    chats = getattr(updates, "chats", None)
+                    if chats:
+                        entity = chats[0]
+                    else:
+                        # The join succeeded but Telegram returned no chat entity
+                        # in the update. Re-check the invite (it is now
+                        # ChatInviteAlready) and fall back to the dialog list so a
+                        # successful join is never reported as a failure.
+                        recheck = await client(CheckChatInviteRequest(invite))
+                        if isinstance(recheck, ChatInviteAlready):
+                            entity = recheck.chat
+                        if not entity:
+                            expected_title = getattr(recheck, "title", None) or getattr(
+                                invite_info, "title", None
+                            )
+                            if expected_title:
+                                async for dialog in client.iter_dialogs():
+                                    if dialog.name == expected_title:
+                                        entity = dialog.entity
+                                        break
                     break
                 except UserAlreadyParticipantError:
                     # Fallback 1: try resolving target link directly

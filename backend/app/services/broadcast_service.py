@@ -42,6 +42,34 @@ from app.utils.telethon_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# A looping broadcast job stops once there is no retryable work left and this
+# fraction of its targets are permanent failures. Without it, a group list that
+# is mostly invalid links keeps looping forever, re-sending only to the handful
+# of valid groups on every cycle.
+BROADCAST_MAX_DEAD_RATIO = 0.9
+
+# Resolve/join failure classifications that will never succeed on retry, so the
+# target may be blacklisted immediately.
+RESOLVE_PERMANENT_ERROR_TYPES = frozenset({
+    "admin_only",
+    "banned",
+    "invalid_username",
+    "invalid_link",
+    "private_channel",
+    "muted",
+    "channel_forbidden",
+    "bad_request",
+})
+
+# Unknown/transient resolve failures (e.g. "Could not resolve or join target"
+# after a join that actually succeeded) are retried over this many cycles before
+# being treated as permanently dead, instead of being blacklisted after one miss.
+MAX_RESOLVE_ATTEMPTS = 3
+
+# Minimum seconds between @SpamBot status probes for one account after it raises
+# USER_BANNED_IN_CHANNEL, so a per-group ban does not trigger a probe per target.
+SPAM_RECHECK_INTERVAL = 600.0
+
 # Worker-local task tracker for background broadcast jobs
 _running_tasks: dict[str, asyncio.Task] = {}
 
@@ -397,6 +425,7 @@ async def get_broadcast_summary_for_user(db: AsyncSession, user_id: str | _uuid.
         "failed_jobs": failed_jobs,
         "cancelled_jobs": cancelled_jobs,
         "active_accounts_count": len(active_accounts),
+        "active_account_ids": sorted(active_accounts),
         "total_accounts_used": len(all_accounts),
         "total_sent": total_sent,
         "total_failed": total_failed,
@@ -895,6 +924,100 @@ def _watermark_for_job(watermark_template: str | None, text: str) -> str:
     return f"{text}\n\n{watermark_template}"
 
 
+def _u16_len(ch: str) -> int:
+    """UTF-16 code-unit length of one Python character (Telegram entity unit)."""
+    return 2 if ord(ch) > 0xFFFF else 1
+
+
+def _parse_html_with_spoilers(raw: str) -> tuple[str, list]:
+    """Parse Telegram HTML markup, adding ``<tg-spoiler>`` support.
+
+    Telethon 1.45's ``html.parse`` drops ``<tg-spoiler>`` silently (no entity is
+    produced), which is why spoiler text arrived unformatted. The spoiler regions
+    are marked with private-use sentinels, everything else is parsed by Telethon,
+    then the sentinels are removed and a ``MessageEntitySpoiler`` is emitted for
+    each region. All entity offsets are kept in UTF-16 code units (what Telegram
+    expects) so emoji inside/around the markup stay aligned.
+    """
+    from telethon.extensions import html as tl_html
+    from telethon.tl.types import MessageEntitySpoiler
+
+    import re
+
+    open_mark = "\ue000"
+    close_mark = "\ue001"
+
+    marked = re.sub(r"<tg-spoiler\s*>", open_mark, raw, flags=re.IGNORECASE)
+    marked = re.sub(r"</tg-spoiler\s*>", close_mark, marked, flags=re.IGNORECASE)
+
+    text, entities = tl_html.parse(marked)
+
+    out_chars: list[str] = []
+    map_start: list[int] = []  # per text UTF-16 unit -> output offset (-1 = removed)
+    map_end: list[int] = []  # per text UTF-16 unit -> output offset just past the char
+    stack: list[int] = []
+    spoilers: list[tuple[int, int]] = []
+    out_u16 = 0
+    for ch in text:
+        u = _u16_len(ch)
+        if ch == open_mark or ch == close_mark:
+            if ch == open_mark:
+                stack.append(out_u16)
+            elif stack:
+                start = stack.pop()
+                if out_u16 > start:
+                    spoilers.append((start, out_u16 - start))
+            map_start.extend([-1] * u)
+            map_end.extend([-1] * u)
+            continue
+        map_start.extend([out_u16] * u)
+        map_end.extend([out_u16 + u] * u)
+        out_chars.append(ch)
+        out_u16 += u
+    clean = "".join(out_chars)
+
+    def _remap(offset: int, length: int) -> tuple[int, int] | None:
+        kept = [
+            i
+            for i in range(offset, min(offset + length, len(map_start)))
+            if map_start[i] >= 0
+        ]
+        if not kept:
+            return None
+        return map_start[kept[0]], map_end[kept[-1]] - map_start[kept[0]]
+
+    merged = []
+    for ent in entities:
+        span = _remap(ent.offset, ent.length)
+        if span is None:
+            continue
+        ent.offset, ent.length = span
+        merged.append(ent)
+
+    for start, length in spoilers:
+        merged.append(MessageEntitySpoiler(offset=start, length=length))
+
+    merged.sort(key=lambda e: (e.offset, -e.length))
+    return clean, merged
+
+
+async def _send_broadcast_message(client, entity, text: str) -> None:
+    """Send one broadcast message, rendering the stored HTML markup.
+
+    Text lists hold raw HTML (``<b>``, ``<i>``, ``<code>``, ``<blockquote>``,
+    ``<tg-spoiler>`` …). The clients here have no default parse mode, so the
+    markup is rendered explicitly, including ``<tg-spoiler>`` which Telethon's own
+    parser does not support. Falls back to Telethon's HTML parser if the markup is
+    malformed so a stray tag never blocks delivery.
+    """
+    try:
+        clean, entities = _parse_html_with_spoilers(text)
+    except Exception:
+        await client.send_message(entity, text, parse_mode="html")
+        return
+    await client.send_message(entity, clean, formatting_entities=entities or None)
+
+
 async def execute_broadcast(job_id: str):
     """Execute a broadcast job. Runs as an asyncio.Task in the FastAPI process."""
     from app.database import async_session_factory
@@ -939,6 +1062,9 @@ async def execute_broadcast(job_id: str):
             mode = job_orm.mode
             custom_text = job_orm.custom_text
             account_ids = list(job_orm.account_ids or [])
+            # sent/failed are LIFETIME cumulative totals: they seed from the job's
+            # stored counts and keep growing across every loop cycle. Per-cycle
+            # totals are tracked separately in cycle_sent/cycle_failed.
             sent = job_orm.sent_count or 0
             failed = job_orm.fail_count or 0
             last_progress = job_orm.progress or 0
@@ -1159,10 +1285,105 @@ async def execute_broadcast(job_id: str):
                 },
             )
 
+        async def _ensure_account_spam_checked(a_id: str) -> bool:
+            """Ask @SpamBot whether an account that raised USER_BANNED_IN_CHANNEL
+            is under a global spam restriction.
+
+            Telegram returns the generic ``USER_BANNED_IN_CHANNEL`` ("You're banned
+            from sending messages in supergroups/channels") both for a per-group ban
+            and for an account-level limit, so a ban alone is not conclusive. This
+            probe returns True only when SpamBot reports the account as limited, and
+            is debounced per account so a genuine per-group ban does not trigger a
+            SpamBot call on every target.
+            """
+            now = time.time()
+            if now - spam_checked_at.get(a_id, 0.0) < SPAM_RECHECK_INTERVAL:
+                return a_id in limited_accounts
+            spam_checked_at[a_id] = now
+            try:
+                from app.services.account_service import check_spam_status
+
+                async with async_session_factory() as sdb:
+                    acc = (
+                        await sdb.execute(
+                            select(TelegramAccount).where(TelegramAccount.id == _uuid.UUID(a_id))
+                        )
+                    ).scalar_one_or_none()
+                    if acc is None:
+                        return False
+                    await check_spam_status(sdb, acc)
+                    is_limited = acc.spam_status == "limited"
+                    await sdb.commit()
+            except Exception as spam_exc:
+                logger.warning("Spam status check failed for account %s: %s", a_id, spam_exc)
+                return a_id in limited_accounts
+            if is_limited:
+                limited_accounts.add(a_id)
+                logger.warning(
+                    "Account %s is spam-restricted by Telegram (spam_status=limited); "
+                    "pausing broadcast job %s",
+                    a_id,
+                    job_id_str,
+                )
+            return is_limited
+
+        async def _pause_job_account_limited(a_id: str, a_name: str, current_progress_val: int) -> None:
+            """Pause (not fail) a broadcast job whose account is spam-restricted.
+
+            Telegram restrictions are temporary (SpamBot reports an expiry), so the
+            job is left resumable instead of being marked failed, and the account
+            can be resumed once the restriction is lifted.
+            """
+            if pending_cycle_details:
+                await _flush_cycle_logs(
+                    job_uuid,
+                    cycle_number=current_cycle_number,
+                    details=pending_cycle_details,
+                    total_groups=total_items_count,
+                    sent=sent,
+                    failed=failed,
+                    progress=current_progress_val,
+                )
+            async with async_session_factory() as db_pause:
+                result = await db_pause.execute(
+                    select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                )
+                db_job = result.scalar_one_or_none()
+                if db_job:
+                    db_job.status = "paused"
+                    db_job.sent_count = sent
+                    db_job.fail_count = failed
+                    await db_pause.commit()
+            await _push_broadcast(
+                job_id_str,
+                "status",
+                {
+                    "status": "paused",
+                    "account": a_name,
+                    "message": (
+                        f"Akun {a_name} sedang dibatasi oleh Telegram (spam limit). "
+                        "Job dijeda sampai pembatasan berakhir."
+                    ),
+                },
+            )
+
         # joined_pool is keyed by (account_id, pkey) to prevent cross-account access_hash pollution
         joined_pool: dict[tuple[str, str], Any] = {}
         pending_pool: dict = {}
         permanent_failures_pool: set = set()
+        # Cache of (account_id, peer_id) -> (can_send, reason). Cleared at each
+        # cycle start so the permission probe (a Telegram round-trip) runs at
+        # most once per account/entity per cycle instead of before every send.
+        permission_cache: dict[tuple[str, int], tuple[bool, str]] = {}
+        # Persists across cycles: counts consecutive unknown/transient resolve
+        # failures per target so a bad link eventually goes permanent while a
+        # recovered target (e.g. a join that did go through) is not blacklisted.
+        resolve_attempts: dict[str, int] = {}
+        # Distinguish an account-level SpamBot restriction from per-group bans.
+        # Keyed by account_id; the SpamBot probe is debounced to at most once
+        # per account per SPAM_RECHECK_INTERVAL seconds.
+        spam_checked_at: dict[str, float] = {}
+        limited_accounts: set[str] = set()
         # Slowmode is a per-group limit, not an account limit: it only stops
         # posting to that one chat until its interval elapses. Tracking it on
         # the account (as flood/peer_flood are) lets a single slow group pause
@@ -1187,6 +1408,7 @@ async def execute_broadcast(job_id: str):
             # entity objects (~50-200 KB each) that were never evicted between
             # cycles, causing ~1-2 GB of retained memory across 72 jobs.
             joined_pool.clear()
+            permission_cache.clear()
 
             # Evict expired slowmode entries instead of keeping them forever.
             now_ts = time.time()
@@ -1243,6 +1465,7 @@ async def execute_broadcast(job_id: str):
                                 pkey, entities_retry, account_id=selected_acc["account_id"]
                             )
                             newly_joined.append(pkey)
+                            resolve_attempts.pop(pkey, None)
                             await _push_broadcast(
                                 job_id_str,
                                 "pending_joined",
@@ -1286,7 +1509,17 @@ async def execute_broadcast(job_id: str):
                             joined_pool[(selected_acc["account_id"], pkey)] = True
                             newly_joined.append(pkey)
                             continue
-                        continue
+                        else:
+                            # Unknown/transient resolve failure: keep retrying over
+                            # a bounded number of cycles, then treat as permanently
+                            # dead so a genuinely bad target cannot loop forever.
+                            attempts = resolve_attempts.get(pkey, 0) + 1
+                            resolve_attempts[pkey] = attempts
+                            if attempts >= MAX_RESOLVE_ATTEMPTS:
+                                permanent_failures_pool.add(pkey)
+                            else:
+                                still_pending[pkey] = pitem
+                            continue
                     finally:
                         if client is not None:
                             await release_client(selected_acc)
@@ -1564,9 +1797,14 @@ async def execute_broadcast(job_id: str):
 
                 entities = None
                 try:
-                    if cached_entity is not None and isinstance(cached_entity, list):
+                    if isinstance(cached_entity, list) and cached_entity:
                         entities = cached_entity
                     else:
+                        if cached_entity is not None:
+                            # Cached value is empty or not a usable entity list.
+                            # Drop it and re-resolve so the code can never fall
+                            # through to a bogus "success" with nothing to send.
+                            client_pool.evict_cached_entity(pkey, account_id=acc_id_str)
                         entities = await _broadcast_entities_for_target(
                             client, group_identifier, job_id_str
                         )
@@ -1577,6 +1815,12 @@ async def execute_broadcast(job_id: str):
 
                 except Exception as resolve_exc:
                     err_type, err_msg = classify_telegram_error(resolve_exc)
+
+                    if err_type == "banned" and await _ensure_account_spam_checked(acc_id_str):
+                        failed += 1
+                        cycle_failed += 1
+                        await _pause_job_account_limited(acc_id_str, acc_name, last_progress)
+                        return
 
                     if err_type in (
                         "flood",
@@ -1619,13 +1863,37 @@ async def execute_broadcast(job_id: str):
                         log_duration_ms = int((time.time() - start_time) * 1000)
                         sent += 1
                         cycle_sent += 1
+                        resolve_attempts.pop(pkey, None)
                     else:
                         log_status = "error"
                         log_err_type = err_type
                         log_err_msg = err_msg
                         failed += 1
                         cycle_failed += 1
-                        permanent_failures_pool.add(pkey)
+
+                        if err_type in RESOLVE_PERMANENT_ERROR_TYPES:
+                            permanent_failures_pool.add(pkey)
+                        elif err_type not in (
+                            "flood",
+                            "peer_flood",
+                            "must_join_discussion",
+                            "guest_restricted",
+                            "send_restricted",
+                            "slowmode",
+                        ):
+                            # Transient/unknown resolve failure — e.g. a join that
+                            # actually succeeded but returned no chat entity.
+                            # Retry over a bounded number of cycles instead of
+                            # blacklisting the target after a single miss.
+                            attempts = resolve_attempts.get(pkey, 0) + 1
+                            resolve_attempts[pkey] = attempts
+                            if attempts >= MAX_RESOLVE_ATTEMPTS:
+                                permanent_failures_pool.add(pkey)
+                            else:
+                                pending_pool[pkey] = {
+                                    "group_identifier": group_identifier,
+                                    "item_type": item_type,
+                                }
 
                         if err_type == "flood":
                             wait = 30
@@ -1649,110 +1917,131 @@ async def execute_broadcast(job_id: str):
                         if not chosen_text or not chosen_text.strip():
                             raise ValueError("Message text is empty")
                         # Watermark once per message, not once per entity, so a
-                            # chatlist target that resolves to many groups does not
-                            # pay the DB round-trip repeatedly.
-                            send_text = _watermark_for_job(watermark_template, chosen_text)
-                            for entity in entities:
-                                # Pre-check send permissions
-                                can_send, reason = await check_send_permission(client, entity)
-                                if not can_send:
-                                    if "participant" in reason or "member" in reason:
-                                        raise telethon.errors.UserNotParticipantError(None)
-                                    else:
-                                        raise ValueError(f"CHAT_WRITE_FORBIDDEN: {reason}")
+                        # chatlist target that resolves to many groups does not
+                        # pay the DB round-trip repeatedly.
+                        send_text = _watermark_for_job(watermark_template, chosen_text)
+                        delivered = 0
+                        for entity in entities:
+                            # Pre-check send permissions, memoized per
+                            # account/entity for the duration of the cycle.
+                            try:
+                                perm_key = (acc_id_str, get_peer_id(entity))
+                            except Exception:
+                                perm_key = (acc_id_str, getattr(entity, "id", id(entity)))
+                            cached_perm = permission_cache.get(perm_key)
+                            if cached_perm is None:
+                                cached_perm = await check_send_permission(client, entity)
+                                permission_cache[perm_key] = cached_perm
+                            can_send, reason = cached_perm
+                            if not can_send:
+                                if "participant" in reason or "member" in reason:
+                                    raise telethon.errors.UserNotParticipantError(None)
+                                else:
+                                    raise ValueError(f"CHAT_WRITE_FORBIDDEN: {reason}")
 
-                                for retry_attempt in range(2):
-                                    try:
+                            for retry_attempt in range(2):
+                                try:
                                         send_started = time.monotonic()
-                                        await asyncio.wait_for(client.send_message(entity, send_text), timeout=30.0)
+                                        await asyncio.wait_for(
+                                            _send_broadcast_message(client, entity, send_text),
+                                            timeout=30.0,
+                                        )
                                         total_send_ms += int((time.monotonic() - send_started) * 1000)
+                                        delivered += 1
                                         break
-                                    except telethon.errors.UserNotParticipantError as unpe:
-                                        if retry_attempt == 0:
-                                            try:
-                                                from telethon.tl.types import Channel
+                                except telethon.errors.UserNotParticipantError as unpe:
+                                    if retry_attempt == 0:
+                                        try:
+                                            from telethon.tl.types import Channel
 
-                                                if isinstance(entity, Channel):
-                                                    await asyncio.wait_for(
-                                                        client(
-                                                            JoinChannelRequest(
-                                                                entity
-                                                            )
-                                                        ),
-                                                        timeout=30.0,
-                                                    )
-                                                    await asyncio.sleep(2)
-                                                    continue
-                                                else:
-                                                    raise unpe
-                                            except Exception as join_err:
-                                                raise join_err
-                                        raise
-                                    except telethon.errors.SlowModeWaitError as e:
-                                        if e.seconds <= 30:
-                                            logger.warning(
-                                                "Slow mode active (job %s, account %s): waiting %s seconds to retry...",
-                                                job_id_str,
-                                                acc_id_str,
-                                                e.seconds,
-                                            )
-                                            completed = await _interruptible_sleep(
-                                                job_id_str, e.seconds
-                                            )
-                                            if not completed:
-                                                raise
-                                            if retry_attempt == 0:
+                                            if isinstance(entity, Channel):
+                                                await asyncio.wait_for(
+                                                    client(
+                                                        JoinChannelRequest(
+                                                            entity
+                                                        )
+                                                    ),
+                                                    timeout=30.0,
+                                                )
+                                                await asyncio.sleep(2)
                                                 continue
-                                        raise
-                                    except telethon.errors.FloodWaitError as e:
-                                        if e.seconds <= 30:
-                                            logger.warning(
-                                                "Flood wait active (job %s, account %s): waiting %s seconds to retry...",
-                                                job_id_str,
-                                                acc_id_str,
-                                                e.seconds,
-                                            )
-                                            completed = await _interruptible_sleep(
-                                                job_id_str, e.seconds
-                                            )
-                                            if not completed:
-                                                raise
-                                            if retry_attempt == 0:
-                                                continue
-                                        raise
-                                    except (ConnectionError, TimeoutError, OSError) as net_exc:
+                                            else:
+                                                raise unpe
+                                        except Exception as join_err:
+                                            raise join_err
+                                    raise
+                                except telethon.errors.SlowModeWaitError as e:
+                                    if e.seconds <= 30:
+                                        logger.warning(
+                                            "Slow mode active (job %s, account %s): waiting %s seconds to retry...",
+                                            job_id_str,
+                                            acc_id_str,
+                                            e.seconds,
+                                        )
+                                        completed = await _interruptible_sleep(
+                                            job_id_str, e.seconds
+                                        )
+                                        if not completed:
+                                            raise
                                         if retry_attempt == 0:
-                                            logger.warning(
-                                                "Transient error sending message (job %s, account %s): %s. Retrying once...",
-                                                job_id_str,
+                                            continue
+                                    raise
+                                except telethon.errors.FloodWaitError as e:
+                                    if e.seconds <= 30:
+                                        logger.warning(
+                                            "Flood wait active (job %s, account %s): waiting %s seconds to retry...",
+                                            job_id_str,
+                                            acc_id_str,
+                                            e.seconds,
+                                        )
+                                        completed = await _interruptible_sleep(
+                                            job_id_str, e.seconds
+                                        )
+                                        if not completed:
+                                            raise
+                                        if retry_attempt == 0:
+                                            continue
+                                    raise
+                                except (ConnectionError, TimeoutError, OSError) as net_exc:
+                                    if retry_attempt == 0:
+                                        logger.warning(
+                                            "Transient error sending message (job %s, account %s): %s. Retrying once...",
+                                            job_id_str,
+                                            acc_id_str,
+                                            net_exc,
+                                        )
+                                        await asyncio.sleep(2)
+                                        if not client.is_connected():
+                                            logger.info(
+                                                "Client %s disconnected, attempting reconnect...",
                                                 acc_id_str,
-                                                net_exc,
                                             )
-                                            await asyncio.sleep(2)
-                                            if not client.is_connected():
+                                            try:
+                                                await client.connect()
+                                                if not await client.is_user_authorized():
+                                                    raise ValueError(
+                                                        "Session expired after disconnect"
+                                                    )
                                                 logger.info(
-                                                    "Client %s disconnected, attempting reconnect...",
+                                                    "Client %s reconnected successfully",
                                                     acc_id_str,
                                                 )
-                                                try:
-                                                    await client.connect()
-                                                    if not await client.is_user_authorized():
-                                                        raise ValueError(
-                                                            "Session expired after disconnect"
-                                                        )
-                                                    logger.info(
-                                                        "Client %s reconnected successfully",
-                                                        acc_id_str,
-                                                    )
-                                                except Exception as reconnect_exc:
-                                                    logger.error(
-                                                        "Failed to reconnect client %s: %s",
-                                                        acc_id_str,
-                                                        reconnect_exc,
-                                                    )
-                                                    raise
-                                            continue
-                                        raise
+                                            except Exception as reconnect_exc:
+                                                logger.error(
+                                                    "Failed to reconnect client %s: %s",
+                                                    acc_id_str,
+                                                    reconnect_exc,
+                                                )
+                                                raise
+                                        continue
+                                    raise
+
+                        if delivered == 0:
+                            # Nothing was actually sent (e.g. an empty entity
+                            # collection). Never report success for a no-op.
+                            raise ValueError(
+                                f"No deliverable entities for target: {group_identifier}"
+                            )
 
                         if entities:
                             try:
@@ -1776,11 +2065,25 @@ async def execute_broadcast(job_id: str):
                         log_err_type = None
                         sent += 1
                         cycle_sent += 1
+                        # Target resolved and delivered: reset its retry budget.
+                        resolve_attempts.pop(pkey, None)
 
                         fc.record_success(acc_id_str)
 
                     except Exception as exc:
                         err_type, err_msg = classify_telegram_error(exc)
+
+                        if err_type == "banned" and await _ensure_account_spam_checked(acc_id_str):
+                            # Account-level spam restriction, not a per-group ban:
+                            # stop using this account and pause the job rather than
+                            # blacklisting every target it touches.
+                            log_status = "error"
+                            log_err_type = "spam_restricted"
+                            log_err_msg = err_msg
+                            failed += 1
+                            cycle_failed += 1
+                            await _pause_job_account_limited(acc_id_str, acc_name, last_progress)
+                            return
 
                         if err_type == "bad_request":
                             # ChannelInvalidError: evict invalid entity from cache so it doesn't pollute subsequent sends
@@ -1907,8 +2210,15 @@ async def execute_broadcast(job_id: str):
             if current_status is None or current_status == "cancelled":
                 break
 
-            # Auto stop broadcast job if there are no valid groups
-            if len(permanent_failures_pool) >= len(items) and len(items) > 0:
+            # Auto stop broadcast job if there are no valid groups. Trigger when
+            # the list is effectively dead (>= BROADCAST_MAX_DEAD_RATIO permanent
+            # failures) and nothing is left to retry, so a mostly-invalid group
+            # list stops looping instead of re-sending to a couple of groups forever.
+            if (
+                len(items) > 0
+                and not pending_pool
+                and len(permanent_failures_pool) >= BROADCAST_MAX_DEAD_RATIO * len(items)
+            ):
                 logger.warning(
                     "Broadcast Job %s has been stopped because there is no valid group", job_id_str
                 )
@@ -2333,7 +2643,7 @@ async def pause_interrupted_broadcasts_on_startup(db: AsyncSession) -> int:
 async def resume_running_broadcasts_on_startup(
     db: AsyncSession,
     max_jobs: int | None = None,
-    stagger_seconds: float = 0.3,
+    stagger_seconds: float = 1.0,
 ) -> int:
     """Find broadcast jobs with status 'running' and resume them on worker startup.
     Staggers startup slightly between multiple jobs to prevent connection spikes."""
