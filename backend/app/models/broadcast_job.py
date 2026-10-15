@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,6 +27,15 @@ class BroadcastJob(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     account_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    # Persisted target bookkeeping so a looping/resumed job does not waste a
+    # whole cycle re-attempting targets that are permanently dead (banned,
+    # admin-only, private, invalid link) or still awaiting a join retry.
+    permanent_failures: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    pending_items: Mapped[list[dict]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),

@@ -1072,6 +1072,10 @@ async def execute_broadcast(job_id: str):
             total_items_count = total_groups
             group_list_id = job_orm.group_list_id
             text_list_id = job_orm.text_list_id
+            persisted_permanent_failures = [
+                str(x) for x in (getattr(job_orm, "permanent_failures", None) or [])
+            ]
+            persisted_pending_items = list(getattr(job_orm, "pending_items", None) or [])
 
             gl_result = await db.execute(select(GroupList).where(GroupList.id == group_list_id))
             group_list = gl_result.scalar_one_or_none()
@@ -1370,7 +1374,17 @@ async def execute_broadcast(job_id: str):
         # joined_pool is keyed by (account_id, pkey) to prevent cross-account access_hash pollution
         joined_pool: dict[tuple[str, str], Any] = {}
         pending_pool: dict = {}
-        permanent_failures_pool: set = set()
+        # Seed from the persisted job state so a resumed/looping job continues
+        # where it left off instead of re-attempting targets that are
+        # permanently dead or still awaiting a join retry.
+        permanent_failures_pool: set = set(persisted_permanent_failures)
+        for _pending in persisted_pending_items:
+            _pkey = _pending.get("key") if isinstance(_pending, dict) else None
+            if _pkey:
+                pending_pool[_pkey] = {
+                    "group_identifier": _pending.get("group_identifier", ""),
+                    "item_type": _pending.get("item_type", "username"),
+                }
         # Cache of (account_id, peer_id) -> (can_send, reason). Cleared at each
         # cycle start so the permission probe (a Telegram round-trip) runs at
         # most once per account/entity per cycle instead of before every send.
@@ -1384,6 +1398,73 @@ async def execute_broadcast(job_id: str):
         # per account per SPAM_RECHECK_INTERVAL seconds.
         spam_checked_at: dict[str, float] = {}
         limited_accounts: set[str] = set()
+        def _append_skipped_cycle_details() -> None:
+            """Record targets that were skipped this cycle so the cycle log reconciles.
+
+            The send loop `continue`s past targets already in the permanent-failure
+            or pending pools before any detail is buffered, so without this the
+            cycle log shows fewer targets than `total_groups` and it looks like the
+            others vanished. Emitted once per target per completed cycle.
+            """
+            logged = {d.get("group_identifier") for d in pending_cycle_details}
+            for item in items:
+                gid = item.get("value", "") or ""
+                if not gid or gid in logged:
+                    continue
+                pkey = f"{item.get('type', 'username')}:{gid}"
+                if pkey in permanent_failures_pool:
+                    err_type, reason = (
+                        "skipped_permanent",
+                        "Dilewati: target sudah gagal permanen di cycle sebelumnya",
+                    )
+                elif pkey in pending_pool:
+                    err_type, reason = (
+                        "skipped_pending",
+                        "Dilewati: masih menunggu giliran join (cooldown / limit)",
+                    )
+                else:
+                    err_type, reason = (
+                        "skipped",
+                        "Dilewati: tidak diproses pada cycle ini",
+                    )
+                pending_cycle_details.append({
+                    "group_identifier": gid,
+                    "group_id": None,
+                    "account_id_used": None,
+                    "account_name": None,
+                    "status": "skipped",
+                    "error_type": err_type,
+                    "error_message": reason,
+                    "sent_text": "",
+                    "duration_ms": None,
+                    "sent_at": datetime.now(timezone.utc).isoformat(),
+                })
+
+        async def _persist_target_state() -> None:
+            """Persist the permanent-failure and pending sets onto the job row."""
+            try:
+                pending_serialized = [
+                    {
+                        "key": k,
+                        "group_identifier": v.get("group_identifier", ""),
+                        "item_type": v.get("item_type", "username"),
+                    }
+                    for k, v in pending_pool.items()
+                ]
+                async with async_session_factory() as sdb:
+                    res = await sdb.execute(
+                        select(BroadcastJob).where(BroadcastJob.id == job_uuid)
+                    )
+                    db_job_state = res.scalar_one_or_none()
+                    if db_job_state is not None:
+                        db_job_state.permanent_failures = sorted(str(x) for x in permanent_failures_pool)
+                        db_job_state.pending_items = pending_serialized
+                        await sdb.commit()
+            except Exception as state_exc:
+                logger.warning(
+                    "Could not persist target state for job %s: %s", job_id_str, state_exc
+                )
+
         # Slowmode is a per-group limit, not an account limit: it only stops
         # posting to that one chat until its interval elapses. Tracking it on
         # the account (as flood/peer_flood are) lets a single slow group pause
@@ -2273,7 +2354,9 @@ async def execute_broadcast(job_id: str):
                 )
                 break
 
-            # Flush cycle logs to database as 1 cycle row with JSONB details
+            # Record targets skipped this cycle so the log reconciles to
+            # total_groups, then flush the full cycle row.
+            _append_skipped_cycle_details()
             cycle_duration_ms = int((time.time() - cycle_start_time) * 1000)
             cycle_details_snapshot = list(pending_cycle_details)
             await _flush_cycle_logs(
@@ -2286,6 +2369,7 @@ async def execute_broadcast(job_id: str):
                 progress=100 if len(items) > 0 else 0,
                 duration_ms=cycle_duration_ms,
             )
+            await _persist_target_state()
 
             if is_looping:
                 cycle_count += 1
@@ -2584,6 +2668,13 @@ async def execute_broadcast(job_id: str):
                     job_id_str,
                     flush_exc,
                 )
+
+        # Persist target bookkeeping so a resumed job continues without
+        # re-attempting permanently-failed / pending targets.
+        try:
+            await _persist_target_state()
+        except Exception:
+            pass
 
 
 def start_broadcast_task(job_id: str | uuid.UUID) -> bool:

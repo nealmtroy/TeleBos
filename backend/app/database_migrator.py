@@ -83,6 +83,22 @@ def run_migrations(connection):
             text("ALTER TABLE broadcast_jobs ADD COLUMN log_destination VARCHAR(255) DEFAULT NULL")
         )
 
+    if "permanent_failures" not in columns:
+        connection.execute(
+            text(
+                "ALTER TABLE broadcast_jobs "
+                "ADD COLUMN permanent_failures JSONB DEFAULT '[]'::jsonb NOT NULL"
+            )
+        )
+
+    if "pending_items" not in columns:
+        connection.execute(
+            text(
+                "ALTER TABLE broadcast_jobs "
+                "ADD COLUMN pending_items JSONB DEFAULT '[]'::jsonb NOT NULL"
+            )
+        )
+
     # ── Broadcast logs cycle-level migration (011) ──────────────────────
     broadcast_logs_cols_info = inspector.get_columns("broadcast_logs")
     broadcast_logs_cols = [c["name"] for c in broadcast_logs_cols_info]
