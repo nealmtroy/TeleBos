@@ -152,9 +152,18 @@ async def adaptive_sequential_sync_loop() -> None:
                         except Exception as ws_exc:
                             logger.warning("Adaptive Sync: WS push failed for %s: %s", account_id, ws_exc)
 
-                        # Step F: Immediately release client after background sync to prevent idle socket accumulation
+                        # Step F: Immediately release client after background sync to prevent idle socket accumulation,
+                        # UNLESS auto-reply is enabled for this account (needs to stay connected for incoming messages).
                         from app.services.telegram_client import client_pool
-                        await client_pool.remove(account_id, save_state=True)
+                        if not getattr(db_acc, "auto_reply_enabled", False):
+                            await client_pool.remove(account_id, save_state=True)
+                        else:
+                            client_pool.touch_client(account_id)
+                            from app.services.event_relay import event_relay
+                            if not event_relay.is_attached(account_id):
+                                decrypted_session = decrypt(db_acc.session_string)
+                                if decrypted_session:
+                                    await event_relay.attach(account_id, decrypted_session)
 
             except Exception as sync_err:
                 err_msg = str(sync_err) or type(sync_err).__name__

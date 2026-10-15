@@ -173,3 +173,40 @@ async def test_session_manager_worker_retains_active_jobs_and_evicts_other_shard
 
             client_pool._clients.clear()
             client_pool.is_worker = False
+
+
+@pytest.mark.asyncio
+async def test_session_manager_auto_reply_watchdog_reconnects_missing_accounts():
+    """Verify that worker runner watchdog re-ensures connection and handlers for auto-reply accounts."""
+    from app.services.session_manager import session_manager
+    from app.services.telegram_client import client_pool
+
+    auto_acc_id = str(uuid.uuid4())
+
+    with patch("app.core.sharding.get_settings") as mock_settings:
+        mock_settings.return_value.TOTAL_SHARDS = 4
+        mock_settings.return_value.SHARD_INDEX = 0
+
+        with patch("app.services.session_manager.is_account_in_current_shard", side_effect=lambda a: str(a) == auto_acc_id):
+            client_pool.is_worker = True
+            client_pool._clients.clear()
+
+            with patch("app.database.async_session_factory") as mock_db_factory:
+                mock_db = AsyncMock()
+                mock_db_factory.return_value.__aenter__.return_value = mock_db
+                mock_res = MagicMock()
+                mock_res.scalars.return_value.all.return_value = [auto_acc_id]
+                mock_db.execute.return_value = mock_res
+
+                with patch.object(session_manager, "ensure_connected_on_demand", new_callable=AsyncMock) as mock_ensure:
+                    with patch("app.api.ws.manager.has_channel", return_value=False):
+                        session_manager._running = True
+                        try:
+                            await session_manager._check_connections()
+                        finally:
+                            session_manager._running = False
+
+                    mock_ensure.assert_called_once_with(auto_acc_id)
+
+            client_pool.is_worker = False
+

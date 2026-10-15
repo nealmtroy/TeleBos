@@ -600,6 +600,7 @@ class SessionManager:
         clients = await client_pool.get_connected_clients()
         from app.database import async_session_factory
         from app.api.ws import manager as ws_manager
+        from app.services.event_relay import event_relay
 
         # Track which accounts need reconnection
         stale_ids: list[str] = []
@@ -726,6 +727,35 @@ class SessionManager:
                     await self.ensure_connected_on_demand(account_id)
             except Exception as exc:
                 logger.error("Failed to auto-reconnect account %s: %s", account_id, exc)
+
+        # Phase 4: In worker runners, ensure all active auto-reply accounts belonging to this shard
+        # remain connected with event listeners attached for incoming messages.
+        if client_pool.is_worker:
+            try:
+                async with async_session_factory() as db:
+                    result = await db.execute(
+                        select(TelegramAccount.id).where(
+                            TelegramAccount.is_active.is_(True),
+                            TelegramAccount.auto_reply_enabled.is_(True),
+                        )
+                    )
+                    expected_auto_reply_ids = [
+                        str(row)
+                        for row in result.scalars().all()
+                        if is_account_in_current_shard(row)
+                    ]
+
+                for auto_acc_id in expected_auto_reply_ids:
+                    if not self._running:
+                        break
+                    if auto_acc_id not in clients or not event_relay.is_attached(auto_acc_id):
+                        logger.info(
+                            "Auto-reply watchdog: re-ensuring connection and handlers for account %s",
+                            auto_acc_id,
+                        )
+                        await self.ensure_connected_on_demand(auto_acc_id)
+            except Exception as ar_exc:
+                logger.warning("Auto-reply watchdog check failed: %s", ar_exc)
 
     async def attach_and_reconnect(self, db: AsyncSession, account: TelegramAccount) -> bool:
         """Connect an account without holding the caller's DB session during I/O."""

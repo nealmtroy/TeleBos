@@ -182,6 +182,10 @@ class TelegramEventRelay:
         self._handlers.pop(account_id, None)
         self._tg_id_map.pop(account_id, None)
 
+    def is_attached(self, account_id: str) -> bool:
+        """Check if event handlers are currently attached for an account."""
+        return account_id in self._handlers
+
     # ── Event handlers ──────────────────────────────────────────────────────
 
     async def _on_new_message(self, account_id: str, event) -> None:

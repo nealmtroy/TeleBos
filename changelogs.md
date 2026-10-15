@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-15
+- **[4552610d](https://github.com/nealmtroy/TeleBos/commit/4552610d)**: fix(workers): prevent session_manager from disconnecting active worker jobs and enforce shard affinity
 - **[b16c6a9f](https://github.com/nealmtroy/TeleBos/commit/b16c6a9f)**: feat: decouple backend webserver and implement multi-core sharded async runners
 - **[60e82db1](https://github.com/nealmtroy/TeleBos/commit/60e82db1)**: fix(broadcast): guard join cooldown loop fallthrough, ensure list entity cache, and protect JoinChannelRequest
 - **[c0b99db5](https://github.com/nealmtroy/TeleBos/commit/c0b99db5)**: fix(broadcast): enforce SEC-03 unconditionally on loop, add quota check to retry_job, and validate non-empty text
