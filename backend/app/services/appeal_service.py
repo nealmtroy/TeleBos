@@ -22,16 +22,172 @@ logger = logging.getLogger(__name__)
 _TWOCAPTCHA_COOLDOWN_UNTIL: float = 0.0
 
 
+# Multilingual SpamBot button patterns
+MISTAKE_BUTTON_KEYWORDS = [
+    "mistake",        # English: "This is a mistake"
+    "kesalahan",      # Indonesian: "Ini adalah kesalahan"
+    "kesilapan",      # Malay: "Ini adalah satu kesilapan", "Ini kesilapan"
+    "satu kesilapan", # Malay variant
+    "adalah kesilapan", # Malay variant
+    "ошибка",         # Russian: "Это ошибка"
+    "xatolik",        # Uzbek: "Bu xatolik"
+    "xato",           # Uzbek
+    "خطأ",            # Arabic: "هذا خطأ"
+    "hata",           # Turkish: "Bu bir hata"
+    "un error",       # Spanish: "Es un error" / "Esto es un error"
+    "une erreur",     # French: "C'est une erreur"
+    "ein fehler",     # German: "Das ist ein Fehler"
+    "engano",         # Portuguese: "Isto é um engano"
+]
+
+CONFESSION_BUTTON_KEYWORDS = [
+    "tersilap",       # Malay: "Saya tersilap, tolong bebaskan saya"
+    "i was wrong",    # English: "I was wrong, please release me"
+    "saya salah",     # Indonesian: "Saya salah, mohon bebaskan saya"
+    "не прав",        # Russian: "Я был не прав"
+    "ошибся",         # Russian
+    "equivoqué",      # Spanish
+    "hatalıydım",     # Turkish
+    "hata yaptım",    # Turkish
+    "أخطأت",          # Arabic
+    "sebenarnya",     # Step 4 Confession: "Sebenarnya… saya melakukannya."
+    "actually",       # Step 4 Confession: "Actually, I did it"
+    "на самом деле",  # Step 4 Confession
+    "aslında",        # Step 4 Confession
+    "en realidad",    # Step 4 Confession
+]
+
+YES_BUTTON_KEYWORDS = [
+    "yes",            # English
+    "ya",             # Indonesian / Malay
+    "да",             # Russian
+    "نعم",            # Arabic
+    "evet",           # Turkish
+    "oui",            # French
+    "si",             # Spanish / Italian
+    "sí",             # Spanish
+    "sim",            # Portuguese
+    "ha",             # Uzbek
+]
+
+NEVER_BUTTON_KEYWORDS = [
+    "never",          # English: "No! Never did that!"
+    "tidak pernah",   # Indonesian: "Tidak! Tidak pernah!"
+    "tak pernah",     # Malay: "Tidak! Tak pernah lakukan!"
+    "tak pernah lakukan", # Malay
+    "no!",            # English
+    "tidak!",         # Indonesian / Malay
+    "asla",           # Turkish
+    "никогда",        # Russian
+    "hech qachon",    # Uzbek
+    "لم أفعل",        # Arabic
+    "jamais",         # French
+    "nunca",          # Spanish / Portuguese
+    "nada disso",     # Portuguese
+]
+
+DONE_BUTTON_KEYWORDS = [
+    "done",           # English: "Done"
+    "selesai",        # Indonesian / Malay: "Selesai"
+    "siap",           # Malay
+    "sudah selesai",  # Indonesian / Malay
+    "готово",         # Russian: "Готово"
+    "tamam",          # Turkish: "Tamam"
+    "تم",             # Arabic
+    "bajarildi",      # Uzbek
+    "tayyor",         # Uzbek
+]
+
+
 def find_button(msg: Message, keywords: list[str]) -> Any | None:
     """Find a button on a message containing any of the keywords (case-insensitive)."""
-    if not msg.buttons:
+    if not msg or not getattr(msg, "buttons", None):
         return None
     for row in msg.buttons:
         for btn in row:
+            txt = getattr(btn, "text", "") or ""
+            txt_lower = txt.lower()
             for kw in keywords:
-                if kw.lower() in btn.text.lower():
+                if kw.lower() in txt_lower:
                     return btn
     return None
+
+
+def find_dispute_mistake_button(msg: Message) -> Any | None:
+    """
+    Find the dispute button ('This is a mistake' / 'Ini adalah satu kesilapan')
+    while guaranteeing that confession buttons ('Saya tersilap', 'I was wrong')
+    are strictly excluded. Includes positional fallback for standard SpamBot layout.
+    """
+    if not msg or not getattr(msg, "buttons", None):
+        return None
+
+    # Pass 1: Keyword search matching mistake while skipping confession
+    for row in msg.buttons:
+        for btn in row:
+            txt = (getattr(btn, "text", "") or "").lower()
+            if any(conf in txt for conf in CONFESSION_BUTTON_KEYWORDS):
+                continue
+            if any(m in txt for m in MISTAKE_BUTTON_KEYWORDS):
+                return btn
+
+    # Pass 2: Fallback for 3-4 button layout in standard SpamBot initial response
+    # Layout is typically: [0: OK, 1: What is spam?, 2: Confession, 3: Dispute]
+    all_btns = [b for row in msg.buttons for b in row]
+    if len(all_btns) >= 3:
+        last_btn = all_btns[-1]
+        last_txt = (getattr(last_btn, "text", "") or "").lower()
+        if not any(conf in last_txt for conf in CONFESSION_BUTTON_KEYWORDS):
+            if not any(f in last_txt for f in ["ok", "spam"]):
+                logger.info("Matched dispute button by positional fallback: %r", getattr(last_btn, "text", ""))
+                return last_btn
+
+    return None
+
+
+def find_affirmative_yes_button(msg: Message) -> Any | None:
+    """
+    Find the affirmative 'Yes' / 'Ya' button, avoiding negative buttons ('Tidak', 'No')
+    or accidental substring false positives.
+    """
+    if not msg or not getattr(msg, "buttons", None):
+        return None
+
+    negative_words = {"tidak", "no", "нет", "hayır", "hayir", "لا", "yo'q", "non", "não", "batal", "cancel"}
+
+    for row in msg.buttons:
+        for btn in row:
+            txt = (getattr(btn, "text", "") or "").strip().lower()
+            if txt in negative_words:
+                continue
+            for kw in YES_BUTTON_KEYWORDS:
+                if txt == kw or re.search(rf'\b{re.escape(kw)}\b', txt):
+                    return btn
+    return None
+
+
+def find_denial_never_button(msg: Message) -> Any | None:
+    """
+    Find the denial button ('No! Never did that!' / 'Tidak! Tak pernah lakukan!')
+    while strictly excluding confession buttons ('Sebenarnya… saya melakukannya.').
+    """
+    if not msg or not getattr(msg, "buttons", None):
+        return None
+
+    for row in msg.buttons:
+        for btn in row:
+            txt = (getattr(btn, "text", "") or "").strip().lower()
+            if any(conf in txt for conf in CONFESSION_BUTTON_KEYWORDS):
+                continue
+            for kw in NEVER_BUTTON_KEYWORDS:
+                if kw in txt:
+                    return btn
+    return None
+
+
+def find_done_button(msg: Message) -> Any | None:
+    """Find the 'Done' / 'Selesai' button across languages."""
+    return find_button(msg, DONE_BUTTON_KEYWORDS)
 
 
 async def check_appeal_history(client: TelegramClient) -> bool:
@@ -390,7 +546,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
                 }
 
             # Step 2: Click "This is a mistake" button
-            btn = find_button(response, ["mistake", "kesalahan"])
+            btn = find_dispute_mistake_button(response)
             if not btn:
                 return {
                     "status": "failed",
@@ -401,15 +557,15 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
             await btn.click()
             response = await conv.get_response()
 
-            # Step 2b: Bot might switch to English and show buttons again
-            if find_button(response, ["ok", "what is spam", "i was wrong"]):
-                btn_mistake = find_button(response, ["mistake"])
+            # Step 2b: Bot might switch language or show disambiguation buttons again
+            if find_button(response, ["ok", "what is spam", "apa itu spam", "i was wrong", "saya salah", "saya tersilap"]):
+                btn_mistake = find_dispute_mistake_button(response)
                 if btn_mistake:
                     await btn_mistake.click()
                     response = await conv.get_response()
 
             # Step 3: Click "Yes" / "Ya"
-            btn_yes = find_button(response, ["yes", "ya"])
+            btn_yes = find_affirmative_yes_button(response)
             if not btn_yes:
                 return {
                     "status": "failed",
@@ -420,8 +576,8 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
             await btn_yes.click()
             response = await conv.get_response()
 
-            # Step 4: Click "No! Never did that!" / "Tidak pernah"
-            btn_no = find_button(response, ["never", "tidak pernah", "no!", "tidak!"])
+            # Step 4: Click "No! Never did that!" / "Tidak pernah" / "Tak pernah"
+            btn_no = find_denial_never_button(response)
             if not btn_no:
                 return {
                     "status": "failed",
@@ -508,7 +664,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
 
                     if submit_ok:
                         # Resume appeal flow by clicking Done
-                        btn_done = find_button(response, ["done", "selesai"])
+                        btn_done = find_done_button(response)
                         if btn_done:
                             await btn_done.click()
                             response = await conv.get_response()
@@ -552,7 +708,7 @@ async def start_spam_appeal(client: TelegramClient, reason: str, preset_id: str 
                 }
 
             # Step 6: Click "Done" / "Selesai" (just in case captcha was skipped)
-            btn_done = find_button(response, ["done", "selesai"])
+            btn_done = find_done_button(response)
             if btn_done:
                 await btn_done.click()
                 response = await conv.get_response()
@@ -601,11 +757,11 @@ async def resume_spam_appeal(client: TelegramClient, reason: str) -> dict:
             "message": "Riwayat chat spambot kosong. Silakan mulai banding dari awal.",
         }
 
-    btn_done = find_button(last_msg, ["done", "selesai"])
+    btn_done = find_done_button(last_msg)
     if not btn_done:
         # Check if they are already asking for explanation
         # (e.g. if the captcha was solved and the spambot already transitioned)
-        if last_msg.text and ("jelaskan" in last_msg.text.lower() or "explain" in last_msg.text.lower() or "tell us" in last_msg.text.lower()):
+        if last_msg.text and any(k in last_msg.text.lower() for k in ["jelaskan", "explain", "tell us", "nyatakan", "huraikan"]):
             # Send explanation reason
             await client.send_message(entity, reason)
             

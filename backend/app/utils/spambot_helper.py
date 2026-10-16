@@ -34,13 +34,19 @@ except Exception as e:
             "banding sebelumnya", "previously submitted",
             "kamu sudah pernah", "already appealed",
             "we have received your appeal", "permohonan banding",
-            "we will review", "akan ditinjau", "sedang diproses", "help us understand"
+            "we will review", "akan ditinjau", "sedang diproses", "help us understand",
+            "aduan anda telah dihantar", "aduan telah dihantar", "aduan anda telah diterima",
+            "kami telah menerima aduan anda", "akan disemak oleh penyelia", "akan disemak oleh moderator",
+            "terima kasih, aduan anda"
         ],
         "appeal_flow_active": [
             "do you admit", "apakah kamu mengakui", "apa yang terjadi",
             "tell us more", "jelaskan lebih", "is your account useful",
             "apakah akun anda bermanfaat", "why did this happen",
-            "mengapa ini terjadi", "kirimkan ke moderators", "send to moderators"
+            "mengapa ini terjadi", "kirimkan ke moderators", "send to moderators",
+            "adakah anda ingin membuat aduan", "adakah anda pernah lakukan",
+            "sila pastikan anda tidak pernah", "limitasi ke atas akaun anda dibuat secara tersilap",
+            "pastikan anda adalah manusia"
         ]
     }
 
