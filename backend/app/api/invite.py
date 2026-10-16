@@ -98,6 +98,7 @@ async def pause_invite_job(
     if job.status != "running":
         raise HTTPException(status_code=400, detail="Job is not running")
     await invite_service.update_invite_job_status(db, job, "paused")
+    await db.commit()
     from app.utils.redis_dispatcher import publish_job_control
     await publish_job_control("invite", job.id, "pause")
     return {"message": "Paused"}
@@ -133,6 +134,7 @@ async def stop_invite_job(
     if job.status not in ("running", "paused", "pending"):
         raise HTTPException(status_code=400, detail="Job cannot be stopped")
     await invite_service.update_invite_job_status(db, job, "cancelled")
+    await db.commit()
     from app.utils.redis_dispatcher import publish_job_control
     await publish_job_control("invite", job.id, "stop")
     return {"message": "Stopped"}
@@ -157,7 +159,7 @@ async def retry_invite_job(
     user: User = Depends(require_role(["pro", "premium", "owner"])),
 ):
     try:
-        job = await invite_service.retry_invite_job(db, job_id, str(user.id))
+        job = await invite_service.retry_invite_job(db, job_id, str(user.id), user=user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return job

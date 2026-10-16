@@ -23,8 +23,8 @@ def cleanup_old_message_media(
     Returns a summary dict: {"deleted_files": count, "freed_bytes": bytes}.
     """
     if base_dir is None:
-        # Resolve backend root dir
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        # Resolve backend/app dir so base_dir/uploads == /app/app/uploads
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     media_dir = os.path.join(base_dir, "uploads", "message_media")
     if not os.path.exists(media_dir):
@@ -104,7 +104,7 @@ def cleanup_old_chat_photos(
     Returns a summary dict: {"deleted_files": count, "freed_bytes": bytes}.
     """
     if base_dir is None:
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     photos_dir = os.path.join(base_dir, "uploads", "chat_photos")
     if not os.path.exists(photos_dir):
@@ -174,8 +174,8 @@ async def background_media_cleanup_loop(interval_seconds: int = 86400) -> None:
     await asyncio.sleep(300)
     while True:
         try:
-            cleanup_old_message_media()
-            cleanup_old_chat_photos()
+            await asyncio.to_thread(cleanup_old_message_media)
+            await asyncio.to_thread(cleanup_old_chat_photos)
         except Exception as exc:
             logger.warning("Error during background media cleanup: %s", exc)
         await asyncio.sleep(interval_seconds)

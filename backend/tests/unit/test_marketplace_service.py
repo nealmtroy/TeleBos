@@ -306,12 +306,14 @@ async def test_resell_account_succeeds_for_previously_bought_or_sold_account(mon
     account.is_sold = True
     account.sold_at = "2026-09-01T00:00:00Z"
     db = FakeDatabase(account)
-    # Return account for FOR UPDATE query, then empty lists for broadcast/invite jobs
+    # Return account for FOR UPDATE query, then empty lists for the
+    # broadcast/invite/auto-join detach queries, then the AutoReplyLog delete.
     db.execute = AsyncMock(
         side_effect=[
             FakeResult([account]),
             FakeResult([]),  # BroadcastJob query
             FakeResult([]),  # InviteJob query
+            FakeResult([]),  # AutoJoinJob query
             FakeResult([]),  # AutoReplyLog delete query
         ]
     )

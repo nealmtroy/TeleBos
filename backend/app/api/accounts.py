@@ -738,8 +738,13 @@ async def update_auto_reply(
     from app.utils.redis import set_auto_reply_config
     await set_auto_reply_config(account_id, account.auto_reply_enabled, account.auto_reply_text)
     if account.auto_reply_enabled:
-        from app.services.session_manager import session_manager
-        asyncio.create_task(session_manager.ensure_connected_on_demand(str(account.id)))
+        from app.config import get_settings
+        if get_settings().ENABLE_TELEGRAM_COMMAND_BUS:
+            from app.utils.redis_dispatcher import publish_job_completed
+            await publish_job_completed("autoreply", str(account.id), [str(account.id)])
+        else:
+            from app.services.session_manager import session_manager
+            asyncio.create_task(session_manager.ensure_connected_on_demand(str(account.id)))
     from app.services.user_account_price_service import resolve_telegram_id_price
     account.sell_price = await resolve_telegram_id_price(db, account)
     return account
@@ -780,9 +785,14 @@ async def bulk_update_auto_reply(
 
     await db.flush()
     if payload.auto_reply_enabled:
-        from app.services.session_manager import session_manager
-        for account in accounts:
-            asyncio.create_task(session_manager.ensure_connected_on_demand(str(account.id)))
+        from app.config import get_settings
+        if get_settings().ENABLE_TELEGRAM_COMMAND_BUS:
+            from app.utils.redis_dispatcher import publish_job_completed
+            await publish_job_completed("autoreply", "bulk", [str(a.id) for a in accounts])
+        else:
+            from app.services.session_manager import session_manager
+            for account in accounts:
+                asyncio.create_task(session_manager.ensure_connected_on_demand(str(account.id)))
     return {"updated": updated, "total": len(payload.account_ids)}
 
 

@@ -497,6 +497,7 @@ async def _format_telethon_messages(client, messages, my_id) -> list:
     from telethon.utils import decode_waveform, stripped_photo_to_jpg
     
     result = []
+    sender_cache: dict[int, str] = {}
     for msg in messages:
         if not hasattr(msg, "id"):
             continue
@@ -505,15 +506,24 @@ async def _format_telethon_messages(client, messages, my_id) -> list:
         sender_id = None
         if msg.sender_id:
             sender_id = msg.sender_id
-            try:
-                sender_entity = await client.get_entity(msg.sender_id)
-                sender_name = getattr(sender_entity, "first_name", "") or ""
-                if getattr(sender_entity, "last_name", None):
-                    sender_name += " " + sender_entity.last_name
-                if not sender_name:
-                    sender_name = getattr(sender_entity, "title", "Unknown")
-            except Exception:
-                sender_name = f"User {msg.sender_id}"
+            if sender_id in sender_cache:
+                sender_name = sender_cache[sender_id]
+            else:
+                sender_entity = getattr(msg, "sender", None)
+                if sender_entity is None:
+                    try:
+                        sender_entity = await msg.get_sender()
+                    except Exception:
+                        sender_entity = None
+                if sender_entity is not None:
+                    sender_name = getattr(sender_entity, "first_name", "") or ""
+                    if getattr(sender_entity, "last_name", None):
+                        sender_name += " " + sender_entity.last_name
+                    if not sender_name:
+                        sender_name = getattr(sender_entity, "title", "Unknown")
+                else:
+                    sender_name = f"User {msg.sender_id}"
+                sender_cache[sender_id] = sender_name
 
         media_type = _classify_media(msg.media) if msg.media else None
         

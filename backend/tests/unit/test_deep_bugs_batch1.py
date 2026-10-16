@@ -92,7 +92,7 @@ async def test_start_broadcast_task_and_startup_resume():
 
         # 3. Test resume_running_broadcasts_on_startup
         db = AsyncMock()
-        mock_job = SimpleNamespace(id=job_id, status="running")
+        mock_job = SimpleNamespace(id=job_id, status="running", account_ids=[])
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [mock_job]
         db.execute.return_value = mock_result

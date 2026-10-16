@@ -507,6 +507,7 @@ async def admin_bulk_broadcast_action(
 ):
     """Admin bulk actions on broadcast jobs: pause_all_running, stop_all_running, delete_completed_failed, delete_selected."""
     action = payload.action
+    from app.utils.redis_dispatcher import publish_job_control
 
     if action == "pause_all_running":
         res = await db.execute(
@@ -516,6 +517,8 @@ async def admin_bulk_broadcast_action(
         for j in jobs:
             await broadcast_service.update_job_status(db, j, "paused")
         await db.commit()
+        for j in jobs:
+            await publish_job_control("broadcast", j.id, "pause")
         return {
             "message": f"Paused {len(jobs)} running jobs",
             "count": len(jobs),
@@ -531,6 +534,8 @@ async def admin_bulk_broadcast_action(
         for j in jobs:
             await broadcast_service.update_job_status(db, j, "cancelled")
         await db.commit()
+        for j in jobs:
+            await publish_job_control("broadcast", j.id, "stop")
         return {"message": f"Stopped {len(jobs)} active jobs", "count": len(jobs)}
 
     elif action == "delete_completed_failed":

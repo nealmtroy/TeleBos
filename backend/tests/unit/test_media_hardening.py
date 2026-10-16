@@ -66,26 +66,17 @@ def _chat(version):
 
 
 def _redirect_base_dir(monkeypatch, base):
-    """Make media.py derive *base* as its base_dir.
+    """Make media.py resolve its uploads root under *base*.
 
-    ``media.py`` computes ``base_dir = dirname(dirname(dirname(__file__)))``.
-    To have that equal *base*, the first ``dirname(__file__)`` must return a
-    path two levels below *base*, since two more ``dirname`` calls then walk
-    back up to it. The real function is bound first because ``monkeypatch``
-    replaces the attribute on the shared ``os.path`` module.
+    ``media.py`` now derives the uploads root from
+    ``app.utils.path_security.get_base_uploads_dir`` (matching the Docker
+    volume ``/app/app/uploads``). That helper returns the ``uploads`` directory
+    itself, so redirect it to ``base/uploads`` — the same layout the old
+    ``dirname(dirname(dirname(__file__))) + "uploads"`` chain produced.
     """
-    import os.path as _ospath
-
-    real_dirname = _ospath.dirname
-    module_file = os.path.abspath(media_mod.__file__)
-    nested = str(base / "_pkg" / "_api")
-
-    def _dirname(path):
-        if os.path.abspath(str(path)) == module_file:
-            return nested
-        return real_dirname(path)
-
-    monkeypatch.setattr(media_mod.os.path, "dirname", _dirname)
+    monkeypatch.setattr(
+        media_mod, "get_base_uploads_dir", lambda: str(base / "uploads")
+    )
 
 
 @pytest.mark.asyncio

@@ -90,6 +90,7 @@ async def pause_auto_join(
         raise HTTPException(status_code=400, detail="Job is not running")
 
     await auto_join_service.update_auto_join_job_status(db, job, "paused")
+    await db.commit()
     from app.utils.redis_dispatcher import publish_job_control
 
     await publish_job_control("autojoin", job.id, "pause")
@@ -129,6 +130,7 @@ async def stop_auto_join(
         raise HTTPException(status_code=400, detail="Job is not active")
 
     await auto_join_service.update_auto_join_job_status(db, job, "cancelled")
+    await db.commit()
     from app.utils.redis_dispatcher import publish_job_control
 
     await publish_job_control("autojoin", job.id, "stop")

@@ -234,34 +234,23 @@ class TelegramClientPool:
                     async with async_session_factory() as db:
                         from app.models.broadcast_job import BroadcastJob
                         from app.models.invite_job import InviteJob
+                        from app.models.auto_join_job import AutoJoinJob
 
                         # Find accounts claimed by active worker jobs
                         busy_ids: set[uuid.UUID] = set()
-                        bj_query = await db.execute(
-                            select(BroadcastJob.account_ids).where(
-                                BroadcastJob.status.in_(["pending", "running", "paused"])
+                        for job_model in (BroadcastJob, InviteJob, AutoJoinJob):
+                            job_query = await db.execute(
+                                select(job_model.account_ids).where(
+                                    job_model.status.in_(["pending", "running", "paused"])
+                                )
                             )
-                        )
-                        for acc_list in bj_query.scalars():
-                            if isinstance(acc_list, list):
-                                for a in acc_list:
-                                    try:
-                                        busy_ids.add(uuid.UUID(str(a)))
-                                    except (ValueError, TypeError):
-                                        pass
-
-                        ij_query = await db.execute(
-                            select(InviteJob.account_ids).where(
-                                InviteJob.status.in_(["pending", "running", "paused"])
-                            )
-                        )
-                        for acc_list in ij_query.scalars():
-                            if isinstance(acc_list, list):
-                                for a in acc_list:
-                                    try:
-                                        busy_ids.add(uuid.UUID(str(a)))
-                                    except (ValueError, TypeError):
-                                        pass
+                            for acc_list in job_query.scalars():
+                                if isinstance(acc_list, list):
+                                    for a in acc_list:
+                                        try:
+                                            busy_ids.add(uuid.UUID(str(a)))
+                                        except (ValueError, TypeError):
+                                            pass
 
                         # Protect active accounts with auto-reply enabled
                         auto_reply_query = await db.execute(

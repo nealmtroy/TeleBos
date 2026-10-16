@@ -534,6 +534,40 @@ async def retry_job(
     if job.status not in ("completed", "cancelled", "failed"):
         raise ValueError(f"Cannot retry a job with status '{job.status}'")
 
+    from app.services.account_service import get_account
+    from app.utils.account_ownership import find_busy_accounts
+
+    valid_account_ids = []
+    for acc_id in (job.account_ids or []):
+        account = await get_account(db, str(acc_id), str(user.id))
+        if account is not None and account.is_active and not account.for_sale:
+            valid_account_ids.append(str(account.id))
+
+    if not valid_account_ids:
+        raise ValueError("Tidak ada akun pengirim yang valid atau aktif untuk mengulang job ini.")
+
+    plan_max_accounts = {
+        "freetrial": 1,
+        "basic": 1,
+        "pro": 3,
+        "premium": 5,
+        "owner": 9999,
+    }
+    max_allowed = plan_max_accounts.get(user_role, 1)
+    if len(valid_account_ids) > max_allowed:
+        raise ValueError(
+            f"Paket Anda saat ini hanya mengizinkan maksimal {max_allowed} akun pengirim siaran."
+        )
+
+    busy_accounts = await find_busy_accounts(db, valid_account_ids)
+    if busy_accounts:
+        raise ValueError(
+            "Akun berikut sedang dipakai job lain yang aktif: "
+            + ", ".join(busy_accounts)
+            + ". Hentikan job tersebut atau tunggu selesai sebelum memulai yang baru."
+        )
+
+    job.account_ids = valid_account_ids
     # Reset job state — old logs remain
     job.status = "running"
     job.progress = 0
@@ -627,7 +661,7 @@ async def _push_broadcast(job_id: str, event_type: str, data: dict) -> None:
     try:
         from app.api.ws import manager
 
-        if manager.get_channel_count(channel) > 0:
+        if manager.has_channel(channel):
             await manager.broadcast(channel, payload)
     except Exception:
         pass
@@ -693,6 +727,9 @@ async def _join_and_resolve_chatlist(client, target: str) -> list:
 
     invite = await client(CheckChatlistInviteRequest(slug))
     peers = _chatlist_peers(invite)
+    invite_chats = list(getattr(invite, "chats", None) or [])
+    chats_by_id = { getattr(c, "id", None): c for c in invite_chats if getattr(c, "id", None) is not None }
+
     input_peers = []
     for peer in peers:
         try:
@@ -708,8 +745,12 @@ async def _join_and_resolve_chatlist(client, target: str) -> list:
 
     entities = []
     for peer in peers:
+        peer_id = getattr(peer, "channel_id", None) or getattr(peer, "chat_id", None) or getattr(peer, "user_id", None)
+        if peer_id is not None and peer_id in chats_by_id:
+            entities.append(chats_by_id[peer_id])
+            continue
         try:
-            entities.append(await client.get_entity(peer))
+            entities.append(await client.get_input_entity(peer))
         except Exception:
             pass
     return entities
@@ -1175,7 +1216,10 @@ async def execute_broadcast(job_id: str):
                 except (ValueError, TypeError):
                     continue
                 acc_result = await db.execute(
-                    select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
+                    select(TelegramAccount).where(
+                        TelegramAccount.id == acc_uuid,
+                        TelegramAccount.user_id == job_orm.user_id,
+                    )
                 )
                 account = acc_result.scalar_one_or_none()
                 if not account or account.for_sale or not account.is_active:
@@ -1633,8 +1677,7 @@ async def execute_broadcast(job_id: str):
                             selected_acc["join_cooldown_until"] = time.time() + wait
                             continue
                         elif err_type == "already_invited":
-                            joined_pool[(selected_acc["account_id"], pkey)] = True
-                            newly_joined.append(pkey)
+                            still_pending[pkey] = pitem
                             continue
                         else:
                             # Unknown/transient resolve failure: keep retrying over
@@ -1984,12 +2027,10 @@ async def execute_broadcast(job_id: str):
                         }
 
                     if err_type in ("invite_request_sent", "already_invited"):
-                        log_status = "success"
+                        log_status = "skipped"
                         log_err_type = err_type
                         log_err_msg = err_msg
                         log_duration_ms = int((time.time() - start_time) * 1000)
-                        sent += 1
-                        cycle_sent += 1
                         resolve_attempts.pop(pkey, None)
                     else:
                         log_status = "error"

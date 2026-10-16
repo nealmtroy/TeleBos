@@ -114,7 +114,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
-      TOTAL_SHARDS: ${TOTAL_SHARDS:-4}
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-1}
       SHARD_INDEX: 1
     volumes:
       - backend_uploads:/app/app/uploads
@@ -139,7 +139,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
-      TOTAL_SHARDS: ${TOTAL_SHARDS:-4}
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-1}
       SHARD_INDEX: 2
     volumes:
       - backend_uploads:/app/app/uploads
@@ -164,7 +164,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       DATABASE_URL_SYNC: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/telebos
       REDIS_URL: redis://:${REDIS_PASSWORD:-change-redis-secret-in-production}@redis:6379/0
-      TOTAL_SHARDS: ${TOTAL_SHARDS:-4}
+      TOTAL_SHARDS: ${TOTAL_SHARDS:-1}
       SHARD_INDEX: 3
     volumes:
       - backend_uploads:/app/app/uploads

@@ -185,6 +185,7 @@ async def test_session_manager_on_job_completed():
     mock_db.execute.return_value = mock_result
 
     with patch("app.database.async_session_factory") as mock_factory, \
+         patch("app.services.session_manager._shutdown", False), \
          patch.object(session_manager, "is_account_in_active_job", new_callable=AsyncMock, return_value=False), \
          patch.object(session_manager, "ensure_connected_on_demand", new_callable=AsyncMock) as mock_ensure:
 

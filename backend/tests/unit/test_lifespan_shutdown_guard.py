@@ -63,6 +63,7 @@ async def test_shutdown_never_raises(caplog):
     tasks = _tasks()
     try:
         with (
+            patch("app.main.app_settings.ENABLE_TELEGRAM_COMMAND_BUS", False),
             patch("app.services.smm_service.close_smm_http_client", new=AsyncMock()),
             patch(
                 "app.services.session_manager.session_manager.stop",

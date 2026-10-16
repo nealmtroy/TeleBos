@@ -38,14 +38,15 @@ async def check_auto_reply_rate_limit(account_id: str, sender_id: int | str | No
     2. Hourly limit has not been exceeded.
     """
     try:
-        # 1. Cooldown check: per sender if available, fallback to account level
+        # 1a. Always enforce account-level burst guard
+        cooldown_key = f"autoreply:last_sent:{account_id}"
+        if await redis_client.exists(cooldown_key):
+            return False
+
+        # 1b. Enforce per-sender cooldown when sender_id is provided
         if sender_id is not None:
             sender_cooldown_key = f"autoreply:cooldown:{account_id}:{sender_id}"
             if await redis_client.exists(sender_cooldown_key):
-                return False
-        else:
-            cooldown_key = f"autoreply:last_sent:{account_id}"
-            if await redis_client.exists(cooldown_key):
                 return False
 
         # 2. Hourly rate limit check

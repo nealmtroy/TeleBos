@@ -80,6 +80,9 @@ async def refresh_all_accounts(db: AsyncSession | None = None) -> int:
     for i, account_id in enumerate(account_ids):
         try:
             async with async_session_factory() as per_db:
+                from app.utils.account_ownership import is_worker_claimed
+                if await is_worker_claimed(per_db, account_id):
+                    continue
                 result = await per_db.execute(
                     select(TelegramAccount).where(TelegramAccount.id == account_id)
                 )
@@ -88,6 +91,9 @@ async def refresh_all_accounts(db: AsyncSession | None = None) -> int:
                     await refresh_account_stats(per_db, account)
                     await per_db.commit()
                     refreshed += 1
+                    if not getattr(account, "auto_reply_enabled", False):
+                        from app.services.telegram_client import client_pool
+                        await client_pool.remove(account_id, save_state=True)
         except Exception:
             logger.exception("Failed to refresh stats for account %s", account_id)
 

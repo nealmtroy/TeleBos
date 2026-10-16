@@ -113,6 +113,15 @@ def register_autoreply_handlers(client):
         match_page = event.pattern_match.group(2)
         page = int(decode_param(match_page)) if match_page is not None else 1
         
+        from app.services.redeem_service import is_subscription_active
+        user_role = getattr(event.user, "role", "freetrial") or "freetrial"
+        if user_role not in ("pro", "premium", "owner") or not is_subscription_active(event.user):
+            await event.answer(
+                "Fitur Auto-Reply membutuhkan paket Pro atau Business yang aktif.",
+                alert=True,
+            )
+            return
+
         try:
             acc_uuid = uuid.UUID(account_id)
         except ValueError:
@@ -140,9 +149,8 @@ def register_autoreply_handlers(client):
         await set_auto_reply_config(str(acc_uuid), new_status, db_acc.auto_reply_text)
 
         if new_status:
-            import asyncio
-            from app.services.session_manager import session_manager
-            asyncio.create_task(session_manager.ensure_connected_on_demand(str(acc_uuid)))
+            from app.utils.redis_dispatcher import publish_job_completed
+            await publish_job_completed("autoreply", str(acc_uuid), [str(acc_uuid)])
 
         await event.answer(
             f"Auto-Reply untuk {'@' + db_acc.username if db_acc.username else db_acc.phone} "

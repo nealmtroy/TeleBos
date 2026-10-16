@@ -21,7 +21,6 @@ TeleBos is a web dashboard for managing multiple Telegram accounts from one work
 | [`DESIGN.md`](DESIGN.md) | Visual design system and component rules. |
 | [`CLAUDE.md`](CLAUDE.md) | Claude Code architecture, commands, engineering invariants, and API capability map. |
 | [`AGENTS.md`](AGENTS.md) | Compatibility entry point for other coding agents. |
-| [`docs/security/strix-assessment-instructions.md`](docs/security/strix-assessment-instructions.md) | Targeted security-assessment procedure. |
 
 For exact first-party request/response contracts, start the backend and open:
 
@@ -52,10 +51,10 @@ For exact first-party request/response contracts, start the backend and open:
 
    ```bash
    cd TeleBos
-   cp .env.example backend/.env
+   cp .env.example .env
    ```
 
-2. Set at least the Telegram API credentials and strong application/encryption secrets in `backend/.env`:
+2. Set at least the Telegram API credentials and strong application/encryption secrets in `.env`:
 
    ```env
    TELEGRAM_API_ID=12345678
@@ -108,7 +107,7 @@ npm install
 npm run dev
 ```
 
-For local development, ensure PostgreSQL and Redis are available and configure `DATABASE_URL` and `DATABASE_URL_SYNC` in `backend/.env`.
+For local development, ensure PostgreSQL and Redis are available and configure `DATABASE_URL` and `DATABASE_URL_SYNC` in `.env`.
 
 ### Quality checks
 

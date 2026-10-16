@@ -14,7 +14,7 @@ import sys
 
 from app.database import async_session_factory, engine
 from app.utils.redis import redis_client
-from app.utils.redis_dispatcher import JOBS_QUEUE_KEY, JOBS_CONTROL_CHANNEL
+from app.utils.redis_dispatcher import JOBS_QUEUE_KEY, JOBS_CONTROL_CHANNEL, JOBS_COMPLETED_CHANNEL
 from app.services import broadcast_service, invite_service, auto_join_service
 from app.utils.async_helpers import wake_job
 
@@ -77,7 +77,7 @@ async def queue_consumer_loop() -> None:
 
     shard_jobs_queue = get_shard_jobs_queue(worker_settings.SHARD_INDEX)
     queues_to_watch = [shard_jobs_queue]
-    if shard_jobs_queue != DEFAULT_JOBS_QUEUE:
+    if worker_settings.SHARD_INDEX == 0 and shard_jobs_queue != DEFAULT_JOBS_QUEUE:
         queues_to_watch.append(DEFAULT_JOBS_QUEUE)
 
     logger.info(
@@ -100,6 +100,20 @@ async def queue_consumer_loop() -> None:
                 action = payload.get("action", "start")
 
                 if action == "start" and job_id:
+                    if not await _is_job_in_current_shard(job_type, str(job_id)):
+                        # Re-route to the owning shard instead of running on the wrong runner
+                        from app.utils.redis_dispatcher import enqueue_job
+                        owner_shard = await _get_job_owner_shard(job_type, str(job_id))
+                        if owner_shard is not None and owner_shard != worker_settings.SHARD_INDEX:
+                            await enqueue_job(job_type, job_id, shard_index=owner_shard)
+                            logger.info(
+                                "Re-routed %s job %s from Shard %d to owning Shard %d",
+                                job_type,
+                                job_id,
+                                worker_settings.SHARD_INDEX,
+                                owner_shard,
+                            )
+                            continue
                     if job_type == "broadcast":
                         logger.info("Spawning broadcast job %s in async worker", job_id)
                         broadcast_service.start_broadcast_task(job_id)
@@ -124,19 +138,18 @@ async def queue_consumer_loop() -> None:
                 await asyncio.sleep(2.0)
 
 
-async def _is_job_in_current_shard(job_type: str, job_id: str) -> bool:
-    """Determine if a job's primary account belongs to this runner's shard."""
+async def _get_job_owner_shard(job_type: str, job_id: str) -> int | None:
+    """Return the shard index that owns this job's primary account."""
     if worker_settings.TOTAL_SHARDS <= 1:
-        return True
+        return 0
     import uuid
     from sqlalchemy import select
+    from app.core.sharding import get_account_shard
 
     try:
         j_uuid = uuid.UUID(job_id)
     except (ValueError, TypeError):
-        return True
-
-    from app.core.sharding import is_account_in_current_shard
+        return None
 
     try:
         async with async_session_factory() as db:
@@ -155,11 +168,19 @@ async def _is_job_in_current_shard(job_type: str, job_id: str) -> bool:
                 accs = res.scalar_one_or_none()
 
             if accs and isinstance(accs, list) and len(accs) > 0:
-                return is_account_in_current_shard(accs[0])
+                return get_account_shard(accs[0], total_shards=worker_settings.TOTAL_SHARDS)
     except Exception as exc:
         logger.warning("Could not determine shard affinity for %s job %s: %s", job_type, job_id, exc)
 
-    return True
+    return None
+
+
+async def _is_job_in_current_shard(job_type: str, job_id: str) -> bool:
+    """Determine if a job's primary account belongs to this runner's shard."""
+    if worker_settings.TOTAL_SHARDS <= 1:
+        return True
+    owner_shard = await _get_job_owner_shard(job_type, job_id)
+    return owner_shard is None or owner_shard == worker_settings.SHARD_INDEX
 
 
 async def control_subscriber_loop() -> None:
@@ -169,7 +190,7 @@ async def control_subscriber_loop() -> None:
         pubsub = None
         try:
             pubsub = redis_client.pubsub()
-            await pubsub.subscribe(JOBS_CONTROL_CHANNEL)
+            await pubsub.subscribe(JOBS_CONTROL_CHANNEL, JOBS_COMPLETED_CHANNEL)
 
             while not shutdown_event.is_set():
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=2.0)
@@ -180,9 +201,17 @@ async def control_subscriber_loop() -> None:
                 data_raw = message.get("data")
                 if not data_raw:
                     continue
+                msg_channel = message.get("channel")
 
                 try:
                     payload = json.loads(data_raw)
+                    if msg_channel == JOBS_COMPLETED_CHANNEL:
+                        account_ids = payload.get("account_ids", [])
+                        if account_ids:
+                            from app.services.session_manager import session_manager
+                            asyncio.create_task(session_manager.on_job_completed(account_ids))
+                        continue
+
                     action = payload.get("action")
                     job_type = payload.get("job_type")
                     job_id = str(payload.get("job_id"))
@@ -238,7 +267,7 @@ async def control_subscriber_loop() -> None:
         finally:
             if pubsub:
                 try:
-                    await pubsub.unsubscribe(JOBS_CONTROL_CHANNEL)
+                    await pubsub.unsubscribe(JOBS_CONTROL_CHANNEL, JOBS_COMPLETED_CHANNEL)
                     await pubsub.close()
                 except Exception:
                     pass

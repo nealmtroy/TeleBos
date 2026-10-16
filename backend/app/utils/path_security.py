@@ -140,7 +140,7 @@ def is_path_contained(base_dir: str, target_path: str) -> bool:
 
 def get_base_uploads_dir() -> str:
     """Return the absolute, canonical base uploads directory."""
-    # backend/app/utils -> backend/app -> backend
-    backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    uploads_dir = os.path.join(backend_root, "uploads")
+    # backend/app/utils -> backend/app/uploads (matches Docker volume /app/app/uploads)
+    app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    uploads_dir = os.path.join(app_root, "uploads")
     return os.path.realpath(os.path.abspath(uploads_dir))

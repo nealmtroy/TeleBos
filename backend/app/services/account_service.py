@@ -420,6 +420,11 @@ async def finalize_authenticated_login(
 
     # A failed lookup is unknown, not evidence that 2FA is disabled.
     live_twofa_status = await get_live_2fa_status(unauth_client)
+    tg_photo_id = (
+        str(me.photo.photo_id)
+        if (getattr(me, "photo", None) and hasattr(me.photo, "photo_id"))
+        else None
+    )
 
     if db is not None and me.id:
         existing = await db.execute(
@@ -444,8 +449,14 @@ async def finalize_authenticated_login(
                 existing_acc.username = me.username
                 existing_acc.is_premium = bool(getattr(me, "premium", False))
                 existing_acc.phone_verified = True
+                existing_acc.profile_photo_id = tg_photo_id
                 if live_twofa_status is not None:
                     existing_acc.twofa_enabled = live_twofa_status["enabled"]
+                    existing_acc.twofa_has_recovery = live_twofa_status.get("has_recovery")
+                    existing_acc.twofa_hint = live_twofa_status.get("hint")
+                    existing_acc.login_email_pattern = live_twofa_status.get("login_email_pattern")
+                    existing_acc.unconfirmed_email_pattern = live_twofa_status.get("unconfirmed_email_pattern")
+                    existing_acc.twofa_status_synced_at = datetime.now(timezone.utc)
                 if twofa_password:
                     existing_acc.twofa_password = encrypt(twofa_password)
                 existing_acc.is_active = True
@@ -466,7 +477,13 @@ async def finalize_authenticated_login(
         username=me.username,
         telegram_id=me.id,
         is_premium=bool(getattr(me, "premium", False)),
+        profile_photo_id=tg_photo_id,
         twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
+        twofa_has_recovery=live_twofa_status.get("has_recovery") if live_twofa_status is not None else None,
+        twofa_hint=live_twofa_status.get("hint") if live_twofa_status is not None else None,
+        login_email_pattern=live_twofa_status.get("login_email_pattern") if live_twofa_status is not None else None,
+        unconfirmed_email_pattern=live_twofa_status.get("unconfirmed_email_pattern") if live_twofa_status is not None else None,
+        twofa_status_synced_at=datetime.now(timezone.utc) if live_twofa_status is not None else None,
     )
     if twofa_password:
         account.twofa_password = encrypt(twofa_password)

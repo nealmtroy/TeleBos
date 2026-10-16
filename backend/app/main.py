@@ -603,6 +603,8 @@ if "*" not in _allowed_hosts:
             ]
         )
 
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
+
 # Add RealIPMiddleware to parse correct client IPs when behind Cloudflare/reverse proxy
 app.add_middleware(RealIPMiddleware)
 

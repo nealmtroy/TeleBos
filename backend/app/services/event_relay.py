@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from telethon import events
+from telethon.errors import RPCError
 from telethon.tl.types import (
     Message,
     UpdateNewMessage,
@@ -94,6 +95,15 @@ class TelegramEventRelay:
         """Allow normal raw-event profile synchronization again."""
         self._profile_sync_suppressed.discard(account_id)
 
+    async def _broadcast_ws(self, channel: str, payload: dict[str, Any]) -> None:
+        """Broadcast to local WebSocket manager and publish over Redis bridge for worker mode."""
+        await manager.broadcast(channel, payload)
+        try:
+            from app.utils.redis_dispatcher import publish_ws_event
+            await publish_ws_event(channel, payload)
+        except Exception:
+            pass
+
     # ── Public API ───────────────────────────────────────────────────────────
 
     async def attach(self, account_id: str, session_string: str) -> bool:
@@ -134,10 +144,9 @@ class TelegramEventRelay:
                 lambda event: self._spawn_task(self._on_message_read(account_id, event))
             )
 
-            # User typing / online status (only process if a client is actively subscribed to chats:{account_id})
+            # User typing / online status
             async def _on_user_update_filter(event):
-                if manager.has_channel(f"chats:{account_id}"):
-                    await self._on_user_update(account_id, event)
+                await self._on_user_update(account_id, event)
 
             typing_handler = client.on(events.UserUpdate())(_on_user_update_filter)
 
@@ -431,33 +440,39 @@ class TelegramEventRelay:
                 )
                 return
 
+            target_peer = chat or getattr(event, "input_chat", None) or event.chat_id or sender_id
+            if target_peer is None:
+                return
+
             # 6. Distributed atomic lock to prevent concurrent duplicate auto-replies
             lock_key = f"lock:autoreply:{account_id}:{sender_id}"
             acquired = await redis_client.set(lock_key, "1", nx=True, ex=60)
             if not acquired:
                 return
 
-            # 7. First DM — send auto-reply as a reply to the incoming message
-            if chat is None:
-                return
-
-            # Send with HTML parse_mode; fallback safely to plain text if malformed markup
+            # 7. First DM — parse HTML (including <tg-spoiler>) in Python first so RPC errors
+            # are never mistaken for HTML syntax errors.
+            from app.services.broadcast_service import _parse_html_with_spoilers
             try:
-                await event.client.send_message(
-                    chat, reply_text, reply_to=msg.id, parse_mode="html"
-                )
+                clean_text, entities = _parse_html_with_spoilers(reply_text)
             except Exception as parse_err:
-                err_str = str(parse_err)
-                if any(term in err_str.lower() for term in ("limited", "spam-reported", "peerflood", "forbidden", "banned", "deactivated")):
-                    raise
                 logger.warning(
                     "Auto-reply HTML parse failed for account %s, falling back to plain text: %s",
                     account_id,
                     parse_err,
                 )
+                clean_text, entities = reply_text, None
+
+            try:
                 await event.client.send_message(
-                    chat, reply_text, reply_to=msg.id, parse_mode=None
+                    target_peer,
+                    clean_text,
+                    reply_to=msg.id,
+                    formatting_entities=entities or None,
                 )
+            except RPCError:
+                await redis_client.delete(lock_key)
+                raise
 
             # 8. Log the reply in DB and Redis so we never reply to this user again.
             # ON CONFLICT DO NOTHING keeps this idempotent: if a concurrent path
@@ -605,7 +620,7 @@ class TelegramEventRelay:
             chat = None
 
         channel = f"chats:{account_id}"
-        await manager.broadcast(
+        await self._broadcast_ws(
             channel,
             {
                 "type": "message_edited",
@@ -628,7 +643,7 @@ class TelegramEventRelay:
         if account_id not in self._handlers:
             return
         channel = f"chats:{account_id}"
-        await manager.broadcast(
+        await self._broadcast_ws(
             channel,
             {
                 "type": "chat_update",
@@ -647,7 +662,7 @@ class TelegramEventRelay:
         if account_id not in self._handlers:
             return
         channel = f"chats:{account_id}"
-        await manager.broadcast(
+        await self._broadcast_ws(
             channel,
             {
                 "type": "message_deleted",
@@ -680,7 +695,7 @@ class TelegramEventRelay:
                 elif isinstance(action, SendMessageRecordVideoAction):
                     action_name = "recording_video"
 
-            await manager.broadcast(
+            await self._broadcast_ws(
                 channel,
                 {
                     "type": "typing",
@@ -690,19 +705,6 @@ class TelegramEventRelay:
                 },
             )
             return
-
-        # 2. Handle online/offline status
-        user = event
-        if hasattr(user, "status"):
-            status_str = str(user.status) if user.status else "unknown"
-            await manager.broadcast(
-                channel,
-                {
-                    "type": "user_update",
-                    "user_id": getattr(user, "id", None),
-                    "status": status_str,
-                },
-            )
 
     async def _on_chat_action(self, account_id: str, event) -> None:
         """Chat action: someone joined, left, pinned a message, etc."""
@@ -716,7 +718,7 @@ class TelegramEventRelay:
             )
         except Exception:
             user_name = None
-        await manager.broadcast(
+        await self._broadcast_ws(
             channel,
             {
                 "type": "chat_action",

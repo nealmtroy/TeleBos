@@ -121,20 +121,14 @@ async def _background_chat_sync(account_id: str) -> None:
                     # Explicitly commit all synced data
                     await db.commit()
 
-                    # Broadcast WS notifications to invalidate frontend query caches
+                    # Broadcast WS notifications via Redis + local WS manager
                     try:
-                        await manager.broadcast(
-                            f"chats:{account_id}",
-                            {"type": "chats_synced", "account_id": account_id}
-                        )
-                        await manager.broadcast(
-                            f"chats:{account_id}",
-                            {"type": "folders_synced", "account_id": account_id}
-                        )
-                        await manager.broadcast(
-                            f"chats:{account_id}",
-                            {"type": "profile_sync", "account_id": account_id}
-                        )
+                        from app.utils.redis_dispatcher import publish_ws_event
+                        channel = f"chats:{account_id}"
+                        for ev_type in ("chats_synced", "folders_synced", "profile_sync"):
+                            payload = {"type": ev_type, "account_id": account_id}
+                            await publish_ws_event(channel, payload)
+                            await manager.broadcast(channel, payload)
                     except Exception as ws_exc:
                         logger.warning("WS sync status push failed for %s: %s", account_id, ws_exc)
         except Exception as exc:
@@ -610,6 +604,7 @@ class SessionManager:
                 success = await event_relay.attach(account_id_value, session_str)
                 if success:
                     logger.info("Account %s connected + event handlers attached", account_id_value)
+                    _schedule_sync(account_id_value)
 
                 try:
                     from app.services.analytics_tracking_service import track_account_connection_result

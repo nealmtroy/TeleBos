@@ -630,7 +630,7 @@ async def get_public_chat_photo(
     import httpx
     from sqlalchemy import select, func
     from app.models.telegram_chat import TelegramChat
-    from app.utils.path_security import safe_join
+    from app.utils.path_security import safe_join, get_base_uploads_dir
 
     clean_username = username.lstrip("@").strip()
     if not re.match(r"^[a-zA-Z0-9_]{3,64}$", clean_username):
@@ -648,7 +648,7 @@ async def get_public_chat_photo(
     ):
         raise HTTPException(status_code=429, detail="Too many requests")
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    uploads_root = get_base_uploads_dir()
 
     etag = f'W/"public-{clean_username.lower()}"'
     headers = {
@@ -657,7 +657,7 @@ async def get_public_chat_photo(
         "X-Content-Type-Options": "nosniff",
     }
 
-    cache_root = os.path.join(base_dir, "uploads", "public_chat_photos")
+    cache_root = os.path.join(uploads_root, "public_chat_photos")
     os.makedirs(cache_root, exist_ok=True)
     cached_path = safe_join(cache_root, f"{clean_username.lower()}.jpg")
 
@@ -679,7 +679,7 @@ async def get_public_chat_photo(
     )
     row = chat_row.first()
     if row and row.account_id and row.chat_id and row.photo_version:
-        acc_chat_dir = os.path.join(base_dir, "uploads", "chat_photos", str(row.account_id), str(row.chat_id))
+        acc_chat_dir = os.path.join(uploads_root, "chat_photos", str(row.account_id), str(row.chat_id))
         acc_cached_file = os.path.join(acc_chat_dir, f"{row.photo_version}.jpg")
         if os.path.exists(acc_cached_file) and os.path.getsize(acc_cached_file) > 0:
             return FileResponse(acc_cached_file, media_type="image/jpeg", headers=headers)

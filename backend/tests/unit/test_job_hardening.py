@@ -50,8 +50,13 @@ async def test_retry_broadcast_clears_target_bookkeeping():
     user = MagicMock()
     user.id = uuid.uuid4()
     user.role = "pro"
+    account = MagicMock()
+    account.id = uuid.uuid4()
+    account.is_active = True
+    account.for_sale = False
     job = MagicMock()
     job.status = "completed"
+    job.account_ids = [str(account.id)]
     job.permanent_failures = ["t1"]
     job.pending_items = [{"k": "t2"}]
 
@@ -66,6 +71,10 @@ async def test_retry_broadcast_clears_target_bookkeeping():
         "app.services.redeem_service.auto_downgrade_if_expired", AsyncMock()
     ), patch(
         "app.services.broadcast_entitlement.enforce_broadcast_allowance", AsyncMock()
+    ), patch(
+        "app.services.account_service.get_account", AsyncMock(return_value=account)
+    ), patch(
+        "app.utils.account_ownership.find_busy_accounts", AsyncMock(return_value=[])
     ):
         await bs.retry_job(db, str(uuid.uuid4()), str(user.id), user=user)
 

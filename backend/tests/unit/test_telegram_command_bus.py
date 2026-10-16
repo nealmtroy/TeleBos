@@ -202,7 +202,11 @@ async def test_command_forwarded_to_job_owner_shard(monkeypatch):
     fake_redis.rpush.assert_called_once()
     key, val = fake_redis.rpush.call_args[0]
     assert key.endswith("shard_2")
-    assert val == raw_cmd
+    forwarded_payload = json.loads(val)
+    assert forwarded_payload["_forwarded"] is True
+    assert forwarded_payload["request_id"] == request_id
+    assert forwarded_payload["account_id"] == account_id
+    assert forwarded_payload["action"] == "send_message"
 
 
 @pytest.mark.asyncio

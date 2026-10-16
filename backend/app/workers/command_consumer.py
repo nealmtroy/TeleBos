@@ -253,9 +253,12 @@ async def _handle_command_action(
         return {"success": True}
 
     elif action == "download_media_to_file":
+        from app.utils.path_security import get_base_uploads_dir, is_path_contained
         chat_id = params["chat_id"]
         message_id = params["message_id"]
         destination_path = params["destination_path"]
+        if not is_path_contained(get_base_uploads_dir(), destination_path):
+            raise ValueError("Invalid destination_path outside uploads root")
 
         entity = await resolve_chat_entity(client, account_id, int(chat_id))
         msg = await client.get_messages(entity, ids=int(message_id))
@@ -267,8 +270,11 @@ async def _handle_command_action(
         return {"success": True, "saved_path": saved_path}
 
     elif action == "download_chat_photo":
+        from app.utils.path_security import get_base_uploads_dir, is_path_contained
         chat_id = params["chat_id"]
         destination_path = params["destination_path"]
+        if not is_path_contained(get_base_uploads_dir(), destination_path):
+            raise ValueError("Invalid destination_path outside uploads root")
 
         try:
             entity = await resolve_chat_entity(client, account_id, int(chat_id))
@@ -381,22 +387,24 @@ async def process_single_command(raw_payload: str) -> None:
             # that shard (where it is connected). Forward the command instead of
             # opening a second MTProto connection for the same auth key.
             settings = get_settings()
-            if settings.TOTAL_SHARDS > 1:
-                connected = await client_pool.get_connected_clients()
-                if account_id not in connected:
-                    owner_shard = await _active_job_owner_shard(account_id)
-                    if owner_shard is not None and owner_shard != settings.SHARD_INDEX:
-                        await redis_client.rpush(
-                            get_shard_command_queue(owner_shard), raw_payload
-                        )
-                        logger.info(
-                            "Forwarded command '%s' (acc=%s) to job owner shard %d",
-                            action,
-                            account_id,
-                            owner_shard,
-                        )
-                        forwarded = True
-                        return
+            if settings.TOTAL_SHARDS > 1 and not payload.get("_forwarded"):
+                owner_shard = await _active_job_owner_shard(account_id)
+                if owner_shard is not None and owner_shard != settings.SHARD_INDEX:
+                    # Detach any local connection on this shard before forwarding
+                    if account_id in (await client_pool.get_connected_clients()):
+                        await client_pool.remove(account_id, save_state=True)
+                    payload["_forwarded"] = True
+                    await redis_client.rpush(
+                        get_shard_command_queue(owner_shard), json.dumps(payload)
+                    )
+                    logger.info(
+                        "Forwarded command '%s' (acc=%s) to job owner shard %d",
+                        action,
+                        account_id,
+                        owner_shard,
+                    )
+                    forwarded = True
+                    return
             account = await _get_account_by_id(account_id)
             if not account or not account.session_string:
                 raise ValueError(f"Account {account_id} not found or has no active session")
@@ -462,7 +470,7 @@ async def telegram_command_consumer_loop(
         queue_name = get_shard_command_queue(settings.SHARD_INDEX)
 
     queues_to_watch = [queue_name]
-    if queue_name != DEFAULT_CMD_QUEUE:
+    if settings.SHARD_INDEX == 0 and queue_name != DEFAULT_CMD_QUEUE:
         queues_to_watch.append(DEFAULT_CMD_QUEUE)
 
     logger.info(

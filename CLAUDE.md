@@ -14,7 +14,7 @@ Use one detailed owner per topic; do not copy long specifications between docume
 | How money enters, pricing, margins, entitlements, and verified revenue bugs | `BUSSINESS_LOGIC.md` |
 | Authentication, secrets, encryption, authorization, upload, WebSocket, or deployment security | `SECURITY.md` |
 | UI/product positioning | `PRODUCT.md` |
-| UI components, tokens, accessibility, and visual decisions | `DESIGN.md`, `.impeccable/design.json`, and `docs/ui-audit.md` |
+| UI components, tokens, accessibility, and visual decisions | `DESIGN.md` and `.impeccable/design.json` |
 | Cross-agent compatibility | `AGENTS.md` |
 | Full request/response API contract | `/api/docs` and `/api/openapi.json` on a running backend |
 | Database schema, tables, constraints, and relationships | `docs/database_schema.md` |
@@ -84,8 +84,8 @@ All API routes use `/api/v1`; use `/api/docs` for exact schemas, methods, parame
 | Reactions and pins | `/messages/{msg_id}/reaction`, `/messages/{msg_id}/pin`, `/pinned` | `api/reactions.py`, `api/pins.py` |
 | Polls and votes | `/polls`, `/messages/{message_id}/votes` | `api/polls.py` |
 | Stickers and GIFs | `/stickers/*`, `/gifs/*`, `/chats/{chat_id}/stickers`, `/chats/{chat_id}/gifs` | `api/stickers.py`, `api/gifs.py` |
-| Broadcast and invite jobs | `/broadcast/*`, `/invite/*` | `api/broadcast.py`, `api/invite.py` |
-| Wallet, KlikQRIS, withdraw, bank accounts | `/wallet/topup`, `/wallet/withdraw`, `/wallet/webhook/klikqris`, `/wallet/transactions/*`, `/wallet/bank-accounts/*` | `api/wallet.py`, `services/klikqris_service.py`, `services/ledger_service.py` |
+| Broadcast, invite, and auto-join jobs | `/broadcast/*`, `/invite/*`, `/auto-join/*` | `api/broadcast.py`, `api/invite.py`, `api/auto_join.py` |
+| Wallet, KlikQRIS, withdraw, bank accounts | `/wallet/topup`, `/wallet/withdraw`, `/wallet/webhook/klikqris`, `/wallet/transactions/*`, `/wallet/bank-accounts/*` | `api/wallet/*`, `services/klikqris_service.py`, `services/ledger_service.py` |
 | Marketplace, SMM, orders, redeem, administration | `/marketplace/*`, `/orders/*`, `/redeem`, `/admin/*` | corresponding API/service modules |
 
 Except for the intentionally public chat-photo endpoint, account-scoped chat/message operations validate ownership before calling the Telethon-backed service. Download routes may use the documented alternate token/header authentication path.
@@ -167,4 +167,4 @@ curl http://localhost:8000/api/v1/health
 
 For UI changes, read `PRODUCT.md`, `DESIGN.md`, and `.impeccable/design.json` first.
 
-A knowledge graph exists at `graphify-out/`. For codebase questions, run `graphify query "<question>"` first when `graphify-out/graph.json` exists; use `path`/`explain` for focused navigation. **Do not modify or regenerate `graphify-out/` in this documentation-cleanup task.**
+A knowledge graph exists at `graphify-out/`. For codebase questions, run `graphify query "<question>"` first when `graphify-out/graph.json` exists; use `path`/`explain` for focused navigation.

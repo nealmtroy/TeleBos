@@ -76,13 +76,18 @@ async def sync_account_twofa(account_id: str) -> bool:
         if account.twofa_status_retry_at and account.twofa_status_retry_at > now:
             return False
 
-        clients = await client_pool.get_connected_clients()
-        client = clients.get(str(account.id))
-        if client is None or not client.is_connected():
-            return False
+    clients = await client_pool.get_connected_clients()
+    client = clients.get(str(account_uuid))
+    if client is None or not client.is_connected():
+        return False
 
-        try:
-            status = await get_live_2fa_status(client)
+    try:
+        status = await get_live_2fa_status(client)
+        async with async_session_factory() as db:
+            result = await db.execute(select(TelegramAccount).where(TelegramAccount.id == account_uuid))
+            account = result.scalar_one_or_none()
+            if account is None:
+                return False
             if status is None:
                 account.twofa_status_retry_at = now + timedelta(hours=1)
                 await db.commit()
@@ -95,18 +100,23 @@ async def sync_account_twofa(account_id: str) -> bool:
             account.twofa_status_synced_at = now
             account.twofa_status_retry_at = None
             await db.commit()
-            await manager.broadcast(f"chats:{account.id}", _status_payload(account, status))
+            await broadcast_cached_twofa_status(account)
             logger.info("2FA metadata cache refreshed for account %s", account.id)
             return True
-        except Exception as exc:
-            logger.warning("2FA metadata sync failed for account %s: %s", account.id, type(exc).__name__)
-            account.twofa_status_retry_at = now + timedelta(hours=1)
-            await db.commit()
-            return False
+    except Exception as exc:
+        logger.warning("2FA metadata sync failed for account %s: %s", account_uuid, type(exc).__name__)
+        async with async_session_factory() as db:
+            result = await db.execute(select(TelegramAccount).where(TelegramAccount.id == account_uuid))
+            account = result.scalar_one_or_none()
+            if account is not None:
+                account.twofa_status_retry_at = now + timedelta(hours=1)
+                await db.commit()
+        return False
 
 
 async def sync_due_accounts() -> int:
     """Refresh accounts whose cache is missing or older than six hours."""
+    from app.core.sharding import is_account_in_current_shard
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=SYNC_INTERVAL_SECONDS)
     async with async_session_factory() as db:
         result = await db.execute(
@@ -117,7 +127,11 @@ async def sync_due_accounts() -> int:
                 (TelegramAccount.twofa_status_retry_at.is_(None) | (TelegramAccount.twofa_status_retry_at <= datetime.now(timezone.utc))),
             )
         )
-        account_ids = [str(row[0]) for row in result.all()]
+        account_ids = [
+            str(row[0])
+            for row in result.all()
+            if is_account_in_current_shard(row[0])
+        ]
 
     refreshed = 0
     for index, account_id in enumerate(account_ids):

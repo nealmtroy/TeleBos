@@ -113,7 +113,7 @@ async def test_system_health_endpoint_authorization():
     app.dependency_overrides[get_db] = lambda: mock_db
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         res = await client.get("/api/v1/admin/analytics/system-health")
         assert res.status_code == 200
         data = res.json()
@@ -131,7 +131,7 @@ async def test_system_health_endpoint_authorization():
 
     # Non-owner access: should return 403 Forbidden
     app.dependency_overrides[get_current_user] = lambda: mock_regular
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         res_fail = await client.get("/api/v1/admin/analytics/system-health")
         assert res_fail.status_code == 403
 

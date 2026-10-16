@@ -208,6 +208,18 @@ async def start_auto_join(
             raise ValueError(f"Account {acc_id} not found")
         accounts.append(account)
 
+    from app.models.user import User
+    from app.services.account_service import ROLE_ACCOUNT_LIMITS
+    user_row = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if user_row is not None:
+        user_role = getattr(user_row, "role", "freetrial") or "freetrial"
+        max_allowed = ROLE_ACCOUNT_LIMITS.get(user_role, 1)
+        if len(accounts) > max_allowed:
+            raise ValueError(
+                f"Paket Anda hanya mengizinkan maksimal {max_allowed} akun untuk auto-join. "
+                f"Anda memilih {len(accounts)} akun."
+            )
+
     # Refuse to start on an account another active job already holds.
     from app.utils.account_ownership import find_busy_accounts
 
@@ -374,7 +386,7 @@ async def execute_auto_join(job_id: str) -> None:
                     await release_lease(acc_id_str, OWNER_WORKER)
                     continue
                 session_str = decrypt(account.session_string)
-                client = await client_pool.get(acc_id_str, session_str)
+                client = await client_pool.borrow(acc_id_str, session_str)
                 if client is None:
                     raise RuntimeError(f"Account {acc_id_str} is disconnected")
                 active_accounts.append({
@@ -555,15 +567,23 @@ async def execute_auto_join(job_id: str) -> None:
     finally:
         from app.services.telegram_client import client_pool
 
-        for acc_id_str in [a["account_id"] for a in active_accounts]:
+        completed_acc_ids = [a["account_id"] for a in active_accounts]
+        for acc_id_str in completed_acc_ids:
             # client_pool.remove, not a bare disconnect: a disconnected-but-
             # pooled client gets handed back to the next caller as a dead one.
             try:
+                await client_pool.release(acc_id_str)
                 await client_pool.remove(acc_id_str, save_state=False)
             except Exception:
                 pass
             try:
                 await release_lease(acc_id_str, OWNER_WORKER)
+            except Exception:
+                pass
+        if completed_acc_ids:
+            try:
+                from app.utils.redis_dispatcher import publish_job_completed
+                await publish_job_completed("autojoin", job_id, completed_acc_ids)
             except Exception:
                 pass
 

@@ -154,6 +154,8 @@ def register_broadcasts_handlers(client):
             # Local clone for UI redraw
             job = db_job
 
+        from app.utils.redis_dispatcher import publish_job_control
+        await publish_job_control("broadcast", job.id, "pause")
         await event.answer("Broadcast berhasil dijeda.")
         
         # Redraw
@@ -182,6 +184,8 @@ def register_broadcasts_handlers(client):
             # Local clone for UI redraw
             job = db_job
 
+        from app.utils.redis_dispatcher import publish_job_control
+        await publish_job_control("broadcast", job.id, "resume")
         await event.answer("Broadcast dilanjutkan.")
         
         # Redraw
@@ -210,6 +214,8 @@ def register_broadcasts_handlers(client):
             # Local clone for UI redraw
             job = db_job
 
+        from app.utils.redis_dispatcher import publish_job_control
+        await publish_job_control("broadcast", job.id, "stop")
         await event.answer("Broadcast dibatalkan.")
         
         # Redraw

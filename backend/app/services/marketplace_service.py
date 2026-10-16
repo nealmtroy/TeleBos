@@ -197,28 +197,13 @@ async def sell_accounts(
             photos_to_delete=photos_to_delete,
         )
 
-    active_broadcasts = await db.execute(
-        select(BroadcastJob).where(BroadcastJob.status.in_(["running", "paused", "pending"]))
+    from app.services.account_service import detach_accounts_from_active_jobs
+    from app.utils.redis_dispatcher import enqueue_job, publish_job_control
+    jobs_to_stop, jobs_to_restart = await detach_accounts_from_active_jobs(
+        db, [str(a.id) for a in accounts]
     )
-    active_invites = await db.execute(
-        select(InviteJob).where(InviteJob.status.in_(["running", "paused", "pending"]))
-    )
-    broadcast_jobs = active_broadcasts.scalars().all()
-    invite_jobs = active_invites.scalars().all()
-
-    from app.services.invite_service import _running_invite_tasks
 
     for account in accounts:
-        for job in broadcast_jobs:
-            if str(account.id) in job.account_ids:
-                job.status = "cancelled"
-        for job in invite_jobs:
-            if str(account.id) in job.account_ids:
-                job.status = "cancelled"
-                task = _running_invite_tasks.get(str(job.id))
-                if task:
-                    task.cancel()
-
         sell_price = prices[account.id]
         account.for_sale = True
         account.is_sold = False
@@ -261,6 +246,12 @@ async def sell_accounts(
         href=f"/orders?tab=accounts&order_id={last_audit.id}&search={first_acc.phone}" if single and last_audit else "/orders?tab=accounts",
     )
     await db.flush()
+
+    for job_type, job_id in jobs_to_stop:
+        await publish_job_control(job_type, job_id, "stop")
+    for job_type, job_id, remaining in jobs_to_restart:
+        await publish_job_control(job_type, job_id, "stop")
+        await enqueue_job(job_type, job_id, account_id=remaining[0])
 
     # Physically delete cached profile photos only after all DB mutations succeed
     for p_path in photos_to_delete:

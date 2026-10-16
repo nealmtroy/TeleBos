@@ -171,9 +171,8 @@ async def get_chat_photo(
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     try:
-        chat_photos_root = os.path.join(base_dir, "uploads", "chat_photos")
+        chat_photos_root = os.path.join(get_base_uploads_dir(), "chat_photos")
         chat_photos_dir = safe_join(chat_photos_root, str(account.id), str(chat_id))
         os.makedirs(chat_photos_dir, exist_ok=True)
         cached_path = safe_join(chat_photos_dir, f"{photo_version}.jpg")
@@ -324,9 +323,6 @@ async def get_message_media_endpoint(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid account ID")
 
-    # Define a local cache folder for message media files
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
     # Ownership must be verified BEFORE the cache is consulted: the cache is
     # shared across accounts, so serving it first would let any authenticated
     # user read another user's media by guessing chat_id/message_id.
@@ -343,7 +339,7 @@ async def get_message_media_endpoint(
     if chat_owner.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Chat not found in this account")
 
-    media_root = os.path.join(base_dir, "uploads", "message_media")
+    media_root = os.path.join(get_base_uploads_dir(), "message_media")
     try:
         media_cache_dir = safe_join(media_root, str(account.id), str(chat_id))
         os.makedirs(media_cache_dir, exist_ok=True)
@@ -459,8 +455,6 @@ async def stream_message_video_endpoint(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid account ID")
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
     # Same ordering rule as get_message_media_endpoint: ownership first, cache
     # second. The cache dir is shared per chat_id, so it must never be the gate.
     account = await account_service.get_account(db, clean_account_id, str(user.id))
@@ -476,7 +470,7 @@ async def stream_message_video_endpoint(
     if chat_owner.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Chat not found in this account")
 
-    media_root = os.path.join(base_dir, "uploads", "message_media")
+    media_root = os.path.join(get_base_uploads_dir(), "message_media")
     try:
         media_cache_dir = safe_join(media_root, str(account.id), str(chat_id))
         os.makedirs(media_cache_dir, exist_ok=True)

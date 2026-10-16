@@ -16,7 +16,12 @@ from app.models.user import User
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 from app.utils.telegram_errors import classify_telegram_error
-from app.utils.telethon_helpers import get_active_client, join_and_resolve_chat
+from app.utils.telethon_helpers import (
+    get_active_client,
+    borrow_client,
+    release_client,
+    join_and_resolve_chat,
+)
 from app.utils.telethon_cleanup import close_and_reap_telethon_client
 from app.utils.account_ownership import OWNER_WORKER, acquire_lease, release_lease
 from app.utils.async_helpers import interruptible_sleep, wake_job, clear_job_event
@@ -161,7 +166,7 @@ async def delete_invite_job(db: AsyncSession, job_id: str, user_id: str) -> None
     await db.flush()
 
 
-async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> InviteJob:
+async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str, user: User | None = None) -> InviteJob:
     result = await db.execute(
         select(InviteJob).where(InviteJob.id == job_id, InviteJob.user_id == user_id)
     )
@@ -171,6 +176,28 @@ async def retry_invite_job(db: AsyncSession, job_id: str, user_id: str) -> Invit
     if job.status not in ("completed", "cancelled", "failed"):
         raise ValueError(f"Cannot retry a job with status '{job.status}'")
 
+    from app.services.account_service import get_account, ROLE_ACCOUNT_LIMITS
+    from app.utils.account_ownership import find_busy_accounts
+
+    valid_account_ids = []
+    for acc_id in (job.account_ids or []):
+        acc = await get_account(db, str(acc_id), str(user_id))
+        if acc is not None and acc.is_active and not acc.for_sale:
+            valid_account_ids.append(str(acc.id))
+    if not valid_account_ids:
+        raise ValueError("Tidak ada akun pengirim yang valid atau aktif untuk mengulang job invite ini.")
+
+    if user is not None:
+        user_role = getattr(user, "role", "freetrial") or "freetrial"
+        max_allowed = ROLE_ACCOUNT_LIMITS.get(user_role, 1)
+        if len(valid_account_ids) > max_allowed:
+            raise ValueError(f"Paket Anda hanya mengizinkan maksimal {max_allowed} akun pengirim invite.")
+
+    busy_accounts = await find_busy_accounts(db, valid_account_ids)
+    if busy_accounts:
+        raise ValueError("Akun berikut sedang dipakai job lain yang aktif: " + ", ".join(busy_accounts))
+
+    job.account_ids = valid_account_ids
     # Reset job state
     job.status = "running"
     job.progress = 0
@@ -235,7 +262,7 @@ async def _push_invite(job_id: str, event_type: str, data: dict) -> None:
     try:
         from app.api.ws import manager
 
-        if manager.get_channel_count(channel) > 0:
+        if manager.has_channel(channel):
             await manager.broadcast(channel, payload)
     except Exception:
         pass
@@ -468,7 +495,10 @@ async def execute_invite(job_id: str):
                 except ValueError:
                     continue
                 acc_result = await db.execute(
-                    select(TelegramAccount).where(TelegramAccount.id == acc_uuid)
+                    select(TelegramAccount).where(
+                        TelegramAccount.id == acc_uuid,
+                        TelegramAccount.user_id == job.user_id,
+                    )
                 )
                 account = acc_result.scalar_one_or_none()
                 if not account or account.for_sale or not account.is_active:
@@ -486,7 +516,7 @@ async def execute_invite(job_id: str):
                 # Take exclusive ownership before connecting; see the matching
                 # note in broadcast_service. A live invite job is authoritative.
                 await acquire_lease(acc_id_str, OWNER_WORKER, force=True)
-                client = await get_active_client(account)
+                client = await borrow_client(account, receive_updates=False)
                 me = await client.get_me()
                 my_id = me.id if me else None
                 active_accounts.append(
@@ -494,10 +524,13 @@ async def execute_invite(job_id: str):
                         "account_id": acc_id_str,
                         "account_name": f"{account.first_name or ''} ({account.phone or ''})",
                         "client": client,
+                        "account_orm": account,
                         "me": me,
                         "my_id": my_id,
                         "consecutive_peer_floods": 0,
                         "cooldown_until": 0.0,
+                        "dest_entity": None,
+                        "user_hashes": {},
                     }
                 )
             except Exception as connect_exc:
@@ -523,6 +556,7 @@ async def execute_invite(job_id: str):
                 acc["client"], job_destination_type, job_destination_group, telethon
             )
             if dest_entity is not None:
+                acc["dest_entity"] = dest_entity
                 break
 
         if dest_entity is None:
@@ -589,39 +623,21 @@ async def execute_invite(job_id: str):
             },
         )
         for acc in active_accounts:
+            if acc["dest_entity"] is not None:
+                continue
             try:
-                await acc["client"].get_entity(dest_entity.id)
-            except Exception:
-                # Not a member — try to join
-                try:
-                    if job_destination_type == "link":
-                        clean_url = job_destination_group.rstrip("/")
-                        invite_hash = (
-                            clean_url.split("/")[-1] if "/" in clean_url else clean_url
-                        )
-                        invite_hash = invite_hash.lstrip("+")
-                        await acc["client"](
-                            telethon.tl.functions.messages.ImportChatInviteRequest(
-                                hash=invite_hash
-                            )
-                        )
-                    else:
-                        lookup_key = job_destination_group.lstrip("@")
-                        await acc["client"](
-                            telethon.tl.functions.channels.JoinChannelRequest(lookup_key)
-                        )
-                    logger.info(
-                        "Account %s auto-joined destination %s",
-                        acc["account_name"],
-                        job_destination_group,
-                    )
-                except Exception as join_exc:
-                    logger.warning(
-                        "Account %s could not auto-join destination %s: %s",
-                        acc["account_name"],
-                        job_destination_group,
-                        join_exc,
-                    )
+                resolved_dest, _ = await _resolve_group(
+                    acc["client"], job_destination_type, job_destination_group, telethon
+                )
+                if resolved_dest is not None:
+                    acc["dest_entity"] = resolved_dest
+            except Exception as join_exc:
+                logger.warning(
+                    "Account %s could not auto-join destination %s: %s",
+                    acc["account_name"],
+                    job_destination_group,
+                    join_exc,
+                )
 
         # Scrape existing participants from destination group to avoid duplicate invites
         dest_member_ids = set()
@@ -698,6 +714,8 @@ async def execute_invite(job_id: str):
                         uid = user.id
                         if uid in my_ids:
                             continue
+                        if getattr(user, "access_hash", 0):
+                            acc["user_hashes"][uid] = user.access_hash
                         if uid not in all_members:
                             # MEM-01: Lightweight primitive dictionary
                             all_members[uid] = {
@@ -716,7 +734,6 @@ async def execute_invite(job_id: str):
                         len(all_members),
                     )
                     scraped_ok = True
-                    break
 
             if not scraped_ok:
                 logger.warning("Failed to scrape source group %s with any account", sg_value)
@@ -806,26 +823,10 @@ async def execute_invite(job_id: str):
                     if await _get_invite_job_status(job_uuid) == "cancelled":
                         member_done = True
                         break
-                    # Reuse the same account that hit the flood, so the retry
-                    # lands once its cooldown has passed.
-                    selected_acc = last_acc
-                    client = selected_acc["client"]
-                    acc_id_str = selected_acc["account_id"]
-                    acc_name = selected_acc["account_name"]
                     retry_same_member = False
-                    user_id_tg = member_entry["id"]
-                    access_hash = member_entry["access_hash"]
-                    username = member_entry["username"]
-                    first_name = member_entry["first_name"]
-                    source_group = member_entry["source_group"]
-                    log = InviteLog(
-                        job_id=job_uuid,
-                        user_id_tg=user_id_tg,
-                        username=username,
-                        first_name=first_name,
-                        source_group=source_group,
-                        account_id_used=_uuid.UUID(acc_id_str),
-                    )
+                    if last_acc and last_acc in active_accounts and time.time() >= last_acc["cooldown_until"]:
+                        selected_acc = last_acc
+                        break
                 # Find the next ready account
                 job_status = await _get_invite_job_status(job_uuid)
                 if job_status == "cancelled":
@@ -987,18 +988,16 @@ async def execute_invite(job_id: str):
             try:
                 dest_is_legacy_group = isinstance(dest_entity, LegacyChat)
 
-                # Re-resolve entity with current account from the original identifier
-                try:
-                    lookup_key = job_destination_group.lstrip("@")
-                    if job_destination_type in ("username", "link"):
-                        current_entity = await client.get_entity(lookup_key)
-                    else:
-                        current_entity = await client.get_entity(dest_entity.id)
-                except Exception:
-                    current_entity = dest_entity
+                current_entity = selected_acc.get("dest_entity") or dest_entity
 
-                # MEM-01: Use InputUser or username
-                user_target = InputUser(user_id_tg, access_hash) if access_hash else (username or user_id_tg)
+                # Use account-scoped access_hash if available on this account, otherwise username
+                acc_specific_hash = selected_acc.get("user_hashes", {}).get(user_id_tg)
+                if acc_specific_hash:
+                    user_target = InputUser(user_id_tg, acc_specific_hash)
+                elif username:
+                    user_target = username
+                else:
+                    user_target = InputUser(user_id_tg, access_hash) if access_hash else user_id_tg
 
                 if dest_is_legacy_group:
                     await asyncio.wait_for(
@@ -1145,8 +1144,10 @@ async def execute_invite(job_id: str):
                         )
                         await close_and_reap_telethon_client(client, "invite")
                         active_accounts.remove(selected_acc)
+                        last_acc = None
                         if current_acc_idx >= len(active_accounts) and active_accounts:
                             current_acc_idx = 0
+                    continue
 
                 elif err_type == "banned":
                     log.status = "skipped"
@@ -1347,6 +1348,7 @@ async def execute_invite(job_id: str):
         except Exception:
             pass
     finally:
+        completed_acc_ids = [str(a.id) for a in account_records]
         for acc in active_accounts:
             acc_id_str = acc.get("account_id")
             try:
@@ -1357,6 +1359,7 @@ async def execute_invite(job_id: str):
                 if acc_id_str:
                     from app.services.telegram_client import client_pool
 
+                    await client_pool.release(acc_id_str)
                     await client_pool.remove(acc_id_str, save_state=False)
                 else:
                     await close_and_reap_telethon_client(acc["client"], "invite")
@@ -1370,9 +1373,9 @@ async def execute_invite(job_id: str):
                 except Exception:
                     pass
         try:
-            if accounts_data:
+            if completed_acc_ids:
                 from app.utils.redis_dispatcher import publish_job_completed
-                await publish_job_completed("invite", job_id, [str(a["id"]) for a in accounts_data])
+                await publish_job_completed("invite", job_id, completed_acc_ids)
         except Exception:
             pass
 

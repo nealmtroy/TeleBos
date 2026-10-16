@@ -58,20 +58,11 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
 
     import telethon.tl.functions as funcs
     import telethon
+    from app.utils.telethon_helpers import parse_invite_hash, parse_public_target
 
     # Normalise the identifier
     ident = identifier.strip()
-
-    # Detect invite link
-    invite_hash = None
-    if "t.me/" in ident or "telegram.me/" in ident:
-        # Extract the last segment after the last /
-        parts = ident.rstrip("/").split("/")
-        last = parts[-1]
-        if last and last != ident:
-            invite_hash = last
-    elif ident.startswith("+"):
-        invite_hash = ident[1:]
+    invite_hash = parse_invite_hash(ident)
 
     entity = None
     already_joined = False
@@ -115,27 +106,11 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         except telethon.errors.PeerFloodError as pfe:
             raise TelegramRateLimitError("peer_flood", 0) from pfe
         except Exception as exc:
-            # Maybe we are already a member — try get_entity from the chat link
             err_msg = str(exc)
-            try:
-                # For t.me/username style links, try as username
-                if not hash_clean.startswith(("/", "+")):
-                    entity = await client.get_entity(hash_clean)
-                    try:
-                        await client.get_permissions(entity, "me")
-                        already_joined = True
-                    except Exception:
-                        try:
-                            await client(funcs.channels.JoinChannelRequest(entity))
-                        except Exception:
-                            pass
-            except telethon.errors.FloodWaitError as fwe:
-                raise TelegramRateLimitError("flood", fwe.seconds) from fwe
-            except Exception:
-                raise RuntimeError(f"Failed to join: {err_msg}") from exc
+            raise RuntimeError(f"Failed to join via invite link: {err_msg}") from exc
     else:
         # ── Username path ─────────────────────────────────────────────────
-        username = ident.lstrip("@").split("/")[-1]
+        username = parse_public_target(ident)
         # Try resolving first
         try:
             entity = await client.get_entity(username)
@@ -161,9 +136,13 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
         else:
             # Already resolved — check membership; join if needed
             try:
-                await client.get_permissions(entity, "me")
-                already_joined = True
+                perms = await client.get_permissions(entity, "me")
+                if not getattr(perms, "has_left", False):
+                    already_joined = True
             except Exception:
+                pass
+
+            if not already_joined:
                 try:
                     await client(funcs.channels.JoinChannelRequest(entity))
                 except telethon.errors.FloodWaitError as fwe:
@@ -172,8 +151,8 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                     raise TelegramRateLimitError("peer_flood", 0) from pfe
                 except telethon.errors.UserAlreadyParticipantError:
                     already_joined = True
-                except Exception:
-                    pass  # we have entity anyway
+                except Exception as exc:
+                    raise RuntimeError(f"Failed to join: {exc}") from exc
 
     if entity is None:
         raise RuntimeError("Could not resolve or join the group/channel.")
