@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-16
+- **[ad2a4a63](https://github.com/nealmtroy/TeleBos/commit/ad2a4a63)**: fix(appeal): support Malay and multilingual SpamBot button labels and status keywords
 - **[cbf67fec](https://github.com/nealmtroy/TeleBos/commit/cbf67fec)**: fix(groq): increase max_tokens to 500 for reasoning models and resolve root .env
 - **[a497472d](https://github.com/nealmtroy/TeleBos/commit/a497472d)**: chore(groq): rotate up to 7 API keys and refresh the model list
 - **[b141757e](https://github.com/nealmtroy/TeleBos/commit/b141757e)**: fix(camoufox-solver): click the Turnstile widget and run under a virtual display

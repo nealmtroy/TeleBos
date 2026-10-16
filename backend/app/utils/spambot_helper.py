@@ -36,8 +36,9 @@ except Exception as e:
             "we have received your appeal", "permohonan banding",
             "we will review", "akan ditinjau", "sedang diproses", "help us understand",
             "aduan anda telah dihantar", "aduan telah dihantar", "aduan anda telah diterima",
-            "kami telah menerima aduan anda", "akan disemak oleh penyelia", "akan disemak oleh moderator",
-            "terima kasih, aduan anda"
+            "kami telah menerima aduan anda", "aduan anda telah dimajukan", "aduan telah dimajukan",
+            "telah dimajukan", "akan disemak oleh penyelia", "akan disemak oleh moderator",
+            "penyelia pasukan kami akan memeriksa", "terima kasih, aduan anda"
         ],
         "appeal_flow_active": [
             "do you admit", "apakah kamu mengakui", "apa yang terjadi",

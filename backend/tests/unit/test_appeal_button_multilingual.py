@@ -144,5 +144,12 @@ def test_spambot_helper_malay_keywords():
     submitted_sample = "Terima kasih, aduan anda telah dihantar kepada penyelia."
     assert is_appeal_submitted(submitted_sample) is True
 
+    real_vps_sample = (
+        "Terima kasih! Aduan anda telah dimajukan. Penyelia pasukan kami akan memeriksa "
+        "kes ini secepat mungkin. Sekiranya ini terjadi kerana satu kesilapan, semua "
+        "limitasi akan dibebaskan dari akaun anda dengan kadar segera."
+    )
+    assert is_appeal_submitted(real_vps_sample) is True
+
     flow_active_sample = "Adakah anda ingin membuat aduan kepada moderator?"
     assert is_appeal_flow_active(flow_active_sample) is True
