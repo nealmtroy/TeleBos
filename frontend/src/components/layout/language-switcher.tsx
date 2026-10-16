@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
+
 import { useI18nStore, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
@@ -36,6 +38,22 @@ function FlagID({ className }: { className?: string }) {
 
 export function LanguageSwitcher({ variant = "default" }: { variant?: "default" | "public" }) {
   const { locale, setLocale } = useI18nStore();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSelect = (newLocale: "en" | "id") => {
+    setLocale(newLocale);
+
+    if (variant === "public" && pathname) {
+      if (newLocale === "id" && !pathname.startsWith("/id")) {
+        const target = pathname === "/" ? "/id" : `/id${pathname}`;
+        router.push(target);
+      } else if (newLocale === "en" && pathname.startsWith("/id")) {
+        const target = pathname === "/id" ? "/" : pathname.slice(3) || "/";
+        router.push(target);
+      }
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -70,7 +88,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
         )}
       >
         <DropdownMenuItem
-          onClick={() => setLocale("en")}
+          onClick={() => handleSelect("en")}
           className={cn(
             "flex items-center gap-2 cursor-pointer",
             locale === "en"
@@ -83,7 +101,7 @@ export function LanguageSwitcher({ variant = "default" }: { variant?: "default" 
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          onClick={() => setLocale("id")}
+          onClick={() => handleSelect("id")}
           className={cn(
             "flex items-center gap-2 cursor-pointer",
             locale === "id"

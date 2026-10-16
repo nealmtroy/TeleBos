@@ -26,6 +26,11 @@ TeleBos enables businesses, community managers, and power users to operate multi
 - [API Integration Guide](${cleanUrl}/help/api): Developer documentation for utilizing TeleBos external REST and webhook APIs.
 - [Troubleshooting & FAQ](${cleanUrl}/help/troubleshooting): Resolving common Telegram API errors, session expiration, and proxy timeouts.
 - [Pro Tips & Best Practices](${cleanUrl}/help/pro-tips): Optimization tips for maintaining Telegram account health and avoiding spam bans.
+- [Account Marketplace](${cleanUrl}/help/marketplace): Buying and selling verified Telegram accounts with automated escrow and pricing.
+- [SpamBot Appeals & Restrictions](${cleanUrl}/help/spam-appeal): Automated Cloudflare verification and appeal workflows for limited accounts.
+- [Auto-Join Groups & Channels](${cleanUrl}/help/auto-join): Distributed batch joining for channels and groups with anti-ban pacing.
+- [SMM Panel Orders](${cleanUrl}/help/smm-orders): Purchasing engagement, followers, views, and reactions via external SMM integrations.
+- [Billing & Subscriptions](${cleanUrl}/help/billing): Wallet balance, subscription tiers, redeem codes, and account quota limits.
 
 ## Optional
 

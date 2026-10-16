@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+  usePathname: () => "/onboarding",
 }));
 
 // Mock api

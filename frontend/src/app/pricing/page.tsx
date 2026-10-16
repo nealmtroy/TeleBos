@@ -18,6 +18,7 @@
 //     thing that needs to scroll.
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRight, Check, Minus } from "lucide-react";
 
 import { PublicFooter } from "@/components/public/public-footer";
@@ -90,6 +91,9 @@ const FAQ_KEYS = ["payment", "upgrade", "cancel", "spam"] as const;
 
 export default function PricingPage() {
   const _ = useT();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
   return (
@@ -228,7 +232,7 @@ export default function PricingPage() {
                 {/* CTA Action & Footnote - Anchored at the very bottom */}
                 <div className="mt-auto pt-5 border-t border-[var(--public-border)] flex flex-col gap-2">
                   <a
-                    href={plan.id === "freetrial" ? "/register" : "/login"}
+                    href={plan.id === "freetrial" ? `${prefix}/register` : `${prefix}/login`}
                     className={cn(
                       publicButtonClass,
                       "w-full h-11 justify-center rounded-xl text-xs font-bold",

@@ -49,6 +49,21 @@ export function getRequestLocale(): Locale | null {
   return null;
 }
 
+/**
+ * Read the original request pathname forwarded by the middleware (e.g. "/id/pricing").
+ */
+export function getRequestPathname(): string | null {
+  if (typeof window === "undefined") {
+    try {
+      const { headers } = require("next/headers") as typeof import("next/headers");
+      return headers().get("x-telebos-pathname") || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 interface I18nState {
   locale: Locale;
   preference: LanguagePreference;

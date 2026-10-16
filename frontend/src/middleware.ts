@@ -75,9 +75,26 @@ function negotiateLocale(acceptLanguage: string | null): "en" | "id" {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  if (pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return withLocale(request);
+  // 1. Detect /id subpath prefix for Indonesian localized routes
+  const isIdSubpath = pathname === "/id" || pathname.startsWith("/id/");
+  const unlocalizedPath = isIdSubpath
+    ? pathname === "/id"
+      ? "/"
+      : pathname.slice(3)
+    : pathname;
+
+  // Legacy redirects under /id
+  if (isIdSubpath) {
+    if (unlocalizedPath === "/privacy") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/id/privacy-policy";
+      return NextResponse.redirect(url, 301);
+    }
+    if (unlocalizedPath === "/tos") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/id/terms-of-service";
+      return NextResponse.redirect(url, 301);
+    }
   }
 
   // Allow static assets and Next.js internals
@@ -87,6 +104,15 @@ export async function middleware(request: NextRequest) {
     pathname.includes(".")
   ) {
     return NextResponse.next();
+  }
+
+  // Check if target is a public path
+  const isPublic =
+    unlocalizedPath === "/" ||
+    PUBLIC_PATHS.some((p) => unlocalizedPath.startsWith(p));
+
+  if (isPublic) {
+    return handleLocalizedRoute(request, isIdSubpath, unlocalizedPath);
   }
 
   // Check Better Auth session via the session cookie.
@@ -100,28 +126,58 @@ export async function middleware(request: NextRequest) {
   if (!sessionCookie) {
     // Not authenticated — redirect to login
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = isIdSubpath ? "/id/login" : "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
   // Cookie exists — let the request through.
   // The backend API validates the actual session on every request.
-  return withLocale(request);
+  return handleLocalizedRoute(request, isIdSubpath, unlocalizedPath);
 }
 
-function withLocale(request: NextRequest) {
+function handleLocalizedRoute(
+  request: NextRequest,
+  isIdSubpath: boolean,
+  unlocalizedPath: string
+) {
   const requestHeaders = new Headers(request.headers);
   const stored = request.cookies.get("telebo_locale")?.value;
 
-  // An explicit choice beats the browser header, and "system" means the
-  // browser decides - which is what Accept-Language already describes.
-  const locale =
-    stored === "id" || stored === "en"
-      ? stored
-      : negotiateLocale(request.headers.get("accept-language"));
+  // For public pages, the URL path is the absolute source of truth:
+  // - /id and /id/* are always Indonesian (hreflang='id' canonical).
+  // - Root / and /* are always English (hreflang='en' & 'x-default' canonical).
+  // For protected dashboard pages, user choice (cookie) or browser Accept-Language is used.
+  const isPublicRoute =
+    unlocalizedPath === "/" ||
+    PUBLIC_PATHS.some((p) => unlocalizedPath.startsWith(p));
+
+  const locale = isPublicRoute
+    ? isIdSubpath
+      ? "id"
+      : "en"
+    : stored === "id" || stored === "en"
+    ? stored
+    : negotiateLocale(request.headers.get("accept-language"));
 
   requestHeaders.set("x-telebos-locale", locale);
+  requestHeaders.set("x-telebos-pathname", request.nextUrl.pathname);
+
+  if (isIdSubpath) {
+    // Rewrite internally to the base path while preserving /id in the browser URL
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = unlocalizedPath;
+    const response = NextResponse.rewrite(rewriteUrl, {
+      request: { headers: requestHeaders },
+    });
+    response.cookies.set("telebo_locale", "id", {
+      path: "/",
+      maxAge: 31536000,
+      sameSite: "lax",
+    });
+    return response;
+  }
+
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 

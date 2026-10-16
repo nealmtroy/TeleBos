@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { getRequestLocale } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "TeleBos terms of service — the rules and guidelines for using TeleBos.",
-  robots: "index, follow",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const isId = (getRequestLocale() ?? "en") === "id";
+  return {
+    title: isId ? "Syarat dan Ketentuan Layanan" : "Terms of Service",
+    description: isId
+      ? "Syarat dan ketentuan resmi penggunaan layanan dan platform automasi TeleBos."
+      : "Official terms and conditions for using TeleBos platform and automation services.",
+  };
+}
 
-export default function TosLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function TosLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

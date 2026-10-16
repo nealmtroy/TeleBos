@@ -2,7 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Bot, Search, Send, Shield, Smartphone, Sparkles, UserPlus } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  ArrowRight,
+  BookOpen,
+  Bot,
+  CreditCard,
+  HelpCircle,
+  Search,
+  Send,
+  Shield,
+  ShieldAlert,
+  Smartphone,
+  Sparkles,
+  Store,
+  TrendingUp,
+  UserCheck,
+  UserPlus,
+} from "lucide-react";
 
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
@@ -19,10 +36,19 @@ const iconMap: Record<string, React.ElementType> = {
   "member-invite": UserPlus,
   troubleshooting: Shield,
   tips: Sparkles,
+  marketplace: Store,
+  "spam-appeal": ShieldAlert,
+  "auto-join": UserCheck,
+  "smm-orders": TrendingUp,
+  billing: CreditCard,
 };
 
 export default function HelpPage() {
   const _ = useT();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
+
   const [searchQuery, setSearchQuery] = useState("");
   const filteredSections = helpSections.filter((section) => {
     if (!searchQuery) return true;
@@ -51,10 +77,10 @@ export default function HelpPage() {
       <nav aria-label="Help topics" className="border-b border-[var(--public-border)]">
         <div className="no-scrollbar mx-auto flex max-w-[1200px] gap-2 overflow-x-auto px-4 py-4 sm:px-6 lg:px-8">
           {helpSections.map((section) => {
-            const Icon = iconMap[section.key];
+            const Icon = iconMap[section.key] || HelpCircle;
             return (
-              <Link key={section.key} href={`/help/${section.slug}`} className="public-focus inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[6px] border border-[var(--public-border)] px-3 text-xs text-[var(--public-muted)] hover:border-[var(--public-accent-strong)] hover:text-[var(--public-text)]">
-                {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+              <Link key={section.key} href={`${prefix}/help/${section.slug}`} className="public-focus inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[6px] border border-[var(--public-border)] px-3 text-xs text-[var(--public-muted)] hover:border-[var(--public-accent-strong)] hover:text-[var(--public-text)]">
+                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                 {_(section.titleKey)}
               </Link>
             );
@@ -63,7 +89,7 @@ export default function HelpPage() {
       </nav>
 
       <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-        <Link href="/help/api" className="public-focus group mb-7 flex items-center justify-between rounded-[16px] border border-[var(--public-border)] p-5 transition-colors duration-150 hover:border-[var(--public-accent)]">
+        <Link href={`${prefix}/help/api`} className="public-focus group mb-7 flex items-center justify-between rounded-[16px] border border-[var(--public-border)] p-5 transition-colors duration-150 hover:border-[var(--public-accent)]">
           <div className="flex items-center gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-[6px] border border-[var(--public-border)] text-[var(--public-accent)]"><BookOpen className="h-5 w-5" aria-hidden="true" /></div>
             <div><h2 className="font-medium text-white">{_("help.apiTitle")}</h2><p className="mt-1 text-sm text-[var(--public-muted)]">{_("help.apiDescription")}</p></div>
@@ -80,10 +106,10 @@ export default function HelpPage() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filteredSections.map((section) => {
-              const Icon = iconMap[section.key];
+              const Icon = iconMap[section.key] || HelpCircle;
               return (
-                <Link key={section.key} href={`/help/${section.slug}`} className="public-focus group rounded-[16px] border border-[var(--public-border)] p-6 transition-colors duration-150 hover:border-[var(--public-accent)]">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[6px] border border-[var(--public-border)] text-[var(--public-accent)]">{Icon && <Icon className="h-5 w-5" aria-hidden="true" />}</div>
+                <Link key={section.key} href={`${prefix}/help/${section.slug}`} className="public-focus group rounded-[16px] border border-[var(--public-border)] p-6 transition-colors duration-150 hover:border-[var(--public-accent)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-[6px] border border-[var(--public-border)] text-[var(--public-accent)]"><Icon className="h-5 w-5" aria-hidden="true" /></div>
                   <h2 className="mt-5 text-lg font-medium text-white">{_(section.titleKey)}</h2>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--public-muted)]">{_(section.descKey)}</p>
                   <div className="mt-5 flex items-center justify-between"><span className="public-mono text-xs text-[var(--public-subtle)]">{_("help.articleCount", { count: section.contentKeys.length })}</span><ArrowRight className="h-4 w-4 text-[#464a4d] group-hover:text-[var(--public-accent)]" aria-hidden="true" /></div>

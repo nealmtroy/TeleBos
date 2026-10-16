@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, ExternalLink, KeyRound, ShieldCheck } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { BookOpen, ChevronRight, ExternalLink, KeyRound, ShieldCheck } from "lucide-react";
 
 import { PublicFooter } from "@/components/public/public-footer";
 import { PublicShell } from "@/components/public/public-shell";
@@ -11,6 +12,10 @@ import { useT } from "@/lib/i18n";
 
 export default function ApiDocumentationPage() {
   const _ = useT();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
+
   const cards = [
     { icon: ShieldCheck, title: _("help.secureTitle"), description: _("help.secureDesc") },
     { icon: KeyRound, title: _("help.scopedTitle"), description: _("help.scopedDesc") },
@@ -19,6 +24,13 @@ export default function ApiDocumentationPage() {
 
   return (
     <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
+      <div className="border-b border-[var(--public-border)]">
+        <nav aria-label="Breadcrumb" className="mx-auto flex max-w-[1200px] items-center gap-2 px-4 py-4 text-sm sm:px-6 lg:px-8">
+          <Link href={`${prefix}/help`} className="public-focus rounded-[6px] text-[var(--public-muted)] hover:text-[var(--public-text)]">{_("help.title")}</Link>
+          <ChevronRight className="h-3.5 w-3.5 text-[#464a4d]" aria-hidden="true" />
+          <span className="text-[var(--public-body)]">{_("help.apiTitle")}</span>
+        </nav>
+      </div>
       <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="max-w-3xl">
           <p className="public-mono text-xs text-[var(--public-accent)]">{_("help.developerResources")}</p>

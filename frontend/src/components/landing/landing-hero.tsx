@@ -9,6 +9,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { HeroDashboardMockup } from "@/components/landing/hero-dashboard-mockup";
@@ -52,6 +53,9 @@ function ArrowInset() {
 export function LandingHero() {
   const _ = useT();
   const reducedMotion = useReducedMotion();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
 
   const stats = [
     { value: "304", label: _("landing.statAccounts") },
@@ -100,7 +104,7 @@ export function LandingHero() {
               {_("landing.heroCta")}
               <ArrowInset />
             </Cta>
-            <Cta href="/register">{_("landing.heroSecondary")}</Cta>
+            <Cta href={`${prefix}/register`}>{_("landing.heroSecondary")}</Cta>
           </motion.div>
 
           <motion.dl

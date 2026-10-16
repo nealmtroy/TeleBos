@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
     push: vi.fn(),
     replace: vi.fn(),
   }),
+  usePathname: () => "/404",
 }));
 
 describe("ErrorView Component", () => {

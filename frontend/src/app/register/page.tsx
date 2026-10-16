@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 import { PasswordStrengthIndicator } from "@/components/public/password-strength-indicator";
@@ -18,6 +18,9 @@ import { useAuthStore } from "@/store/auth-store";
 
 function RegisterForm() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
   const searchParams = useSearchParams();
   const register = useAuthStore((state) => state.register);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -104,11 +107,11 @@ function RegisterForm() {
     >
       <div className="w-full max-w-lg">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]">
+          <Link href={isId ? "/id" : "/"} aria-label="TeleBos home" className="public-focus rounded-[6px]">
             <BrandLogo size="md" priority />
           </Link>
           <Link
-            href="/login"
+            href={`${prefix}/login`}
             className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]"
           >
             {_("register.signIn")}
@@ -273,14 +276,14 @@ function RegisterForm() {
                   {_("register.agreePrefix")}
                 </label>{" "}
                 <Link
-                  href="/privacy-policy"
+                  href={`${prefix}/privacy-policy`}
                   className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]"
                 >
                   {_("landing.navPrivacy")}
                 </Link>{" "}
                 {_("register.agreeAnd")}{" "}
                 <Link
-                  href="/terms-of-service"
+                  href={`${prefix}/terms-of-service`}
                   className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]"
                 >
                   {_("landing.navTos")}

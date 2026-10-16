@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, Bot, ChevronRight } from "lucide-react";
 
 import { PublicFooter } from "@/components/public/public-footer";
@@ -14,6 +14,10 @@ import { useT } from "@/lib/i18n";
 export default function HelpDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
+
   const _ = useT();
   const section = getHelpSectionBySlug(slug);
   const { prev, next } = section ? getAdjacentSections(section.key) : { prev: null, next: null };
@@ -25,7 +29,7 @@ export default function HelpDetailPage() {
           <BookOpen className="mx-auto h-10 w-10 text-[var(--public-subtle)]" aria-hidden="true" />
           <h1 className="public-display mt-6 text-4xl text-[var(--public-text)]">{_("help.topicNotFound")}</h1>
           <p className="mt-4 text-[var(--public-muted)]">{_("help.topicNotFoundDesc")}</p>
-          <Link href="/help" className={`${publicButtonClass} mt-8`}><ArrowLeft className="h-4 w-4" aria-hidden="true" />{_("help.backToHelp")}</Link>
+          <Link href={`${prefix}/help`} className={`${publicButtonClass} mt-8`}><ArrowLeft className="h-4 w-4" aria-hidden="true" />{_("help.backToHelp")}</Link>
         </div>
       </PublicShell>
     );
@@ -35,7 +39,7 @@ export default function HelpDetailPage() {
     <PublicShell header={<Navbar5 />} footer={<PublicFooter compact />} mainClassName="pt-16">
       <div className="border-b border-[var(--public-border)]">
         <nav aria-label="Breadcrumb" className="mx-auto flex max-w-[960px] items-center gap-2 px-4 py-4 text-sm sm:px-6 lg:px-8">
-          <Link href="/help" className="public-focus rounded-[6px] text-[var(--public-muted)] hover:text-[var(--public-text)]">{_("help.title")}</Link>
+          <Link href={`${prefix}/help`} className="public-focus rounded-[6px] text-[var(--public-muted)] hover:text-[var(--public-text)]">{_("help.title")}</Link>
           <ChevronRight className="h-3.5 w-3.5 text-[#464a4d]" aria-hidden="true" />
           <span className="text-[var(--public-body)]">{_(section.titleKey)}</span>
         </nav>
@@ -59,13 +63,13 @@ export default function HelpDetailPage() {
 
         <nav aria-label="Adjacent help topics" className="mt-10 grid gap-4 sm:grid-cols-2">
           {prev ? (
-            <Link href={`/help/${prev.slug}`} className="public-focus rounded-[16px] border border-[var(--public-border)] p-5 hover:border-[var(--public-accent)]">
+            <Link href={`${prefix}/help/${prev.slug}`} className="public-focus rounded-[16px] border border-[var(--public-border)] p-5 hover:border-[var(--public-accent)]">
               <p className="public-mono text-xs text-[var(--public-subtle)]">{_("help.previous")}</p>
               <p className="mt-2 flex items-center gap-2 text-sm text-white"><ArrowLeft className="h-4 w-4" aria-hidden="true" />{_(prev.titleKey)}</p>
             </Link>
           ) : <span />}
           {next && (
-            <Link href={`/help/${next.slug}`} className="public-focus rounded-[16px] border border-[var(--public-border)] p-5 text-right hover:border-[var(--public-accent)]">
+            <Link href={`${prefix}/help/${next.slug}`} className="public-focus rounded-[16px] border border-[var(--public-border)] p-5 text-right hover:border-[var(--public-accent)]">
               <p className="public-mono text-xs text-[var(--public-subtle)]">{_("help.next")}</p>
               <p className="mt-2 flex items-center justify-end gap-2 text-sm text-white">{_(next.titleKey)}<ArrowRight className="h-4 w-4" aria-hidden="true" /></p>
             </Link>

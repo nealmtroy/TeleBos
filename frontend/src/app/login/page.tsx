@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Eye, EyeOff } from "lucide-react";
 
@@ -18,6 +18,9 @@ import { useAuthStore } from "@/store/auth-store";
 
 function LoginForm() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified") === "true";
   const login = useAuthStore((state) => state.login);
@@ -143,10 +146,10 @@ function LoginForm() {
     >
       <div className="w-full max-w-lg">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <Link href="/" aria-label="TeleBos home" className="public-focus rounded-[6px]">
+          <Link href={isId ? "/id" : "/"} aria-label="TeleBos home" className="public-focus rounded-[6px]">
             <BrandLogo size="md" priority />
           </Link>
-          <Link href="/register" className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">
+          <Link href={`${prefix}/register`} className="public-focus rounded-[6px] text-sm text-[var(--public-muted)] hover:text-[var(--public-text)]">
             {_("login.register")}
           </Link>
         </div>
@@ -268,7 +271,7 @@ function LoginForm() {
                 <PublicCheckbox id="rememberMe" name="rememberMe" />
                 <span>{_("login.rememberMe")}</span>
               </label>
-              <Link href="/forgot-password" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
+              <Link href={`${prefix}/forgot-password`} className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
                 {_("login.forgotPassword")}
               </Link>
             </div>
@@ -279,7 +282,7 @@ function LoginForm() {
 
             <p className="text-center text-sm text-[var(--public-muted)]">
               {_("login.noAccount")} {" "}
-              <Link href="/register" className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
+              <Link href={`${prefix}/register`} className="public-focus rounded-[6px] text-[var(--public-accent)] hover:text-[var(--public-text)]">
                 {_("login.register")}
               </Link>
             </p>

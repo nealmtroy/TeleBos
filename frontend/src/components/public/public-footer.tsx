@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { useT } from "@/lib/i18n";
@@ -20,12 +21,21 @@ function TelegramIcon({ className }: { className?: string }) {
 
 export function PublicFooter({ compact = false }: { compact?: boolean }) {
   const _ = useT();
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
+
+  const localizeHref = (href: string) => {
+    if (href === "/") return isId ? "/id" : "/";
+    return `${prefix}${href}`;
+  };
+
   const links = [
-    [_("landing.navHome"), "/"],
-    [_("help.apiTitle"), "/help/api"],
-    [_("nav.help"), "/help"],
-    [_("landing.navPrivacy"), "/privacy-policy"],
-    [_("landing.navTos"), "/terms-of-service"],
+    [_("landing.navHome"), localizeHref("/")],
+    [_("help.apiTitle"), localizeHref("/help/api")],
+    [_("nav.help"), localizeHref("/help")],
+    [_("landing.navPrivacy"), localizeHref("/privacy-policy")],
+    [_("landing.navTos"), localizeHref("/terms-of-service")],
   ] as const;
 
   return (

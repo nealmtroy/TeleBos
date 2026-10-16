@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { MenuIcon, X } from "lucide-react";
 
 import { publicButtonClass } from "@/components/public/public-ui";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import {
   Sheet,
   SheetClose,
@@ -21,18 +23,28 @@ import { cn } from "@/lib/utils";
 export const Navbar5 = () => {
   const _ = useT();
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const isId = pathname === "/id" || pathname?.startsWith("/id/");
+  const prefix = isId ? "/id" : "";
+
+  const localizeHref = (href: string) => {
+    if (href.startsWith("/#")) return `${prefix}${href}`;
+    if (href === "/") return isId ? "/id" : "/";
+    return `${prefix}${href}`;
+  };
+
   const links = [
-      [_("pricing.kicker"), "/pricing"],
-      [_("landing.navFeatures"), "/#features"],
-      [_("landing.navWorkflow"), "/#workflow"],
-      [_(`nav.help`), "/help"],
-      [_("landing.navPrivacy"), "/privacy-policy"],
+      [_("pricing.kicker"), localizeHref("/pricing")],
+      [_("landing.navFeatures"), localizeHref("/#features")],
+      [_("landing.navWorkflow"), localizeHref("/#workflow")],
+      [_(`nav.help`), localizeHref("/help")],
+      [_("landing.navPrivacy"), localizeHref("/privacy-policy")],
     ] as const;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--public-border)] bg-[var(--public-canvas)]/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="public-focus rounded-[6px]" aria-label="TeleBos home">
+        <Link href={localizeHref("/")} className="public-focus rounded-[6px]" aria-label="TeleBos home">
           <BrandLogo size="md" priority />
         </Link>
 
@@ -49,10 +61,11 @@ export const Navbar5 = () => {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/login" className="public-focus rounded-full px-3 py-2 text-sm text-[var(--public-body)] hover:text-[var(--public-text)]">
+          <LanguageSwitcher variant="public" />
+          <Link href={localizeHref("/login")} className="public-focus rounded-full px-3 py-2 text-sm text-[var(--public-body)] hover:text-[var(--public-text)]">
             {_("landing.signIn")}
           </Link>
-          <Link href="/register" className={publicButtonClass}>
+          <Link href={localizeHref("/register")} className={publicButtonClass}>
             {_("landing.getStarted")}
           </Link>
         </div>
@@ -122,10 +135,14 @@ export const Navbar5 = () => {
                         ))}
                       </nav>
                       <div className="mt-8 flex flex-col gap-3 px-5 pb-2 public-nav-in" style={{ animationDelay: `${links.length * 45}ms`, animationFillMode: "both" }}>
-                        <Link href="/login" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full")}>
+                        <div className="flex items-center justify-between py-2 border-b border-[var(--public-border)]">
+                          <span className="text-sm text-[var(--public-muted)]">{_("common.language")}</span>
+                          <LanguageSwitcher variant="public" />
+                        </div>
+                        <Link href={localizeHref("/login")} onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full")}>
                           {_("landing.signIn")}
                         </Link>
-                        <Link href="/register" onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full border-white bg-[var(--public-accent)] text-white hover:bg-[var(--public-accent-strong)]")}>
+                        <Link href={localizeHref("/register")} onClick={() => setOpen(false)} className={cn(publicButtonClass, "w-full border-white bg-[var(--public-accent)] text-white hover:bg-[var(--public-accent-strong)]")}>
                           {_("landing.getStarted")}
                         </Link>
                       </div>
