@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-16
+- **[7b0288d8](https://github.com/nealmtroy/TeleBos/commit/7b0288d8)**: fix(audit): harden sharding, broadcast, invite, auto-reply, auto-join, security and docs
 - **[8b0d8592](https://github.com/nealmtroy/TeleBos/commit/8b0d8592)**: fix(worker): cross-shard job ownership, anti-ban and job-exclusivity hardening
 - **[a391a1d3](https://github.com/nealmtroy/TeleBos/commit/a391a1d3)**: fix(plans): align account limits for pro (3) and business (5) with subscription specifications
 

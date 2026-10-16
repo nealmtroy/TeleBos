@@ -2441,6 +2441,7 @@ export interface Dict {
       values: {
         free: string;
         upTo3: string;
+        upTo5: string;
         unlimited: string;
         no: string;
         yes: string;
