@@ -420,8 +420,10 @@ async def finalize_authenticated_login(
 
     # A failed lookup is unknown, not evidence that 2FA is disabled.
     live_twofa_status = await get_live_2fa_status(unauth_client)
+    # profile_photo_id is a BigInteger column — keep Telegram's integer id,
+    # never coerce it to str (asyncpg rejects a string bound to a BIGINT).
     tg_photo_id = (
-        str(me.photo.photo_id)
+        me.photo.photo_id
         if (getattr(me, "photo", None) and hasattr(me.photo, "photo_id"))
         else None
     )
