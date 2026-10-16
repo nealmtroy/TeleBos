@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-16
+- **[d8f4208c](https://github.com/nealmtroy/TeleBos/commit/d8f4208c)**: fix(broadcast): pause (not fail) a job whose only senders are restricted
 - **[86423981](https://github.com/nealmtroy/TeleBos/commit/86423981)**: fix(broadcast): handle frozen/banned accounts as account-level restrictions
 - **[4011998a](https://github.com/nealmtroy/TeleBos/commit/4011998a)**: fix(frontend): add missing upTo5 pricing i18n value type
 - **[7b0288d8](https://github.com/nealmtroy/TeleBos/commit/7b0288d8)**: fix(audit): harden sharding, broadcast, invite, auto-reply, auto-join, security and docs

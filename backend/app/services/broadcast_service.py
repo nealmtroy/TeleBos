@@ -1670,132 +1670,6 @@ async def execute_broadcast(job_id: str):
             now_ts = time.time()
             slowmode_pool = {k: v for k, v in slowmode_pool.items() if v["until"] > now_ts}
 
-            # ── Every cycle, retry pending groups first ──
-            if pending_pool and is_looping:
-                newly_joined = []
-                still_pending = {}
-                for pkey, pitem in list(pending_pool.items()):
-                    current_status = await _get_current_status(job_uuid)
-                    if current_status is None or current_status in ("cancelled", "paused"):
-                        break
-
-                    # Find ready account for joining
-                    selected_acc = None
-                    now_ts = time.time()
-                    ready_accs = [
-                        a
-                        for a in active_accounts
-                        if now_ts >= a["cooldown_until"]
-                        and now_ts >= a.get("join_cooldown_until", 0.0)
-                    ]
-                    if not ready_accs:
-                        still_pending[pkey] = pitem
-                        for k, v in pending_pool.items():
-                            if k not in newly_joined and not any(k == pk for (acc_k, pk) in joined_pool):
-                                still_pending[k] = v
-                        break
-
-                    for offset in range(len(active_accounts)):
-                        i_idx = (current_acc_idx + offset) % len(active_accounts)
-                        candidate = active_accounts[i_idx]
-                        if now_ts >= candidate["cooldown_until"] and now_ts >= candidate.get(
-                            "join_cooldown_until", 0.0
-                        ):
-                            selected_acc = candidate
-                            current_acc_idx = (i_idx + 1) % len(active_accounts)
-                            break
-
-                    if not selected_acc:
-                        still_pending[pkey] = pitem
-                        continue
-
-                    client = None
-                    try:
-                        client = await borrow_client(selected_acc, receive_updates=True)
-                        entities_retry = await _broadcast_entities_for_target(
-                            client, pitem["group_identifier"], job_id_str
-                        )
-                        if entities_retry:
-                            joined_pool[(selected_acc["account_id"], pkey)] = entities_retry
-                            client_pool.cache_entity(
-                                pkey, entities_retry, account_id=selected_acc["account_id"]
-                            )
-                            newly_joined.append(pkey)
-                            resolve_attempts.pop(pkey, None)
-                            await _push_broadcast(
-                                job_id_str,
-                                "pending_joined",
-                                {
-                                    "group": pitem["group_identifier"],
-                                    "message": f"Retry join successful for {pitem['group_identifier']}",
-                                },
-                            )
-                        else:
-                            still_pending[pkey] = pitem
-                    except Exception as resolve_exc:
-                        resolve_err = classify_telegram_error(resolve_exc)
-                        err_type, _ = resolve_err
-                        if err_type in ("session_revoked", "user_deactivated", "phone_banned", "auth_key"):
-                            still_pending[pkey] = pitem
-                            await _handle_account_failure(selected_acc, err_type)
-                            if not active_accounts:
-                                await _stop_job_all_accounts_failed(last_progress)
-                                return
-                            continue
-                        if err_type == "account_frozen":
-                            # Account-level freeze: hold the account out of the
-                            # job and keep the target pending for another account.
-                            still_pending[pkey] = pitem
-                            await _retire_restricted_account(
-                                selected_acc, RESTRICTED_FROZEN, resolve_err[1], last_progress
-                            )
-                            if not active_accounts:
-                                await _pause_job_no_accounts(
-                                    "Semua akun dibatasi Telegram (frozen). Job dijeda.",
-                                    last_progress,
-                                )
-                                return
-                            continue
-                        if err_type == "slowmode":
-                            # Group-local limit: keep the item pending and let
-                            # this account serve other groups meanwhile.
-                            still_pending[pkey] = pitem
-                            wait = 30
-                            if hasattr(resolve_exc, "seconds"):
-                                wait = resolve_exc.seconds
-                            slowmode_pool[pkey] = {
-                                "until": time.time() + wait,
-                                "seconds": wait,
-                            }
-                            continue
-                        if err_type in ("flood", "peer_flood"):
-                            still_pending[pkey] = pitem
-                            wait = 30
-                            if hasattr(resolve_exc, "seconds"):
-                                wait = resolve_exc.seconds
-                            selected_acc["join_cooldown_until"] = time.time() + wait
-                            continue
-                        elif err_type == "already_invited":
-                            still_pending[pkey] = pitem
-                            continue
-                        else:
-                            # Unknown/transient resolve failure: keep retrying over
-                            # a bounded number of cycles, then treat as permanently
-                            # dead so a genuinely bad target cannot loop forever.
-                            attempts = resolve_attempts.get(pkey, 0) + 1
-                            resolve_attempts[pkey] = attempts
-                            if attempts >= MAX_RESOLVE_ATTEMPTS:
-                                permanent_failures_pool.add(pkey)
-                            else:
-                                still_pending[pkey] = pitem
-                            continue
-                    finally:
-                        if client is not None:
-                            await release_client(selected_acc)
-                            client = None
-
-                pending_pool = still_pending
-
             for idx, item in enumerate(items):
                 # Find the next ready account
                 selected_acc = None
@@ -1889,8 +1763,13 @@ async def execute_broadcast(job_id: str):
                     pkey, account_id=acc_id_str
                 )
 
-                if pkey in pending_pool:
-                    continue
+                # We are processing this target now, so it is no longer
+                # "waiting its turn": drop it from the pending set. If it still
+                # needs a join and the account is on cooldown, the join-cooldown
+                # branch below re-queues it. This is what makes a deferred target
+                # resume through the normal throttled path once the flood lifts,
+                # instead of being parked in a separate unthrottled retry pass.
+                pending_pool.pop(pkey, None)
 
                 if pkey in permanent_failures_pool:
                     continue
@@ -2143,6 +2022,29 @@ async def execute_broadcast(job_id: str):
                             if hasattr(resolve_exc, "seconds"):
                                 wait = resolve_exc.seconds
                             selected_acc["join_cooldown_until"] = time.time() + wait
+                            # Surface offline as well as in the cycle log: a join
+                            # flood used to be recorded silently, so a cycle that
+                            # made no progress looked like a mystery.
+                            logger.warning(
+                                "Join flood on account %s for %s (%s): waiting %ss",
+                                acc_id_str,
+                                group_identifier,
+                                err_type,
+                                int(wait),
+                            )
+                            await _push_broadcast(
+                                job_id_str,
+                                "flood_wait",
+                                {
+                                    "wait_seconds": int(wait),
+                                    "account": acc_name,
+                                    "group": group_identifier,
+                                    "message": (
+                                        f"Flood saat join {group_identifier} ({err_type}). "
+                                        f"Menunggu {int(wait)}s lalu lanjut."
+                                    ),
+                                },
+                            )
                     elif err_type == "slowmode":
                         # Group-local limit — see slowmode_pool.
                         pending_pool[pkey] = {
