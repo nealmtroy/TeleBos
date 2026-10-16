@@ -28,8 +28,15 @@ async def adaptive_sequential_sync_loop() -> None:
 
     while True:
         try:
-            # 1. Fetch the active account with the oldest last_sync_at (or None)
-            # Exclude accounts actively claimed by worker jobs to avoid concurrent MTProto session conflicts.
+            # 1. Pick the candidate account, then CLOSE the session before any
+            # sleep. Sleeping inside `async with async_session_factory()` left the
+            # connection "idle in transaction" for the full 30s (it showed up as a
+            # multi-second slow query in system health). Only the columns this
+            # loop actually needs are selected — not the whole row (which carries
+            # the encrypted session string).
+            account_id = None
+            account_phone = None
+            skip_reason = None
             async with async_session_factory() as db:
                 from app.models.broadcast_job import BroadcastJob
                 from app.models.invite_job import InviteJob
@@ -51,7 +58,11 @@ async def adaptive_sequential_sync_loop() -> None:
                                 except (ValueError, TypeError):
                                     pass
 
-                stmt = select(TelegramAccount).where(
+                stmt = select(
+                    TelegramAccount.id,
+                    TelegramAccount.phone,
+                    TelegramAccount.last_sync_at,
+                ).where(
                     TelegramAccount.is_active == True,
                     TelegramAccount.session_string != "",
                 )
@@ -62,32 +73,36 @@ async def adaptive_sequential_sync_loop() -> None:
                     TelegramAccount.last_sync_at.asc().nullsfirst()
                 ).limit(200)
                 res = await db.execute(stmt)
-                candidates = res.scalars().all()
-                account = next((c for c in candidates if is_account_in_current_shard(c.id)), None)
+                rows = res.all()
+                candidate = next(
+                    (r for r in rows if is_account_in_current_shard(r[0])), None
+                )
 
-                if not account:
-                    logger.debug("Adaptive Sync: No eligible active accounts found for this shard (or all busy). Sleeping for 30s.")
-                    await asyncio.sleep(30)
-                    continue
+                if candidate is None:
+                    skip_reason = "no_eligible"
+                else:
+                    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+                    last_sync = ensure_utc(candidate[2])
+                    if last_sync and last_sync >= one_hour_ago:
+                        skip_reason = "all_fresh"
+                    else:
+                        account_id = str(candidate[0])
+                        account_phone = candidate[1]
+            # ── session closed: safe to sleep without pinning a connection ──
 
-                # 2. Check if the oldest account needs a sync.
-                # We sync an account if it hasn't been synced in the last hour, or if last_sync_at is None.
-                one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-                last_sync = ensure_utc(account.last_sync_at)
-
-                if last_sync and last_sync >= one_hour_ago:
-                    # Even the oldest account is fresh (< 1 hour old). Wait before checking again.
-                    logger.debug(
-                        "Adaptive Sync: All accounts are fresh (oldest last_sync_at was %s). Sleeping for 30 seconds.",
-                        last_sync,
-                    )
-                    await asyncio.sleep(30)
-                    continue
-
-                account_id = str(account.id)
+            if skip_reason == "no_eligible":
+                logger.debug("Adaptive Sync: No eligible active accounts found for this shard (or all busy). Sleeping for 30s.")
+                await asyncio.sleep(30)
+                continue
+            if skip_reason == "all_fresh":
+                logger.debug(
+                    "Adaptive Sync: All accounts are fresh. Sleeping for 30 seconds.",
+                )
+                await asyncio.sleep(30)
+                continue
 
             # 3. Process the sync for this account
-            logger.info("Adaptive Sync: Starting sync for account %s (%s)...", account_id, account.phone)
+            logger.info("Adaptive Sync: Starting sync for account %s (%s)...", account_id, account_phone)
 
             sync_succeeded = False
             try:
