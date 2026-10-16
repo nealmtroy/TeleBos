@@ -162,13 +162,13 @@ Tugas utamamu adalah membantu pengguna memahami fitur TeleBos, memeriksa kendala
 
 
 async def get_groq_completion(messages: list[dict[str, str]]) -> str:
-    """Call Groq API using rotating keys and models."""
-    api_keys = [
-        ("GROQ_API_KEY_1", getattr(settings, "GROQ_API_KEY_1", "")),
-        ("GROQ_API_KEY_2", getattr(settings, "GROQ_API_KEY_2", "")),
-        ("GROQ_API_KEY_3", getattr(settings, "GROQ_API_KEY_3", "")),
-    ]
-    active_keys = [(name, k.strip()) for name, k in api_keys if k and k.strip()]
+    """Call Groq API using rotating keys and models (supporting up to 7 keys)."""
+    active_keys = []
+    for i in range(1, 8):
+        name = f"GROQ_API_KEY_{i}"
+        val = getattr(settings, name, "")
+        if val and val.strip():
+            active_keys.append((name, val.strip()))
 
     if not active_keys:
         return (
@@ -176,12 +176,12 @@ async def get_groq_completion(messages: list[dict[str, str]]) -> str:
             "Silakan gunakan tombol 'Hubungi Admin' di bawah untuk bantuan langsung dari tim kami."
         )
 
-    configured_model = getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile") or "llama-3.3-70b-versatile"
+    configured_model = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b") or "openai/gpt-oss-120b"
     models_to_try = [
+        "openai/gpt-oss-120b",
         configured_model,
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
         "openai/gpt-oss-20b",
+        "qwen/qwen3.8-27b",
     ]
     seen = set()
     unique_models = [m for m in models_to_try if m and not (m in seen or seen.add(m))]

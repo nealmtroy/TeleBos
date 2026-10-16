@@ -255,17 +255,18 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
     """Generate a unique appeal message using Groq Llama 3.1 8b model, rotating through up to 3 API keys."""
     settings = get_settings()
     
-    # Collect configured keys in order
+    # Collect configured keys in order (supporting up to 7 rotation keys)
     api_keys = []
-    for key_attr in ("GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3"):
+    for i in range(1, 8):
+        key_attr = f"GROQ_API_KEY_{i}"
         val = getattr(settings, key_attr, "")
-        if val:
-            api_keys.append((key_attr, val))
+        if val and val.strip():
+            api_keys.append((key_attr, val.strip()))
             
     is_indo = preset_id == "ai_indonesian"
     
     if not api_keys:
-        logger.warning("No GROQ_API_KEY_1/2/3 configured in environment settings. Falling back to default preset.")
+        logger.warning("No GROQ_API_KEY (1-7) configured in environment settings. Falling back to default preset.")
         if is_indo:
             return "Halo moderator, akun saya terkena restricted secara tidak sengaja. Saya tidak pernah mengirim spam atau iklan kepada siapapun. Mohon periksa kembali akun saya. Terima kasih."
         return "Hello moderator, my account was restricted by mistake. I have never sent any spam or advertising to anyone. Please review my account. Thank you."
@@ -291,11 +292,10 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
 
     configured_model = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-20b") or "openai/gpt-oss-20b"
     model_candidates = [
-        configured_model,
         "openai/gpt-oss-20b",
-        "groq/compound-mini",
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
+        configured_model,
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.8-27b",
     ]
     seen_models = set()
     models_to_try = []
