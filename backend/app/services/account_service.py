@@ -1174,10 +1174,19 @@ async def check_spam_status(db: AsyncSession, account: TelegramAccount) -> Teleg
 
         if response_msg and response_msg.text:
             from app.utils.spambot_helper import is_clean_status, is_temporary_limit
+            from app.utils.account_restrictions import (
+                RESTRICTED_LIMITED,
+                clear_account_restriction,
+            )
 
             is_limited = not is_clean_status(response_msg.text)
             account.spam_status = "limited" if is_limited else "normal"
             account.spam_detail = response_msg.text
+            # A clean SpamBot read clears a stale spam-limit restriction so the
+            # account can re-enter job rotation. A frozen-method restriction is
+            # time-boxed, not SpamBot-reported, so it is left to expire.
+            if not is_limited and account.restriction_status == RESTRICTED_LIMITED:
+                clear_account_restriction(account)
 
             # --- AUTO APPEAL LOGIC FOR PERMANENT LIMIT ---
             if is_limited:

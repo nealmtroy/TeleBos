@@ -22,6 +22,12 @@ from app.utils.telethon_helpers import (
     release_client,
     join_and_resolve_chat,
 )
+from app.utils.account_restrictions import (
+    RESTRICTED_FROZEN,
+    RESTRICTED_LIMITED,
+    is_account_restricted,
+    mark_account_restricted,
+)
 from app.utils.telethon_cleanup import close_and_reap_telethon_client
 from app.utils.account_ownership import OWNER_WORKER, acquire_lease, release_lease
 from app.utils.async_helpers import interruptible_sleep, wake_job, clear_job_event
@@ -57,6 +63,12 @@ async def start_invite(
         account = await get_account(db, acc_id, str(user.id))
         if account is None:
             raise ValueError(f"Account {acc_id} not found")
+        if is_account_restricted(account):
+            raise ValueError(
+                f"Akun {account.first_name or account.phone} sedang dibatasi Telegram "
+                f"({account.restriction_status or account.spam_status}). "
+                "Tunggu hingga pembatasan berakhir."
+            )
         valid_account_ids.append(str(account.id))
 
     if not source_groups:
@@ -1148,6 +1160,47 @@ async def execute_invite(job_id: str):
                         if current_acc_idx >= len(active_accounts) and active_accounts:
                             current_acc_idx = 0
                     continue
+
+                elif err_type == "account_frozen":
+                    # Telegram froze this account's methods. Hold it out of the
+                    # rotation without failing the job; skip this member.
+                    log.status = "skipped"
+                    skipped += 1
+                    member_done = True
+                    try:
+                        async with async_session_factory() as sdb:
+                            res = await sdb.execute(
+                                select(TelegramAccount).where(
+                                    TelegramAccount.id == _uuid.UUID(selected_acc["account_id"])
+                                )
+                            )
+                            frozen_acc = res.scalar_one_or_none()
+                            if frozen_acc is not None:
+                                mark_account_restricted(frozen_acc, RESTRICTED_FROZEN, err_msg)
+                                await sdb.commit()
+                    except Exception as restrict_exc:
+                        logger.warning(
+                            "Invite: could not persist frozen state for %s: %s",
+                            selected_acc["account_id"],
+                            restrict_exc,
+                        )
+                    await _push_invite(
+                        job_id,
+                        "account_restricted",
+                        {
+                            "account": acc_name,
+                            "restriction": "frozen",
+                            "message": (
+                                f"Akun {acc_name} dibekukan Telegram. "
+                                "Dikeluarkan dari rotasi; job lanjut dengan akun lain."
+                            ),
+                        },
+                    )
+                    await close_and_reap_telethon_client(client, "invite")
+                    active_accounts.remove(selected_acc)
+                    last_acc = None
+                    if current_acc_idx >= len(active_accounts) and active_accounts:
+                        current_acc_idx = 0
 
                 elif err_type == "banned":
                     log.status = "skipped"

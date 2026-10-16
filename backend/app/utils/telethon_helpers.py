@@ -15,6 +15,7 @@ from telethon.errors import (
     ChannelsTooMuchError,
     UserBannedInChannelError,
     ChannelPrivateError,
+    FrozenMethodInvalidError,
 )
 
 from app.utils.encryption import decrypt
@@ -209,6 +210,14 @@ async def join_and_resolve_chat(client: TelegramClient, target: str, job_id_str:
                         await asyncio.sleep(e.seconds)
                     if attempt == 0:
                         continue
+                raise
+            except FrozenMethodInvalidError:
+                # Telegram froze this account's methods; joining again
+                # immediately cannot succeed and only burns the account's
+                # standing. Propagate so the caller rotates it out.
+                logger.warning(
+                    "JoinChannelRequest refused: account is frozen by Telegram (%s)", target
+                )
                 raise
             except (ChannelsTooMuchError, UserBannedInChannelError, ChannelPrivateError):
                 # Account-level join limits/bans. Swallowing these made the send

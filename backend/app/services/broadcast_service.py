@@ -27,6 +27,12 @@ from app.models.user import User
 from app.services.telegram_client import client_pool
 from app.services.event_relay import event_relay
 from app.utils.account_ownership import OWNER_WORKER, acquire_lease, release_lease
+from app.utils.account_restrictions import (
+    RESTRICTED_FROZEN,
+    RESTRICTED_LIMITED,
+    is_account_restricted,
+    mark_account_restricted,
+)
 from app.utils.encryption import decrypt
 from app.utils.flood_control import flood_controller
 fc = flood_controller
@@ -268,6 +274,12 @@ async def start_broadcast(
         account = await get_account(db, acc_id, str(user.id))
         if account is None:
             raise ValueError(f"Account {acc_id} not found")
+        if is_account_restricted(account):
+            raise ValueError(
+                f"Akun {account.first_name or account.phone} sedang dibatasi Telegram "
+                f"({account.restriction_status or account.spam_status}). "
+                "Tunggu hingga pembatasan berakhir sebelum memulai siaran."
+            )
         valid_account_ids.append(str(account.id))
 
     plan_max_accounts = {
@@ -541,6 +553,8 @@ async def retry_job(
     for acc_id in (job.account_ids or []):
         account = await get_account(db, str(acc_id), str(user.id))
         if account is not None and account.is_active and not account.for_sale:
+            if is_account_restricted(account):
+                continue
             valid_account_ids.append(str(account.id))
 
     if not valid_account_ids:
@@ -1227,6 +1241,13 @@ async def execute_broadcast(job_id: str):
                         "Account %s is not active or listed for sale, skipping", acc_id_str
                     )
                     continue
+                if is_account_restricted(account):
+                    logger.warning(
+                        "Account %s is restricted (%s) by Telegram, skipping for broadcast",
+                        acc_id_str,
+                        account.restriction_status or account.spam_status,
+                    )
+                    continue
                 account_snapshots.append(
                     {
                         "account_id": acc_id_str,
@@ -1414,19 +1435,78 @@ async def execute_broadcast(job_id: str):
             if is_limited:
                 limited_accounts.add(a_id)
                 logger.warning(
-                    "Account %s is spam-restricted by Telegram (spam_status=limited); "
-                    "stopping broadcast job %s",
+                    "Account %s is spam-limited by Telegram (spam_status=limited)",
                     a_id,
-                    job_id_str,
                 )
             return is_limited
 
-        async def _stop_job_account_limited(a_id: str, a_name: str, current_progress_val: int) -> None:
-            """Stop a broadcast job whose account is spam-restricted by Telegram.
+        async def _retire_restricted_account(
+            acc_to_remove: dict[str, Any],
+            status: str,
+            reason: str,
+            current_progress_val: int,
+        ) -> None:
+            """Hold an account restricted by Telegram out of the job's rotation.
 
-            The account cannot post to supergroups/channels while limited, so the
-            job is stopped (cancelled) instead of pausing and burning cycles. The
-            worker task returns right after this and the job will not auto-resume.
+            The account is neither cancelled nor deactivated — a frozen method,
+            spam limit, or ban is an account-level condition that can recover.
+            The job keeps running with the remaining accounts; if none remain it
+            is paused (not cancelled) so an automatic/manual resume can continue
+            once an account is usable again.
+            """
+            nonlocal current_acc_idx
+            a_id = acc_to_remove["account_id"]
+            a_name = acc_to_remove.get("account_name", a_id)
+
+            try:
+                await event_relay.detach(a_id)
+            except Exception as detach_err:
+                logger.warning("Could not detach event_relay for account %s: %s", a_id, detach_err)
+            try:
+                await client_pool.remove(a_id)
+            except Exception as pool_err:
+                logger.warning("Could not remove client %s from pool: %s", a_id, pool_err)
+
+            try:
+                async with async_session_factory() as db_session:
+                    acc = await _account_for_log(a_id, db_session)
+                    if acc is not None:
+                        mark_account_restricted(acc, status, detail=reason)
+                        await db_session.commit()
+            except Exception as db_err:
+                logger.warning("Could not persist restriction for account %s: %s", a_id, db_err)
+
+            if acc_to_remove in active_accounts:
+                active_accounts.remove(acc_to_remove)
+            if active_accounts and current_acc_idx >= len(active_accounts):
+                current_acc_idx = 0
+
+            logger.warning(
+                "Account %s (%s) restricted by Telegram: %s — removed from job %s rotation",
+                a_id,
+                a_name,
+                status,
+                job_id_str,
+            )
+            await _push_broadcast(
+                job_id_str,
+                "account_restricted",
+                {
+                    "account": a_name,
+                    "restriction": status,
+                    "message": (
+                        f"Akun {a_name} dibatasi oleh Telegram ({status}). "
+                        "Dikeluarkan dari rotasi; job lanjut dengan akun lain."
+                    ),
+                },
+            )
+
+        async def _pause_job_no_accounts(message: str, current_progress_val: int) -> None:
+            """Pause (never cancel) a job that has no usable accounts left.
+
+            All remaining senders are temporarily restricted. Pausing keeps the
+            job alive so it can resume once an account recovers, instead of
+            hard-cancelling the user's campaign.
             """
             if pending_cycle_details:
                 await _flush_cycle_logs(
@@ -1438,27 +1518,20 @@ async def execute_broadcast(job_id: str):
                     failed=failed,
                     progress=current_progress_val,
                 )
-            async with async_session_factory() as db_stop:
-                result = await db_stop.execute(
+            async with async_session_factory() as db_pause:
+                result = await db_pause.execute(
                     select(BroadcastJob).where(BroadcastJob.id == job_uuid)
                 )
                 db_job = result.scalar_one_or_none()
-                if db_job:
-                    db_job.status = "cancelled"
+                if db_job and db_job.status == "running":
+                    db_job.status = "paused"
                     db_job.sent_count = sent
                     db_job.fail_count = failed
-                    db_job.completed_at = datetime.now(timezone.utc)
-                    await db_stop.commit()
+                    await db_pause.commit()
             await _push_broadcast(
                 job_id_str,
                 "status",
-                {
-                    "status": "cancelled",
-                    "account": a_name,
-                    "message": (
-                        f"Akun {a_name} dibatasi oleh Telegram (spam limit). Job dihentikan."
-                    ),
-                },
+                {"status": "paused", "message": message},
             )
 
         # joined_pool is keyed by (account_id, pkey) to prevent cross-account access_hash pollution
@@ -1655,6 +1728,20 @@ async def execute_broadcast(job_id: str):
                             await _handle_account_failure(selected_acc, err_type)
                             if not active_accounts:
                                 await _stop_job_all_accounts_failed(last_progress)
+                                return
+                            continue
+                        if err_type == "account_frozen":
+                            # Account-level freeze: hold the account out of the
+                            # job and keep the target pending for another account.
+                            still_pending[pkey] = pitem
+                            await _retire_restricted_account(
+                                selected_acc, RESTRICTED_FROZEN, resolve_err[1], last_progress
+                            )
+                            if not active_accounts:
+                                await _pause_job_no_accounts(
+                                    "Semua akun dibatasi Telegram (frozen). Job dijeda.",
+                                    last_progress,
+                                )
                                 return
                             continue
                         if err_type == "slowmode":
@@ -1986,11 +2073,43 @@ async def execute_broadcast(job_id: str):
                 except Exception as resolve_exc:
                     err_type, err_msg = classify_telegram_error(resolve_exc)
 
+                    if err_type == "account_frozen":
+                        # Telegram froze this account's methods. Rotate it out and
+                        # keep the job running with the other accounts (the target
+                        # stays pending for them); never cancel the campaign.
+                        pending_pool[pkey] = {
+                            "group_identifier": group_identifier,
+                            "item_type": item_type,
+                        }
+                        await _retire_restricted_account(
+                            selected_acc, RESTRICTED_FROZEN, err_msg, last_progress
+                        )
+                        if not active_accounts:
+                            await _pause_job_no_accounts(
+                                "Semua akun dibatasi Telegram (frozen). Job dijeda.",
+                                last_progress,
+                            )
+                            return
+                        continue
+
                     if err_type == "banned" and await _ensure_account_spam_checked(acc_id_str):
-                        failed += 1
-                        cycle_failed += 1
-                        await _stop_job_account_limited(acc_id_str, acc_name, last_progress)
-                        return
+                        # Account-level spam restriction, not a per-group ban:
+                        # rotate the account out and requeue the target for
+                        # another account instead of cancelling the job.
+                        pending_pool[pkey] = {
+                            "group_identifier": group_identifier,
+                            "item_type": item_type,
+                        }
+                        await _retire_restricted_account(
+                            selected_acc, RESTRICTED_LIMITED, err_msg, last_progress
+                        )
+                        if not active_accounts:
+                            await _pause_job_no_accounts(
+                                "Semua akun dibatasi Telegram (spam limit). Job dijeda.",
+                                last_progress,
+                            )
+                            return
+                        continue
 
                     if err_type in (
                         "flood",
@@ -2241,17 +2360,42 @@ async def execute_broadcast(job_id: str):
                     except Exception as exc:
                         err_type, err_msg = classify_telegram_error(exc)
 
+                        if err_type == "account_frozen":
+                            # Freeze is account-level: rotate it out and let the
+                            # job continue; requeue the target for another account.
+                            pending_pool[pkey] = {
+                                "group_identifier": group_identifier,
+                                "item_type": item_type,
+                            }
+                            await _retire_restricted_account(
+                                selected_acc, RESTRICTED_FROZEN, err_msg, last_progress
+                            )
+                            if not active_accounts:
+                                await _pause_job_no_accounts(
+                                    "Semua akun dibatasi Telegram (frozen). Job dijeda.",
+                                    last_progress,
+                                )
+                                return
+                            continue
+
                         if err_type == "banned" and await _ensure_account_spam_checked(acc_id_str):
                             # Account-level spam restriction, not a per-group ban:
-                            # stop using this account and pause the job rather than
-                            # blacklisting every target it touches.
-                            log_status = "error"
-                            log_err_type = "spam_restricted"
-                            log_err_msg = err_msg
-                            failed += 1
-                            cycle_failed += 1
-                            await _stop_job_account_limited(acc_id_str, acc_name, last_progress)
-                            return
+                            # rotate the account out and keep the job running; the
+                            # target is requeued for another account.
+                            pending_pool[pkey] = {
+                                "group_identifier": group_identifier,
+                                "item_type": item_type,
+                            }
+                            await _retire_restricted_account(
+                                selected_acc, RESTRICTED_LIMITED, err_msg, last_progress
+                            )
+                            if not active_accounts:
+                                await _pause_job_no_accounts(
+                                    "Semua akun dibatasi Telegram (spam limit). Job dijeda.",
+                                    last_progress,
+                                )
+                                return
+                            continue
 
                         if err_type == "bad_request":
                             # ChannelInvalidError: evict invalid entity from cache so it doesn't pollute subsequent sends

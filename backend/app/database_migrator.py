@@ -223,6 +223,20 @@ def run_migrations(connection):
             )
         )
 
+    # ── Account-level restriction state (frozen / limited / banned) ────────
+    restriction_columns = {
+        "restriction_status": "VARCHAR(20) DEFAULT NULL",
+        "restriction_until": "TIMESTAMPTZ DEFAULT NULL",
+        "restriction_detail": "TEXT DEFAULT NULL",
+    }
+    for column_name, definition in restriction_columns.items():
+        if column_name not in acct_cols:
+            connection.execute(
+                text(
+                    f"ALTER TABLE telegram_accounts ADD COLUMN {column_name} {definition}"
+                )
+            )
+
     # ── Profile photo ID for change detection ─────────────────────────────
     if "profile_photo_id" not in acct_cols:
         connection.execute(

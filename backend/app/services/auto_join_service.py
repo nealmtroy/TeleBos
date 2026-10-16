@@ -22,6 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auto_join_job import AutoJoinJob
 from app.models.auto_join_log import AutoJoinLog
+from app.utils.account_restrictions import (
+    RESTRICTED_FROZEN,
+    RESTRICTED_LIMITED,
+    is_account_restricted,
+    mark_account_restricted,
+)
 from app.utils.async_helpers import clear_job_event, interruptible_sleep, wake_job
 from app.utils.flood_control import flood_controller
 
@@ -206,6 +212,12 @@ async def start_auto_join(
         account = await account_service.get_account(db, acc_id, str(user_id))
         if account is None:
             raise ValueError(f"Account {acc_id} not found")
+        if is_account_restricted(account):
+            raise ValueError(
+                f"Akun {account.first_name or account.phone} sedang dibatasi Telegram "
+                f"({account.restriction_status or account.spam_status}). "
+                "Tunggu hingga pembatasan berakhir."
+            )
         accounts.append(account)
 
     from app.models.user import User
@@ -495,6 +507,39 @@ async def execute_auto_join(job_id: str) -> None:
                             if cancelled:
                                 break
                         continue
+
+                    if err_type == "account_frozen":
+                        # Telegram froze this account's join methods. Hold it out
+                        # of the rotation and keep the job running with the other
+                        # accounts; do not fail the whole job.
+                        log.status = "skipped"
+                        log.error_type = err_type
+                        log.error_message = err_msg
+                        try:
+                            async with _session_factory() as sdb:
+                                acc = await account_service.get_account(
+                                    sdb, entry["account_id"], str(owner_id)
+                                )
+                                if acc is not None:
+                                    mark_account_restricted(acc, RESTRICTED_FROZEN, err_msg)
+                                    await sdb.commit()
+                        except Exception as restrict_exc:
+                            logger.warning(
+                                "Auto-join: could not persist frozen state for %s: %s",
+                                entry["account_id"],
+                                restrict_exc,
+                            )
+                        if entry in active_accounts:
+                            active_accounts.remove(entry)
+                        await _push(job_id, "account_restricted", {
+                            "account": entry["account_name"],
+                            "restriction": "frozen",
+                            "message": (
+                                f"Akun {entry['account_name']} dibekukan Telegram. "
+                                "Dikeluarkan dari rotasi; job lanjut dengan akun lain."
+                            ),
+                        })
+                        break
 
                     # Non-retryable, or retries exhausted.
                     log.status = "error"

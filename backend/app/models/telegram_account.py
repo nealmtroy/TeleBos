@@ -88,6 +88,14 @@ class TelegramAccount(Base):
     spam_detail: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
     spam_last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
 
+    # Account-level Telegram restriction state (frozen method / spam-limited /
+    # banned). Kept separate from is_active so a temporarily restricted account
+    # is held out of job rotation but can recover — see
+    # app.utils.account_restrictions.
+    restriction_status: Mapped[str | None] = mapped_column(String(20), default=None, nullable=True)
+    restriction_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
+    restriction_detail: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
