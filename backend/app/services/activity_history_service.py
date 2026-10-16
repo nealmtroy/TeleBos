@@ -56,13 +56,62 @@ def _map_smm_status(status: str) -> str:
     return "Menunggu"
 
 
-def _map_account_status(action: str) -> str:
-    a = (action or "").strip().lower()
-    if a == "list_for_sale":
-        return "Proses"
-    if a == "cancel_sale":
-        return "Dibatalkan"
-    return "Selesai"
+def _collapse_account_audit_logs(logs: list[AccountAuditLog]) -> list[dict[str, Any]]:
+    """Collapse a listing and its settlement into ONE history entry.
+
+    ``account_audit_logs`` is an append-only trail: listing an account writes
+    ``list_for_sale`` and later selling / delisting it writes a *separate*
+    ``sell`` / ``cancel_sale`` row. Rendering each row as its own order left
+    every listing stuck as an eternal "Proses" and spawned a fresh order id for
+    the sale. Instead the listing anchors the order and the settlement resolves
+    it in place:
+
+      * sold         -> "Selesai"
+      * delisted     -> "Dibatalkan"
+      * still listed -> "Proses"
+
+    Purchases (``buy``) and settlements without a preceding listing keep their
+    own entry. Returns ``[{"anchor": AccountAuditLog, "status": str}, ...]``.
+    """
+
+    def _ts(log: AccountAuditLog) -> datetime:
+        return log.created_at or datetime.min.replace(tzinfo=timezone.utc)
+
+    by_account: dict[Any, list[AccountAuditLog]] = {}
+    for log in logs:
+        by_account.setdefault(log.account_id, []).append(log)
+
+    entries: list[dict[str, Any]] = []
+    for acct_logs in by_account.values():
+        acct_logs.sort(key=_ts)
+        settlements = [l for l in acct_logs if l.action in ("sell", "cancel_sale")]
+        consumed: set[str] = set()
+        for log in acct_logs:
+            action = (log.action or "").strip().lower()
+            if action == "list_for_sale":
+                match = next(
+                    (
+                        s
+                        for s in settlements
+                        if str(s.id) not in consumed and _ts(s) >= _ts(log)
+                    ),
+                    None,
+                )
+                if match is None:
+                    status = "Proses"
+                else:
+                    consumed.add(str(match.id))
+                    status = "Selesai" if match.action == "sell" else "Dibatalkan"
+                entries.append({"anchor": log, "status": status})
+            elif str(log.id) in consumed:
+                # This settlement already resolved its listing above.
+                continue
+            elif action == "cancel_sale":
+                entries.append({"anchor": log, "status": "Dibatalkan"})
+            else:
+                # buy / sell / unknown -> a settled entry on its own.
+                entries.append({"anchor": log, "status": "Selesai"})
+    return entries
 
 
 def _map_wallet_status(status: str, tx_type: str) -> str:
@@ -98,20 +147,16 @@ async def calculate_activity_metrics(
     smm_completed = int(smm_row.completed or 0)
     smm_in_progress = int(smm_row.in_progress or 0)
 
-    # 2. Account metrics
+    # 2. Account metrics — collapsed so a listing + its settlement count as one
+    #    order (otherwise every historical listing inflates in_progress forever).
     acct_res = await db.execute(
-        select(
-            func.count(AccountAuditLog.id).label("total"),
-            func.coalesce(func.sum(AccountAuditLog.price), 0).label("spend"),
-            func.count(case((AccountAuditLog.action.in_(["buy", "sell"]), 1))).label("completed"),
-            func.count(case((AccountAuditLog.action == "list_for_sale", 1))).label("in_progress"),
-        ).where(AccountAuditLog.user_id == uid)
+        select(AccountAuditLog).where(AccountAuditLog.user_id == uid)
     )
-    acct_row = acct_res.one()
-    acct_total = int(acct_row.total or 0)
-    acct_spend = int(acct_row.spend or 0)
-    acct_completed = int(acct_row.completed or 0)
-    acct_in_progress = int(acct_row.in_progress or 0)
+    collapsed_accounts = _collapse_account_audit_logs(list(acct_res.scalars().all()))
+    acct_total = len(collapsed_accounts)
+    acct_spend = sum((e["anchor"].price or 0) for e in collapsed_accounts)
+    acct_completed = sum(1 for e in collapsed_accounts if e["status"] == "Selesai")
+    acct_in_progress = sum(1 for e in collapsed_accounts if e["status"] == "Proses")
 
     # 3. Wallet metrics
     wallet_res = await db.execute(
@@ -249,33 +294,40 @@ async def get_user_activity_history(
                 "admin_note": None,
             })
 
-    # 2. Query Account Audit Logs
+    # 2. Query Account Audit Logs — collapsed: a listing and its later
+    #    settlement are ONE order whose status is resolved in place (see
+    #    _collapse_account_audit_logs). All rows are loaded so the settlement is
+    #    always visible; the date/search/status filters are then applied to the
+    #    collapsed entry's anchor (the listing).
     if query_accounts:
-        acct_stmt = select(AccountAuditLog).where(AccountAuditLog.user_id == user.id)
-        if start_date:
-            acct_stmt = acct_stmt.where(AccountAuditLog.created_at >= start_date)
-        if end_date:
-            acct_stmt = acct_stmt.where(AccountAuditLog.created_at <= end_date)
-        if search and search.strip():
-            term = f"%{search.strip().lower()}%"
-            acct_stmt = acct_stmt.where(
-                or_(
-                    func.lower(cast(AccountAuditLog.id, String)).like(term),
-                    func.lower(AccountAuditLog.phone).like(term),
-                    func.lower(cast(AccountAuditLog.telegram_id, String)).like(term),
-                )
-            )
-        acct_res = await db.execute(acct_stmt)
-        for log in acct_res.scalars().all():
-            st = _map_account_status(log.action)
-            if status != "all" and st != status and log.action != status:
-                continue
+        acct_res = await db.execute(
+            select(AccountAuditLog).where(AccountAuditLog.user_id == user.id)
+        )
+        collapsed = _collapse_account_audit_logs(list(acct_res.scalars().all()))
+        for entry in collapsed:
+            log = entry["anchor"]
+            st = entry["status"]
+            action = (log.action or "").strip().lower()
 
-            if log.action == "sell":
+            if status != "all" and st != status and (log.action or "") != status:
+                continue
+            if start_date and (log.created_at is None or log.created_at < start_date):
+                continue
+            if end_date and (log.created_at is None or log.created_at > end_date):
+                continue
+            if search and search.strip():
+                term = search.strip().lower()
+                hay = " ".join(
+                    [str(log.id), str(log.phone or ""), str(log.telegram_id or "")]
+                ).lower()
+                if term not in hay:
+                    continue
+
+            if action == "sell":
                 svc_name = "Penjualan Akun" if locale == "id" else "Account Sale"
-            elif log.action == "list_for_sale":
+            elif action == "list_for_sale":
                 svc_name = "Pendaftaran Jual" if locale == "id" else "Listing for Sale"
-            elif log.action == "cancel_sale":
+            elif action == "cancel_sale":
                 svc_name = "Pembatalan Jual" if locale == "id" else "Cancelled Listing"
             else:
                 svc_name = "Pembelian Akun" if locale == "id" else "Account Purchase"

@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-16
+- **[d9516199](https://github.com/nealmtroy/TeleBos/commit/d9516199)**: fix(scheduler): stop holding a DB connection during the adaptive-sync sleep
 - **[d2826455](https://github.com/nealmtroy/TeleBos/commit/d2826455)**: fix(auth): keep profile_photo_id as int on login (BIGINT column)
 - **[2d3000f4](https://github.com/nealmtroy/TeleBos/commit/2d3000f4)**: fix(broadcast): fold join-retry into the throttled main loop
 - **[d8f4208c](https://github.com/nealmtroy/TeleBos/commit/d8f4208c)**: fix(broadcast): pause (not fail) a job whose only senders are restricted

@@ -224,3 +224,93 @@ async def test_get_activity_history_endpoint_function(db_session):
     finally:
         await db_session.execute(delete(User).where(User.id == user.id))
         await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_sold_listing_settles_into_one_order(db_session):
+    """A listing + its later sale is ONE order (same id), resolved as Selesai.
+
+    Previously the listing stayed "Proses" forever and the sale spawned a second
+    order id, so an in-progress order could never complete.
+    """
+    from datetime import timedelta
+
+    user = User(
+        id=uuid.uuid4(),
+        email=f"test_settle_{uuid.uuid4().hex[:8]}@example.com",
+        role="basic",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    now = datetime.now(timezone.utc)
+    listing = AccountAuditLog(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        action="list_for_sale",
+        price=7000,
+        phone="60179876877",
+        telegram_id=555,
+        created_at=now - timedelta(hours=2),
+    )
+    sell = AccountAuditLog(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        action="sell",
+        price=7000,
+        phone="60179876877",
+        telegram_id=555,
+        created_at=now - timedelta(hours=1),
+    )
+    db_session.add_all([listing, sell])
+    await db_session.commit()
+
+    try:
+        resp = await get_user_activity_history(db_session, user, tab="accounts", page=1, page_size=10)
+        assert resp.pagination.total_items == 1
+        item = resp.items[0]
+        assert item.id == str(listing.id)  # same order id as the listing
+        assert item.status == "Selesai"
+        assert resp.metrics.in_progress_count == 0
+        assert resp.metrics.completed_count == 1
+        assert resp.metrics.total_accounts == 1
+    finally:
+        await db_session.execute(delete(AccountAuditLog).where(AccountAuditLog.user_id == user.id))
+        await db_session.execute(delete(User).where(User.id == user.id))
+        await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_active_listing_stays_in_progress(db_session):
+    """A listing with no sale/delist yet is the only genuinely in-progress one."""
+    user = User(
+        id=uuid.uuid4(),
+        email=f"test_active_{uuid.uuid4().hex[:8]}@example.com",
+        role="basic",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    listing = AccountAuditLog(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        action="list_for_sale",
+        price=7000,
+        phone="60179876877",
+        telegram_id=777,
+    )
+    db_session.add(listing)
+    await db_session.commit()
+
+    try:
+        resp = await get_user_activity_history(db_session, user, tab="accounts", page=1, page_size=10)
+        assert resp.pagination.total_items == 1
+        assert resp.items[0].status == "Proses"
+        assert resp.metrics.in_progress_count == 1
+        assert resp.metrics.completed_count == 0
+    finally:
+        await db_session.execute(delete(AccountAuditLog).where(AccountAuditLog.user_id == user.id))
+        await db_session.execute(delete(User).where(User.id == user.id))
+        await db_session.commit()
