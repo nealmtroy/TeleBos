@@ -91,6 +91,11 @@ try:
 except ImportError:
     FreshResetAuthorisationForbiddenError = None
 
+try:
+    from telethon.errors import SendCodeUnavailableError
+except ImportError:
+    SendCodeUnavailableError = None
+
 
 
 # ── AddChatUserRequest / InviteToChannelRequest specific errors ────────
@@ -229,6 +234,18 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if isinstance(exc, PhoneNumberFloodError):
         return ("phone_flood", "Too many verification requests for this phone number. Please try again later.")
 
+    # Raised by ResendCodeRequest when Telegram has exhausted every delivery
+    # option for this number (flash-call, then SMS, ...). It is an expected
+    # login-flow state, not a bug — classify it so resend-code returns a
+    # readable message instead of a generic "unexpected error" (PYTHON-FASTAPI-3H).
+    if SendCodeUnavailableError and isinstance(exc, SendCodeUnavailableError):
+        return (
+            "code_unavailable",
+            "Telegram can't resend the login code to this number right now — all "
+            "delivery options are used up. Wait a few minutes and try again, or "
+            "restart the login.",
+        )
+
     if isinstance(exc, MessageTooLongError):
         return ("message_too_long", "Message text is too long for Telegram (limit is 4096 characters)")
 
@@ -314,6 +331,14 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
 
     if "PHONE_NUMBER_FLOOD" in msg:
         return ("phone_flood", "Too many verification requests for this phone number. Please try again later.")
+
+    if "SEND_CODE_UNAVAILABLE" in msg.upper():
+        return (
+            "code_unavailable",
+            "Telegram can't resend the login code to this number right now — all "
+            "delivery options are used up. Wait a few minutes and try again, or "
+            "restart the login.",
+        )
 
     if (
         "USER_DEACTIVATED" in msg.upper()

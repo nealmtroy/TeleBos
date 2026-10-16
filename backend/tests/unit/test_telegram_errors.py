@@ -58,3 +58,18 @@ def test_classifies_phone_number_fallback_errors():
     err_type, msg = classify_telegram_error(TelegramRpcTextError("PHONE_NUMBER_FLOOD"))
     assert err_type == "phone_flood"
     assert msg == "Too many verification requests for this phone number. Please try again later."
+
+
+def test_classifies_send_code_unavailable():
+    """PYTHON-FASTAPI-3H: resend-code raised SendCodeUnavailableError that the
+    classifier did not know, so users got a generic 'unexpected error' and every
+    occurrence was logged as an unhandled API exception."""
+    from telethon.errors import SendCodeUnavailableError
+
+    err_type, msg = classify_telegram_error(SendCodeUnavailableError(request=None))
+    assert err_type == "code_unavailable"
+    assert isinstance(msg, str) and msg and err_type != "unknown"
+
+    # The RPC-text fallback must agree even when the concrete type is unavailable.
+    err_type2, _ = classify_telegram_error(TelegramRpcTextError("SEND_CODE_UNAVAILABLE"))
+    assert err_type2 == "code_unavailable"
