@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { safeHttpUrl } from "@/lib/safe-url";
 import {
   X,
   Image as ImageIcon,
@@ -269,7 +270,7 @@ export function ChatRightColumn({
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <a
-                    href={inviteLink || `https://t.me/${username}`}
+                    href={safeHttpUrl(inviteLink || `https://t.me/${username}`)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-bold truncate block hover:underline"
@@ -425,7 +426,7 @@ export function ChatRightColumn({
                   {extractedLinks.map((item, idx) => (
                     <a
                       key={idx}
-                      href={item.url}
+                      href={safeHttpUrl(item.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-2.5 rounded-xl transition text-left cursor-pointer truncate"

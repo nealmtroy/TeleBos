@@ -1763,6 +1763,7 @@ export interface Dict {
     selectService: string;
     dataTarget: string;
     dataTargetPlaceholder: string;
+    invalidTarget: string;
     quantity: string;
     price: string;
     totalPrice: string;

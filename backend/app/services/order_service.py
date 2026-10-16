@@ -21,6 +21,7 @@ from app.services.smm_service import create_order, check_order_status
 from app.services.notification_service import create_notification
 from app.services.ledger_service import record_ledger_entry
 from app.utils.encryption import encrypt, decrypt
+from app.utils.telegram_target import validate_telegram_target
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,10 @@ async def place_order(
     # Validate service ID is allowed
     if service_id not in ALLOWED_SMM_SERVICE_IDS:
         raise ValueError(f"Service ID {service_id} is not available")
+
+    # Reject non-Telegram / markup targets before anything is stored or sent to
+    # the provider (see app.utils.telegram_target).
+    data_target = validate_telegram_target(data_target)
 
     # Get service info with effective price from local smm_services table
     price_per_unit, service_name, category, min_qty, max_qty, _, _ = await _get_effective_price(db, service_id)
@@ -355,6 +360,7 @@ async def place_mass_orders(
     for order_data in orders_data:
         service_id = order_data["service_id"]
         quantity = order_data.get("quantity", 1)
+        order_data["data_target"] = validate_telegram_target(order_data.get("data_target", ""))
         price_per_unit, service_name, category, min_qty, max_qty, _, _ = effective_prices[service_id]
         if quantity <= 0:
             raise ValueError(f"Quantity must be greater than 0 for service '{service_name}'")

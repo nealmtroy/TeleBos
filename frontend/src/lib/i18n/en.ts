@@ -1766,6 +1766,7 @@ const en: Dict = {
     selectService: "Select a service...",
     dataTarget: "Target (URL/Username)",
     dataTargetPlaceholder: "https://t.me/... or @username",
+    invalidTarget: "Invalid target. Use a https://t.me/... link, @username, username, or numeric ID.",
     quantity: "Quantity",
     price: "Price",
     totalPrice: "Total Price",

@@ -1766,6 +1766,7 @@ const id: Dict = {
     selectService: "Pilih layanan...",
     dataTarget: "Target (URL/Username)",
     dataTargetPlaceholder: "https://t.me/... atau @username",
+    invalidTarget: "Target tidak valid. Gunakan link https://t.me/..., @username, username, atau ID numerik.",
     quantity: "Jumlah",
     price: "Harga",
     totalPrice: "Total Harga",

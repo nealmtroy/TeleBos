@@ -1,6 +1,7 @@
 "use client";
 
 import { clampQuantity, parseQuantityInput } from "./smm-quantity";
+import { isValidTelegramTarget } from "@/lib/telegram-target";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -785,6 +786,8 @@ function OrderModal({
   const placeOrder = usePlaceOrder();
 
   const [dataTarget, setDataTarget] = useState("");
+  const targetTrimmed = dataTarget.trim();
+  const targetInvalid = targetTrimmed.length > 0 && !isValidTelegramTarget(targetTrimmed);
   // Edited as a free-form string so a partially typed number is not rewritten
     // mid-keystroke. Clamping happens on blur and on submit, not on every change:
     // clamping on change meant clearing the field snapped straight back to 1, and
@@ -827,6 +830,13 @@ function OrderModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dataTarget.trim()) return;
+    if (!isValidTelegramTarget(dataTarget)) {
+      toast({
+        variant: "error",
+        title: _("orders.invalidTarget"),
+      });
+      return;
+    }
 
     // The field stays free-form while the user types, so the value on screen is
         // not necessarily inside the service's range yet — clamp before submitting.
@@ -993,6 +1003,11 @@ function OrderModal({
                 className="w-full h-11 px-3.5 text-sm rounded-xl"
                 required
               />
+              {targetInvalid && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
+                  {_("orders.invalidTarget")}
+                </p>
+              )}
               {targetHelperText && (
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {targetHelperText}
@@ -1154,7 +1169,7 @@ function OrderModal({
               </Button>
               <Button
                 type="submit"
-                disabled={placeOrder.isPending || !dataTarget.trim()}
+                disabled={placeOrder.isPending || !dataTarget.trim() || targetInvalid}
                 className="flex-1 rounded-xl h-11 text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs cursor-pointer"
               >
                 {placeOrder.isPending ? (
