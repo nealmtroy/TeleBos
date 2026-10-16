@@ -1,5 +1,6 @@
 """Application configuration via environment variables."""
 
+from pathlib import Path
 from typing import Any
 from functools import lru_cache
 from pydantic import field_validator
@@ -147,7 +148,11 @@ class Settings(BaseSettings):
     TOTAL_SHARDS: int = 1
     SHARD_INDEX: int = 0
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {
+        "env_file": [str(Path(__file__).resolve().parents[2] / ".env"), ".env"],
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 @lru_cache

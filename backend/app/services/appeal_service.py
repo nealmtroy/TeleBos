@@ -290,11 +290,11 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
 
     import httpx
 
-    configured_model = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-20b") or "openai/gpt-oss-20b"
+    configured_model = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b") or "openai/gpt-oss-120b"
     model_candidates = [
-        "openai/gpt-oss-20b",
         configured_model,
         "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
         "qwen/qwen3.8-27b",
     ]
     seen_models = set()
@@ -319,7 +319,7 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.85,
-                "max_tokens": 150
+                "max_tokens": 500
             }
             try:
                 async with httpx.AsyncClient() as client:
