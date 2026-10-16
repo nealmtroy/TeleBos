@@ -51,6 +51,72 @@ _INTERACTIVE_PHRASES = [
 ]
 
 
+def _token_js() -> str:
+    """Read the Turnstile response token, whichever way the widget exposes it."""
+    return """() => {
+        const el = document.querySelector('input[name="cf-turnstile-response"]');
+        if (el && el.value) return el.value;
+        if (window.turnstile && typeof window.turnstile.getResponse === 'function') {
+            const resp = window.turnstile.getResponse();
+            if (resp) return resp;
+        }
+        return null;
+    }"""
+
+
+async def _click_turnstile(page) -> bool:
+    """Click the Turnstile checkbox that flips the challenge into "solved".
+
+    Cloudflare renders the widget inside a *closed* shadow root, so
+    ``page.locator('iframe')`` cannot see it and the frame's DOM reads back
+    empty. The only reliable handle is the challenge frame itself: click through
+    its iframe element's bounding box (the checkbox sits near the left edge,
+    vertically centred). Older widgets that expose the checkbox in-frame are
+    handled first.
+    """
+    for frame in page.frames:
+        if "challenges.cloudflare.com" not in frame.url:
+            continue
+
+        # Older/edge widgets expose the checkbox directly inside the frame.
+        try:
+            for sel in (
+                'input[type="checkbox"]',
+                ".ctp-checkbox-label",
+                '[role="checkbox"]',
+                "#challenge-stage",
+            ):
+                loc = frame.locator(sel)
+                if await loc.count() > 0:
+                    await loc.first.click(timeout=1500)
+                    logger.info("clicked Turnstile element '%s' in frame", sel)
+                    return True
+        except Exception as click_err:
+            logger.debug("frame element click ignored: %s", click_err)
+
+        # Current widgets: click the iframe element's checkbox area.
+        try:
+            el = await frame.frame_element()
+            box = await el.bounding_box()
+        except Exception as box_err:
+            logger.debug("frame element bounding box unavailable: %s", box_err)
+            continue
+        if box and box["width"] > 0 and box["height"] > 0:
+            x = box["x"] + min(28, box["width"] / 4)
+            y = box["y"] + box["height"] / 2
+            try:
+                logger.info(
+                    "clicking Turnstile checkbox at (%.0f, %.0f) box=%s", x, y, box
+                )
+                await page.mouse.move(x - 40, y - 20)
+                await page.mouse.move(x, y, steps=10)
+                await page.mouse.click(x, y)
+                return True
+            except Exception as box_click_err:
+                logger.debug("iframe box click ignored: %s", box_click_err)
+    return False
+
+
 class SolveRequest(BaseModel):
     url: HttpUrl = Field(
         ...,
@@ -88,8 +154,13 @@ async def lifespan(app: FastAPI):
     # Launch the browser once. Per-request launch costs ~2s and a lot of memory,
     # and the profile/fingerprint warm-up helps Turnstile rather than hurting it.
     # disable_coop=True is required to interact with cross-origin Turnstile iframes.
+    #
+    # headless="virtual" (Xvfb) rather than headless=True: native headless Firefox
+    # is still detectable by Cloudflare, which renders the Turnstile widget but
+    # withholds the token forever. A virtual display runs a real, headful browser
+    # in an off-screen buffer — the behaviour Camoufox recommends for Turnstile.
     app.state.browser_cm = AsyncCamoufox(
-        headless=True,
+        headless="virtual",
         humanize=True,
         disable_coop=True,
         i_know_what_im_doing=True,
@@ -227,22 +298,11 @@ async def solve(req: SolveRequest) -> SolveResponse:
 
             token = None
             has_clicked = False
+            last_click_at = 0.0
             for step in range(poll_seconds):
                 await asyncio.sleep(1)
                 try:
-                    token = await page.evaluate(
-                        """() => {
-                            const el = document.querySelector(
-                                'input[name="cf-turnstile-response"]'
-                            );
-                            if (el && el.value) return el.value;
-                            if (window.turnstile && typeof window.turnstile.getResponse === 'function') {
-                                const resp = window.turnstile.getResponse();
-                                if (resp) return resp;
-                            }
-                            return null;
-                        }"""
-                    )
+                    token = await page.evaluate(_token_js())
                 except Exception as exc:
                     logger.warning("token poll failed: %s", exc)
                     break
@@ -250,47 +310,14 @@ async def solve(req: SolveRequest) -> SolveResponse:
                 if token:
                     break
 
-                # If after 2 seconds no token is generated automatically, Turnstile likely requires
-                # interaction (checkbox click / challenge stage). Perform humanized click!
-                if step >= 2 and not has_clicked:
-                    # Method A: Click inside the cross-origin Cloudflare frame directly
-                    for frame in page.frames:
-                        if "challenges.cloudflare.com" in frame.url:
-                            try:
-                                for sel in (
-                                    'input[type="checkbox"]',
-                                    '#challenge-stage',
-                                    '.ctp-checkbox-label',
-                                    '[role="checkbox"]',
-                                    'div#cf-stage',
-                                    '#cf-turnstile',
-                                ):
-                                    loc = frame.locator(sel)
-                                    if await loc.count() > 0:
-                                        logger.info("Clicking Turnstile element '%s' in frame", sel)
-                                        await loc.first.click(timeout=1500)
-                                        has_clicked = True
-                                        break
-                            except Exception as click_err:
-                                logger.debug("Frame element click ignored: %s", click_err)
-
-                    # Method B: If frame internal locator didn't click, click iframe bounding box
-                    if not has_clicked:
-                        try:
-                            cf_iframe = page.locator('iframe[src*="challenges.cloudflare.com"]').first
-                            if await cf_iframe.count() > 0:
-                                box = await cf_iframe.bounding_box()
-                                if box and box["width"] > 0 and box["height"] > 0:
-                                    click_x = box["x"] + min(32, box["width"] / 4)
-                                    click_y = box["y"] + box["height"] / 2
-                                    logger.info(
-                                        "Clicking Turnstile iframe bounding box at (%.1f, %.1f)",
-                                        click_x, click_y,
-                                    )
-                                    await page.mouse.click(click_x, click_y)
-                                    has_clicked = True
-                        except Exception as box_err:
-                            logger.debug("Iframe box click ignored: %s", box_err)
+                # If no token is issued automatically within a couple of seconds,
+                # Turnstile wants the checkbox clicked. Retry every few seconds
+                # because a managed challenge can re-render after a click.
+                now = asyncio.get_running_loop().time()
+                if step >= 2 and (now - last_click_at) >= 5.0:
+                    if await _click_turnstile(page):
+                        has_clicked = True
+                        last_click_at = now
 
             state = await page.evaluate(
                 """(phrases) => {

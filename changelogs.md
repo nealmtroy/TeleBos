@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-16
+- **[5ee37dfd](https://github.com/nealmtroy/TeleBos/commit/5ee37dfd)**: feat(web): localized request-pathname routing and public page updates
 - **[90d01381](https://github.com/nealmtroy/TeleBos/commit/90d01381)**: fix(orders): validate SMM target format and harden chat href scheme
 - **[4dffe998](https://github.com/nealmtroy/TeleBos/commit/4dffe998)**: fix(orders): settle a listing and its sale into one order (no phantom in-progress)
 - **[d9516199](https://github.com/nealmtroy/TeleBos/commit/d9516199)**: fix(scheduler): stop holding a DB connection during the adaptive-sync sleep
