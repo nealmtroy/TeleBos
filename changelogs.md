@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-16
+- **[86423981](https://github.com/nealmtroy/TeleBos/commit/86423981)**: fix(broadcast): handle frozen/banned accounts as account-level restrictions
 - **[4011998a](https://github.com/nealmtroy/TeleBos/commit/4011998a)**: fix(frontend): add missing upTo5 pricing i18n value type
 - **[7b0288d8](https://github.com/nealmtroy/TeleBos/commit/7b0288d8)**: fix(audit): harden sharding, broadcast, invite, auto-reply, auto-join, security and docs
 - **[8b0d8592](https://github.com/nealmtroy/TeleBos/commit/8b0d8592)**: fix(worker): cross-shard job ownership, anti-ban and job-exclusivity hardening

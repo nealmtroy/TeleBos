@@ -1224,6 +1224,7 @@ async def execute_broadcast(job_id: str):
             watermark_template = await _resolve_job_watermark(db, job_orm.user_id)
 
             account_snapshots = []
+            restricted_skipped = 0
             for acc_id_str in account_ids:
                 try:
                     acc_uuid = _uuid.UUID(acc_id_str)
@@ -1242,6 +1243,7 @@ async def execute_broadcast(job_id: str):
                     )
                     continue
                 if is_account_restricted(account):
+                    restricted_skipped += 1
                     logger.warning(
                         "Account %s is restricted (%s) by Telegram, skipping for broadcast",
                         acc_id_str,
@@ -1320,14 +1322,24 @@ async def execute_broadcast(job_id: str):
                 result = await db.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
                 db_job = result.scalar_one_or_none()
                 if db_job:
-                    db_job.status = "failed"
+                    if restricted_skipped and not account_snapshots:
+                        # Every sender is currently restricted by Telegram. Pause
+                        # (never cancel) so the job can resume once an account
+                        # recovers.
+                        db_job.status = "paused"
+                    else:
+                        db_job.status = "failed"
                     await db.commit()
             await _push_broadcast(
                 job_id_str,
-                "error",
+                "status" if (restricted_skipped and not account_snapshots) else "error",
                 {
-                    "status": "failed",
-                    "message": "No authorized Telegram accounts could be connected",
+                    "status": "paused" if (restricted_skipped and not account_snapshots) else "failed",
+                    "message": (
+                        "Semua akun pengirim dibatasi Telegram. Job dijeda."
+                        if (restricted_skipped and not account_snapshots)
+                        else "No authorized Telegram accounts could be connected"
+                    ),
                 },
             )
             return
