@@ -245,6 +245,12 @@ class ProfileUpdateRequest(BaseModel):
     bio: str | None = Field(None, max_length=500)
 
 
+class CheckUsernameResponse(BaseModel):
+    available: bool
+    reason: str
+    message: str
+
+
 class AccountHintRequest(BaseModel):
     phone: str
 

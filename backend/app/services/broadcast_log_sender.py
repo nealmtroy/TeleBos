@@ -104,6 +104,16 @@ def _format_cycle_summary(
         if len(error_logs) > MAX_LIST_DISPLAY:
             lines.append(f"<i>... dan {len(error_logs) - MAX_LIST_DISPLAY} target gagal lainnya</i>")
 
+    if skipped_logs:
+        lines.append("")
+        lines.append("<b>Dilewati / Menunggu</b>:")
+        for log in skipped_logs[:MAX_LIST_DISPLAY]:
+            target_display = html.escape(str(_get_val(log, "group_identifier") or ""))
+            reason = html.escape(str(_get_val(log, "error_type") or "Skipped"))
+            lines.append(f"⏳ {target_display} — {reason}")
+        if len(skipped_logs) > MAX_LIST_DISPLAY:
+            lines.append(f"<i>... dan {len(skipped_logs) - MAX_LIST_DISPLAY} target dilewati lainnya</i>")
+
     formatted = "\n".join(lines)
     # Telegram strict limit is 4096 characters
     if len(formatted) > 4000:

@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle,
   XCircle,
+  Clock,
   FileDown,
   Search,
   Filter,
@@ -110,6 +111,9 @@ export default function BroadcastLogsPage() {
         totalCount: log.total_groups,
         successCount: log.sent_count,
         errorCount: log.fail_count,
+        skippedCount: Array.isArray(log.details)
+          ? log.details.filter((d: any) => d.status === "skipped").length
+          : undefined,
       }))
       .sort((a, b) => a.cycleNumber - b.cycleNumber);
   }, [allLogs]);
@@ -259,6 +263,7 @@ export default function BroadcastLogsPage() {
                 <SelectItem value="all">{_("broadcastLogs.allStatuses")}</SelectItem>
                 <SelectItem value="success">{_("broadcastLogs.success")}</SelectItem>
                 <SelectItem value="error">{_("broadcastLogs.error")}</SelectItem>
+                <SelectItem value="skipped">{_("broadcastLogs.skipped")}</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex-1" />
@@ -366,6 +371,10 @@ export default function BroadcastLogsPage() {
                                   <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
                                     <CheckCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.success")}
                                   </span>
+                                ) : log.status === "skipped" ? (
+                                  <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400 font-medium">
+                                    <Clock className="h-3.5 w-3.5" /> {_("broadcastLogs.skipped")}
+                                  </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-medium">
                                     <XCircle className="h-3.5 w-3.5" /> {_("broadcastLogs.error")}
@@ -378,21 +387,37 @@ export default function BroadcastLogsPage() {
                                     className={cn(
                                       "px-2 py-0.5 rounded-full text-xs font-medium border",
                                       log.error_type === "flood" && "bg-amber-500/10 text-amber-800 border-amber-500/20 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
-                                      log.error_type === "banned" && "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
-                                      log.error_type === "admin_only" && "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
+                                      (log.error_type === "banned" || log.error_type === "muted_permanent") && "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
+                                      (log.error_type === "admin_only" || log.error_type === "muted_temporary") && "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
                                       log.error_type === "slowmode" && "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50",
-                                      (log.error_type === "invalid_username" || log.error_type === "invalid_link") && "bg-rose-500/10 text-rose-800 border-rose-500/20 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
+                                      (log.error_type === "invalid_username" || log.error_type === "invalid_link" || log.error_type === "private_channel") && "bg-rose-500/10 text-rose-800 border-rose-500/20 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50",
+                                      (log.error_type.startsWith("skipped") || log.error_type === "guest_restricted") && "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/60 dark:text-slate-300 dark:border-slate-800",
                                       !log.error_type && "bg-muted text-muted-foreground border-border"
                                     )}
                                   >
-                                    {log.error_type || "—"}
+                                    {log.error_type}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground/60">—</span>
                                 )}
                               </TableCell>
-                              <TableCell className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
-                                {log.error_message || "—"}
+                              <TableCell
+                                className="px-4 py-3 text-muted-foreground max-w-[200px] truncate"
+                                title={log.error_message || undefined}
+                              >
+                                {(() => {
+                                  if (log.error_type) {
+                                    const translated = _(`broadcastErrors.${log.error_type}`);
+                                    if (translated && translated !== `broadcastErrors.${log.error_type}`) {
+                                      if (log.error_type === "muted_temporary" && log.error_message) {
+                                        const timeMatch = log.error_message.match(/\(([^)]+ remaining)\)/);
+                                        if (timeMatch) return `${translated} (${timeMatch[1]})`;
+                                      }
+                                      return translated;
+                                    }
+                                  }
+                                  return log.error_message || "—";
+                                })()}
                               </TableCell>
                               <TableCell className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
                                 {log.sent_text || "—"}

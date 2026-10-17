@@ -201,11 +201,14 @@ async def _handle_command_action(
         return {"success": True}
 
     elif action == "update_profile":
-        from telethon.tl.functions.account import UpdateProfileRequest
+        from telethon.tl.functions.account import UpdateProfileRequest, UpdateUsernameRequest
+        from telethon.errors import UsernameNotModifiedError
 
         first_name = params.get("first_name")
         last_name = params.get("last_name")
         about = params.get("about")
+        username = params.get("username")
+
         req_kwargs: dict[str, Any] = {}
         if first_name is not None:
             req_kwargs["first_name"] = first_name
@@ -213,13 +216,65 @@ async def _handle_command_action(
             req_kwargs["last_name"] = last_name
         if about is not None:
             req_kwargs["about"] = about
-        res = await client(UpdateProfileRequest(**req_kwargs))
+
+        res = None
+        if req_kwargs:
+            res = await client(UpdateProfileRequest(**req_kwargs))
+
+        updated_username = None
+        if username is not None:
+            clean_username = username.strip().lstrip("@")
+            if clean_username:
+                try:
+                    user_res = await client(UpdateUsernameRequest(username=clean_username))
+                    updated_username = getattr(user_res, "username", clean_username)
+                except UsernameNotModifiedError:
+                    updated_username = clean_username
+
         return {
             "success": True,
-            "id": getattr(res, "id", None),
-            "first_name": getattr(res, "first_name", None),
-            "last_name": getattr(res, "last_name", None),
+            "id": getattr(res, "id", None) if res else None,
+            "first_name": getattr(res, "first_name", None) if res else None,
+            "last_name": getattr(res, "last_name", None) if res else None,
+            "username": updated_username,
         }
+
+    elif action == "check_username":
+        from telethon.tl.functions.account import CheckUsernameRequest
+        from telethon.errors import (
+            UsernameOccupiedError,
+            UsernameInvalidError,
+            UsernamePurchaseAvailableError,
+            FloodWaitError,
+        )
+
+        username = params.get("username", "").strip().lstrip("@")
+        if not username:
+            return {"available": False, "reason": "empty", "message": "Username is empty."}
+
+        current_user = await client.get_me()
+        if (getattr(current_user, "username", None) or "").lower() == username.lower():
+            return {"available": True, "reason": "current", "message": "Current username."}
+
+        try:
+            is_available = await client(CheckUsernameRequest(username=username))
+            return {
+                "available": bool(is_available),
+                "reason": "available" if is_available else "occupied",
+                "message": "Username is available." if is_available else "Username is already occupied.",
+            }
+        except UsernameOccupiedError:
+            return {"available": False, "reason": "occupied", "message": "Username is already occupied."}
+        except UsernamePurchaseAvailableError:
+            return {"available": False, "reason": "purchase_available", "message": "Username is collectible on Fragment."}
+        except UsernameInvalidError:
+            return {"available": False, "reason": "invalid", "message": "Invalid username format."}
+        except FloodWaitError as fwe:
+            return {
+                "available": False,
+                "reason": "flood_wait",
+                "message": f"Too many requests to Telegram. Wait {fwe.seconds}s.",
+            }
 
     elif action == "get_authorizations":
         from telethon.tl.functions.account import GetAuthorizationsRequest

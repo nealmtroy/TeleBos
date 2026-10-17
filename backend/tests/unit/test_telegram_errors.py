@@ -73,3 +73,30 @@ def test_classifies_send_code_unavailable():
     # The RPC-text fallback must agree even when the concrete type is unavailable.
     err_type2, _ = classify_telegram_error(TelegramRpcTextError("SEND_CODE_UNAVAILABLE"))
     assert err_type2 == "code_unavailable"
+
+
+def test_classifies_channel_private_and_muted_diagnostics():
+    from telethon.errors import ChannelPrivateError
+
+    err_type, msg = classify_telegram_error(ChannelPrivateError(request=None))
+    assert err_type == "private_channel"
+    assert "banned/kicked" in msg
+
+    # Muted wrapped inside CHAT_WRITE_FORBIDDEN
+    err_type, msg = classify_telegram_error(
+        ValueError("CHAT_WRITE_FORBIDDEN: You are muted temporarily until 18-10-2026 12:00 UTC (15m remaining)")
+    )
+    assert err_type == "muted_temporary"
+    assert "15m remaining" in msg
+
+    err_type, msg = classify_telegram_error(
+        ValueError("CHAT_WRITE_FORBIDDEN: You are muted in this group")
+    )
+    assert err_type == "muted_permanent"
+
+    # Discussion group requirement
+    err_type, msg = classify_telegram_error(
+        TelegramRpcTextError("CHAT_WRITE_FORBIDDEN: You need to join the discussion group before commenting")
+    )
+    assert err_type == "must_join_discussion"
+

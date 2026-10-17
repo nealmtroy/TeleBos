@@ -44,7 +44,7 @@ Security documentation for TeleBos — a multi-account Telegram manager.
   - **Ban & Suspension Synchronization**: Helper `restore_user_if_ban_expired` (`dependencies.py`) memeriksa masa suspensi pada saat request ingress dan melakukan sinkronisasi status aktif dan ban reason pada kedua tabel secara atomik tanpa premature commit.
 - **Password Hashing**: Kelolaan kata sandi pengguna ditangani oleh Better Auth menggunakan bcrypt di dalam tabel `"account"`. Kolom legacy `users.password_hash` bersifat nullable dan tidak lagi digunakan untuk autentikasi aktif.
 - **Account Ownership Check**: Setiap endpoint account/device/chat memverifikasi kecocokan `user_id` terhadap pengguna terotentikasi sebelum mengembalikan data atau mengeksekusi aksi.
-- **Role System**: `User.role` memiliki nilai `freetrial`, `basic`, `pro`, `premium`, dan `owner`. `require_role()` menegakkan daftar peran terotorisasi pada endpoint terproteksi.
+- **Role System**: `User.role` memiliki nilai `freetrial`, `basic`, `pro`, `premium`, dan `owner` (dipetakan pada tier etalase sebagai Free Trial, Starter, Pro, Business, dan Owner Access sesuai `docs/subscription_plans_monthly_yearly.md`). `require_role()` menegakkan daftar peran terotorisasi pada endpoint terproteksi.
 
 ### Data Protection
 - **Session encryption**: All Telegram session strings encrypted with Fernet symmetric cipher before DB storage

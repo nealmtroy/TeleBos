@@ -832,10 +832,10 @@ async def update_profile(
     tg_last_name = last_name if last_name is not None else (account.last_name or "")
     tg_bio = bio if bio is not None else (account.bio or "")
 
-    # Telegram has no API for removing a username, and UpdateUsernameRequest
-    # rejects an empty value. Clearing it is a local-only change; only a real
-    # value is pushed.
-    new_username = username if username else None
+    # Only a non-empty username is pushed to Telegram. Clearing is kept local-only
+    # to avoid USERNAME_NOT_MODIFIED errors on Telegram.
+    clean_username = username.strip().lstrip("@") if username is not None else None
+    new_username = clean_username if clean_username else None
 
     from app.config import get_settings
     from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
@@ -843,16 +843,30 @@ async def update_profile(
     settings = get_settings()
     if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
         try:
+            params: dict[str, Any] = {
+                "first_name": tg_first_name,
+                "last_name": tg_last_name,
+                "about": tg_bio,
+            }
+            if new_username is not None and new_username != account.username:
+                params["username"] = new_username
+
             await execute_telegram_command(
                 account_id=str(account.id),
                 action="update_profile",
-                params={
-                    "first_name": tg_first_name,
-                    "last_name": tg_last_name,
-                    "about": tg_bio,
-                },
+                params=params,
             )
         except TelegramCommandError as exc:
+            if exc.code == "UsernameOccupiedError":
+                raise RuntimeError("Username sudah digunakan oleh akun lain.")
+            elif exc.code == "UsernameInvalidError":
+                raise RuntimeError("Format username tidak valid. Username minimal 5 karakter, hanya boleh berisi huruf, angka, dan underscore.")
+            elif exc.code == "UsernamePurchaseAvailableError":
+                raise RuntimeError("Username ini hanya tersedia melalui lelang Fragment.")
+            elif exc.code == "AboutTooLongError":
+                raise RuntimeError("Bio terlalu panjang.")
+            elif exc.code == "FLOOD_WAIT":
+                raise RuntimeError("Terlalu banyak permintaan. Silakan coba lagi beberapa saat lagi.")
             raise RuntimeError(str(exc))
     else:
         session_str = decrypt(account.session_string)
@@ -864,6 +878,7 @@ async def update_profile(
         from telethon.errors import (
             UsernameOccupiedError,
             UsernameInvalidError,
+            UsernamePurchaseAvailableError,
             AboutTooLongError,
             FloodWaitError,
             RPCError,
@@ -882,6 +897,8 @@ async def update_profile(
             raise RuntimeError("Username sudah digunakan oleh akun lain.")
         except UsernameInvalidError:
             raise RuntimeError("Format username tidak valid. Username minimal 5 karakter, hanya boleh berisi huruf, angka, dan underscore.")
+        except UsernamePurchaseAvailableError:
+            raise RuntimeError("Username ini hanya tersedia melalui lelang Fragment.")
         except AboutTooLongError:
             raise RuntimeError("Bio terlalu panjang.")
         except FloodWaitError as exc:
@@ -896,12 +913,95 @@ async def update_profile(
     if last_name is not None:
         account.last_name = last_name or None
     if username is not None:
-        account.username = username or None
+        account.username = clean_username or None
     if bio is not None:
         account.bio = bio or None
 
     await db.flush()
     return account
+
+
+async def check_username_availability(
+    db: AsyncSession,
+    account: TelegramAccount,
+    username: str,
+) -> dict[str, Any]:
+    """Check if a username is available on Telegram and valid by Telegram rules."""
+    clean_username = username.strip().lstrip("@")
+    if not clean_username:
+        return {"available": False, "reason": "empty", "message": "Username tidak boleh kosong."}
+
+    current = (account.username or "").strip().lstrip("@")
+    if clean_username.lower() == current.lower():
+        return {"available": True, "reason": "current", "message": "Username saat ini."}
+
+    # Format validations (Telegram MTProto specification)
+    import re
+    if len(clean_username) < 5:
+        return {"available": False, "reason": "too_short", "message": "Username minimal 5 karakter."}
+    if len(clean_username) > 32:
+        return {"available": False, "reason": "too_long", "message": "Username maksimal 32 karakter."}
+    if not re.match(r"^[a-zA-Z]", clean_username):
+        return {"available": False, "reason": "starts_with_digit", "message": "Username tidak boleh diawali dengan angka."}
+    if not re.match(r"^[a-zA-Z0-9_]+$", clean_username):
+        return {"available": False, "reason": "invalid_characters", "message": "Username hanya boleh huruf, angka, dan underscore."}
+    if "__" in clean_username or clean_username.endswith("_"):
+        return {"available": False, "reason": "invalid_format", "message": "Format username tidak valid."}
+
+    from app.config import get_settings
+    settings = get_settings()
+
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+        try:
+            res = await execute_telegram_command(
+                account_id=str(account.id),
+                action="check_username",
+                params={"username": clean_username},
+            )
+            return res if isinstance(res, dict) else {"available": bool(res), "reason": "available", "message": "Username tersedia."}
+        except TelegramCommandError as exc:
+            if exc.code == "UsernameOccupiedError":
+                return {"available": False, "reason": "occupied", "message": "Username sudah digunakan oleh akun lain."}
+            elif exc.code == "UsernamePurchaseAvailableError":
+                return {"available": False, "reason": "purchase_available", "message": "Username ini hanya tersedia melalui lelang Fragment."}
+            elif exc.code == "UsernameInvalidError":
+                return {"available": False, "reason": "invalid", "message": "Format username tidak valid menurut Telegram."}
+            elif exc.code == "FLOOD_WAIT":
+                return {"available": False, "reason": "flood_wait", "message": "Terlalu banyak permintaan cek ke Telegram. Coba lagi sesaat."}
+            raise RuntimeError(f"Gagal memeriksa username: {exc.message}")
+    else:
+        session_str = decrypt(account.session_string)
+        client = await client_pool.get(str(account.id), session_str)
+        if client is None:
+            raise AccountDisconnectedError("Account is disconnected. Please re-login.")
+
+        from telethon.tl.functions.account import CheckUsernameRequest
+        from telethon.errors import (
+            UsernameOccupiedError,
+            UsernameInvalidError,
+            UsernamePurchaseAvailableError,
+            FloodWaitError,
+            RPCError,
+        )
+
+        try:
+            is_avail = await client(CheckUsernameRequest(username=clean_username))
+            return {
+                "available": bool(is_avail),
+                "reason": "available" if is_avail else "occupied",
+                "message": "Username tersedia." if is_avail else "Username sudah digunakan oleh akun lain.",
+            }
+        except UsernameOccupiedError:
+            return {"available": False, "reason": "occupied", "message": "Username sudah digunakan oleh akun lain."}
+        except UsernamePurchaseAvailableError:
+            return {"available": False, "reason": "purchase_available", "message": "Username ini hanya tersedia melalui lelang Fragment."}
+        except UsernameInvalidError:
+            return {"available": False, "reason": "invalid", "message": "Format username tidak valid menurut Telegram."}
+        except FloodWaitError as exc:
+            return {"available": False, "reason": "flood_wait", "message": f"Terlalu banyak permintaan. Silakan tunggu {exc.seconds} detik."}
+        except RPCError as exc:
+            raise RuntimeError(f"Gagal memeriksa username: {exc.message}")
 
 
 def _sync_write_bytes(path: str, data: bytes) -> None:

@@ -106,38 +106,49 @@ The platform must support:
 
 ## 4. Roles and Entitlements
 
+The product defines a unified commercial and technical tier structure where commercial plans map directly to database role primitives:
+
+**Naming Structure:** `Free Trial` (`freetrial`) → `Starter` (`basic`) → `Pro` (`pro`) → `Business` (`premium`) → `Owner Access` (`owner`).
+
 The canonical product role hierarchy is `freetrial` < `basic` < `pro` < `premium` < `owner`.
 
 ### 4.1 Free Trial Policy (5-Hour Anti-Abuse Window)
 
 - **Initial Tier & Auto-Provisioning:** Every new user account is automatically assigned the `freetrial` role upon registration via the Better Auth creation hook.
 - **5-Hour Lifetime Invariant:** The trial duration is strictly set to **5 hours** from registration (`subscription_expires_at = NOW() + INTERVAL '5 hours'`). This bounded window acts as an essential platform anti-abuse defense, preventing automated disposable bot accounts from exploiting cloud broadcast queues and proxy bandwidth without commercial commitment.
-- **Trial Scope:** Users during the 5-hour trial can connect 1 Telegram account, test real-time direct chats, and evaluate the auto-reply responder engine. Heavy mass automation (broadcast campaigns, auto-join queues, bulk invitation) is gated and requires upgrading to `basic`, `pro`, or `premium`.
+- **Trial Scope:** Users during the 5-hour trial can connect 1 Telegram account, test real-time direct chats, and evaluate the auto-reply responder engine. Heavy mass automation (broadcast campaigns, auto-join queues, bulk invitation) is gated and requires upgrading to `basic` (Starter), `pro` (Pro), or `premium` (Business).
 - **Expiration & Downgrade Behavior:** When the 5-hour trial expires (`subscription_expires_at < NOW()`), active automation is suspended until an upgrade is completed. Similarly, when a paid subscription (`basic`, `pro`, `premium`) expires without renewal, the system automatically downgrades the role back to `freetrial` (`services/redeem_service.py:344`).
 
-### 4.2 Entitlements Matrix
+### 4.2 Entitlements & Pricing Matrix
 
-| Capability | Free Trial (5h) | Basic | Pro | Premium | Owner |
+Reference specification: `docs/subscription_plans_monthly_yearly.md` and `frontend/src/data/plans.ts`.
+
+| Dimension / Capability | Free Trial (`freetrial`) | Starter (`basic`) | Pro (`pro`) | Business (`premium`) | Owner (`owner`) |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Connect and manage accounts | 1 Account | 1 Account | Up to 3 | Up to 5 | Unlimited |
-| Real-time chats & obrolan teks | Yes | Yes | Yes | Yes | Yes |
-| Contacts and advanced account operations | No | No | Yes | Yes | Yes |
-| Auto-reply responder engine | Yes | Yes | Yes | Yes | Yes |
-| Broadcast workflows | No | Limited (Watermarked) | Yes | Yes | Yes |
-| Auto-join groups & channels | No | Yes | Yes | Yes | Yes |
-| Bulk invites & member scraping | No | No | Yes | Yes | Yes |
-| Marketplace and SMM ordering | Yes | Yes | Yes | Yes | Yes |
-| Top up and withdraw balance | Yes | Yes | Yes | Yes | Yes |
-| Voucher, service, price, and user administration | No | No | No | No | Yes |
+| **Monthly Price** | Gratis | Rp5.000/bulan | Rp10.000/bulan | Rp20.000/bulan | Internal |
+| **Yearly Price (Hemat 16,7%)** | — | Rp50.000/tahun | Rp100.000/tahun | Rp200.000/tahun | Internal |
+| **Yearly Equivalent** | — | Rp4.167/bulan | Rp8.333/bulan | Rp16.667/bulan | Internal |
+| **Connected Accounts** | 1 Account | 1 Account | Up to 3 | Up to 5 | Unlimited |
+| **Broadcast Watermark** | ✅ Ya | ✅ Ya | ❌ Tidak | ❌ Tidak | ❌ Tidak |
+| **Age Checker** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Public Index Groups & Channels** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Auto Join Groups & Channels** | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Auto Reply Responder** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Member Inviter & Scraping** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Real-time Chats & Obrolan** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Contacts & VCF Export/Import** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Marketplace & SMM Ordering** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Top Up & Withdraw Balance** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
+| **System & User Administration** | ❌ Tidak | ❌ Tidak | ❌ Tidak | ❌ Tidak | ✅ Ya |
 
 ### Broadcast free-tier rules
 
-Accounts on the `basic` plan broadcast under two additional constraints, both
+Accounts on the `basic` (Starter) plan broadcast under two additional constraints, both
 owner-configurable:
 
 - **Watermark.** Every outgoing message is stamped with the configured
   watermark template. The default resolves `{official}` to the official
-  channel handle. Paid roles are never watermarked.
+  channel handle. Paid roles (`pro`, `premium`) are never watermarked.
 - **Daily send-time budget.** The free tier may consume a bounded amount of
   broadcast send time per UTC day (5 hours by default). Only time actually
   spent delivering a message is charged, so configured delays and flood-wait

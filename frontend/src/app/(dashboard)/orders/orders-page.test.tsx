@@ -26,9 +26,9 @@ const mockItems: UnifiedOrder[] = [
     orderIdDisplay: "#TB-ORD12345",
     type: "smm",
     typeName: "SMM Order",
-    serviceName: "Instagram Followers High Quality",
-    serviceSublabel: "Instagram",
-    detail: "@test_profile",
+    serviceName: "Telegram Channel Members High Quality",
+    serviceSublabel: "Telegram",
+    detail: "@test_channel",
     quantityDisplay: "1,000 Pengikut",
     quantityRaw: 1000,
     priceDisplay: "Rp 25,000",
@@ -166,7 +166,7 @@ describe("OrderHistoryPage Component Decomposition (TASK-31)", () => {
     const idElements = screen.getAllByText("#TB-ORD12345");
     expect(idElements.length).toBeGreaterThanOrEqual(1);
 
-    const serviceElements = screen.getAllByText("Instagram Followers High Quality");
+    const serviceElements = screen.getAllByText("Telegram Channel Members High Quality");
     expect(serviceElements.length).toBeGreaterThanOrEqual(1);
 
     const accountDetail = screen.getAllByText("+6281234567890");

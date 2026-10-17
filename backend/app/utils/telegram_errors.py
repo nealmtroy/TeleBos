@@ -96,6 +96,31 @@ try:
 except ImportError:
     SendCodeUnavailableError = None
 
+try:
+    from telethon.errors import (
+        TopicClosedError,
+        TopicDeletedError,
+        ForumClosedError,
+        ChatSendMediaForbiddenError,
+        ChatSendStickersForbiddenError,
+        ChatSendGifsForbiddenError,
+        ChatRestrictedError,
+        UserIsBlockedError,
+        SessionExpiredError,
+        UserDeactivatedError,
+    )
+except ImportError:
+    TopicClosedError = None
+    TopicDeletedError = None
+    ForumClosedError = None
+    ChatSendMediaForbiddenError = None
+    ChatSendStickersForbiddenError = None
+    ChatSendGifsForbiddenError = None
+    ChatRestrictedError = None
+    UserIsBlockedError = None
+    SessionExpiredError = None
+    UserDeactivatedError = None
+
 
 
 # ── AddChatUserRequest / InviteToChannelRequest specific errors ────────
@@ -220,7 +245,10 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
         return ("invalid_link", "Invite link is expired or invalid")
 
     if isinstance(exc, ChannelPrivateError):
-        return ("private_channel", "Channel is private and account is not a member")
+        return (
+            "private_channel",
+            "Channel is private or account has been banned/kicked from this group by admin/bot",
+        )
 
     if isinstance(exc, UserNotParticipantError):
         return ("not_member", "Account is not a member of this group/channel")
@@ -252,11 +280,34 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if isinstance(exc, MessageEmptyError):
         return ("message_empty", "Message text is empty")
 
-    if isinstance(exc, (AuthKeyUnregisteredError, AuthKeyDuplicatedError, SessionRevokedError)):
+    if isinstance(exc, (AuthKeyUnregisteredError, AuthKeyDuplicatedError, SessionRevokedError)) or (
+        SessionExpiredError and isinstance(exc, SessionExpiredError)
+    ):
         return ("session_revoked", "Telegram session has been revoked or expired")
 
-    if isinstance(exc, UserDeactivatedBanError):
+    if isinstance(exc, UserDeactivatedBanError) or (
+        UserDeactivatedError and isinstance(exc, UserDeactivatedError)
+    ):
         return ("user_deactivated", "The sending account has been banned/deactivated by Telegram")
+
+    if (TopicClosedError and isinstance(exc, TopicClosedError)) or (
+        ForumClosedError and isinstance(exc, ForumClosedError)
+    ):
+        return ("topic_closed", "This forum topic is closed by group admins")
+
+    if TopicDeletedError and isinstance(exc, TopicDeletedError):
+        return ("topic_closed", "This forum topic has been deleted")
+
+    if (ChatSendMediaForbiddenError and isinstance(exc, ChatSendMediaForbiddenError)) or (
+        ChatSendStickersForbiddenError and isinstance(exc, ChatSendStickersForbiddenError)
+    ) or (ChatSendGifsForbiddenError and isinstance(exc, ChatSendGifsForbiddenError)):
+        return ("media_forbidden", "Group policy restricts sending media/stickers/links for members")
+
+    if UserIsBlockedError and isinstance(exc, UserIsBlockedError):
+        return ("user_blocked", "Account is blocked by the user or bot")
+
+    if ChatRestrictedError and isinstance(exc, ChatRestrictedError):
+        return ("banned", "Account is restricted in this chat")
 
     if isinstance(exc, ChatForbiddenError):
         return ("channel_forbidden", "Account was kicked from or is forbidden to access this channel")
@@ -365,8 +416,34 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
         seconds = match.group(1) if match else "?"
         return ("flood", f"Flood wait: {seconds} seconds")
 
+    if "muted" in msg.lower() or "you are muted" in msg.lower():
+        clean_msg = re.sub(r"^CHAT_WRITE_FORBIDDEN:\s*", "", msg, flags=re.IGNORECASE).strip()
+        if "temporary" in msg.lower() or "sementara" in msg.lower() or "remaining" in msg.lower():
+            return ("muted_temporary", clean_msg)
+        return ("muted_permanent", "Account is permanently muted in this group by admin")
+
     if "CHAT_WRITE_FORBIDDEN" in msg:
-        return ("admin_only", "Only admins can send messages here")
+        if "need to join" in msg.lower() or "join the group" in msg.lower():
+            return ("must_join_discussion", "You must join the discussion group before commenting")
+        return ("admin_only", "Only admins can send messages in this group")
+
+    if "CHANNEL_PRIVATE" in msg:
+        return (
+            "private_channel",
+            "Channel is private or account has been banned/kicked from this group by admin/bot",
+        )
+
+    if "CHAT_ADMIN_REQUIRED" in msg:
+        return ("admin_only", "Admin privileges required to perform this action")
+
+    if "INVITE_HASH_EXPIRED" in msg or "INVITE_HASH_INVALID" in msg:
+        return ("invalid_link", "Invite link is expired or invalid")
+
+    if "TOPIC_CLOSED" in msg or "FORUM_CLOSED" in msg:
+        return ("topic_closed", "This forum topic is closed by group admins")
+
+    if "TOPIC_DELETED" in msg:
+        return ("topic_closed", "This forum topic has been deleted")
 
     if "USER_BANNED" in msg:
         return ("banned", "User is banned from this chat")
@@ -422,13 +499,6 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
     if "INPUT_USER_DEACTIVATED" in msg:
         return ("deactivated", "User account is deactivated")
 
-    if "CHAT_WRITE_FORBIDDEN" in msg:
-        # Could be permanent admin_only or temporary new-member restriction.
-        # Default to a softer "admin_only" so the caller decides retryability.
-        if "need to join" in msg.lower() or "join the group" in msg.lower():
-            return ("must_join_discussion", "You must join the discussion group before commenting")
-        return ("admin_only", "Only admins can send messages in this group")
-
     if "JOIN_GROUP" in msg or "join the discussion" in msg.lower() or "before commenting" in msg.lower():
         return ("must_join_discussion", "You must join the discussion group before commenting")
 
@@ -442,9 +512,6 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
         or "too new and cannot be used to reset" in msg.lower()
     ):
         return ("fresh_reset_forbidden", "The current session is too new and cannot be used to reset other authorizations yet. Please wait a few hours or days before trying again.")
-
-    if "muted" in msg.lower() or "you are muted" in msg.lower():
-        return ("muted", "Account is muted/restricted from sending messages in this group")
 
     if "only admins" in msg.lower():
         return ("admin_only", "Only admins can send messages in this group")

@@ -24,11 +24,17 @@ import {
   Clock,
   Folder,
   User,
+  Users,
   Radio,
   CheckCircle2,
   Send,
   Smartphone,
   Layers,
+  Copy,
+  Check,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import {
@@ -45,6 +51,59 @@ import { useAccounts } from "@/hooks/use-accounts";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DataPagination } from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { getAvatarInitial, getTelegramAvatarColor } from "@/lib/avatar";
+
+function CopyableItem({
+  value,
+  label,
+  className,
+}: {
+  value: string | null;
+  label?: string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return <span className="font-mono text-muted-foreground/60">—</span>;
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard not available
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={copied ? "Tersalin!" : `Salin ${label || value}`}
+      className={cn(
+        "inline-flex items-center gap-1 font-mono hover:text-primary transition-colors cursor-pointer group text-left",
+        className
+      )}
+    >
+      <span className="truncate">{value}</span>
+      {copied ? (
+        <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground/60 group-hover:text-primary transition-colors shrink-0" />
+      )}
+    </button>
+  );
+}
 
 const PAGE_SIZE = 10;
 
@@ -134,6 +193,47 @@ export default function BroadcastHistoryPage() {
   const pagedJobs = useMemo(
     () => (jobs ?? []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [jobs, page]
+  );
+
+  // ── Account details & expansion state ──────────────────────────────────
+  const [selectedJobForAccounts, setSelectedJobForAccounts] = useState<BroadcastJob | null>(null);
+  const [expandedMobileJobs, setExpandedMobileJobs] = useState<Record<string, boolean>>({});
+
+  const toggleMobileJobExpand = useCallback((jobId: string) => {
+    setExpandedMobileJobs((prev) => ({ ...prev, [jobId]: !prev[jobId] }));
+  }, []);
+
+  const getAccountData = useCallback(
+    (accId: string) => {
+      const acc = accounts?.find((a) => a.id === accId);
+      if (!acc) {
+        return {
+          id: accId,
+          name: "Unknown Account",
+          phone: "—",
+          telegramId: null,
+          username: null,
+          isActive: false,
+          initials: "?",
+          color: "#6C61DF",
+        };
+      }
+      const fullName = [acc.first_name, acc.last_name].filter(Boolean).join(" ").trim();
+      const name = fullName || acc.username || acc.phone || "Account";
+      const initials = getAvatarInitial(acc.first_name, acc.phone);
+      const color = getTelegramAvatarColor(acc.telegram_id || acc.id, acc.color_id);
+      return {
+        id: acc.id,
+        name,
+        phone: acc.phone || "—",
+        telegramId: acc.telegram_id,
+        username: acc.username,
+        isActive: acc.is_active,
+        initials,
+        color,
+      };
+    },
+    [accounts]
   );
 
   // ── Shared display helpers (desktop table & mobile cards) ───────────────
@@ -447,7 +547,7 @@ export default function BroadcastHistoryPage() {
                       {formatDate(job.created_at)}
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
-                      <div className="space-y-1.5 text-xs max-w-[250px]">
+                      <div className="space-y-1.5 text-xs max-w-[260px]">
                         <div className="flex items-center gap-1.5 text-foreground font-medium">
                           <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-muted-foreground font-normal">{_("broadcastHistory.groupList")}:</span>
@@ -468,29 +568,102 @@ export default function BroadcastHistoryPage() {
                             )}
                           </span>
                         </div>
+                        {/* Delay per group & cycle delay */}
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span>
+                            {_("broadcastHistory.delayPerGroup")}: <strong className="text-foreground">{job.delay_per_group}s</strong>
+                            {job.delay_randomized ? ` (${_("broadcastHistory.delayRandomized")})` : ""}
+                            {" · "}
+                            {_("broadcastHistory.cycleDelay")}: <strong className="text-foreground">{job.delay_after_all}s</strong>
+                          </span>
+                        </div>
+                        {/* Telegram cycle log destination if enabled */}
+                        {job.log_destination && job.log_destination !== "web_only" && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[11px] text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-200/80 dark:border-sky-800/60 font-mono truncate max-w-[240px]"
+                            title={`${_("broadcastHistory.telegramLog")}: ${job.log_destination}`}
+                          >
+                            <Radio className="h-3 w-3 text-sky-500 shrink-0" />
+                            <span className="truncate">{_("broadcastHistory.telegramLog")}: {job.log_destination}</span>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {job.account_ids.map((accId) => {
-                          const acc = accounts?.find((a) => a.id === accId);
+                      {job.account_ids.length === 0 ? (
+                        <span className="text-xs text-muted-foreground/60 italic">—</span>
+                      ) : job.account_ids.length === 1 ? (
+                        (() => {
+                          const acc = getAccountData(job.account_ids[0]);
                           return (
-                            <span
-                              key={accId}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 text-[11px] font-semibold border border-blue-200/80 dark:border-blue-800/60 whitespace-nowrap"
-                              title={acc ? `${acc.first_name || ""} (${acc.phone})` : accId}
+                            <div
+                              onClick={() => setSelectedJobForAccounts(job)}
+                              className="space-y-1 text-xs max-w-[220px] p-2 rounded-lg bg-muted/30 hover:bg-muted/60 border border-border/50 transition cursor-pointer group"
+                              title={_("broadcastHistory.viewDetails")}
                             >
-                              <User className="h-3 w-3 shrink-0" />
-                              <span className="max-w-[100px] truncate">
-                                {acc ? acc.first_name || acc.phone : "Unknown"}
-                              </span>
-                            </span>
+                              <div className="font-semibold text-foreground flex items-center gap-1.5 truncate">
+                                <div
+                                  className="h-5 w-5 rounded-full font-bold text-white flex items-center justify-center text-[9px] shrink-0"
+                                  style={{ backgroundColor: acc.color }}
+                                >
+                                  {acc.initials}
+                                </div>
+                                <span className="truncate group-hover:text-primary transition-colors">{acc.name}</span>
+                                {acc.username && (
+                                  <span className="text-[10px] text-muted-foreground font-mono truncate">@{acc.username}</span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground font-mono space-y-0.5 pl-6.5">
+                                <div className="truncate">ID: {acc.telegramId ?? "—"}</div>
+                                <div className="truncate">{acc.phone}</div>
+                              </div>
+                            </div>
                           );
-                        })}
-                        {job.account_ids.length === 0 && (
-                          <span className="text-xs text-muted-foreground/60 italic">—</span>
-                        )}
-                      </div>
+                        })()
+                      ) : (
+                        (() => {
+                          const firstAcc = getAccountData(job.account_ids[0]);
+                          return (
+                            <div className="space-y-1.5 text-xs max-w-[220px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-[11px] font-semibold border border-blue-200/80 dark:border-blue-800/60">
+                                  <Users className="h-3 w-3" />
+                                  {job.account_ids.length} {_("broadcastHistory.accounts")}
+                                </span>
+                              </div>
+                              {/* First account quick preview */}
+                              <div
+                                onClick={() => setSelectedJobForAccounts(job)}
+                                className="p-1.5 rounded-lg bg-muted/30 hover:bg-muted/60 border border-border/50 text-[11px] cursor-pointer group transition"
+                                title={_("broadcastHistory.viewDetails")}
+                              >
+                                <div className="font-semibold text-foreground truncate flex items-center gap-1">
+                                  <div
+                                    className="h-4 w-4 rounded-full font-bold text-white flex items-center justify-center text-[8px] shrink-0"
+                                    style={{ backgroundColor: firstAcc.color }}
+                                  >
+                                    {firstAcc.initials}
+                                  </div>
+                                  <span className="truncate group-hover:text-primary transition-colors">{firstAcc.name}</span>
+                                </div>
+                                <div className="text-[10px] text-muted-foreground font-mono pl-5 truncate">
+                                  ID: {firstAcc.telegramId ?? "—"} · {firstAcc.phone}
+                                </div>
+                              </div>
+                              {/* Trigger button for dialog */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedJobForAccounts(job)}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 hover:underline cursor-pointer"
+                              >
+                                <span>+{job.account_ids.length - 1} {_("broadcastHistory.showMoreAccounts")}</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </button>
+                            </div>
+                          );
+                        })()
+                      )}
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
                       <Badge
@@ -605,26 +778,108 @@ export default function BroadcastHistoryPage() {
                         : getTextListName(job.text_list_id)}
                     </span>
                   </div>
+                  {/* Delay details */}
+                  <div className="flex items-center gap-1.5 min-w-0 text-muted-foreground text-[11px]">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      {_("broadcastHistory.delayPerGroup")}: <strong className="text-foreground">{job.delay_per_group}s</strong>
+                      {job.delay_randomized ? ` (${_("broadcastHistory.delayRandomized")})` : ""}
+                      {" · "}
+                      {_("broadcastHistory.cycleDelay")}: <strong className="text-foreground">{job.delay_after_all}s</strong>
+                    </span>
+                  </div>
+                  {/* Telegram cycle log destination if enabled */}
+                  {job.log_destination && job.log_destination !== "web_only" && (
+                    <div className="flex items-center gap-1.5 min-w-0 text-[11px] text-sky-700 dark:text-sky-400">
+                      <Radio className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                      <span className="truncate">
+                        {_("broadcastHistory.telegramLog")}: <strong className="font-mono">{job.log_destination}</strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Accounts */}
-                <div className="flex flex-wrap gap-1">
-                  {job.account_ids.map((accId) => (
-                    <span
-                      key={accId}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 text-[11px] font-semibold border border-blue-200/80 dark:border-blue-800/60"
-                      title={accountLabel(accId)}
-                    >
-                      <User className="h-3 w-3 shrink-0" />
-                      <span className="max-w-[120px] truncate">
-                        {accountName(accId)}
-                      </span>
+                <div className="space-y-2 pt-1 border-t border-border/50">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      {_("broadcastHistory.accounts")} ({job.account_ids.length})
                     </span>
-                  ))}
-                  {job.account_ids.length === 0 && (
-                    <span className="text-xs text-muted-foreground/60 italic">
-                      —
-                    </span>
+                    {job.account_ids.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleMobileJobExpand(job.id)}
+                        className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        {expandedMobileJobs[job.id] ? (
+                          <>
+                            {_("broadcastHistory.showLessAccounts")} <ChevronUp className="h-3 w-3" />
+                          </>
+                        ) : (
+                          <>
+                            {_("broadcastHistory.showAllAccounts")} ({job.account_ids.length}) <ChevronDown className="h-3 w-3" />
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {job.account_ids.length === 0 ? (
+                    <span className="text-xs text-muted-foreground/60 italic">—</span>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {(expandedMobileJobs[job.id] ? job.account_ids : job.account_ids.slice(0, 2)).map((accId) => {
+                        const acc = getAccountData(accId);
+                        return (
+                          <div
+                            key={accId}
+                            className="p-2 rounded-lg bg-muted/40 hover:bg-muted/60 border border-border/60 flex items-center justify-between gap-2 text-xs transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className="h-7 w-7 rounded-full font-bold text-white flex items-center justify-center text-[10px] shrink-0"
+                                style={{ backgroundColor: acc.color }}
+                              >
+                                {acc.initials}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                                  <span className="truncate">{acc.name}</span>
+                                  {acc.username && (
+                                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                                      @{acc.username}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5 truncate">
+                                  <span>ID: {acc.telegramId ?? "—"}</span>
+                                  <span className="text-muted-foreground/40">•</span>
+                                  <span>{acc.phone}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedJobForAccounts(job)}
+                              title={_("broadcastHistory.viewDetails")}
+                              className="p-1 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {!expandedMobileJobs[job.id] && job.account_ids.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleMobileJobExpand(job.id)}
+                          className="w-full py-1 text-center text-[11px] font-medium text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 rounded-md border border-primary/20 transition cursor-pointer"
+                        >
+                          + {job.account_ids.length - 2} {_("broadcastHistory.showMoreAccounts")}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -703,6 +958,88 @@ export default function BroadcastHistoryPage() {
         cancelText={_("navbar.cancel")}
         variant="warning"
       />
+
+      {/* Account Details Modal */}
+      <Dialog
+        open={!!selectedJobForAccounts}
+        onOpenChange={(open) => !open && setSelectedJobForAccounts(null)}
+      >
+        <DialogContent className="max-w-md sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              {_("broadcastHistory.accountsModalTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {_("broadcastHistory.accountsModalDesc")} (
+              {selectedJobForAccounts?.account_ids.length ?? 0} {_("broadcastHistory.accounts")})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            {selectedJobForAccounts?.account_ids.map((accId) => {
+              const acc = getAccountData(accId);
+              return (
+                <div
+                  key={accId}
+                  className="p-3 rounded-xl border border-border bg-card/60 hover:bg-muted/40 transition flex items-start justify-between gap-3"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div
+                      className="h-10 w-10 rounded-full font-bold text-white flex items-center justify-center text-sm shrink-0 shadow-xs"
+                      style={{ backgroundColor: acc.color }}
+                    >
+                      {acc.initials}
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground text-sm truncate" title={acc.name}>
+                          {acc.name}
+                        </span>
+                        {acc.username && (
+                          <span className="text-xs text-muted-foreground font-mono">
+                            @{acc.username}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className="font-medium text-[11px] uppercase tracking-wider">ID:</span>
+                          <CopyableItem value={acc.telegramId ? String(acc.telegramId) : null} label="User ID" />
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Smartphone className="h-3 w-3 shrink-0" />
+                          <CopyableItem value={acc.phone !== "—" ? acc.phone : null} label="Nomor HP" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 pt-0.5">
+                    {acc.isActive ? (
+                      <Badge variant="success" className="text-[10px] px-1.5 py-0.5 font-medium">
+                        {_("broadcastHistory.active")}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-medium">
+                        {_("broadcastHistory.inactive")}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="sm:justify-end">
+            <Button variant="outline" size="sm" onClick={() => setSelectedJobForAccounts(null)}>
+              {_("navbar.cancel") || "Tutup"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

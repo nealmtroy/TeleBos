@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useAccount, useAccountTwoFAStatus, useUploadProfilePhoto, useDeleteProfilePhoto, useUpdateAutoReply } from "@/hooks/use-accounts";
 import { useAuthStore } from "@/store/auth-store";
 import Link from "next/link";
-import { ArrowLeft, Camera, Trash2, Loader2, Globe, ShieldCheck, Key, Bell, UserCog, Lock, Users, Phone, MessageSquare, Mail } from "lucide-react";
+import { ArrowLeft, Camera, Trash2, Loader2, Globe, ShieldCheck, Key, Bell, UserCog, Lock, Users, Phone, MessageSquare, Mail, Pencil, Check, X, Upload, AlertCircle, Info } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useState, useRef, useEffect } from "react";
 import api from "@/lib/api";
@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,14 +78,27 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deletePhotoOpen, setDeletePhotoOpen] = useState(false);
 
+  const hasPhoto = Boolean(
+    account?.has_profile_photo ||
+    (typeof account?.photo_version === "number" && account.photo_version > 0) ||
+    Boolean(account?.profile_photo_path)
+  );
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       await uploadMutation.mutateAsync({ accountId, file });
-      toast({ variant: "success", description: _("accountSettings.photoUpdated") });
+      toast({
+        variant: "success",
+        title: _("accountSettings.photoUpdated"),
+      });
     } catch (err: any) {
-      toast({ variant: "error", description: err?.response?.data?.detail || _("accountSettings.uploadFailed") });
+      toast({
+        variant: "error",
+        title: _("accountSettings.uploadFailed"),
+        description: err?.response?.data?.detail || err?.message || _("accountSettings.uploadFailed"),
+      });
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -92,16 +106,28 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
   async function handleDeletePhoto() {
     try {
       await deleteMutation.mutateAsync(accountId);
-      toast({ variant: "success", description: _("accountSettings.photoDeleted") });
+      toast({
+        variant: "success",
+        title: _("accountSettings.photoDeleted"),
+      });
+      setDeletePhotoOpen(false);
     } catch (err: any) {
-      toast({ variant: "error", description: err?.response?.data?.detail || _("accountSettings.deleteFailed") });
+      toast({
+        variant: "error",
+        title: _("accountSettings.deleteFailed"),
+        description: err?.response?.data?.detail || err?.message || _("accountSettings.deleteFailed"),
+      });
     }
   }
 
   return (
     <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
-      <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.profilePhoto")}</h2>
-      <div className="flex items-center gap-6">
+      <div className="mb-4">
+        <h2 className="font-semibold text-foreground">{_("accountSettings.profilePhoto")}</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">{_("accountSettings.profileDesc")}</p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-6">
         <AccountAvatar
           accountId={accountId}
           telegramId={account?.telegram_id}
@@ -113,34 +139,51 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
           isActive={account?.is_active}
           profilePhotoPath={account?.profile_photo_path}
           size="xl"
-          className="size-20 text-xl border border-border"
+          className="size-20 text-xl border border-border shadow-xs"
           aria-label="Profile photo"
         />
+
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <button
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={hasPhoto ? "outline" : "default"}
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:bg-gray-300 transition"
+              disabled={uploadMutation.isPending || deleteMutation.isPending}
+              className="gap-1.5"
             >
               {uploadMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
+              ) : hasPhoto ? (
+                <Camera className="size-4" />
               ) : (
-                <Camera className="h-4 w-4" />
+                <Upload className="size-4" />
               )}
-              {_("accountSettings.changePhoto")}
-            </button>
-            <button
-              onClick={() => setDeletePhotoOpen(true)}
-              disabled={deleteMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50 disabled:opacity-50 transition"
-            >
-              <Trash2 className="h-4 w-4" />
-              {_("accountSettings.delete")}
-            </button>
+              {hasPhoto ? _("accountSettings.changePhoto") : _("accountSettings.uploadPhoto")}
+            </Button>
+
+            {hasPhoto && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletePhotoOpen(true)}
+                disabled={uploadMutation.isPending || deleteMutation.isPending}
+                className="gap-1.5 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/50"
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
+                {_("accountSettings.deletePhoto")}
+              </Button>
+            )}
           </div>
+
           <Label htmlFor="profile-photo-upload" className="sr-only">
-            {_("accountSettings.changePhoto")}
+            {hasPhoto ? _("accountSettings.changePhoto") : _("accountSettings.uploadPhoto")}
           </Label>
           <input
             id="profile-photo-upload"
@@ -152,7 +195,9 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
             aria-describedby="profile-photo-hint"
             className="sr-only"
           />
-          <p id="profile-photo-hint" className="text-xs text-muted-foreground">{_("accountSettings.photoHint")}</p>
+          <p id="profile-photo-hint" className="text-xs text-muted-foreground">
+            {_("accountSettings.photoHint")}
+          </p>
         </div>
       </div>
 
@@ -160,10 +205,10 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
         open={deletePhotoOpen}
         onOpenChange={setDeletePhotoOpen}
         onConfirm={handleDeletePhoto}
-        title={_("accountSettings.delete")}
+        title={_("accountSettings.deletePhoto")}
         message={_("accountSettings.removePhotoConfirm")}
-        confirmText={_("accountSettings.delete")}
-        cancelText={_("navbar.cancel")}
+        confirmText={_("accountSettings.deletePhoto")}
+        cancelText={_("accountSettings.cancel")}
         variant="danger"
         loading={deleteMutation.isPending}
       />
@@ -175,111 +220,440 @@ function PhotoUpload({ accountId, account }: { accountId: string; account: any }
 
 function ProfileEditor({ accountId, account }: { accountId: string; account: any }) {
   const _ = useT();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(account?.first_name || "");
   const [lastName, setLastName] = useState(account?.last_name || "");
   const [username, setUsername] = useState(account?.username || "");
   const [bio, setBio] = useState(account?.bio || "");
-  const [msg, setMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
-  // Sync state when account data loads/changes
+  // Sync state when account data loads/changes while not actively editing
   useEffect(() => {
+    if (!isEditing) {
+      setFirstName(account?.first_name || "");
+      setLastName(account?.last_name || "");
+      setUsername(account?.username || "");
+      setBio(account?.bio || "");
+    }
+  }, [account?.first_name, account?.last_name, account?.username, account?.bio, isEditing]);
+
+  const initialUsername = (account?.username || "").replace(/^@+/, "").trim();
+  const cleanUsername = username.replace(/^@+/, "").trim();
+  const isUsernameChanged = cleanUsername.toLowerCase() !== initialUsername.toLowerCase();
+
+  const [debouncedUsername, setDebouncedUsername] = useState(cleanUsername);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUsername(cleanUsername);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [cleanUsername]);
+
+  // Client-side instant format validation according to Telegram MTProto rules
+  const isTooShort = cleanUsername.length > 0 && cleanUsername.length < 5;
+  const isTooLong = cleanUsername.length > 32;
+  const startsWithDigit = /^[0-9]/.test(cleanUsername);
+  const hasInvalidChars = cleanUsername.length > 0 && !/^[a-zA-Z0-9_]+$/.test(cleanUsername);
+  const hasInvalidFormat = cleanUsername.includes("__") || cleanUsername.endsWith("_");
+  const isFormatValid =
+    cleanUsername.length >= 5 &&
+    cleanUsername.length <= 32 &&
+    !startsWithDigit &&
+    !hasInvalidChars &&
+    !hasInvalidFormat;
+
+  const isCheckEligible =
+    isEditing &&
+    isUsernameChanged &&
+    cleanUsername.length > 0 &&
+    isFormatValid &&
+    debouncedUsername === cleanUsername;
+
+  const checkUsernameQuery = useQuery({
+    queryKey: ["check-username", accountId, debouncedUsername],
+    queryFn: async () => {
+      const res = await api.get(`/accounts/${accountId}/check-username`, {
+        params: { username: debouncedUsername },
+      });
+      return res.data as { available: boolean; reason: string; message: string };
+    },
+    enabled: isCheckEligible,
+    staleTime: 30000,
+    retry: false,
+  });
+
+  const getUsernameStatus = () => {
+    if (!cleanUsername) {
+      return initialUsername ? "will_remove" : "empty";
+    }
+    if (!isUsernameChanged) {
+      return "unchanged";
+    }
+    if (isTooShort) {
+      return "too_short";
+    }
+    if (startsWithDigit) {
+      return "starts_with_digit";
+    }
+    if (hasInvalidChars) {
+      return "invalid_chars";
+    }
+    if (isTooLong || hasInvalidFormat) {
+      return "invalid_format";
+    }
+    if (debouncedUsername !== cleanUsername || checkUsernameQuery.isLoading) {
+      return "checking";
+    }
+    if (checkUsernameQuery.isError) {
+      return "error";
+    }
+    if (checkUsernameQuery.data) {
+      if (checkUsernameQuery.data.available) return "available";
+      if (checkUsernameQuery.data.reason === "purchase_available") return "purchase_available";
+      if (checkUsernameQuery.data.reason === "flood_wait") return "flood_wait";
+      return "occupied";
+    }
+    return "idle";
+  };
+
+  const usernameStatus = getUsernameStatus();
+
+  const isUsernameBlocked =
+    isUsernameChanged &&
+    cleanUsername.length > 0 &&
+    (isTooShort ||
+      startsWithDigit ||
+      hasInvalidChars ||
+      isTooLong ||
+      hasInvalidFormat ||
+      (checkUsernameQuery.data && !checkUsernameQuery.data.available));
+
+  const handleCancel = () => {
     setFirstName(account?.first_name || "");
     setLastName(account?.last_name || "");
     setUsername(account?.username || "");
     setBio(account?.bio || "");
-  }, [account?.first_name, account?.last_name, account?.username, account?.bio]);
+    setIsEditing(false);
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!firstName.trim()) {
+      const cleanFirstName = firstName.trim();
+      if (!cleanFirstName) {
         throw new Error(_("accountSettings.firstNameRequired"));
+      }
+      if (isUsernameBlocked) {
+        throw new Error(
+          usernameStatus === "occupied"
+            ? _("accountSettings.usernameOccupied")
+            : _("accountSettings.usernameInvalid")
+        );
       }
       // Send "" (not null) for a cleared field: null means "leave unchanged"
       // to the backend, so an emptied last name would never be saved.
       await api.put(`/accounts/${accountId}/profile`, {
-        first_name: firstName.trim(),
+        first_name: cleanFirstName,
         last_name: lastName.trim(),
-        username: username.trim(),
+        username: cleanUsername,
         bio: bio.trim(),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      setMsg({ kind: "success", text: _("accountSettings.profileUpdated") });
-      setTimeout(() => setMsg(null), 3000);
+      queryClient.invalidateQueries({ queryKey: ["accounts", accountId] });
+      toast({
+        variant: "success",
+        title: _("accountSettings.profileUpdated"),
+      });
+      setIsEditing(false);
     },
     onError: (err: any) => {
-      setMsg({
-        kind: "error",
-        text: err?.response?.data?.detail || err?.message || _("accountSettings.updateFailed"),
+      toast({
+        variant: "error",
+        title: _("accountSettings.updateFailed"),
+        description: err?.response?.data?.detail || err?.message || _("accountSettings.updateFailed"),
       });
     },
   });
 
+  const isSaveDisabled = mutation.isPending || isUsernameBlocked;
+
   return (
     <div className="bg-card text-card-foreground rounded-xl border border-border p-6 shadow-xs">
-      <h2 className="font-semibold text-foreground mb-4">{_("accountSettings.profile")}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="profile-first-name">{_("accountSettings.firstName")}</Label>
-          <Input
-            id="profile-first-name"
-            name="first_name"
-            autoComplete="given-name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-          />
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="font-semibold text-foreground">{_("accountSettings.profile")}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {isEditing ? _("accountSettings.editingProfile") : _("accountSettings.profileDesc")}
+          </p>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="profile-last-name">{_("accountSettings.lastName")}</Label>
-          <Input
-            id="profile-last-name"
-            name="last_name"
-            autoComplete="family-name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="profile-username">{_("accountSettings.username")}</Label>
-          <Input
-            id="profile-username"
-            name="username"
-            autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder={_("accountSettings.usernamePlaceholder")}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="profile-bio">{_("accountSettings.bio")}</Label>
-          <Input
-            id="profile-bio"
-            name="bio"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-          />
-        </div>
-      </div>
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:bg-gray-300 transition"
-        >
-          {mutation.isPending ? _("accountSettings.saving") : _("accountSettings.save")}
-        </button>
-        {msg && (
-          <span
-            role={msg.kind === "error" ? "alert" : "status"}
-            aria-live={msg.kind === "error" ? "assertive" : "polite"}
-            className={cn("text-sm", msg.kind === "success" ? "text-green-600" : "text-red-500")}
+        {!isEditing ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="gap-1.5"
           >
-            {msg.text}
-          </span>
+            <Pencil className="size-3.5" />
+            {_("accountSettings.editProfile")}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={mutation.isPending}
+              onClick={handleCancel}
+              className="gap-1.5"
+            >
+              <X className="size-3.5" />
+              {_("accountSettings.cancel")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isSaveDisabled}
+              onClick={() => mutation.mutate()}
+              className="gap-1.5"
+            >
+              {mutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Check className="size-3.5" />
+              )}
+              {mutation.isPending ? _("accountSettings.saving") : _("accountSettings.save")}
+            </Button>
+          </div>
         )}
       </div>
+
+      {!isEditing ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5">
+            <span className="text-xs font-medium text-muted-foreground">{_("accountSettings.firstName")}</span>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {account?.first_name || <span className="text-muted-foreground font-normal italic">{_("accountSettings.notSet")}</span>}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5">
+            <span className="text-xs font-medium text-muted-foreground">{_("accountSettings.lastName")}</span>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {account?.last_name || <span className="text-muted-foreground font-normal italic">{_("accountSettings.notSet")}</span>}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5">
+            <span className="text-xs font-medium text-muted-foreground">{_("accountSettings.username")}</span>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {account?.username ? (
+                <span className="font-mono text-primary">@{account.username}</span>
+              ) : (
+                <span className="text-muted-foreground font-normal italic">{_("accountSettings.notSet")}</span>
+              )}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5 sm:col-span-2">
+            <span className="text-xs font-medium text-muted-foreground">{_("accountSettings.bio")}</span>
+            <p className="mt-1 text-sm text-foreground whitespace-pre-wrap break-words">
+              {account?.bio || <span className="text-muted-foreground italic">{_("accountSettings.notSet")}</span>}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-first-name" className="text-xs font-medium">
+                {_("accountSettings.firstName")} <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="profile-first-name"
+                name="first_name"
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                disabled={mutation.isPending}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-last-name" className="text-xs font-medium">
+                {_("accountSettings.lastName")}
+              </Label>
+              <Input
+                id="profile-last-name"
+                name="last_name"
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                disabled={mutation.isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-username" className="text-xs font-medium">
+                {_("accountSettings.username")}
+              </Label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground text-sm pointer-events-none select-none">
+                  @
+                </span>
+                <Input
+                  id="profile-username"
+                  name="username"
+                  autoComplete="username"
+                  className={cn(
+                    "pl-7 pr-9 font-mono transition-colors",
+                    usernameStatus === "available" && "border-emerald-500/70 focus-visible:ring-emerald-500/30",
+                    (usernameStatus === "occupied" || usernameStatus === "starts_with_digit" || usernameStatus === "invalid_chars" || usernameStatus === "invalid_format") && "border-rose-500/70 focus-visible:ring-rose-500/30",
+                    (usernameStatus === "too_short" || usernameStatus === "purchase_available" || usernameStatus === "flood_wait") && "border-amber-500/70 focus-visible:ring-amber-500/30"
+                  )}
+                  value={username.startsWith("@") ? username.slice(1) : username}
+                  onChange={(e) => setUsername(e.target.value.replace(/^@+/, ""))}
+                  placeholder={_("accountSettings.usernamePlaceholder")}
+                  disabled={mutation.isPending}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  {usernameStatus === "checking" && (
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                  )}
+                  {usernameStatus === "available" && (
+                    <Check className="size-4 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                  )}
+                  {usernameStatus === "occupied" && (
+                    <X className="size-4 text-rose-500 stroke-[2.5]" />
+                  )}
+                  {(usernameStatus === "too_short" || usernameStatus === "purchase_available" || usernameStatus === "starts_with_digit" || usernameStatus === "invalid_chars" || usernameStatus === "invalid_format" || usernameStatus === "flood_wait") && (
+                    <AlertCircle className="size-4 text-amber-500" />
+                  )}
+                </div>
+              </div>
+
+              {/* Real-time username status indicator */}
+              <div className="min-h-5 pt-0.5 flex items-center text-[12px] font-medium transition-all">
+                {usernameStatus === "checking" && (
+                  <span className="flex items-center gap-1.5 text-muted-foreground animate-pulse">
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                    {_("accountSettings.checkingUsername")}
+                  </span>
+                )}
+                {usernameStatus === "available" && (
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <Check className="size-3.5 stroke-[2.5]" />
+                    {_("accountSettings.usernameAvailable")}
+                  </span>
+                )}
+                {usernameStatus === "occupied" && (
+                  <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-semibold">
+                    <X className="size-3.5 stroke-[2.5]" />
+                    {_("accountSettings.usernameOccupied")}
+                  </span>
+                )}
+                {usernameStatus === "purchase_available" && (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    {_("accountSettings.usernamePurchaseAvailable")}
+                  </span>
+                )}
+                {usernameStatus === "too_short" && (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    {_("accountSettings.usernameTooShort")}
+                  </span>
+                )}
+                {usernameStatus === "starts_with_digit" && (
+                  <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    {_("accountSettings.usernameStartsWithDigit")}
+                  </span>
+                )}
+                {usernameStatus === "invalid_chars" && (
+                  <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    {_("accountSettings.usernameInvalidChars")}
+                  </span>
+                )}
+                {usernameStatus === "invalid_format" && (
+                  <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    {_("accountSettings.usernameInvalid")}
+                  </span>
+                )}
+                {usernameStatus === "flood_wait" && (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    {_("accountSettings.usernameFloodWait")}
+                  </span>
+                )}
+                {usernameStatus === "unchanged" && (
+                  <span className="flex items-center gap-1.5 text-muted-foreground/80 font-normal">
+                    <Check className="size-3.5 text-muted-foreground" />
+                    {_("accountSettings.usernameUnchanged")}
+                  </span>
+                )}
+                {usernameStatus === "will_remove" && (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-normal">
+                    <Info className="size-3.5" />
+                    {_("accountSettings.usernameWillBeRemoved")}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="profile-bio" className="text-xs font-medium">
+                  {_("accountSettings.bio")}
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
+                  {bio.length}/70
+                </span>
+              </div>
+              <Textarea
+                id="profile-bio"
+                name="bio"
+                value={bio}
+                maxLength={70}
+                rows={2}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder={_("accountSettings.bioPlaceholder")}
+                disabled={mutation.isPending}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={mutation.isPending}
+              onClick={handleCancel}
+            >
+              {_("accountSettings.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSaveDisabled}
+              className="gap-1.5"
+            >
+              {mutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Check className="size-4" />
+              )}
+              {mutation.isPending ? _("accountSettings.saving") : _("accountSettings.save")}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

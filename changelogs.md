@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-17
+- **[8949b91a](https://github.com/nealmtroy/TeleBos/commit/8949b91a)**: fix(login): classify SendCodeUnavailableError so resend-code returns a real message
+
 ## 2026-10-16
 - **[64b9b04f](https://github.com/nealmtroy/TeleBos/commit/64b9b04f)**: fix(appeal): add SpamBot dimajukan status keywords for Malay appeal completion
 - **[ad2a4a63](https://github.com/nealmtroy/TeleBos/commit/ad2a4a63)**: fix(appeal): support Malay and multilingual SpamBot button labels and status keywords

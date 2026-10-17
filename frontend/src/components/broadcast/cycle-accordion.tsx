@@ -15,6 +15,7 @@ export interface CycleSummary {
   totalCount: number;
   successCount: number;
   errorCount: number;
+  skippedCount?: number;
 }
 
 interface CycleAccordionProps {
@@ -122,6 +123,12 @@ export default function CycleAccordion({
                     {_("broadcastLogs.error")}:{" "}
                     <strong>{cycle.errorCount}</strong>
                   </span>
+                  {typeof cycle.skippedCount === "number" && cycle.skippedCount > 0 && (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {_("broadcastLogs.skipped")}:{" "}
+                      <strong>{cycle.skippedCount}</strong>
+                    </span>
+                  )}
                 </div>
               </AccordionTrigger>
 

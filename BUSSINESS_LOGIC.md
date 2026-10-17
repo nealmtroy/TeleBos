@@ -395,19 +395,28 @@ re-acquires it.
 
 ## Entitlements and Upsell Levers
 
-Roles are `basic`, `pro`, `premium`, `owner` (`models/enums.py:20-25`). Expiry is
+Roles are `freetrial`, `basic`, `pro`, `premium`, `owner` (`models/enums.py:20-25`). Expiry is
 lazy — downgraded on read rather than by a cron job
 (`redeem_service.py:240-247`, called from `api/redeem.py:50`).
 
+The commercial plan catalog (`docs/subscription_plans_monthly_yearly.md` & `frontend/src/data/plans.ts`) maps cleanly to these role primitives:
+
+**Commercial Naming & Pricing Structure:**
+- **Free Trial** (`freetrial`): Gratis (5 jam), 1 akun, watermark Ya.
+- **Starter** (`basic`): Rp5.000/bln (Rp50.000/thn / hemat 16,7%), 1 akun, watermark Ya.
+- **Pro** (`pro`): Rp10.000/bln (Rp100.000/thn / hemat 16,7%), 3 akun, watermark Tidak.
+- **Business** (`premium`): Rp20.000/bln (Rp200.000/thn / hemat 16,7%), 5 akun, watermark Tidak.
+- **Owner Access** (`owner`): Hak akses sistem superadmin internal.
+
 **Lever 1 — account count** (`services/account_service.py:42-47`):
 
-| Role | Accounts |
-|---|---|
-| `freetrial` | **1** |
-| `basic` | **1** |
-| `pro` | **3** |
-| `premium` | **5** |
-| `owner` | 999999 |
+| Commercial Plan | Database Role | Accounts | Monthly | Yearly (Save 16.7%) |
+|---|---|---|---:|---:|
+| **Free Trial** | `freetrial` | **1** | Gratis (5 jam) | — |
+| **Starter** | `basic` | **1** | Rp5.000/bln | Rp50.000/thn |
+| **Pro** | `pro` | **3** | Rp10.000/bln | Rp100.000/thn |
+| **Business** | `premium` | **5** | Rp20.000/bln | Rp200.000/thn |
+| **Owner Access** | `owner` | 999999 | Internal | Internal |
 
 Enforced by `check_account_limit` (`:50-61`) on every connection route.
 
@@ -423,15 +432,19 @@ Enforced by `check_account_limit` (`:50-61`) on every connection route.
 | Enforcement point | before job creation (`broadcast_service.py:246-248`), never mid-run |
 
 Watermark for free tier: default `"Bot by @{official}"`, `{official}` expands to
-`telebos_official` (`:33-40`, `:60-69`). Paid roles are never watermarked.
+`telebos_official` (`:33-40`, `:60-69`). Paid roles (`pro`, `premium`) are never watermarked.
 
-**Lever 3 — feature gating by role:**
+**Lever 3 — feature gating by role** (`docs/subscription_plans_monthly_yearly.md`):
 
-- Auto-reply: `pro+` (`api/accounts.py:694`, `:722`)
-- Bulk invites: `pro+` (`api/invite.py:21`, `:36`, `:71`, `:81`, `:93`, `:110`, `:128`, `:145`, `:157`)
-- Auto-join: `pro+` (`api/auto_join.py:30`, `:63`, `:72`, `:84`, `:103`, `:123`, `:142`)
+| Feature | Free Trial (`freetrial`) | Starter (`basic`) | Pro (`pro`) | Business (`premium`) |
+|---|:---:|:---:|:---:|:---:|
+| **Age Checker** | ❌ | ❌ | ✅ (`pro+`) | ✅ (`pro+`) |
+| **Public Index Groups & Channels** | ❌ | ❌ | ✅ (`pro+`) | ✅ (`pro+`) |
+| **Auto Join Groups & Channels** | ❌ | ✅ (`basic+`) | ✅ (`basic+`) | ✅ (`basic+`) |
+| **Auto Reply Responder** | ✅ | ✅ | ✅ | ✅ |
+| **Member Inviter & Scraper** | ❌ | ❌ | ✅ (`pro+`) | ✅ (`pro+`) |
 
-SMM ordering and the marketplace are open to **all** roles including `basic`.
+SMM ordering and the marketplace are open to **all** roles including `freetrial` and `basic`.
 
 ---
 

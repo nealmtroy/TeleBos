@@ -16,7 +16,7 @@ Use one detailed owner per topic; do not copy long specifications between docume
 | UI/product positioning | `PRODUCT.md` |
 | UI components, tokens, accessibility, and visual decisions | `DESIGN.md` and `.impeccable/design.json` |
 | Cross-agent compatibility | `AGENTS.md` |
-| Full request/response API contract | `/api/docs` and `/api/openapi.json` on a running backend |
+| Full request/response API contract | `API_CONTRACT.md`, `/api/docs` and `/api/openapi.json` on a running backend |
 | Database schema, tables, constraints, and relationships | `docs/database_schema.md` |
 
 ## Stack and architecture

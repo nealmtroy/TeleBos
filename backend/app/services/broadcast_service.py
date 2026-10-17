@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import random
+import re
 import time
 import uuid
 _uuid = uuid
@@ -62,11 +63,13 @@ RESOLVE_PERMANENT_ERROR_TYPES = frozenset({
     "invalid_username",
     "invalid_link",
     "private_channel",
-    "muted",
+    "muted_permanent",
     "channel_forbidden",
     "bad_request",
     "not_member",
     "too_many_channels",
+    "topic_closed",
+    "media_forbidden",
 })
 
 # Unknown/transient resolve failures (e.g. "Could not resolve or join target"
@@ -798,10 +801,36 @@ async def check_send_permission(client, entity) -> tuple[bool, str | None]:
             if not (permissions.is_admin or permissions.is_creator):
                 return False, "Only admins can write in this group"
 
-        if permissions.is_banned:
-            banned_rights = getattr(permissions.participant, "banned_rights", None)
-            if banned_rights and banned_rights.send_messages:
-                return False, "You are muted in this group"
+        banned_rights = getattr(getattr(permissions, "participant", None), "banned_rights", None)
+        if permissions.is_banned or banned_rights:
+            if banned_rights and (
+                getattr(banned_rights, "send_messages", False)
+                or getattr(banned_rights, "send_plain", False)
+            ):
+                until_date = getattr(banned_rights, "until_date", None)
+                now_utc = datetime.now(timezone.utc)
+                if until_date:
+                    if isinstance(until_date, (int, float)):
+                        until_dt = datetime.fromtimestamp(until_date, tz=timezone.utc)
+                    else:
+                        until_dt = (
+                            until_date
+                            if getattr(until_date, "tzinfo", None)
+                            else until_date.replace(tzinfo=timezone.utc)
+                        )
+
+                    diff_sec = (until_dt - now_utc).total_seconds()
+                    if 0 < diff_sec <= 366 * 86400:
+                        mins = max(1, int(diff_sec // 60))
+                        hours = mins // 60
+                        rem_m = mins % 60
+                        time_str = f"{hours}h {rem_m}m" if hours > 0 else f"{rem_m}m"
+                        return (
+                            False,
+                            f"You are muted temporarily until {until_dt.strftime('%d-%m-%Y %H:%M UTC')} ({time_str} remaining)",
+                        )
+
+                return False, "You are muted permanently in this group"
 
         return True, None
     except UserNotParticipantError:
@@ -1592,6 +1621,16 @@ async def execute_broadcast(job_id: str):
                         "skipped_permanent",
                         "Dilewati: target sudah gagal permanen di cycle sebelumnya",
                     )
+                elif pkey in mute_pool:
+                    rem_sec = max(0, int(mute_pool[pkey]["until"] - time.time()))
+                    mins = max(1, rem_sec // 60)
+                    hours = mins // 60
+                    rem_m = mins % 60
+                    time_str = f"{hours}h {rem_m}m" if hours > 0 else f"{rem_m}m"
+                    err_type, reason = (
+                        "muted_temporary",
+                        f"Dilewati: target sedang di-mute sementara ({time_str} remaining)",
+                    )
                 elif pkey in pending_pool:
                     err_type, reason = (
                         "skipped_pending",
@@ -1640,11 +1679,10 @@ async def execute_broadcast(job_id: str):
                     "Could not persist target state for job %s: %s", job_id_str, state_exc
                 )
 
-        # Slowmode is a per-group limit, not an account limit: it only stops
-        # posting to that one chat until its interval elapses. Tracking it on
-        # the account (as flood/peer_flood are) lets a single slow group pause
-        # the whole broadcast for every other group.
+        # Slowmode and temporary mute are per-group limits, not account limits: they
+        # only stop posting to that one chat until the interval elapses.
         slowmode_pool: dict = {}
+        mute_pool: dict = {}
 
         while True:
             is_looping = loop_enabled
@@ -1666,9 +1704,10 @@ async def execute_broadcast(job_id: str):
             joined_pool.clear()
             permission_cache.clear()
 
-            # Evict expired slowmode entries instead of keeping them forever.
+            # Evict expired slowmode and temporary mute entries instead of keeping them forever.
             now_ts = time.time()
             slowmode_pool = {k: v for k, v in slowmode_pool.items() if v["until"] > now_ts}
+            mute_pool = {k: v for k, v in mute_pool.items() if v["until"] > now_ts}
 
             for idx, item in enumerate(items):
                 # Find the next ready account
@@ -1779,6 +1818,15 @@ async def execute_broadcast(job_id: str):
                 # fine, the group is what is rate-limiting us.
                 slow_entry = slowmode_pool.get(pkey)
                 if slow_entry and time.time() < slow_entry["until"]:
+                    pending_pool[pkey] = {
+                        "group_identifier": group_identifier,
+                        "item_type": item_type,
+                    }
+                    continue
+
+                # This group is still in a temporary mute window for this target.
+                mute_entry = mute_pool.get(pkey)
+                if mute_entry and time.time() < mute_entry["until"]:
                     pending_pool[pkey] = {
                         "group_identifier": group_identifier,
                         "item_type": item_type,
@@ -2074,6 +2122,23 @@ async def execute_broadcast(job_id: str):
 
                         if err_type in RESOLVE_PERMANENT_ERROR_TYPES:
                             permanent_failures_pool.add(pkey)
+                        elif err_type == "muted_temporary":
+                            mute_seconds = 600
+                            match = re.search(r"\((\d+)m remaining\)", err_msg)
+                            if match:
+                                mute_seconds = int(match.group(1)) * 60
+                            else:
+                                match_hm = re.search(r"\((\d+)h\s*(\d+)m remaining\)", err_msg)
+                                if match_hm:
+                                    mute_seconds = (int(match_hm.group(1)) * 60 + int(match_hm.group(2))) * 60
+                            mute_pool[pkey] = {
+                                "until": time.time() + mute_seconds,
+                                "seconds": mute_seconds,
+                            }
+                            pending_pool[pkey] = {
+                                "group_identifier": group_identifier,
+                                "item_type": item_type,
+                            }
                         elif err_type not in (
                             "flood",
                             "peer_flood",
@@ -2331,11 +2396,30 @@ async def execute_broadcast(job_id: str):
                             "invalid_username",
                             "invalid_link",
                             "private_channel",
-                            "muted",
+                            "muted_permanent",
                             "not_member",
                             "too_many_channels",
+                            "topic_closed",
+                            "media_forbidden",
                         ):
                             permanent_failures_pool.add(pkey)
+                        elif err_type == "muted_temporary":
+                            mute_seconds = 600
+                            match = re.search(r"\((\d+)m remaining\)", err_msg)
+                            if match:
+                                mute_seconds = int(match.group(1)) * 60
+                            else:
+                                match_hm = re.search(r"\((\d+)h\s*(\d+)m remaining\)", err_msg)
+                                if match_hm:
+                                    mute_seconds = (int(match_hm.group(1)) * 60 + int(match_hm.group(2))) * 60
+                            mute_pool[pkey] = {
+                                "until": time.time() + mute_seconds,
+                                "seconds": mute_seconds,
+                            }
+                            pending_pool[pkey] = {
+                                "group_identifier": group_identifier,
+                                "item_type": item_type,
+                            }
 
                         if err_type == "flood":
                             wait = 30

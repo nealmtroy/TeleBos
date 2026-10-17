@@ -39,6 +39,7 @@ from app.schemas.account import (
     UpdateProfileColorRequest,
     TransferAccountRequest,
     TransferAccountResponse,
+    CheckUsernameResponse,
 )
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service, country_service
@@ -687,6 +688,30 @@ async def get_account(
             account.est_reg_date_status = est["status"]
 
     return account
+
+
+@router.get("/{account_id}/check-username", response_model=CheckUsernameResponse)
+async def check_username(
+    request: Request,
+    account_id: str,
+    username: str = Query(..., min_length=1, max_length=64, description="Telegram username to check"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Check Telegram username availability in real-time via MTProto."""
+    ip = request.client.host
+    if not await rate_limiter.check(f"check_username:ip:{ip}", max_requests=40, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many username check requests. Try later.")
+
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        res = await account_service.check_username_availability(db, account, username)
+        return CheckUsernameResponse(**res)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.put("/{account_id}/profile", response_model=AccountResponse)

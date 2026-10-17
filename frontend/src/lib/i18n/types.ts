@@ -636,6 +636,20 @@ export interface Dict {
     jobsLabel: string;
     prev: string;
     next: string;
+    delayPerGroup: string;
+    delayAfterAll: string;
+    delayRandomized: string;
+    cycleDelay: string;
+    telegramLog: string;
+    accountsModalTitle: string;
+    accountsModalDesc: string;
+    active: string;
+    inactive: string;
+    showMoreAccounts: string;
+    showLessAccounts: string;
+    viewDetails: string;
+    copy: string;
+    copied: string;
   };
 
   // Broadcast Logs
@@ -649,6 +663,7 @@ export interface Dict {
     allStatuses: string;
     success: string;
     error: string;
+    skipped: string;
     allCycles: string;
     cycle: string;
     exportCsv: string;
@@ -666,6 +681,28 @@ export interface Dict {
     total: string;
     noEntriesForCycle: string;
     noEntriesMatchFilter: string;
+  };
+
+  // Broadcast Errors & Diagnostics
+  broadcastErrors: {
+    private_channel: string;
+    banned: string;
+    admin_only: string;
+    muted_permanent: string;
+    muted_temporary: string;
+    skipped_permanent: string;
+    skipped_pending: string;
+    must_join_discussion: string;
+    topic_closed: string;
+    media_forbidden: string;
+    guest_restricted: string;
+    invalid_username: string;
+    invalid_link: string;
+    too_many_channels: string;
+    flood: string;
+    peer_flood: string;
+    slowmode: string;
+    [key: string]: string;
   };
 
   // Chats
@@ -940,18 +977,38 @@ export interface Dict {
     profilePhoto: string;
     changePhoto: string;
     delete: string;
+    uploadPhoto: string;
+    deletePhoto: string;
+    noPhoto: string;
+    notSet: string;
     photoHint: string;
     photoUpdated: string;
     photoDeleted: string;
     uploadFailed: string;
     deleteFailed: string;
     profile: string;
+    editProfile: string;
+    cancel: string;
+    profileDesc: string;
+    editingProfile: string;
     firstName: string;
     firstNameRequired: string;
     lastName: string;
     username: string;
     usernamePlaceholder: string;
+    checkingUsername: string;
+    usernameAvailable: string;
+    usernameOccupied: string;
+    usernameInvalid: string;
+    usernamePurchaseAvailable: string;
+    usernameUnchanged: string;
+    usernameWillBeRemoved: string;
+    usernameTooShort: string;
+    usernameStartsWithDigit: string;
+    usernameInvalidChars: string;
+    usernameFloodWait: string;
     bio: string;
+    bioPlaceholder: string;
     saving: string;
     save: string;
     profileUpdated: string;
