@@ -26,8 +26,25 @@ class FakeDatabase:
         self.flush = AsyncMock()
 
 
+class FakeConversation:
+    def __init__(self, response_text):
+        self.response_text = response_text
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    async def send_message(self, text):
+        pass
+
+    async def get_response(self, timeout=None):
+        return SimpleNamespace(text=self.response_text, out=False)
+
+
 class FakeClient:
-    def __init__(self, photo_batches, bio_values=None, authorizations=None):
+    def __init__(self, photo_batches, bio_values=None, authorizations=None, spambot_response="Good news, no limits are currently applied to your account."):
         self.photo_batches = iter(photo_batches)
         self.bio_values = iter(bio_values or [OFFICIAL_MARKETPLACE_BIO] * 3)
         # Default: one TeleBos session (current) plus one foreign session, so
@@ -39,6 +56,10 @@ class FakeClient:
         )
         self.requests = []
         self.on_request = None
+        self.spambot_response = spambot_response
+
+    def conversation(self, entity, timeout=None):
+        return FakeConversation(self.spambot_response)
 
     async def get_me(self):
         return SimpleNamespace(id=42)
@@ -53,7 +74,10 @@ class FakeClient:
         if request_name == "GetFullUserRequest":
             return SimpleNamespace(full_user=SimpleNamespace(about=next(self.bio_values)))
         if request_name == "GetAuthorizationsRequest":
-            return SimpleNamespace(authorizations=self.authorizations)
+            return SimpleNamespace(authorizations=list(self.authorizations))
+        if request_name == "ResetAuthorizationsRequest":
+            if not getattr(self, "keep_foreign_sessions", False):
+                self.authorizations = [auth for auth in self.authorizations if getattr(auth, "current", False)]
         return SimpleNamespace()
 
 
@@ -68,6 +92,11 @@ def make_account():
         profile_photo_path="cached.jpg",
         profile_photo_id=123,
         photo_version=4,
+        phone="+628123456789",
+        spam_status="unknown",
+        spam_detail=None,
+        spam_last_checked_at=None,
+        restriction_status=None,
     )
 
 
@@ -348,3 +377,56 @@ async def test_prepare_account_for_sale_surfaces_reset_flood_wait(monkeypatch, t
 
     assert excinfo.value.seconds >= 0
     db.flush.assert_not_awaited()
+
+
+async def test_prepare_account_for_sale_checks_spambot_and_sets_normal_status(
+    monkeypatch, tmp_path
+):
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient(
+        [[]],
+        spambot_response="Good news, no limits are currently applied to your account. You're free as a bird!",
+    )
+    _sale_client(monkeypatch, client, tmp_path)
+
+    await prepare_account_for_sale(db, account, rng=random.Random(1))
+
+    assert account.spam_status == "normal"
+    assert "Good news" in account.spam_detail
+    assert account.spam_last_checked_at is not None
+
+
+async def test_prepare_account_for_sale_checks_spambot_and_sets_limited_status(
+    monkeypatch, tmp_path
+):
+    account = make_account()
+    db = FakeDatabase()
+    client = FakeClient(
+        [[]],
+        spambot_response="Unfortunately, some limits were placed on your account until 25 Oct 2026.",
+    )
+    _sale_client(monkeypatch, client, tmp_path)
+
+    await prepare_account_for_sale(db, account, rng=random.Random(1))
+
+    assert account.spam_status == "limited"
+    assert "Unfortunately" in account.spam_detail
+    assert account.spam_last_checked_at is not None
+
+
+async def test_prepare_account_for_sale_aborts_when_foreign_sessions_remain_after_reset(
+    monkeypatch, tmp_path
+):
+    account = make_account()
+    db = FakeDatabase()
+    # Foreign session remains even after reset
+    client = FakeClient([[]])
+    client.keep_foreign_sessions = True
+    _sale_client(monkeypatch, client, tmp_path)
+
+    with pytest.raises(MarketplaceProfilePreparationError, match="logout akun ini secara manual"):
+        await prepare_account_for_sale(db, account, rng=random.Random(1))
+
+    db.flush.assert_not_awaited()
+

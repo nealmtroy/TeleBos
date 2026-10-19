@@ -159,12 +159,101 @@ async def _terminate_foreign_sessions(client, account_id: str, *, deadline: floa
         # window for a new session, so report it as an application error rather
         # than leaking the raw RPC detail.
         raise MarketplaceProfilePreparationError(
-            "Telegram will not let this account revoke its other sessions yet. "
-            "Wait a while after logging in, then try again."
+            "Telegram will not let this account revoke its other sessions automatically. "
+            "Masih ada sesi lain yang terhubung ke akun ini dan tidak dapat diputus secara otomatis oleh Telegram (batasan sesi baru). "
+            "Silakan logout akun ini secara manual dari perangkat lain melalui aplikasi Telegram (Pengaturan > Perangkat / Settings > Devices > Terminate all other sessions) sebelum melisting akun ini. "
+            "Pastikan hanya sesi TeleBos yang terhubung."
         ) from exc
+
+    # Pastikan dan verifikasi kembali bahwa tidak ada sesi asing yang tersisa
+    try:
+        auths_after = await _with_timeout(
+            client(GetAuthorizationsRequest()),
+            operation="re-verify authorizations",
+            account_id=account_id,
+            deadline=deadline,
+        )
+        remaining_foreign = sum(
+            1 for auth in getattr(auths_after, "authorizations", []) if not getattr(auth, "current", False)
+        )
+        if remaining_foreign > 0:
+            raise MarketplaceProfilePreparationError(
+                f"Masih terdapat {remaining_foreign} sesi perangkat lain yang terhubung ke akun ini. "
+                "Silakan logout akun ini secara manual dari perangkat lain melalui aplikasi Telegram "
+                "(Pengaturan > Perangkat / Settings > Devices) dan pastikan hanya sesi TeleBos yang aktif sebelum melisting ke marketplace."
+            )
+    except (MarketplaceProfilePreparationError, MarketplaceProfilePreparationRateLimitError, MarketplaceProfilePreparationTimeoutError):
+        raise
+    except Exception as exc:
+        logger.warning("Could not re-verify authorizations for account %s: %s", account_id, exc)
 
     logger.info("Terminated %s foreign session(s) for account %s", foreign_count, account_id)
     return foreign_count
+
+
+async def _check_account_spambot(
+    client,
+    account: TelegramAccount,
+    account_id: str,
+    *,
+    deadline: float,
+) -> None:
+    """Check @SpamBot before listing to identify if account is clean or risk."""
+    from datetime import datetime, timezone
+    from app.utils.spambot_helper import (
+        start_spambot_conversation,
+        is_clean_status,
+    )
+    from app.utils.account_restrictions import (
+        RESTRICTED_LIMITED,
+        clear_account_restriction,
+    )
+
+    response_msg = None
+    if hasattr(client, "conversation"):
+        try:
+            async with client.conversation("SpamBot") as conv:
+                await start_spambot_conversation(client, conv, getattr(account, "phone", account_id))
+                response_msg = await _with_timeout(
+                    conv.get_response(timeout=10),
+                    operation="spambot conversation",
+                    account_id=account_id,
+                    deadline=deadline,
+                )
+        except Exception as conv_exc:
+            logger.warning(
+                "Conversation with SpamBot ended for account %s: %s, checking message history",
+                account_id,
+                conv_exc,
+            )
+
+    if not response_msg and hasattr(client, "get_messages"):
+        try:
+            messages = await _with_timeout(
+                client.get_messages("SpamBot", limit=5),
+                operation="get spambot messages",
+                account_id=account_id,
+                deadline=deadline,
+            )
+            for msg in messages:
+                if not getattr(msg, "out", True):
+                    response_msg = msg
+                    break
+        except Exception as get_exc:
+            logger.warning("Fallback get_messages for SpamBot failed for %s: %s", account_id, get_exc)
+
+    if response_msg and getattr(response_msg, "text", None):
+        is_limited = not is_clean_status(response_msg.text)
+        account.spam_status = "limited" if is_limited else "normal"
+        account.spam_detail = response_msg.text
+        account.spam_last_checked_at = datetime.now(timezone.utc)
+        if not is_limited and getattr(account, "restriction_status", None) == RESTRICTED_LIMITED:
+            clear_account_restriction(account)
+        logger.info(
+            "SpamBot check for %s completed: spam_status=%s",
+            account_id,
+            account.spam_status,
+        )
 
 
 async def _verify_official_bio(client, account_id: str, *, deadline: float) -> bool:
@@ -340,6 +429,9 @@ async def _prepare_account_for_sale_inner(
     # transfers control: everything after it is cosmetic by comparison, and
     # skipping it would hand the buyer an account the seller can still enter.
     await _terminate_foreign_sessions(client, account_id, deadline=deadline)
+
+    # Check SpamBot status before listing to determine clean vs risk status
+    await _check_account_spambot(client, account, account_id, deadline=deadline)
 
     await _apply_official_profile(
         client,
