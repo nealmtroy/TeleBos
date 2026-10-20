@@ -431,9 +431,23 @@ def run_migrations(connection):
             )
         )
 
-    # ── Better Auth user table: brute force protection columns (vuln-0007) ─
+    # ── Better Auth user table: brute force protection & admin columns ─
     if "user" in tables:
         user_ba_cols = [c["name"] for c in inspector.get_columns("user")]
+        if "role" not in user_ba_cols:
+            connection.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS role TEXT'))
+        if "banned" not in user_ba_cols:
+            connection.execute(
+                text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS banned BOOLEAN NOT NULL DEFAULT FALSE')
+            )
+        if "banReason" not in user_ba_cols:
+            connection.execute(
+                text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banReason" TEXT DEFAULT NULL')
+            )
+        if "banExpires" not in user_ba_cols:
+            connection.execute(
+                text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banExpires" TIMESTAMPTZ DEFAULT NULL')
+            )
         if "failedLoginAttempts" not in user_ba_cols:
             connection.execute(
                 text(

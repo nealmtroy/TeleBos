@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-20
+- **[0ff7a9f5](https://github.com/nealmtroy/TeleBos/commit/0ff7a9f5)**: feat(marketplace): check spambot and verify session termination before listing
+
 ## 2026-10-18
 - **[b97cd038](https://github.com/nealmtroy/TeleBos/commit/b97cd038)**: feat: enhance broadcast history details and account info, update profile sync and telegram errors
 
