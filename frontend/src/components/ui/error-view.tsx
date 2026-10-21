@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useContext } from "react";
+import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import {
   ArrowLeft,
   ChevronDown,
@@ -90,21 +92,22 @@ const statusConfigs: Record<ErrorStatusCode, StatusConfig> = {
 };
 
 export function ErrorView({
-  statusCode,
+  statusCode = 500,
   title,
   description,
   error,
   reset,
-  showHomeButton,
-  showDashboardButton,
-  showBackButton,
-  showLoginButton,
-  showRetryButton,
+  className,
+  showHome = true,
+  showBack = true,
+  showRetry,
+  showLogin = false,
+  showDashboard = false,
   customActions,
 }: ErrorViewProps) {
   const _ = useT();
   const router = useRouter();
-  const authUser = useAuthStore((s) => s.user);
+  const appRouter = useContext(AppRouterContext);
   const [copied, setCopied] = React.useState(false);
   const [showDetails, setShowDetails] = React.useState(false);
 
@@ -298,7 +301,17 @@ export function ErrorView({
                 type="button"
                 variant="ghost"
                 size="lg"
-                onClick={() => router.back()}
+                onClick={() => {
+                  if (appRouter) {
+                    router.back();
+                    return;
+                  }
+                  if (typeof window !== "undefined" && window.history.length > 1) {
+                    window.history.back();
+                    return;
+                  }
+                  window.location.href = "/";
+                }}
                 className="gap-2 rounded-xl text-slate-600 dark:text-slate-400 cursor-pointer"
               >
                 <ArrowLeft className="size-4" />

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-21
+- **[a01b8779](https://github.com/nealmtroy/TeleBos/commit/a01b8779)**: fix(db): ensure Better Auth admin columns exist in migrator and setup-db
+
 ## 2026-10-20
 - **[0ff7a9f5](https://github.com/nealmtroy/TeleBos/commit/0ff7a9f5)**: feat(marketplace): check spambot and verify session termination before listing
 
