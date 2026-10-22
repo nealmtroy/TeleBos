@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-22
+- **[cc1be24e](https://github.com/nealmtroy/TeleBos/commit/cc1be24e)**: fix: error-view safe outside app router
+
 ## 2026-10-21
 - **[a01b8779](https://github.com/nealmtroy/TeleBos/commit/a01b8779)**: fix(db): ensure Better Auth admin columns exist in migrator and setup-db
 

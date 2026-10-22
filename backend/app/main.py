@@ -48,9 +48,11 @@ public_api_bearer = HTTPBearer(
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from sqlalchemy import text
 
 from app.config import get_settings
 from app.database import engine, Base, async_session_factory
+from app.db_bootstrap import init_schema
 from app.api import (
     auth,
     accounts,
@@ -439,36 +441,11 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     # Create tables (in production use Alembic).
-    # Retry briefly: at startup the async worker may still hold the connection
-    # pool, and a transient refusal here would otherwise kill the process
-    # (PYTHON-FASTAPI-3) rather than wait for the pool to free up.
-    async def _init_db() -> None:
-        for attempt in range(1, 6):
-            try:
-                async with engine.begin() as conn:
-                    await conn.run_sync(Base.metadata.create_all)
-                # Run pending schema migrations (idempotent)
-                async with engine.begin() as conn:
-                    await conn.run_sync(run_migrations)
-                return
-            except Exception as db_exc:
-                if attempt == 5:
-                    logger.critical(
-                        "Database initialization failed after %d attempts: %s",
-                        attempt,
-                        db_exc,
-                    )
-                    raise
-                wait = 2 * attempt
-                logger.warning(
-                    "Database not ready (attempt %d/5): %s. Retrying in %ds...",
-                    attempt,
-                    db_exc,
-                    wait,
-                )
-                await asyncio.sleep(wait)
-
-    await _init_db()
+    # Serialized via a Postgres advisory lock -- see app/db_bootstrap.py for why
+    # concurrent create_all() calls crash startup (PYTHON-FASTAPI-2P). The
+    # helper also retains the short retry loop for a pool that is still busy
+    # (PYTHON-FASTAPI-3).
+    await init_schema(engine, Base, run_migrations)
 
     if not app_settings.ENABLE_TELEGRAM_COMMAND_BUS:
         await session_manager.start(enable_spam_checks=app_settings.ENABLE_SPAM_CHECKS)
