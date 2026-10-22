@@ -33,11 +33,17 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 export type ErrorStatusCode = 401 | 403 | 404 | 500 | 503;
 
 export interface ErrorViewProps {
-  statusCode: ErrorStatusCode;
+  statusCode?: ErrorStatusCode;
   title?: string;
   description?: string;
   error?: Error | { message?: string; digest?: string; stack?: string };
   reset?: () => void;
+  className?: string;
+  showHome?: boolean;
+  showBack?: boolean;
+  showRetry?: boolean;
+  showLogin?: boolean;
+  showDashboard?: boolean;
   showHomeButton?: boolean;
   showDashboardButton?: boolean;
   showBackButton?: boolean;
@@ -98,16 +104,22 @@ export function ErrorView({
   error,
   reset,
   className,
-  showHome = true,
-  showBack = true,
+  showHome,
+  showBack,
   showRetry,
-  showLogin = false,
-  showDashboard = false,
+  showLogin,
+  showDashboard,
+  showHomeButton,
+  showDashboardButton,
+  showBackButton,
+  showLoginButton,
+  showRetryButton,
   customActions,
 }: ErrorViewProps) {
   const _ = useT();
   const router = useRouter();
   const appRouter = useContext(AppRouterContext);
+  const authUser = useAuthStore((s) => s.user);
   const [copied, setCopied] = React.useState(false);
   const [showDetails, setShowDetails] = React.useState(false);
 
@@ -146,11 +158,11 @@ export function ErrorView({
   const is404 = statusCode === 404;
   const isServer = statusCode === 500 || statusCode === 503;
 
-  const shouldShowLogin = showLoginButton ?? is401;
-  const shouldShowRetry = showRetryButton ?? isServer;
-  const shouldShowDashboard = showDashboardButton ?? (is403 || (!!authUser && !is401));
-  const shouldShowHome = showHomeButton ?? true;
-  const shouldShowBack = showBackButton ?? (is404 || is403);
+  const shouldShowLogin = showLoginButton ?? showLogin ?? is401;
+  const shouldShowRetry = showRetryButton ?? showRetry ?? isServer;
+  const shouldShowDashboard = showDashboardButton ?? showDashboard ?? (is403 || (!!authUser && !is401));
+  const shouldShowHome = showHomeButton ?? showHome ?? true;
+  const shouldShowBack = showBackButton ?? showBack ?? (is404 || is403);
 
   const errorDetails = error?.stack || error?.message || (error as any)?.digest;
 
