@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-23
+- **[94caa14f](https://github.com/nealmtroy/TeleBos/commit/94caa14f)**: fix(frontend): restore error-view props and authUser for test compatibility
 - **[6eb783c1](https://github.com/nealmtroy/TeleBos/commit/6eb783c1)**: fix(db): serialize startup schema init to stop create_all race
 
 ## 2026-10-22

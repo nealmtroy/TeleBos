@@ -539,17 +539,29 @@ async def get_dialog_stats(account: "TelegramAccount", db: AsyncSession) -> dict
     total_channels = row.total_channels if row else 0
     owned_channels = row.owned_channels if row else 0
 
-    # Contacts count (best-effort from Telegram API)
+    # Contacts & devices count (best-effort from Telegram API)
     contacts_count = 0
+    device_count = getattr(account, "device_count", 1) or 1
     try:
         client = await get_active_client(account)
         if client is not None:
             from telethon.tl.functions.contacts import GetContactsRequest
-            result = await client(GetContactsRequest(0))
-            if result and result.users:
-                contacts_count = len(result.users)
+            try:
+                result = await client(GetContactsRequest(0))
+                if result and result.users:
+                    contacts_count = len(result.users)
+            except Exception as exc:
+                logger.warning("Failed to fetch contacts count for account %s: %s", account.id, exc)
+
+            from telethon.tl.functions.account import GetAuthorizationsRequest
+            try:
+                auths = await client(GetAuthorizationsRequest())
+                if auths and hasattr(auths, "authorizations"):
+                    device_count = len(auths.authorizations)
+            except Exception as exc:
+                logger.warning("Failed to fetch authorizations for account %s: %s", account.id, exc)
     except Exception as exc:
-        logger.warning("Failed to fetch contacts count for account %s: %s", account.id, exc)
+        logger.warning("Failed to get active client for stats of account %s: %s", account.id, exc)
 
     return {
         "contacts_count": contacts_count,
@@ -557,6 +569,7 @@ async def get_dialog_stats(account: "TelegramAccount", db: AsyncSession) -> dict
         "owned_groups": owned_groups,
         "total_channels": total_channels,
         "owned_channels": owned_channels,
+        "device_count": device_count,
     }
 
 

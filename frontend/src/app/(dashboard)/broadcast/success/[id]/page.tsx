@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useBroadcastJob, useGroupLists, useTextLists } from "@/hooks/use-broadcast";
 import { useT } from "@/lib/i18n";
 import { CheckCircle, ArrowLeft, FileText, List, Clock, Loader2 } from "lucide-react";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 export default function BroadcastSuccessPage({ params }: { params: { id: string } }) {
   const _ = useT();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const totalJobsParam = searchParams.get("totalJobs");
   const { data: job, isLoading: jobLoading } = useBroadcastJob(params.id);
   const { data: groupLists } = useGroupLists();
   const { data: textLists } = useTextLists();
@@ -38,6 +40,7 @@ export default function BroadcastSuccessPage({ params }: { params: { id: string 
 
   const groupList = groupLists?.find((gl) => gl.id === job.group_list_id);
   const textList = textLists?.find((tl) => tl.id === job.text_list_id);
+  const totalJobs = job.related_job_ids?.length || (totalJobsParam ? parseInt(totalJobsParam, 10) : 1);
 
   return (
     <div className="max-w-2xl mx-auto mt-10">
@@ -50,6 +53,20 @@ export default function BroadcastSuccessPage({ params }: { params: { id: string 
           <h1 className="text-2xl font-bold text-foreground mb-2">Broadcast Started Successfully</h1>
           <p className="text-muted-foreground">Your broadcast has been created and is now running in the background.</p>
         </div>
+
+        {totalJobs > 1 && (
+          <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-lg p-4 text-left space-y-1">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-sky-600 dark:text-sky-400 flex-shrink-0" />
+              <span className="font-semibold text-sky-900 dark:text-sky-100 text-sm">
+                {totalJobs} Job Siaran Mandiri Telah Dibuat
+              </span>
+            </div>
+            <p className="text-xs text-sky-700 dark:text-sky-300 pl-7">
+              Setiap akun yang dipilih menjalankan siaran ke seluruh daftar grup ({job.total_groups} grup) secara mandiri. Anda dapat memantau atau mengelola masing-masing job di Riwayat Siaran.
+            </p>
+          </div>
+        )}
 
         <div className="bg-muted/40 rounded-lg p-6 text-left space-y-4 border border-border mt-6">
           <h3 className="font-semibold text-foreground border-b border-border pb-2">Broadcast Details</h3>
@@ -93,22 +110,32 @@ export default function BroadcastSuccessPage({ params }: { params: { id: string 
           </div>
         </div>
 
-        <div className="flex gap-4 justify-center pt-4">
+        <div className="flex flex-wrap gap-4 justify-center pt-4">
           <Button
             variant="outline"
             onClick={() => router.push("/broadcast/new")}
             className="h-10 px-5 text-sm cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" />
-            Back
+            Kembali
           </Button>
-          <Button
-            onClick={() => router.push(`/broadcast/logs?jobId=${job.id}`)}
-            className="h-10 px-5 text-sm cursor-pointer"
-          >
-            <FileText className="h-4 w-4 mr-1.5" />
-            View Logs
-          </Button>
+          {totalJobs > 1 ? (
+            <Button
+              onClick={() => router.push("/broadcast/history")}
+              className="h-10 px-5 text-sm cursor-pointer"
+            >
+              <List className="h-4 w-4 mr-1.5" />
+              Lihat Riwayat Siaran
+            </Button>
+          ) : (
+            <Button
+              onClick={() => router.push(`/broadcast/logs?jobId=${job.id}`)}
+              className="h-10 px-5 text-sm cursor-pointer"
+            >
+              <FileText className="h-4 w-4 mr-1.5" />
+              Lihat Log
+            </Button>
+          )}
         </div>
       </div>
     </div>

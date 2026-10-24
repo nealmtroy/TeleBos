@@ -235,10 +235,11 @@ class TelegramClientPool:
                         from app.models.broadcast_job import BroadcastJob
                         from app.models.invite_job import InviteJob
                         from app.models.auto_join_job import AutoJoinJob
+                        from app.models.auto_leave_job import AutoLeaveJob
 
                         # Find accounts claimed by active worker jobs
                         busy_ids: set[uuid.UUID] = set()
-                        for job_model in (BroadcastJob, InviteJob, AutoJoinJob):
+                        for job_model in (BroadcastJob, InviteJob, AutoJoinJob, AutoLeaveJob):
                             job_query = await db.execute(
                                 select(job_model.account_ids).where(
                                     job_model.status.in_(["pending", "running", "paused"])

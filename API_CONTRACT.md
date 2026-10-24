@@ -32,6 +32,7 @@
    - [6.17 Broadcast Campaigns](#617-broadcast-campaigns) (20 endpoints)
    - [6.18 Bulk Member Invites](#618-bulk-member-invites) (9 endpoints)
    - [6.19 Channel/Group Auto-Join](#619-channelgroup-auto-join) (8 endpoints)
+   - [6.19b Channel/Group Auto-Leave](#619b-channelgroup-auto-leave) (9 endpoints)
    - [6.20 Account Marketplace](#620-account-marketplace) (8 endpoints)
    - [6.21 SMM & Account Orders](#621-smm--account-orders) (10 endpoints)
    - [6.22 Voucher & Redeem Codes](#622-voucher--redeem-codes) (3 endpoints)
@@ -2672,6 +2673,72 @@ context is present, account ownership is validated.
   - Services: `get_auto_join_job()`, `get_auto_join_logs()`
   - Models: `User`
   - Frontend Consumers: `use-auto-join.ts`
+
+---
+
+### 6.19b Channel/Group Auto-Leave
+*Automated bulk leave for Telegram groups and/or channels with live dialog scanning, parallel jobs, and smart flood-wait recovery. Available to all user tiers including `freetrial`.*
+
+| Method | Path | Auth / RBAC | Response Model | Description |
+| --- | --- | --- | --- | --- |
+| `POST` | `/api/v1/auto-leave/scan` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `AutoLeaveScanResponse` | Scan dialogs and count groups/channels across selected accounts. |
+| `POST` | `/api/v1/auto-leave/start` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `AutoLeaveJobResponse` | Start auto-leave job(s) for selected accounts. |
+| `GET` | `/api/v1/auto-leave/history` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `list[AutoLeaveJobResponse]` | Retrieve auto-leave job history for current user. |
+| `GET` | `/api/v1/auto-leave/{job_id}` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `AutoLeaveJobResponse` | Get status and progress of a specific auto-leave job. |
+| `POST` | `/api/v1/auto-leave/{job_id}/pause` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `JSON / Any` | Pause an active auto-leave job. |
+| `POST` | `/api/v1/auto-leave/{job_id}/resume` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `JSON / Any` | Resume a paused auto-leave job. |
+| `POST` | `/api/v1/auto-leave/{job_id}/stop` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `JSON / Any` | Cancel/stop an active or paused auto-leave job. |
+| `DELETE` | `/api/v1/auto-leave/{job_id}` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `204 NO CONTENT` | Delete an auto-leave job record and its logs. |
+| `GET` | `/api/v1/auto-leave/{job_id}/logs` | RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner']) | `list[AutoLeaveLogResponse]` | Get execution audit logs for an auto-leave job. |
+
+#### `POST /api/v1/auto-leave/scan`
+- **Handler Function**: [`scan_auto_leave()`](file:///backend/app/api/auto_leave.py#L27) (`backend/app/api/auto_leave.py:27`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+- **Request Body**: `payload: AutoLeaveScanRequest`
+- **Success Response**: `200 OK` -> `AutoLeaveScanResponse`
+- **Frontend Consumers**: `use-auto-leave.ts` (`useAutoLeaveScan`)
+
+#### `POST /api/v1/auto-leave/start`
+- **Handler Function**: [`start_auto_leave()`](file:///backend/app/api/auto_leave.py#L52) (`backend/app/api/auto_leave.py:52`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+- **Request Body**: `payload: AutoLeaveJobCreate`
+- **Success Response**: `201 CREATED` -> `AutoLeaveJobResponse`
+- **Frontend Consumers**: `use-auto-leave.ts` (`useStartAutoLeave`)
+
+#### `GET /api/v1/auto-leave/history`
+- **Handler Function**: [`auto_leave_history()`](file:///backend/app/api/auto_leave.py#L87) (`backend/app/api/auto_leave.py:87`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+- **Query Parameters**: `limit: int = Query(20, ge=1, le=100)`
+- **Success Response**: `200 OK` -> `list[AutoLeaveJobResponse]`
+
+#### `GET /api/v1/auto-leave/{job_id}`
+- **Handler Function**: [`get_auto_leave()`](file:///backend/app/api/auto_leave.py#L96) (`backend/app/api/auto_leave.py:96`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+- **Path Parameters**: `job_id: UuidPath`
+- **Success Response**: `200 OK` -> `AutoLeaveJobResponse`
+
+#### `POST /api/v1/auto-leave/{job_id}/pause`
+- **Handler Function**: [`pause_auto_leave()`](file:///backend/app/api/auto_leave.py#L108) (`backend/app/api/auto_leave.py:108`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+
+#### `POST /api/v1/auto-leave/{job_id}/resume`
+- **Handler Function**: [`resume_auto_leave()`](file:///backend/app/api/auto_leave.py#L128) (`backend/app/api/auto_leave.py:128`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+
+#### `POST /api/v1/auto-leave/{job_id}/stop`
+- **Handler Function**: [`stop_auto_leave()`](file:///backend/app/api/auto_leave.py#L148) (`backend/app/api/auto_leave.py:148`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+
+#### `DELETE /api/v1/auto-leave/{job_id}`
+- **Handler Function**: [`delete_auto_leave()`](file:///backend/app/api/auto_leave.py#L168) (`backend/app/api/auto_leave.py:168`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+- **Success Response**: `204 NO CONTENT`
+
+#### `GET /api/v1/auto-leave/{job_id}/logs`
+- **Handler Function**: [`auto_leave_logs()`](file:///backend/app/api/auto_leave.py#L179) (`backend/app/api/auto_leave.py:179`)
+- **Security & Auth**: RBAC Session (`x-better-auth-token` ['freetrial', 'basic', 'pro', 'premium', 'owner'])
+- **Query Parameters**: `limit: int = Query(200, ge=1, le=1000)`
+- **Success Response**: `200 OK` -> `list[AutoLeaveLogResponse]`
 
 ---
 

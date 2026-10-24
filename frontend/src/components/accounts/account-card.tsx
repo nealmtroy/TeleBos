@@ -250,6 +250,16 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
                   {formatOwned(stats.total_channels, stats.owned_channels)}
                 </span>
               </div>
+              <div>
+                <span className="text-gray-500 dark:text-slate-300">{_("accountDetail.devices") || "Devices"}: </span>
+                <Link
+                  href={`/accounts/${account.id}/devices`}
+                  className="font-medium text-gray-800 dark:text-slate-100 hover:text-primary hover:underline transition-colors cursor-pointer"
+                  title={_("accountDetail.devicesDesc") || "Lihat perangkat terhubung"}
+                >
+                  {stats.device_count ?? account.device_count ?? 1}
+                </Link>
+              </div>
             </div>
             <div className="flex items-center gap-1 mt-1.5 text-[11px] text-gray-500 dark:text-slate-300">
               <Clock className="h-3 w-3" />

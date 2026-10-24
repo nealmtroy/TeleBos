@@ -65,6 +65,12 @@ class BroadcastJob(Base):
     loop_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     delay_randomized: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
+    schedule_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    schedule_start_time: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)
+    schedule_end_time: Mapped[str | None] = mapped_column(String(5), nullable=True, default=None)
+    schedule_timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jakarta", server_default="'Asia/Jakarta'")
+    schedule_paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     log_destination: Mapped[str | None] = mapped_column(String(255), default=None, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(

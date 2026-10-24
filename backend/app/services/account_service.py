@@ -428,6 +428,15 @@ async def finalize_authenticated_login(
         else None
     )
 
+    device_count = 1
+    try:
+        from telethon.tl.functions.account import GetAuthorizationsRequest
+        auths = await client(GetAuthorizationsRequest())
+        if auths and hasattr(auths, "authorizations"):
+            device_count = len(auths.authorizations)
+    except Exception:
+        pass
+
     if db is not None and me.id:
         existing = await db.execute(
             select(TelegramAccount).where(TelegramAccount.telegram_id == me.id)
@@ -452,6 +461,7 @@ async def finalize_authenticated_login(
                 existing_acc.is_premium = bool(getattr(me, "premium", False))
                 existing_acc.phone_verified = True
                 existing_acc.profile_photo_id = tg_photo_id
+                existing_acc.device_count = device_count
                 if live_twofa_status is not None:
                     existing_acc.twofa_enabled = live_twofa_status["enabled"]
                     existing_acc.twofa_has_recovery = live_twofa_status.get("has_recovery")
@@ -480,6 +490,7 @@ async def finalize_authenticated_login(
         telegram_id=me.id,
         is_premium=bool(getattr(me, "premium", False)),
         profile_photo_id=tg_photo_id,
+        device_count=device_count,
         twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
         twofa_has_recovery=live_twofa_status.get("has_recovery") if live_twofa_status is not None else None,
         twofa_hint=live_twofa_status.get("hint") if live_twofa_status is not None else None,
@@ -544,6 +555,14 @@ async def login_with_session(
                 raise ValueError("Session string is invalid or expired")
             me = await test_client.get_me()
             live_twofa_status = await get_live_2fa_status(test_client)
+            device_count = 1
+            try:
+                from telethon.tl.functions.account import GetAuthorizationsRequest
+                auths = await test_client(GetAuthorizationsRequest())
+                if auths and hasattr(auths, "authorizations"):
+                    device_count = len(auths.authorizations)
+            except Exception:
+                pass
         except (AuthKeyNotFound, SecurityError):
             raise ValueError("Telegram session has been revoked or expired")
     finally:
@@ -585,6 +604,7 @@ async def login_with_session(
                 existing_acc.username = me.username
                 existing_acc.is_premium = bool(getattr(me, "premium", False))
                 existing_acc.phone_verified = True
+                existing_acc.device_count = device_count
                 if live_twofa_status is not None:
                     existing_acc.twofa_enabled = live_twofa_status["enabled"]
                 existing_acc.is_active = True
@@ -617,6 +637,7 @@ async def login_with_session(
         username=me.username,
         telegram_id=me.id,
         is_premium=bool(getattr(me, "premium", False)),
+        device_count=device_count,
         twofa_enabled=live_twofa_status["enabled"] if live_twofa_status is not None else False,
     )
     db.add(account)

@@ -527,6 +527,14 @@ const en: Dict = {
     delayPerGroupSuffix: "1 – 3600 seconds",
     delayAfterAll: "Delay After All Groups (seconds)",
     delayAfterAllSuffix: "Delay before looping from start",
+    scheduleTitle: "Scheduled Broadcast (Operating Hours)",
+    scheduleDesc: "Set automatic start and end operating hours. Outside these hours, the broadcast will automatically pause and resume the following day.",
+    scheduleStartTime: "Start Time",
+    scheduleStartTimeDesc: "Broadcast will automatically start / resume at this time.",
+    scheduleEndTime: "End Time (Auto Pause)",
+    scheduleEndTimeDesc: "Broadcast will automatically pause at this time.",
+    schedulePresets: "Quick presets:",
+    scheduleInfo: "If the broadcast is started outside operating hours, it will immediately enter Standby / Paused status and automatically resume when the start time arrives.",
     loopTitle: "Repeating Broadcast (Loop)",
     loopDesc: "Broadcast will automatically repeat from the first group after sending to all groups. Use the Stop button to end the broadcast.",
     startBroadcast: "Start Broadcast",
@@ -1224,6 +1232,8 @@ const en: Dict = {
     noPublicChats: "No public groups or channels found.",
     autoJoin: "Auto Join",
     autoJoinDesc: "Automatically join multiple groups and channels using your Telegram accounts.",
+    autoLeave: "Auto Leave",
+    autoLeaveDesc: "Automatically leave multiple groups and channels using your Telegram accounts.",
   },
 
   // ── Auto Join ──────────────────────────────────────────────────────────────

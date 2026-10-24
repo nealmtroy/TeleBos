@@ -139,6 +139,8 @@ async def join_chat(account: TelegramAccount, identifier: str) -> dict:
                 perms = await client.get_permissions(entity, "me")
                 if not getattr(perms, "has_left", False):
                     already_joined = True
+            except telethon.errors.FloodWaitError as fwe:
+                raise TelegramRateLimitError("flood", fwe.seconds) from fwe
             except Exception:
                 pass
 

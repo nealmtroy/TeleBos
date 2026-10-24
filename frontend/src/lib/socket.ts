@@ -273,6 +273,17 @@ export function connectAutoJoinSocket(jobId: string): ReconnectingWebSocket {
   return ws;
 }
 
+export function connectAutoLeaveSocket(jobId: string): ReconnectingWebSocket {
+  const key = `autoleave:${jobId}`;
+  const existing = getSocket(key);
+  if (existing) return existing;
+
+  const ws = new ReconnectingWebSocket(`${getBaseWsAddress()}/ws/autoleave/${jobId}`);
+  ws.connect();
+  registerSocket(key, ws);
+  return ws;
+}
+
 export function disconnectSocket(key: string) {
   const ws = sockets.get(key);
   if (ws) {

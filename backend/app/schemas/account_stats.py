@@ -10,4 +10,5 @@ class AccountStatsResponse(BaseModel):
     owned_groups: int = 0
     total_channels: int = 0
     owned_channels: int = 0
+    device_count: int = 1
     stats_updated_at: datetime | None = None

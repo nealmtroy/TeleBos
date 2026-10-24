@@ -63,6 +63,7 @@ from app.api import (
     ws,
     invite,
     auto_join,
+    auto_leave,
     system,
     admin,
     admin_smm,
@@ -625,6 +626,7 @@ app.include_router(api_settings.router, prefix="/api/v1")
 app.include_router(broadcast.router, prefix="/api/v1")
 app.include_router(invite.router, prefix="/api/v1")
 app.include_router(auto_join.router, prefix="/api/v1")
+app.include_router(auto_leave.router, prefix="/api/v1")
 app.include_router(orders.router, prefix="/api/v1")
 app.include_router(marketplace.router, prefix="/api/v1")
 app.include_router(redeem.router, prefix="/api/v1")

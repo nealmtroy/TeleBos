@@ -399,3 +399,36 @@ async def ws_autojoin(websocket: WebSocket, job_id: str):
     if not await manager.connect(channel, websocket):
         return
     await handle_websocket_message_loop(websocket, channel)
+
+
+@router.websocket("/ws/autoleave/{job_id}")
+async def ws_autoleave(websocket: WebSocket, job_id: str):
+    """Listen for real-time progress updates on an auto-leave job."""
+    channel = f"autoleave:{job_id}"
+
+    user = await _wait_for_auth_message(websocket)
+    if not user:
+        return
+
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid job ID")
+        return
+
+    from app.models.auto_leave_job import AutoLeaveJob
+
+    async with async_session_factory() as db:
+        result = await db.execute(select(AutoLeaveJob).where(AutoLeaveJob.id == job_uuid))
+        job = result.scalar_one_or_none()
+        if job is None or job.user_id != user.id:
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION,
+                reason="Unauthorized or job not found",
+            )
+            return
+
+    if not await manager.connect(channel, websocket):
+        return
+    await handle_websocket_message_loop(websocket, channel)
+

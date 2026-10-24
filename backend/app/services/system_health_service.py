@@ -418,6 +418,7 @@ class SystemTelemetryTracker:
             "telebos:queue:broadcast",
             "telebos:queue:invite",
             "telebos:queue:autojoin",
+            "telebos:queue:autoleave",
         ]
         if is_connected:
             for q_name in known_queues:

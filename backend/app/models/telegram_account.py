@@ -80,6 +80,7 @@ class TelegramAccount(Base):
     owned_groups: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     total_channels: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     owned_channels: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    device_count: Mapped[int] = mapped_column(BigInteger, default=1, server_default="1")
     stats_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
     groups_channels_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
 

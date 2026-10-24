@@ -666,22 +666,30 @@ export default function BroadcastHistoryPage() {
                       )}
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
-                      <Badge
-                        variant={
-                          job.status === "completed"
-                            ? "success"
-                            : job.status === "running"
-                            ? "info"
-                            : job.status === "failed"
-                            ? "destructive"
-                            : job.status === "paused"
-                            ? "warning"
-                            : "secondary"
-                        }
-                        className="capitalize font-semibold text-xs"
-                      >
-                        {job.status}
-                      </Badge>
+                      <div className="flex flex-col gap-1 items-start">
+                        <Badge
+                          variant={
+                            job.status === "completed"
+                              ? "success"
+                              : job.status === "running"
+                              ? "info"
+                              : job.status === "failed"
+                              ? "destructive"
+                              : job.status === "paused"
+                              ? "warning"
+                              : "secondary"
+                          }
+                          className="capitalize font-semibold text-xs"
+                        >
+                          {job.schedule_paused ? "Paused (Jadwal)" : job.status}
+                        </Badge>
+                        {job.schedule_enabled && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+                            <Clock className="h-3 w-3 text-primary/70 shrink-0" />
+                            {job.schedule_start_time} - {job.schedule_end_time} WIB
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-normal">
                       <div className="flex items-center gap-2">
@@ -741,8 +749,14 @@ export default function BroadcastHistoryPage() {
                       variant={statusVariant(job.status)}
                       className="capitalize font-semibold text-xs shrink-0"
                     >
-                      {job.status}
+                      {job.schedule_paused ? "Paused (Jadwal)" : job.status}
                     </Badge>
+                    {job.schedule_enabled && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                        <Clock className="h-3 w-3 text-primary/70 shrink-0" />
+                        {job.schedule_start_time} - {job.schedule_end_time} WIB
+                      </span>
+                    )}
                     <span className="text-[11px] text-muted-foreground truncate">
                       {formatDate(job.created_at)}
                     </span>

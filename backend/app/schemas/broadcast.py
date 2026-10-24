@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class GroupListItem(BaseModel):
@@ -60,6 +60,10 @@ class BroadcastStartRequest(BaseModel):
     delay_after_all: int = Field(0, ge=0, le=3600)
     loop_enabled: bool = True
     delay_randomized: bool = False
+    schedule_enabled: bool = False
+    schedule_start_time: str | None = None
+    schedule_end_time: str | None = None
+    schedule_timezone: str = "Asia/Jakarta"
     log_destination: str | None = None  # None=default, "web_only"=skip Telegram, else=@username/user_id
 
     @field_validator("log_destination")
@@ -77,6 +81,16 @@ class BroadcastStartRequest(BaseModel):
         if any(c.isspace() for c in v):
             raise ValueError("log_destination tidak boleh mengandung spasi.")
         return v
+
+    @model_validator(mode="after")
+    def _validate_schedule(self) -> "BroadcastStartRequest":
+        if self.schedule_enabled:
+            from app.utils.schedule_helper import is_valid_time_format
+            if not self.schedule_start_time or not is_valid_time_format(self.schedule_start_time):
+                raise ValueError("Jam mulai (schedule_start_time) harus diisi dengan format HH:MM (contoh: 07:00).")
+            if not self.schedule_end_time or not is_valid_time_format(self.schedule_end_time):
+                raise ValueError("Jam selesai (schedule_end_time) harus diisi dengan format HH:MM (contoh: 17:00).")
+        return self
 
 
 class BroadcastJobResponse(BaseModel):
@@ -96,9 +110,15 @@ class BroadcastJobResponse(BaseModel):
     delay_after_all: int
     loop_enabled: bool
     delay_randomized: bool
+    schedule_enabled: bool = False
+    schedule_start_time: str | None = None
+    schedule_end_time: str | None = None
+    schedule_timezone: str = "Asia/Jakarta"
+    schedule_paused: bool = False
     log_destination: str | None = None
     created_at: datetime
     completed_at: datetime | None
+    related_job_ids: list[UUID] | None = None
 
     model_config = {"from_attributes": True}
 

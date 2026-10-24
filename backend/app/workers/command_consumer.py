@@ -72,6 +72,7 @@ async def _active_job_owner_shard(account_id: str) -> int | None:
     key the job already holds.
     """
     from app.models.auto_join_job import AutoJoinJob
+    from app.models.auto_leave_job import AutoLeaveJob
     from app.models.broadcast_job import BroadcastJob
     from app.models.invite_job import InviteJob
 
@@ -82,7 +83,7 @@ async def _active_job_owner_shard(account_id: str) -> int | None:
 
     try:
         async with async_session_factory() as db:
-            for model in (BroadcastJob, InviteJob, AutoJoinJob):
+            for model in (BroadcastJob, InviteJob, AutoJoinJob, AutoLeaveJob):
                 res = await db.execute(
                     select(model.account_ids).where(
                         model.status.in_(["pending", "running", "paused"])

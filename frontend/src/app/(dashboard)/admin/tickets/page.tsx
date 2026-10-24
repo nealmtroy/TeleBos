@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
@@ -13,11 +14,13 @@ import {
   RefreshCw,
   Search,
   Shield,
+  ShieldAlert,
   User,
 } from "lucide-react";
 
 import api from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -74,6 +77,40 @@ interface SupportTicket {
 }
 
 export default function AdminTicketsPage() {
+  const _ = useT();
+  const currentUser = useAuthStore((s) => s.user);
+
+  // Role Guard: Only owner can access
+  if (currentUser?.role !== "owner") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="w-full max-w-md p-8 text-center bg-card border border-border rounded-2xl shadow-sm space-y-4">
+          <div className="inline-flex p-3 rounded-2xl bg-destructive/10 text-destructive mb-2">
+            <ShieldAlert className="h-10 w-10" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">
+            {_("admin.accessDenied") || "Access Denied"}
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {_("admin.accessDeniedDesc") ||
+              "Only users with the Owner role are authorized to access the Admin Panel."}
+          </p>
+          <div className="pt-2">
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard">
+                {_("admin.backToDashboard") || "Return to Dashboard"}
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <AdminTicketsContent />;
+}
+
+function AdminTicketsContent() {
   const _ = useT();
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);

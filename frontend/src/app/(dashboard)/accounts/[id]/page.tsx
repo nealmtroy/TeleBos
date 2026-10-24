@@ -107,7 +107,7 @@ export default function AccountDetailPage() {
       desc: _("accountDetail.profileSettingsDesc"),
     },
     {
-      label: _("accountDetail.devices"),
+      label: `${_("accountDetail.devices")} (${account?.device_count ?? 1})`,
       icon: Monitor,
       href: `/accounts/${id}/devices`,
       desc: _("accountDetail.devicesDesc"),

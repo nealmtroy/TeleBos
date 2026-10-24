@@ -160,6 +160,10 @@ async def start_broadcast(
             loop_enabled=payload.loop_enabled,
             delay_randomized=payload.delay_randomized,
             log_destination=payload.log_destination,
+            schedule_enabled=payload.schedule_enabled,
+            schedule_start_time=payload.schedule_start_time,
+            schedule_end_time=payload.schedule_end_time,
+            schedule_timezone=payload.schedule_timezone,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
@@ -238,6 +242,7 @@ async def pause_job(
         raise HTTPException(status_code=404, detail="Job not found")
     if job.status != "running":
         raise HTTPException(status_code=400, detail="Job is not running")
+    job.schedule_paused = False
     await broadcast_service.update_job_status(db, job, "paused")
     await db.commit()
     from app.utils.redis_dispatcher import publish_job_control
@@ -256,6 +261,7 @@ async def resume_job(
         raise HTTPException(status_code=404, detail="Job not found")
     if job.status != "paused":
         raise HTTPException(status_code=400, detail="Job is not paused")
+    job.schedule_paused = False
     await broadcast_service.update_job_status(db, job, "running")
     await db.commit()
     from app.utils.redis_dispatcher import publish_job_control

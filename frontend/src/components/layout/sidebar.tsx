@@ -22,6 +22,7 @@ import {
   MessageCircleReply,
   Bot,
   UserPlus,
+  UserMinus,
   HelpCircle,
   BookOpen,
   LifeBuoy,
@@ -37,17 +38,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
-  LogOut,
   Wallet,
-  Star,
-  User,
   Eye,
   Sparkles,
-  CalendarClock,
-  Check,
-  Info,
-  Bug,
-  Keyboard,
   Sliders,
   ArrowLeft,
   ArrowRight,
@@ -55,28 +48,16 @@ import {
   TrendingUp,
   Activity,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth-store";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { UserProfileMenu } from "@/components/layout/user-profile-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 
 interface SubItem {
   href: string;
@@ -115,33 +96,15 @@ const servicesSubItems: SubItem[] = [
   { href: "/orders/post-views", labelKey: "nav.telegramPostViews", icon: Eye },
   { href: "/orders/auto-post-views", labelKey: "nav.telegramAutoPostViews", icon: Repeat },
 ];
-
-const administrationsSubItems: SubItem[] = [
-  { href: "/admin/analytics", exact: true, labelKey: "admin.analytics", icon: TrendingUp },
+const adminAnalyticsSubItems: SubItem[] = [
+  { href: "/admin/analytics", exact: true, labelKey: "admin.overview", icon: BarChart3 },
   { href: "/admin/analytics/users", exact: false, labelKey: "admin.userAnalytics", icon: Users },
   { href: "/admin/analytics/telegram-accounts", exact: false, labelKey: "admin.telegramAccountAnalytics", icon: Radio },
   { href: "/admin/analytics/automation", exact: false, labelKey: "admin.automationAnalytics", icon: Bot },
   { href: "/admin/analytics/financial", exact: false, labelKey: "admin.financialAnalytics", icon: DollarSign },
   { href: "/admin/analytics/system-health", exact: false, labelKey: "admin.systemHealthAnalytics", icon: Activity },
-  { href: "/admin/dashboard", exact: false, labelKey: "admin.overview", icon: BarChart3 },
+  { href: "/admin/analytics/security", exact: false, labelKey: "admin.securityAnalytics", icon: Shield },
   { href: "/admin/onboarding", exact: false, labelKey: "admin.onboarding", icon: Sparkles },
-  { href: "/admin/users", exact: false, labelKey: "admin.users", icon: Users },
-  { href: "/admin/transactions", exact: false, labelKey: "admin.transactions", icon: Wallet },
-  { href: "/admin/broadcasts", exact: false, labelKey: "admin.manageBroadcasts", icon: Radio },
-  { href: "/admin/auto-replies", exact: false, labelKey: "admin.manageAutoReplies", icon: Bot },
-  { href: "/admin/account-prices", exact: false, labelKey: "admin.accountPrices", icon: Tag },
-  { href: "/admin/tickets", exact: false, labelKey: "nav.tickets", icon: LifeBuoy },
-  { href: "/admin/settings", exact: false, labelKey: "admin.systemConfig", icon: Settings },
-];
-
-const adminRedeemSubItems: SubItem[] = [
-  { href: "/admin/redeem-codes", exact: false, labelKey: "adminRedeem.title", icon: Ticket },
-  { href: "/admin/redeem-logs", exact: false, labelKey: "adminRedeem.logs", icon: ClipboardList },
-];
-
-const adminSmmSubItems: SubItem[] = [
-  { href: "/admin/smm/services", exact: false, labelKey: "adminSmm.services", icon: Package },
-  { href: "/admin/smm/orders", exact: false, labelKey: "adminSmm.allOrders", icon: ShoppingCart },
 ];
 
 // role hierarchy: freetrial < basic < pro < premium < owner
@@ -189,16 +152,20 @@ export function Sidebar() {
     !pathname.startsWith("/broadcast/text-lists");
   const isGroupsChannelsPage =
     pathname.startsWith("/groups-channels") &&
-    !pathname.startsWith("/groups-channels/auto-join");
+    !pathname.startsWith("/groups-channels/auto-join") &&
+    !pathname.startsWith("/groups-channels/auto-leave");
   const isServicesOpen = servicesSubItems.some((sub) =>
     sub.exact ? pathname === sub.href : pathname.startsWith(sub.href)
   );
+  const isAnalyticsPage =
+    pathname.startsWith("/admin/analytics") || pathname === "/admin/onboarding";
 
   const [accountsOpen, setAccountsOpen] = useState(isAccountsPage);
   const [inviteOpen, setInviteOpen] = useState(isInvitePage);
   const [broadcastOpen, setBroadcastOpen] = useState(isBroadcastPage);
   const [groupsChannelsOpen, setGroupsChannelsOpen] = useState(isGroupsChannelsPage);
   const [servicesOpen, setServicesOpen] = useState(isServicesOpen);
+  const [analyticsOpen, setAnalyticsOpen] = useState(isAnalyticsPage);
 
   // Auto-open sections on mount / pathname change
   useEffect(() => {
@@ -214,10 +181,14 @@ export function Sidebar() {
     }
     if (isGroupsChannelsPage) {
       setGroupsChannelsOpen(true);
-    } else if (pathname.startsWith("/groups-channels/auto-join")) {
+    } else if (
+      pathname.startsWith("/groups-channels/auto-join") ||
+      pathname.startsWith("/groups-channels/auto-leave")
+    ) {
       setGroupsChannelsOpen(false);
     }
     if (isServicesOpen) setServicesOpen(true);
+    if (isAnalyticsPage) setAnalyticsOpen(true);
   }, [
     pathname,
     isAccountsPage,
@@ -225,6 +196,7 @@ export function Sidebar() {
     isBroadcastPage,
     isGroupsChannelsPage,
     isServicesOpen,
+    isAnalyticsPage,
   ]);
 
   // Auto-open sidebar on desktop on first mount
@@ -280,7 +252,14 @@ export function Sidebar() {
           exact: true,
           minRole: 1,
         },
-        { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 0 },
+        {
+          href: "/groups-channels/auto-leave",
+          labelKey: "groupsChannels.autoLeave",
+          icon: UserMinus,
+          exact: true,
+          minRole: 0,
+        },
+        { href: "/auto-reply", labelKey: "nav.autoReply", icon: MessageCircleReply, minRole: 2 },
         {
           href: "/invite",
           labelKey: "invite.navLabel",
@@ -337,13 +316,41 @@ export function Sidebar() {
       id: "admin-overview",
       labelKey: locale === "id" ? "IKHTISAR" : "OVERVIEW",
       items: [
-        { href: "/admin/analytics", labelKey: "admin.analytics", icon: TrendingUp, exact: true, minRole: 4 },
-        { href: "/admin/analytics/users", labelKey: "admin.userAnalytics", icon: Users, exact: false, minRole: 4 },
-        { href: "/admin/analytics/security", labelKey: "admin.securityAnalytics", icon: Shield, exact: false, minRole: 4 },
-        { href: "/admin/dashboard", labelKey: "admin.overview", icon: BarChart3, exact: true, minRole: 4 },
-        { href: "/admin/users", labelKey: "admin.users", icon: Users, exact: false, minRole: 4 },
-        { href: "/admin/transactions", labelKey: "admin.transactions", icon: Wallet, exact: false, minRole: 4 },
-        { href: "/admin/settings", labelKey: "admin.systemConfig", icon: Settings, exact: false, minRole: 4 },
+        {
+          href: "/admin/dashboard",
+          labelKey: "admin.dashboard",
+          icon: LayoutDashboard,
+          exact: true,
+          minRole: 4,
+        },
+        {
+          href: "/admin/analytics",
+          labelKey: "admin.analytics",
+          icon: TrendingUp,
+          hasSubItems: true,
+          subItems: adminAnalyticsSubItems,
+          minRole: 4,
+        },
+      ],
+    },
+    {
+      id: "admin-users-finance",
+      labelKey: locale === "id" ? "PENGGUNA & KEUANGAN" : "USERS & FINANCE",
+      items: [
+        {
+          href: "/admin/users",
+          labelKey: "admin.users",
+          icon: Users,
+          exact: false,
+          minRole: 4,
+        },
+        {
+          href: "/admin/transactions",
+          labelKey: "admin.transactions",
+          icon: Wallet,
+          exact: false,
+          minRole: 4,
+        },
       ],
     },
     {
@@ -373,6 +380,19 @@ export function Sidebar() {
         { href: "/admin/tickets", labelKey: "nav.tickets", icon: LifeBuoy, exact: false, minRole: 4 },
       ],
     },
+    {
+      id: "admin-system",
+      labelKey: locale === "id" ? "SISTEM" : "SYSTEM",
+      items: [
+        {
+          href: "/admin/settings",
+          labelKey: "admin.systemConfig",
+          icon: Settings,
+          exact: false,
+          minRole: 4,
+        },
+      ],
+    },
   ];
 
   const displayedNavGroups = isAdminPage ? adminNavGroups : navGroups;
@@ -383,6 +403,7 @@ export function Sidebar() {
     if (href.startsWith("/broadcast")) return { isOpen: broadcastOpen, setIsOpen: setBroadcastOpen };
     if (href.startsWith("/groups-channels")) return { isOpen: groupsChannelsOpen, setIsOpen: setGroupsChannelsOpen };
     if (href === "/orders-services") return { isOpen: servicesOpen, setIsOpen: setServicesOpen };
+    if (href.startsWith("/admin/analytics")) return { isOpen: analyticsOpen, setIsOpen: setAnalyticsOpen };
     return { isOpen: false, setIsOpen: () => {} };
   };
 
@@ -419,7 +440,7 @@ export function Sidebar() {
 
         {/* Header */}
         <div className="flex items-center h-16 px-5 border-b border-sidebar-border shrink-0 relative overflow-hidden">
-          {sidebarOpen && (
+          {sidebarOpen ? (
             <div className="flex items-center gap-2">
               <BrandLogo
                 size="md"
@@ -430,6 +451,10 @@ export function Sidebar() {
                   Admin
                 </span>
               )}
+            </div>
+          ) : (
+            <div className="mx-auto flex items-center justify-center">
+              <BrandLogo size="sm" />
             </div>
           )}
           {/* Close button (mobile) */}
@@ -444,52 +469,68 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-4">
-          {/* Context Switcher: Admin Mode -> User App */}
-          {isAdminPage && (
-            <div className="pb-1">
-              <Link
-                href="/dashboard"
-                onClick={handleNavClick}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all group/back",
-                  !sidebarOpen && "justify-center px-0"
-                )}
-                title={locale === "id" ? "Kembali ke Aplikasi" : "Back to User App"}
-              >
-                <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 group-hover/back:text-white transition-colors" />
-                {sidebarOpen && (
-                  <span className="truncate">
-                    {locale === "id" ? "Kembali ke Aplikasi" : "Back to User App"}
-                  </span>
-                )}
-              </Link>
-            </div>
-          )}
-
-          {/* Context Switcher: User App -> Admin Mode (Owner only) */}
-          {!isAdminPage && user?.role === "owner" && (
-            <div className="pb-1">
-              <Link
-                href="/admin/dashboard"
-                onClick={handleNavClick}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/25 transition-all group/admin",
-                  !sidebarOpen && "justify-center px-0"
-                )}
-                title={locale === "id" ? "Panel Admin" : "Admin Panel"}
-              >
-                <Shield className="h-4 w-4 shrink-0 text-rose-400" />
-                {sidebarOpen && (
-                  <>
-                    <span className="truncate">{locale === "id" ? "Panel Admin" : "Admin Panel"}</span>
-                    <ArrowRight className="h-3.5 w-3.5 ml-auto opacity-70 group-hover/admin:translate-x-0.5 transition-transform" />
-                  </>
-                )}
-              </Link>
-            </div>
-          )}
-
           <TooltipProvider delayDuration={0}>
+            {/* Context Switcher: Admin Mode -> User App */}
+            {isAdminPage && (
+              <div className="pb-1">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/dashboard"
+                      onClick={handleNavClick}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all group/back",
+                        !sidebarOpen && "justify-center px-0"
+                      )}
+                    >
+                      <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400 group-hover/back:text-white transition-colors" />
+                      {sidebarOpen && (
+                        <span className="truncate">
+                          {locale === "id" ? "Kembali ke Aplikasi" : "Back to User App"}
+                        </span>
+                      )}
+                    </Link>
+                  </TooltipTrigger>
+                  {!sidebarOpen && (
+                    <TooltipContent side="right" className="dark bg-slate-900 text-slate-100 border-slate-800 shadow-xl">
+                      {locale === "id" ? "Kembali ke Aplikasi" : "Back to User App"}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </div>
+            )}
+
+            {/* Context Switcher: User App -> Admin Mode (Owner only) */}
+            {!isAdminPage && user?.role === "owner" && (
+              <div className="pb-1">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/admin/dashboard"
+                      onClick={handleNavClick}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/25 transition-all group/admin",
+                        !sidebarOpen && "justify-center px-0"
+                      )}
+                    >
+                      <Shield className="h-4 w-4 shrink-0 text-rose-400" />
+                      {sidebarOpen && (
+                        <>
+                          <span className="truncate">{locale === "id" ? "Panel Admin" : "Admin Panel"}</span>
+                          <ArrowRight className="h-3.5 w-3.5 ml-auto opacity-70 group-hover/admin:translate-x-0.5 transition-transform" />
+                        </>
+                      )}
+                    </Link>
+                  </TooltipTrigger>
+                  {!sidebarOpen && (
+                    <TooltipContent side="right" className="dark bg-slate-900 text-slate-100 border-slate-800 shadow-xl">
+                      {locale === "id" ? "Panel Admin" : "Admin Panel"}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </div>
+            )}
+
             {displayedNavGroups.map((group, groupIdx) => {
               // Filter items in the group by user role
               const userLevel = ROLE_HIERARCHY[user?.role || "freetrial"] ?? 0;
@@ -557,8 +598,12 @@ export function Sidebar() {
                                         }}
                                         className={cn(
                                           "flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium transition-colors duration-150 text-left relative",
+                                          !sidebarOpen && "justify-center px-0",
                                           isActive
-                                            ? "bg-primary-500/15 text-primary-400 font-semibold border-l-2 border-primary-500 pl-[10px]"
+                                            ? cn(
+                                                "bg-primary-500/15 text-primary-400 font-semibold",
+                                                sidebarOpen && "border-l-2 border-primary-500 pl-[10px]"
+                                              )
                                             : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                                         )}
                                       >
@@ -595,7 +640,7 @@ export function Sidebar() {
                                   {/* Submenu Accordion */}
                                   {sidebarOpen && isOpen && (
                                     <div
-                                      className="ml-4 mt-1 space-y-0.5 border-l border-slate-900 pl-3 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                                      className="ml-3.5 mt-1 space-y-0.5 border-l border-slate-800/80 pl-2.5 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
                                     >
                                       {item.subItems
                                         .filter((sub) => userLevel >= (sub.minRole ?? 0))
@@ -609,7 +654,7 @@ export function Sidebar() {
                                             href={sub.href}
                                             onClick={handleNavClick}
                                             className={cn(
-                                              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                                              "flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150",
                                               isSubActive
                                                 ? "bg-primary-500/15 text-primary-300 font-semibold"
                                                 : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
@@ -635,8 +680,12 @@ export function Sidebar() {
                                       onClick={handleNavClick}
                                       className={cn(
                                         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 relative",
+                                        !sidebarOpen && "justify-center px-0",
                                         isActive
-                                          ? "bg-primary-500/15 text-primary-400 font-semibold border-l-2 border-primary-500 pl-[10px]"
+                                          ? cn(
+                                              "bg-primary-500/15 text-primary-400 font-semibold",
+                                              sidebarOpen && "border-l-2 border-primary-500 pl-[10px]"
+                                            )
                                           : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-100"
                                       )}
                                     >

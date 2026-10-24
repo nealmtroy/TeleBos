@@ -99,6 +99,37 @@ def run_migrations(connection):
             )
         )
 
+    if "schedule_enabled" not in columns:
+        connection.execute(
+            text(
+                "ALTER TABLE broadcast_jobs "
+                "ADD COLUMN schedule_enabled BOOLEAN DEFAULT false NOT NULL"
+            )
+        )
+
+    if "schedule_start_time" not in columns:
+        connection.execute(
+            text("ALTER TABLE broadcast_jobs ADD COLUMN schedule_start_time VARCHAR(5) DEFAULT NULL")
+        )
+
+    if "schedule_end_time" not in columns:
+        connection.execute(
+            text("ALTER TABLE broadcast_jobs ADD COLUMN schedule_end_time VARCHAR(5) DEFAULT NULL")
+        )
+
+    if "schedule_timezone" not in columns:
+        connection.execute(
+            text("ALTER TABLE broadcast_jobs ADD COLUMN schedule_timezone VARCHAR(50) DEFAULT 'Asia/Jakarta' NOT NULL")
+        )
+
+    if "schedule_paused" not in columns:
+        connection.execute(
+            text(
+                "ALTER TABLE broadcast_jobs "
+                "ADD COLUMN schedule_paused BOOLEAN DEFAULT false NOT NULL"
+            )
+        )
+
     # ── Broadcast logs cycle-level migration (011) ──────────────────────
     broadcast_logs_cols_info = inspector.get_columns("broadcast_logs")
     broadcast_logs_cols = [c["name"] for c in broadcast_logs_cols_info]
@@ -188,6 +219,12 @@ def run_migrations(connection):
         connection.execute(
             text(
                 "ALTER TABLE telegram_accounts ADD COLUMN owned_channels BIGINT DEFAULT 0 NOT NULL"
+            )
+        )
+    if "device_count" not in acct_cols:
+        connection.execute(
+            text(
+                "ALTER TABLE telegram_accounts ADD COLUMN device_count BIGINT DEFAULT 1 NOT NULL"
             )
         )
     if "stats_updated_at" not in acct_cols:
@@ -1188,6 +1225,65 @@ def run_migrations(connection):
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_user_bank_accounts_default ON user_bank_accounts(user_id, is_default)"))
         except Exception as e:
             logger.warning("Could not create user_bank_accounts table: %s", e)
+
+    # ── Auto Leave Tables ──────────────────────────────────────────────────
+    if "auto_leave_jobs" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS auto_leave_jobs (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        account_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+                        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        leave_type VARCHAR(20) NOT NULL DEFAULT 'groups',
+                        skip_creator BOOLEAN NOT NULL DEFAULT true,
+                        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                        total_tasks INTEGER NOT NULL DEFAULT 0,
+                        success_count INTEGER NOT NULL DEFAULT 0,
+                        skipped_count INTEGER NOT NULL DEFAULT 0,
+                        fail_count INTEGER NOT NULL DEFAULT 0,
+                        progress INTEGER NOT NULL DEFAULT 0,
+                        delay_per_chat INTEGER NOT NULL DEFAULT 5,
+                        delay_randomized BOOLEAN NOT NULL DEFAULT false,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        completed_at TIMESTAMPTZ
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_auto_leave_jobs_user_id ON auto_leave_jobs(user_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_auto_leave_jobs_user_status ON auto_leave_jobs(user_id, status)"))
+        except Exception as e:
+            logger.warning("Could not create auto_leave_jobs table: %s", e)
+
+    if "auto_leave_logs" not in tables:
+        try:
+            connection.execute(
+                text("""
+                    CREATE TABLE IF NOT EXISTS auto_leave_logs (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        job_id UUID NOT NULL REFERENCES auto_leave_jobs(id) ON DELETE CASCADE,
+                        target VARCHAR(500) NOT NULL,
+                        chat_id BIGINT,
+                        chat_title VARCHAR(500),
+                        chat_username VARCHAR(255),
+                        chat_type VARCHAR(20),
+                        status VARCHAR(20) NOT NULL,
+                        error_type VARCHAR(50),
+                        error_message TEXT,
+                        left_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        account_id_used UUID REFERENCES telegram_accounts(id) ON DELETE SET NULL,
+                        account_name VARCHAR(255)
+                    )
+                """)
+            )
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_auto_leave_logs_job_id ON auto_leave_logs(job_id)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_auto_leave_logs_account_id_used ON auto_leave_logs(account_id_used)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_auto_leave_logs_job_left ON auto_leave_logs(job_id, left_at)"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_auto_leave_logs_job_status ON auto_leave_logs(job_id, status)"))
+        except Exception as e:
+            logger.warning("Could not create auto_leave_logs table: %s", e)
+
 
 
 

@@ -205,16 +205,18 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
             "temporarily unavailable. Wait a few hours and try again.",
         )
 
-    if isinstance(exc, FloodWaitError):
-        wait = exc.seconds if hasattr(exc, "seconds") else "unknown"
-        return ("flood", f"Flood wait: {wait} seconds")
-
-    # A rate-limit wrapped into a RuntimeError by a service helper keeps its kind
-    # here (see TelegramRateLimitError).
-    if isinstance(exc, TelegramRateLimitError):
-        if exc.error_type == "peer_flood":
-            return ("peer_flood", str(exc))
-        return ("flood", f"Flood wait: {exc.seconds} seconds")
+    # Check both the outer exception and any wrapped cause
+    cause_exc = getattr(exc, "__cause__", None)
+    for candidate in (exc, cause_exc):
+        if candidate is None:
+            continue
+        if isinstance(candidate, FloodWaitError):
+            wait = candidate.seconds if hasattr(candidate, "seconds") else "unknown"
+            return ("flood", f"Flood wait: {wait} seconds")
+        if isinstance(candidate, TelegramRateLimitError):
+            if candidate.error_type == "peer_flood":
+                return ("peer_flood", str(candidate))
+            return ("flood", f"Flood wait: {candidate.seconds} seconds")
 
     if isinstance(exc, SlowModeWaitError):
         wait = exc.seconds if hasattr(exc, "seconds") else "unknown"
@@ -411,8 +413,9 @@ def classify_telegram_error(exc: Exception) -> tuple[str, str]:
             "temporarily unavailable. Wait a few hours and try again.",
         )
 
-    if "FLOOD_WAIT" in msg:
-        match = re.search(r"FLOOD_WAIT_(\d+)", msg)
+    flood_match = re.search(r"(?:FLOOD_WAIT_|A wait of\s+)(\d+)", msg, re.IGNORECASE)
+    if flood_match or "FLOOD_WAIT" in msg:
+        match = flood_match or re.search(r"(\d+)", msg)
         seconds = match.group(1) if match else "?"
         return ("flood", f"Flood wait: {seconds} seconds")
 

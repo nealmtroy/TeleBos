@@ -41,9 +41,15 @@ export interface BroadcastJob {
   delay_after_all: number;
   loop_enabled: boolean;
   delay_randomized: boolean;
+  schedule_enabled?: boolean;
+  schedule_start_time?: string | null;
+  schedule_end_time?: string | null;
+  schedule_timezone?: string;
+  schedule_paused?: boolean;
   log_destination: string | null;
   created_at: string;
   completed_at: string | null;
+  related_job_ids?: string[];
 }
 
 export interface BroadcastUserSummary {
@@ -251,6 +257,10 @@ export function useStartBroadcast() {
       loop_enabled?: boolean;
       delay_randomized?: boolean;
       log_destination?: string | null;
+      schedule_enabled?: boolean;
+      schedule_start_time?: string | null;
+      schedule_end_time?: string | null;
+      schedule_timezone?: string;
     }) => {
       const { data } = await api.post("/broadcast/start", payload);
       return data;

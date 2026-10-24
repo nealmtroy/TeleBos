@@ -34,6 +34,8 @@ async def refresh_account_stats(db: AsyncSession, account) -> None:
     account.owned_groups = stats["owned_groups"]
     account.total_channels = stats["total_channels"]
     account.owned_channels = stats["owned_channels"]
+    if "device_count" in stats:
+        account.device_count = stats["device_count"]
     account.stats_updated_at = datetime.now(timezone.utc)
 
     # Passive harvest of Telegram ID age registration datapoints (limited to 100 to avoid rate limits)
@@ -45,11 +47,12 @@ async def refresh_account_stats(db: AsyncSession, account) -> None:
 
     await db.flush()
     logger.info(
-        "Refreshed stats for account %s: %d contacts, %d groups, %d channels",
+        "Refreshed stats for account %s: %d contacts, %d groups, %d channels, %d devices",
         account.id,
         stats["contacts_count"],
         stats["total_groups"],
         stats["total_channels"],
+        account.device_count,
     )
 
 

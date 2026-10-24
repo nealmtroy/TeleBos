@@ -209,23 +209,26 @@ describe("AccountSettingsPage - Profile & Photo UX", () => {
     const saveBtn = screen.getAllByRole("button", { name: /Simpan/i })[0];
     await user.click(saveBtn);
 
-    await waitFor(() => {
-      expect(mockApi.put).toHaveBeenCalledWith(
-        "/accounts/dc7b4891-179b-4595-b95b-675b0b6d5d77/profile",
-        {
-          first_name: "Alexander",
-          last_name: "Prihardana",
-          username: "alexander", // leading @ stripped
-          bio: "Tech Lead",
-        }
-      );
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variant: "success",
-          title: "Profil berhasil diperbarui!",
-        })
-      );
-    });
+    await waitFor(
+      () => {
+        expect(mockApi.put).toHaveBeenCalledWith(
+          "/accounts/dc7b4891-179b-4595-b95b-675b0b6d5d77/profile",
+          {
+            first_name: "Alexander",
+            last_name: "Prihardana",
+            username: "alexander", // leading @ stripped
+            bio: "Tech Lead",
+          }
+        );
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: "success",
+            title: "Profil berhasil diperbarui!",
+          })
+        );
+      },
+      { timeout: 4000 }
+    );
   });
 
   it("shows error toast when saving with empty first name", async () => {

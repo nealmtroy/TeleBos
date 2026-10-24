@@ -47,6 +47,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auto_join_job import AutoJoinJob
+from app.models.auto_leave_job import AutoLeaveJob
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
 
@@ -94,7 +95,7 @@ async def is_worker_claimed(db: AsyncSession, account_id: str) -> bool:
     except (ValueError, TypeError):
         return False
 
-    for model in (BroadcastJob, InviteJob, AutoJoinJob):
+    for model in (BroadcastJob, InviteJob, AutoJoinJob, AutoLeaveJob):
         try:
             result = await db.execute(
                 select(model.account_ids).where(
@@ -128,7 +129,7 @@ async def find_busy_accounts(db: AsyncSession, account_ids) -> list[str]:
         return []
 
     busy: set[str] = set()
-    for model in (BroadcastJob, InviteJob, AutoJoinJob):
+    for model in (BroadcastJob, InviteJob, AutoJoinJob, AutoLeaveJob):
         try:
             result = await db.execute(
                 select(model.account_ids).where(

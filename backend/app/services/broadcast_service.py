@@ -249,6 +249,10 @@ async def start_broadcast(
     loop_enabled: bool = True,
     delay_randomized: bool = False,
     log_destination: str | None = None,
+    schedule_enabled: bool = False,
+    schedule_start_time: str | None = None,
+    schedule_end_time: str | None = None,
+    schedule_timezone: str = "Asia/Jakarta",
 ) -> BroadcastJob:
     # Enforce active subscription / trial before querying resources
     from app.services.redeem_service import is_subscription_active
@@ -358,30 +362,59 @@ async def start_broadcast(
 
     total_groups = len(group_list.items)
 
-    job = BroadcastJob(
-        account_ids=valid_account_ids,
-        user_id=user.id,
-        group_list_id=group_list_id,
-        text_list_id=text_list_id,
-        mode=mode,
-        custom_text=custom_text,
-        status="running",
-        total_groups=total_groups,
-        delay_per_group=delay_per_group,
-        delay_after_all=delay_after_all,
-        loop_enabled=loop_enabled,
-        delay_randomized=delay_randomized,
-        log_destination=log_destination,
-    )
-    db.add(job)
+    initial_status = "running"
+    initial_schedule_paused = False
+    if schedule_enabled and schedule_start_time and schedule_end_time:
+        from app.utils.schedule_helper import is_within_schedule
+        is_active, _ = is_within_schedule(schedule_start_time, schedule_end_time, schedule_timezone)
+        if not is_active:
+            initial_status = "paused"
+            initial_schedule_paused = True
+
+    created_jobs: list[BroadcastJob] = []
+    for acc_id in valid_account_ids:
+        job = BroadcastJob(
+            account_ids=[acc_id],
+            user_id=user.id,
+            group_list_id=group_list_id,
+            text_list_id=text_list_id,
+            mode=mode,
+            custom_text=custom_text,
+            status=initial_status,
+            total_groups=total_groups,
+            delay_per_group=delay_per_group,
+            delay_after_all=delay_after_all,
+            loop_enabled=loop_enabled,
+            delay_randomized=delay_randomized,
+            log_destination=log_destination,
+            schedule_enabled=schedule_enabled,
+            schedule_start_time=schedule_start_time,
+            schedule_end_time=schedule_end_time,
+            schedule_timezone=schedule_timezone,
+            schedule_paused=initial_schedule_paused,
+        )
+        db.add(job)
+        created_jobs.append(job)
+
     await db.flush()
     await db.commit()
-    await db.refresh(job)
+    for job in created_jobs:
+        await db.refresh(job)
 
-    # Enqueue broadcast job to Redis for dedicated async worker
-    await _dispatch_broadcast(db, job)
+    # Enqueue each broadcast job to Redis for dedicated async worker
+    for idx, job in enumerate(created_jobs):
+        try:
+            await _dispatch_broadcast(db, job)
+        except Exception:
+            for remaining_job in created_jobs[idx + 1:]:
+                remaining_job.status = "failed"
+                remaining_job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            raise
 
-    return job
+    primary_job = created_jobs[0]
+    setattr(primary_job, "related_job_ids", [j.id for j in created_jobs])
+    return primary_job
 
 
 async def _dispatch_broadcast(db: AsyncSession, job: BroadcastJob) -> None:
@@ -1180,10 +1213,29 @@ async def execute_broadcast(job_id: str):
             if job_orm is None or job_orm.status in ("cancelled", "completed"):
                 return
 
-            job_orm.status = "running"
-            await db.commit()
-
             loop_enabled = job_orm.loop_enabled
+            schedule_enabled = bool(getattr(job_orm, "schedule_enabled", False))
+            schedule_start_time = getattr(job_orm, "schedule_start_time", None)
+            schedule_end_time = getattr(job_orm, "schedule_end_time", None)
+            schedule_timezone = getattr(job_orm, "schedule_timezone", "Asia/Jakarta") or "Asia/Jakarta"
+            schedule_paused = bool(getattr(job_orm, "schedule_paused", False))
+
+            if schedule_enabled and schedule_start_time and schedule_end_time:
+                from app.utils.schedule_helper import is_within_schedule
+                is_active, _ = is_within_schedule(schedule_start_time, schedule_end_time, schedule_timezone)
+                if not is_active:
+                    job_orm.status = "paused"
+                    job_orm.schedule_paused = True
+                    schedule_paused = True
+                else:
+                    if job_orm.status != "paused" or job_orm.schedule_paused:
+                        job_orm.status = "running"
+                        job_orm.schedule_paused = False
+                        schedule_paused = False
+            else:
+                if job_orm.status != "paused":
+                    job_orm.status = "running"
+            await db.commit()
             job_user_id = str(job_orm.user_id)
             delay_randomized = job_orm.delay_randomized
             delay_per_group = job_orm.delay_per_group
@@ -1294,14 +1346,20 @@ async def execute_broadcast(job_id: str):
             max_cycle = cycle_res.scalar()
             cycle_count = max_cycle if max_cycle is not None else 0
 
+        current_status_val = "paused" if schedule_paused else "running"
         await _push_broadcast(
             job_id_str,
             "status",
             {
-                "status": "running",
+                "status": current_status_val,
                 "total": total_groups,
                 "sent": sent,
                 "failed": failed,
+                "message": (
+                    f"Menunggu jadwal siaran aktif ({schedule_start_time} - {schedule_end_time} WIB)..."
+                    if schedule_paused
+                    else None
+                ),
             },
         )
 
@@ -1716,6 +1774,81 @@ async def execute_broadcast(job_id: str):
                     current_status = await _get_current_status(job_uuid)
                     if current_status is None or current_status == "cancelled":
                         break
+
+                    # Check schedule window if schedule is enabled
+                    if schedule_enabled and schedule_start_time and schedule_end_time:
+                        from app.utils.schedule_helper import is_within_schedule
+                        is_act_sched, wait_next_sec = is_within_schedule(
+                            schedule_start_time, schedule_end_time, schedule_timezone
+                        )
+                        if not is_act_sched:
+                            if pending_cycle_details:
+                                await _flush_cycle_logs(
+                                    job_uuid,
+                                    cycle_number=current_cycle_number,
+                                    details=pending_cycle_details,
+                                    total_groups=total_items_count,
+                                    sent=sent,
+                                    failed=failed,
+                                    progress=last_progress,
+                                )
+                            async with async_session_factory() as db_sch:
+                                res = await db_sch.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                                j_orm = res.scalar_one_or_none()
+                                if j_orm and j_orm.status in ("running", "paused"):
+                                    j_orm.status = "paused"
+                                    j_orm.schedule_paused = True
+                                    await db_sch.commit()
+
+                            await _push_broadcast(
+                                job_id_str,
+                                "status",
+                                {
+                                    "status": "paused",
+                                    "message": f"Siaran dijeda otomatis (di luar jam operasional {schedule_start_time} - {schedule_end_time} WIB). Menunggu jadwal berikutnya.",
+                                },
+                            )
+
+                            while True:
+                                current_status = await _get_current_status(job_uuid)
+                                if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                                    break
+                                is_act_now, wait_sec_now = is_within_schedule(
+                                    schedule_start_time, schedule_end_time, schedule_timezone
+                                )
+                                if is_act_now:
+                                    async with async_session_factory() as db_sch:
+                                        res = await db_sch.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                                        j_orm = res.scalar_one_or_none()
+                                        if j_orm and j_orm.status == "paused" and j_orm.schedule_paused:
+                                            j_orm.status = "running"
+                                            j_orm.schedule_paused = False
+                                            await db_sch.commit()
+                                            await _push_broadcast(
+                                                job_id_str,
+                                                "status",
+                                                {
+                                                    "status": "running",
+                                                    "message": f"Jam operasional aktif ({schedule_start_time} WIB). Melanjutkan siaran otomatis.",
+                                                },
+                                            )
+                                    break
+                                sleep_sec = min(max(1, wait_sec_now), 30)
+                                interrupted = not await _interruptible_sleep(job_id_str, sleep_sec)
+                                if interrupted:
+                                    current_status = await _get_current_status(job_uuid)
+                                    if current_status in ("cancelled", "completed", "failed"):
+                                        break
+                                    async with async_session_factory() as db_sch:
+                                        res = await db_sch.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                                        j_orm = res.scalar_one_or_none()
+                                        if j_orm and not j_orm.schedule_paused and j_orm.status == "running":
+                                            break
+
+                            current_status = await _get_current_status(job_uuid)
+                            if current_status is None or current_status == "cancelled":
+                                break
+
                     while current_status == "paused":
                         if pending_cycle_details:
                             await _flush_cycle_logs(
@@ -2681,6 +2814,68 @@ async def execute_broadcast(job_id: str):
                             "failed",
                         ):
                             break
+
+                        # Check schedule window during inter-cycle delay
+                        if schedule_enabled and schedule_start_time and schedule_end_time:
+                            from app.utils.schedule_helper import is_within_schedule
+                            is_act_sched, wait_next_sec = is_within_schedule(
+                                schedule_start_time, schedule_end_time, schedule_timezone
+                            )
+                            if not is_act_sched:
+                                async with async_session_factory() as db_sch:
+                                    res = await db_sch.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                                    j_orm = res.scalar_one_or_none()
+                                    if j_orm and j_orm.status in ("running", "paused"):
+                                        j_orm.status = "paused"
+                                        j_orm.schedule_paused = True
+                                        await db_sch.commit()
+
+                                await _push_broadcast(
+                                    job_id_str,
+                                    "status",
+                                    {
+                                        "status": "paused",
+                                        "message": f"Siaran dijeda otomatis (di luar jam operasional {schedule_start_time} - {schedule_end_time} WIB). Menunggu jadwal berikutnya.",
+                                    },
+                                )
+                                while True:
+                                    current_status = await _get_current_status(job_uuid)
+                                    if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                                        break
+                                    is_act_now, wait_sec_now = is_within_schedule(
+                                        schedule_start_time, schedule_end_time, schedule_timezone
+                                    )
+                                    if is_act_now:
+                                        async with async_session_factory() as db_sch:
+                                            res = await db_sch.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                                            j_orm = res.scalar_one_or_none()
+                                            if j_orm and j_orm.status == "paused" and j_orm.schedule_paused:
+                                                j_orm.status = "running"
+                                                j_orm.schedule_paused = False
+                                                await db_sch.commit()
+                                                await _push_broadcast(
+                                                    job_id_str,
+                                                    "status",
+                                                    {
+                                                        "status": "running",
+                                                        "message": f"Jam operasional aktif ({schedule_start_time} WIB). Melanjutkan siaran otomatis.",
+                                                    },
+                                                )
+                                        break
+                                    sleep_sec = min(max(1, wait_sec_now), 30)
+                                    interrupted = not await _interruptible_sleep(job_id_str, sleep_sec)
+                                    if interrupted:
+                                        current_status = await _get_current_status(job_uuid)
+                                        if current_status in ("cancelled", "completed", "failed"):
+                                            break
+                                        async with async_session_factory() as db_sch:
+                                            res = await db_sch.execute(select(BroadcastJob).where(BroadcastJob.id == job_uuid))
+                                            j_orm = res.scalar_one_or_none()
+                                            if j_orm and not j_orm.schedule_paused and j_orm.status == "running":
+                                                break
+                                current_status = await _get_current_status(job_uuid)
+                                if current_status is None or current_status in ("cancelled", "completed", "failed"):
+                                    break
                         while current_status == "paused":
                             if pending_cycle_details:
                                 await _flush_cycle_logs(

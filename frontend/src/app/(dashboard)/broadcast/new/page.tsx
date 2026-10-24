@@ -61,6 +61,9 @@ export default function NewBroadcastPage() {
   const [delayPerGroup, setDelayPerGroup] = useState("5");
   const [delayAfterAll, setDelayAfterAll] = useState("60");
   const [delayRandomized, setDelayRandomized] = useState(false);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleStartTime, setScheduleStartTime] = useState("07:00");
+  const [scheduleEndTime, setScheduleEndTime] = useState("17:00");
   const [logDestination, setLogDestination] = useState("@teleboslogging_bot");
   const [logWebOnly, setLogWebOnly] = useState(false);
   const [stopConfirmOpen, setStopConfirmOpen] = useState(false);
@@ -160,7 +163,7 @@ export default function NewBroadcastPage() {
   // Clear validation errors when selections/inputs change
   useEffect(() => {
     setValidationError(null);
-  }, [selectedAccountIds, groupListId, textListId, customText, mode]);
+  }, [selectedAccountIds, groupListId, textListId, customText, mode, scheduleEnabled, scheduleStartTime, scheduleEndTime]);
 
   function handlePreStart() {
     setAttemptedSubmit(true);
@@ -227,6 +230,26 @@ export default function NewBroadcastPage() {
       return;
     }
 
+    if (scheduleEnabled) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!scheduleStartTime || !timeRegex.test(scheduleStartTime.trim())) {
+        setValidationError(
+          isIndonesian
+            ? "Format jam mulai tidak valid (harus format HH:MM, contoh: 07:00)."
+            : "Invalid start time format (must be HH:MM, e.g. 07:00)."
+        );
+        return;
+      }
+      if (!scheduleEndTime || !timeRegex.test(scheduleEndTime.trim())) {
+        setValidationError(
+          isIndonesian
+            ? "Format jam selesai tidak valid (harus format HH:MM, contoh: 17:00)."
+            : "Invalid end time format (must be HH:MM, e.g. 17:00)."
+        );
+        return;
+      }
+    }
+
     // Safety net: an account may have become busy after it was selected.
     const conflicts = selectedAccountIds.filter((id) => busyAccountIds.has(id));
     if (conflicts.length > 0) {
@@ -254,10 +277,19 @@ export default function NewBroadcastPage() {
         log_destination: logWebOnly
           ? "web_only"
           : (logDestination.trim() || null),
+        schedule_enabled: scheduleEnabled,
+        schedule_start_time: scheduleEnabled ? scheduleStartTime.trim() : undefined,
+        schedule_end_time: scheduleEnabled ? scheduleEndTime.trim() : undefined,
+        schedule_timezone: "Asia/Jakarta",
       });
       setConfirmOpen(false);
       setWarningOpen(false);
-      router.push(`/broadcast/success/${job.id}`);
+      const totalAccounts = selectedAccountIds.length;
+      if (totalAccounts > 1) {
+        router.push(`/broadcast/success/${job.id}?totalJobs=${totalAccounts}`);
+      } else {
+        router.push(`/broadcast/success/${job.id}`);
+      }
     } catch (err) {
       // handled by mutation
     }
@@ -533,6 +565,121 @@ export default function NewBroadcastPage() {
           </div>
         </div>
 
+        {/* Broadcast Terjadwal (Jam Operasional / Schedule) */}
+        <div className="bg-card text-card-foreground rounded-xl border border-border p-4 sm:p-5 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm sm:text-base flex items-center gap-2">
+                  {_("newBroadcast.scheduleTitle")}
+                  <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    WIB (UTC+7)
+                  </span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {_("newBroadcast.scheduleDesc")}
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={scheduleEnabled}
+                onChange={(e) => setScheduleEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary"></div>
+            </label>
+          </div>
+
+          {scheduleEnabled && (
+            <div className="pt-2 border-t border-border/60 animate-in fade-in-50 duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="schedule-start-time" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    {_("newBroadcast.scheduleStartTime")}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="schedule-start-time"
+                      type="time"
+                      value={scheduleStartTime}
+                      onChange={(e) => setScheduleStartTime(e.target.value)}
+                      className="w-full h-9 px-3 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-card text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {_("newBroadcast.scheduleStartTimeDesc")}
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="schedule-end-time" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    {_("newBroadcast.scheduleEndTime")}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="schedule-end-time"
+                      type="time"
+                      value={scheduleEndTime}
+                      onChange={(e) => setScheduleEndTime(e.target.value)}
+                      className="w-full h-9 px-3 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-card text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {_("newBroadcast.scheduleEndTimeDesc")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Preset buttons */}
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-2">
+                <span className="text-xs text-muted-foreground">{_("newBroadcast.schedulePresets")}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleStartTime("07:00");
+                    setScheduleEndTime("17:00");
+                  }}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+                >
+                  07:00 - 17:00 (Pagi - Sore)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleStartTime("08:00");
+                    setScheduleEndTime("21:00");
+                  }}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+                >
+                  08:00 - 21:00
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleStartTime("09:00");
+                    setScheduleEndTime("18:00");
+                  }}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+                >
+                  09:00 - 18:00 (Jam Kantor)
+                </button>
+              </div>
+
+              <div className="mt-3 p-3 rounded-lg bg-amber-50/70 border border-amber-200/70 dark:bg-amber-950/30 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-300/90 flex items-start gap-2">
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <span>
+                  {_("newBroadcast.scheduleInfo")}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Cycle log destination */}
         <div className="space-y-2">
           <label htmlFor="broadcast-log-destination" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -627,7 +774,7 @@ export default function NewBroadcastPage() {
                 activeJob.status === "failed" && "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
                 activeJob.status === "cancelled" && "bg-muted text-muted-foreground border-border",
               )}>
-                {activeJob.status}
+                {activeJob.schedule_paused ? "Paused (Di Luar Jadwal)" : activeJob.status}
               </span>
 
               {/* Pause/Resume/Stop controls */}
@@ -780,11 +927,19 @@ export default function NewBroadcastPage() {
           <div className="space-y-3 text-sm text-gray-600 mt-2 text-left">
             <p>Please review your broadcast settings before starting:</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Accounts:</strong> {selectedAccountIds.length} selected</li>
+              <li>
+                <strong>Accounts:</strong>{" "}
+                {selectedAccountIds.length > 1
+                  ? `${selectedAccountIds.length} akun terpilih (Masing-masing akun akan menjalankan siaran ke seluruh grup secara mandiri)`
+                  : "1 akun terpilih"}
+              </li>
               <li><strong>Group List:</strong> {(groupLists || []).find(g => g.id === groupListId)?.name || "-"}</li>
               <li><strong>Text Source:</strong> {mode === "single_text" ? "Custom Text" : ((textLists || []).find(t => t.id === textListId)?.name || "-")}</li>
               <li><strong>Delay per Group:</strong> {delayRandomized ? "5-30s (Random)" : `${delayPerGroup}s`}</li>
               <li><strong>Delay after Cycle:</strong> {delayAfterAll}s</li>
+              {scheduleEnabled && (
+                <li><strong>Jadwal Operasional:</strong> {scheduleStartTime} - {scheduleEndTime} WIB (Auto Pause &amp; Resume)</li>
+              )}
             </ul>
             <p className="mt-4 font-medium text-gray-900">Do you want to start this broadcast now?</p>
           </div>

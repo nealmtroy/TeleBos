@@ -41,6 +41,7 @@ export interface Account {
   owned_groups?: number;
   total_channels?: number;
   owned_channels?: number;
+  device_count?: number;
   stats_updated_at?: string | null;
   sold_at?: string | null;
   is_resale?: boolean;

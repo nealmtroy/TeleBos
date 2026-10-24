@@ -25,6 +25,9 @@ async def list_devices(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         devices = await device_service.get_devices(account)
+        if getattr(account, "device_count", None) != len(devices):
+            account.device_count = len(devices)
+            await db.commit()
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return DeviceListResponse(devices=[DeviceInfo(**d) for d in devices])
@@ -46,6 +49,9 @@ async def terminate_device(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         await device_service.terminate_device(account, int(device_hash))
+        if getattr(account, "device_count", 1) > 1:
+            account.device_count -= 1
+            await db.commit()
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:
@@ -72,6 +78,8 @@ async def terminate_all_other_sessions(
         raise HTTPException(status_code=404, detail="Account not found")
     try:
         await device_service.terminate_all_other_sessions(account)
+        account.device_count = 1
+        await db.commit()
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     except Exception as exc:

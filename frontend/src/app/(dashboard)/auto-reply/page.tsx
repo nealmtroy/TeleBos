@@ -212,6 +212,27 @@ export default function AutoReplyPage() {
     );
   }
 
+  // ── Role guard: only pro, premium, owner can access auto-reply ──
+  if (user?.role !== "pro" && user?.role !== "premium" && user?.role !== "owner") {
+    return (
+      <div className="text-center py-16">
+        <Shield className="h-16 w-16 mx-auto mb-4 text-gray-300 dark:text-slate-600" />
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          Access Denied
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-slate-400 max-w-md mx-auto mb-4">
+          Fitur Balas DM Otomatis hanya tersedia untuk paket Pro, Premium, atau Owner. Silakan upgrade paket Anda untuk menggunakan fitur ini.
+        </p>
+        <Link
+          href="/subscriptions"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+        >
+          Upgrade Paket
+        </Link>
+      </div>
+    );
+  }
+
   // ── Error state ───────────────────────────────────────────────
   if (error) {
     return (

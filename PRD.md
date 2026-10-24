@@ -133,6 +133,7 @@ Reference specification: `docs/subscription_plans_monthly_yearly.md` and `fronte
 | **Age Checker** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
 | **Public Index Groups & Channels** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
 | **Auto Join Groups & Channels** | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
+| **Auto Leave Groups & Channels** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
 | **Auto Reply Responder** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |
 | **Member Inviter & Scraping** | ❌ Tidak | ❌ Tidak | ✅ Ya | ✅ Ya | ✅ Ya |
 | **Real-time Chats & Obrolan** | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya | ✅ Ya |

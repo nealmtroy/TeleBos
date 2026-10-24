@@ -9,6 +9,7 @@ export interface AccountStats {
   owned_groups: number;
   total_channels: number;
   owned_channels: number;
+  device_count?: number;
   stats_updated_at: string | null;
 }
 

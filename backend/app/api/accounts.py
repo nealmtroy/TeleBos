@@ -159,6 +159,14 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             # Encrypt session
             session_str = client.session.save()
             account.session_string = encrypt(session_str)
+
+            try:
+                from telethon.tl.functions.account import GetAuthorizationsRequest
+                auths = await client(GetAuthorizationsRequest())
+                if auths and hasattr(auths, "authorizations"):
+                    account.device_count = len(auths.authorizations)
+            except Exception:
+                account.device_count = getattr(account, "device_count", 1) or 1
             
             await db.commit()
             await db.refresh(account)
@@ -1025,6 +1033,7 @@ async def get_account_stats(
         owned_groups=account.owned_groups,
         total_channels=account.total_channels,
         owned_channels=account.owned_channels,
+        device_count=getattr(account, "device_count", 1) or 1,
         stats_updated_at=account.stats_updated_at,
     )
 
@@ -1058,6 +1067,7 @@ async def refresh_account_stats(
         owned_groups=account.owned_groups,
         total_channels=account.total_channels,
         owned_channels=account.owned_channels,
+        device_count=getattr(account, "device_count", 1) or 1,
         stats_updated_at=account.stats_updated_at,
     )
 

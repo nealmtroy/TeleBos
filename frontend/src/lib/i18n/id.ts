@@ -527,6 +527,14 @@ const id: Dict = {
     delayPerGroupSuffix: "1 – 3600 detik",
     delayAfterAll: "Jeda Setelah Semua Grup (detik)",
     delayAfterAllSuffix: "Jeda sebelum mengulang dari awal",
+    scheduleTitle: "Broadcast Terjadwal (Jam Operasional)",
+    scheduleDesc: "Atur waktu mulai dan selesai siaran otomatis. Di luar jam ini, broadcast akan otomatis dijeda (pause) dan lanjut kembali esok harinya.",
+    scheduleStartTime: "Jam Mulai Siaran",
+    scheduleStartTimeDesc: "Siaran otomatis mulai / resume pada jam ini.",
+    scheduleEndTime: "Jam Selesai Siaran (Auto Pause)",
+    scheduleEndTimeDesc: "Siaran otomatis dijeda (pause) pada jam ini.",
+    schedulePresets: "Preset cepat:",
+    scheduleInfo: "Jika broadcast dimulai di luar rentang jam operasional, status akan langsung masuk ke Standby / Paused dan otomatis mulai mengirim saat jam mulai tiba.",
     loopTitle: "Siaran Berulang (Loop)",
     loopDesc: "Siaran akan otomatis mengulang dari grup pertama setelah selesai mengirim ke semua grup. Gunakan tombol Stop untuk menghentikan siaran.",
     startBroadcast: "Mulai Siaran",
@@ -1224,6 +1232,8 @@ const id: Dict = {
     noPublicChats: "Grup atau saluran publik tidak ditemukan.",
     autoJoin: "Auto Join",
     autoJoinDesc: "Bergabung ke banyak grup dan channel secara otomatis dengan akun Telegram Anda.",
+    autoLeave: "Auto Leave",
+    autoLeaveDesc: "Keluar dari banyak grup dan channel secara otomatis dengan akun Telegram Anda.",
   },
 
   // ── Auto Join ──────────────────────────────────────────────────────────────

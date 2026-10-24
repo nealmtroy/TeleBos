@@ -376,6 +376,7 @@ class SessionManager:
     async def is_account_in_active_job(self, db: AsyncSession, account_id: str) -> bool:
         """Check if an account is currently assigned to an active automation job."""
         from app.models.auto_join_job import AutoJoinJob
+        from app.models.auto_leave_job import AutoLeaveJob
         from app.models.broadcast_job import BroadcastJob
         from app.models.invite_job import InviteJob
         import uuid
@@ -384,44 +385,18 @@ class SessionManager:
         except ValueError:
             return False
 
-        # 1. Check active BroadcastJobs (pending, running, paused jobs hold the session in worker)
-        try:
-            broadcast_query = await db.execute(
-                select(BroadcastJob.account_ids).where(
-                    BroadcastJob.status.in_(["pending", "running", "paused"])
+        for model in (BroadcastJob, InviteJob, AutoJoinJob, AutoLeaveJob):
+            try:
+                query = await db.execute(
+                    select(model.account_ids).where(
+                        model.status.in_(["pending", "running", "paused"])
+                    )
                 )
-            )
-            for job_accs in broadcast_query.scalars():
-                if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
-                    return True
-        except Exception as e:
-            logger.debug("Failed to check BroadcastJob for account %s: %s", account_id, e)
-
-        # 2. Check active InviteJobs (pending, running, paused jobs hold the session in worker)
-        try:
-            invite_query = await db.execute(
-                select(InviteJob.account_ids).where(
-                    InviteJob.status.in_(["pending", "running", "paused"])
-                )
-            )
-            for job_accs in invite_query.scalars():
-                if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
-                    return True
-        except Exception as e:
-            logger.debug("Failed to check InviteJob for account %s: %s", account_id, e)
-
-        # 3. Check active AutoJoinJobs (pending, running, paused jobs hold the session in worker)
-        try:
-            autojoin_query = await db.execute(
-                select(AutoJoinJob.account_ids).where(
-                    AutoJoinJob.status.in_(["pending", "running", "paused"])
-                )
-            )
-            for job_accs in autojoin_query.scalars():
-                if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
-                    return True
-        except Exception as e:
-            logger.debug("Failed to check AutoJoinJob for account %s: %s", account_id, e)
+                for job_accs in query.scalars():
+                    if isinstance(job_accs, list) and (account_id in job_accs or str(acc_uuid) in job_accs or acc_uuid in job_accs):
+                        return True
+            except Exception as e:
+                logger.debug("Failed to check %s for account %s: %s", model.__name__, account_id, e)
 
         return False
 
@@ -434,6 +409,7 @@ class SessionManager:
         so callers only treat a False result as "claimed by a foreign shard".
         """
         from app.models.auto_join_job import AutoJoinJob
+        from app.models.auto_leave_job import AutoLeaveJob
         from app.models.broadcast_job import BroadcastJob
         from app.models.invite_job import InviteJob
         import uuid
@@ -444,7 +420,7 @@ class SessionManager:
             return True
 
         found = False
-        for model in (BroadcastJob, InviteJob, AutoJoinJob):
+        for model in (BroadcastJob, InviteJob, AutoJoinJob, AutoLeaveJob):
             try:
                 result = await db.execute(
                     select(model.account_ids).where(

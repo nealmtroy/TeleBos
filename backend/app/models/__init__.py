@@ -28,6 +28,8 @@ from .wallet_ledger import WalletLedger
 from .support_ticket import SupportTicket
 from .onboarding_survey import OnboardingSurvey
 from .analytics_event import AnalyticsEvent, DailyAnalyticsSnapshot
+from .auto_leave_job import AutoLeaveJob
+from .auto_leave_log import AutoLeaveLog
 from .security_audit_log import SecurityAuditLog
 from .bank_account import UserBankAccount
 
@@ -45,6 +47,8 @@ __all__ = [
     "InviteLog",
     "AutoJoinJob",
     "AutoJoinLog",
+    "AutoLeaveJob",
+    "AutoLeaveLog",
     "Order",
     "SmmService",
     "SmmSetting",

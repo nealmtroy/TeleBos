@@ -527,6 +527,14 @@ export interface Dict {
     delayPerGroupSuffix: string;
     delayAfterAll: string;
     delayAfterAllSuffix: string;
+    scheduleTitle: string;
+    scheduleDesc: string;
+    scheduleStartTime: string;
+    scheduleStartTimeDesc: string;
+    scheduleEndTime: string;
+    scheduleEndTimeDesc: string;
+    schedulePresets: string;
+    scheduleInfo: string;
     loopTitle: string;
     loopDesc: string;
     startBroadcast: string;
@@ -1172,6 +1180,8 @@ export interface Dict {
     noPublicChats: string;
     autoJoin: string;
     autoJoinDesc: string;
+    autoLeave: string;
+    autoLeaveDesc: string;
   };
 
   autoJoin: {

@@ -14,6 +14,7 @@ database is touched only at deliberate sync points.
 
 import asyncio
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -37,10 +38,32 @@ _running_auto_join_tasks: dict[str, asyncio.Task] = {}
 
 # Hard bounds so a rate-limited run backs off instead of hammering Telegram.
 # Mirrors the anti-ban behaviour broadcast/invite already have.
-MAX_RATE_LIMIT_RETRIES = 3
+MAX_RATE_LIMIT_RETRIES = 5
 FLOOD_DEFAULT_WAIT_SECONDS = 30
-MAX_FLOOD_WAIT_SECONDS = 300
+MAX_FLOOD_WAIT_SECONDS = 600
 PEER_FLOOD_BACKOFF_SECONDS = 300
+
+
+def _extract_flood_seconds(exc: Exception, err_msg: str) -> int:
+    """Accurately extract flood wait seconds from exception or error message."""
+    if hasattr(exc, "seconds") and isinstance(getattr(exc, "seconds"), (int, float)):
+        sec = int(exc.seconds)
+        if sec > 0:
+            return sec
+    cause = getattr(exc, "__cause__", None)
+    if cause and hasattr(cause, "seconds") and isinstance(getattr(cause, "seconds"), (int, float)):
+        sec = int(cause.seconds)
+        if sec > 0:
+            return sec
+    combined = f"{err_msg} {str(exc)}"
+    match = re.search(r"(?:wait of|wait|flood)[\s:_]+(\d+)", combined, re.IGNORECASE) or re.search(
+        r"(\d+)\s*s(?:ec|econds)?", combined, re.IGNORECASE
+    )
+    if match:
+        sec = int(match.group(1))
+        if sec > 0:
+            return sec
+    return FLOOD_DEFAULT_WAIT_SECONDS
 
 
 def _session_factory():
@@ -472,41 +495,69 @@ async def execute_auto_join(job_id: str) -> None:
                 except Exception as exc:
                     err_type, err_msg = classify_telegram_error(exc)
 
-                    if (
-                        err_type in ("flood", "peer_flood")
-                        and rate_limit_retries < MAX_RATE_LIMIT_RETRIES
-                    ):
-                        rate_limit_retries += 1
+                    if err_type in ("flood", "peer_flood"):
                         if err_type == "flood":
-                            wait = int(getattr(exc, "seconds", 0) or 0) or FLOOD_DEFAULT_WAIT_SECONDS
-                            wait = min(wait, MAX_FLOOD_WAIT_SECONDS)
+                            raw_wait = _extract_flood_seconds(exc, err_msg)
+                            wait = min(raw_wait, MAX_FLOOD_WAIT_SECONDS)
                         else:
                             wait = PEER_FLOOD_BACKOFF_SECONDS
-                        # Escalate this account's cooldown so later tasks wait too.
-                        flood_controller.record_flood(entry["account_id"], wait)
-                        await _push(job_id, "flood_wait", {
-                            "wait_seconds": int(wait),
-                            "account": entry["account_name"],
-                            "message": (
-                                f"{entry['account_name']}: {err_msg} — retry "
-                                f"{rate_limit_retries}/{MAX_RATE_LIMIT_RETRIES} in {int(wait)}s"
-                            ),
-                        })
-                        if not await interruptible_sleep(job_id, wait):
-                            # Woken early by pause/stop. Re-check before retrying.
-                            status = await _get_job_status(job_uuid)
-                            if status == "cancelled":
-                                cancelled = True
-                                break
-                            while status == "paused":
-                                await interruptible_sleep(job_id, 86400)
+
+                        # When hitting FloodWait, stay on the current group!
+                        # Sleep the required wait duration (+ 2s safety buffer) and retry the same group.
+                        # Do NOT skip to the next group while under rate limit.
+                        if rate_limit_retries < MAX_RATE_LIMIT_RETRIES:
+                            rate_limit_retries += 1
+                            safe_wait = wait + 2
+                            flood_controller.record_flood(entry["account_id"], safe_wait)
+
+                            logger.warning(
+                                "Auto-join: %s hit %s (%ds). Waiting %ds before retrying group '%s' (attempt %d/%d)...",
+                                entry["account_name"],
+                                err_type,
+                                wait,
+                                safe_wait,
+                                target,
+                                rate_limit_retries,
+                                MAX_RATE_LIMIT_RETRIES,
+                            )
+
+                            await _push(job_id, "flood_wait", {
+                                "wait_seconds": int(safe_wait),
+                                "account": entry["account_name"],
+                                "target": target,
+                                "retry_attempt": rate_limit_retries,
+                                "max_retries": MAX_RATE_LIMIT_RETRIES,
+                                "message": (
+                                    f"{entry['account_name']}: Flood Wait {int(wait)}s dari Telegram pada grup '{target}'. "
+                                    f"Menunggu {int(safe_wait)}s sebelum mencoba kembali grup ini "
+                                    f"(percobaan {rate_limit_retries}/{MAX_RATE_LIMIT_RETRIES})..."
+                                ),
+                            })
+
+                            if not await interruptible_sleep(job_id, safe_wait):
+                                # Woken early by pause/stop. Re-check before retrying.
                                 status = await _get_job_status(job_uuid)
                                 if status == "cancelled":
                                     cancelled = True
                                     break
-                            if cancelled:
-                                break
-                        continue
+                                while status == "paused":
+                                    await interruptible_sleep(job_id, 86400)
+                                    status = await _get_job_status(job_uuid)
+                                    if status == "cancelled":
+                                        cancelled = True
+                                        break
+                                if cancelled:
+                                    break
+
+                            # Retry the same group!
+                            continue
+                        else:
+                            logger.warning(
+                                "Auto-join: %s exhausted %d flood retries on group '%s'.",
+                                entry["account_name"],
+                                MAX_RATE_LIMIT_RETRIES,
+                                target,
+                            )
 
                     if err_type == "account_frozen":
                         # Telegram froze this account's join methods. Hold it out

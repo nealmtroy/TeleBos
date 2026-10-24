@@ -763,10 +763,16 @@ def register_broadcasts_handlers(client):
                     loop_enabled=loop_enabled,
                 )
 
+            account_info = (
+                f"• **Akun:** {len(account_ids)} akun ({len(account_ids)} job siaran mandiri)\n"
+                f"• **Catatan:** Masing-masing akun mengirim ke seluruh isi daftar grup secara mandiri.\n"
+                if len(account_ids) > 1
+                else f"• **Akun:** 1 akun\n"
+            )
             await event.edit(
                 f"✅ **Broadcast Berhasil Dimulai!**\n\n"
                 f"• **Job ID:** `{str(job.id)[:8]}...`\n"
-                f"• **Akun:** {len(account_ids)} akun\n"
+                f"{account_info}"
                 f"• **Looping:** {'🟢 Aktif' if loop_enabled else '🔴 Nonaktif'}\n\n"
                 f"Gunakan menu **📢 Broadcasts** untuk memantau progres.",
                 buttons=[[Button.inline("📢 Lihat Daftar Broadcast", data="job_list_back")]]

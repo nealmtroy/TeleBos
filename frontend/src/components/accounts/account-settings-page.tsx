@@ -39,6 +39,9 @@ export default function AccountSettingsPage() {
   const { data: account } = useAccount(id);
   const user = useAuthStore((s) => s.user);
 
+  const hasAutoReplyAccess =
+    user?.role === "pro" || user?.role === "premium" || user?.role === "owner";
+
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-8">
       <header className="flex items-start gap-3 border-b border-border pb-5">
@@ -62,7 +65,7 @@ export default function AccountSettingsPage() {
 
       <PhotoUpload accountId={id} account={account} />
       <ProfileEditor accountId={id} account={account} />
-      <AutoReplySettings accountId={id} account={account} />
+      {hasAutoReplyAccess && <AutoReplySettings accountId={id} account={account} />}
       <DeleteContacts accountId={id} />
     </div>
   );
