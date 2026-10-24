@@ -11,9 +11,13 @@ import { Navbar5 } from "@/components/ui/navbar-5";
 import { getAdjacentSections, getHelpSectionBySlug } from "@/data/help-sections";
 import { useT } from "@/lib/i18n";
 
-export default function HelpDetailPage() {
-  const params = useParams();
-  const slug = params?.slug as string;
+export default function HelpDetailPage({
+  params: pageParams,
+}: {
+  params?: { slug?: string };
+} = {}) {
+  const hookParams = useParams();
+  const slug = (pageParams?.slug || hookParams?.slug || "") as string;
   const pathname = usePathname();
   const isId = pathname === "/id" || pathname?.startsWith("/id/");
   const prefix = isId ? "/id" : "";

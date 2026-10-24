@@ -596,30 +596,48 @@ class SystemTelemetryTracker:
 system_telemetry = SystemTelemetryTracker()
 
 
-class SystemTelemetryMiddleware(BaseHTTPMiddleware):
-    """Fast, exception-safe HTTP request timing and status tracker."""
+class SystemTelemetryMiddleware:
+    """Pure ASGI HTTP request timing and status tracker.
 
-    async def dispatch(self, request: Request, call_next) -> Response:
-        # Avoid tracking internal health ping to prevent skewing request percentiles
-        path = request.url.path
+    Written as pure ASGI rather than a BaseHTTPMiddleware subclass because
+    BaseHTTPMiddleware runs the downstream app inside a task group, and when
+    the endpoint raises, the task group's __aexit__ fires before call_next
+    ever resumes — call_next then raises RuntimeError("No response returned.")
+    and Starlette wraps the real error in an ExceptionGroup.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
         if path.startswith("/api/v1/health") or path == "/health":
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         t0 = time.perf_counter()
         status_code = 500
         error_detail: str | None = None
 
+        async def send_wrapper(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 500)
+            await send(message)
+
         try:
-            response = await call_next(request)
-            status_code = response.status_code
-            return response
+            await self.app(scope, receive, send_wrapper)
         except Exception as exc:
             error_detail = f"Unhandled Exception: {type(exc).__name__} - {str(exc)[:120]}"
             raise
         finally:
             duration_ms = (time.perf_counter() - t0) * 1000.0
             system_telemetry.record_request(
-                method=request.method,
+                method=scope.get("method", "GET"),
                 path=path,
                 status_code=status_code,
                 duration_ms=duration_ms,

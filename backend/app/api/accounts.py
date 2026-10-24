@@ -352,7 +352,7 @@ async def qr_login_2fa(
             account_id=str(account.id)
         )
     except Exception as exc:
-        logger.error("QR 2FA login failed: %s", exc)
+        logger.warning("QR 2FA login failed (client validation): %s", exc)
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
@@ -857,13 +857,31 @@ async def upload_profile_photo(
     from PIL import Image
     import io
     try:
-        Image.open(io.BytesIO(data)).verify()
+        img = Image.open(io.BytesIO(data))
+        img.verify()
+        # verify() invalidates the image object, re-open for size verification
+        img = Image.open(io.BytesIO(data))
+        if img.width < 160 or img.height < 160:
+            raise HTTPException(
+                status_code=400,
+                detail="Ukuran foto profil terlalu kecil. Telegram mensyaratkan resolusi minimal 160x160 piksel.",
+            )
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid image content")
 
     try:
         await account_service.upload_photo(db, account, data)
     except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    except Exception as exc:
+        from app.utils.telegram_errors import classify_telegram_error
+        err_type, err_msg = classify_telegram_error(exc)
+        if "PhotoCropSize" in str(type(exc).__name__) or "crop" in str(exc).lower():
+            raise HTTPException(status_code=400, detail="Ukuran foto profil terlalu kecil untuk diproses Telegram.")
+        if err_type != "unknown":
+            raise HTTPException(status_code=400, detail=err_msg)
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
     return {"message": "Photo updated"}
 

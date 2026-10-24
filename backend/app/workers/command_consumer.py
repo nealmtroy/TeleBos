@@ -332,13 +332,18 @@ async def _handle_command_action(
         if not is_path_contained(get_base_uploads_dir(), destination_path):
             raise ValueError("Invalid destination_path outside uploads root")
 
+        saved_path = None
         try:
-            entity = await resolve_chat_entity(client, account_id, int(chat_id))
-        except Exception:
-            entity = await client.get_entity(int(chat_id))
+            try:
+                entity = await resolve_chat_entity(client, account_id, int(chat_id))
+            except Exception:
+                entity = await client.get_entity(int(chat_id))
 
-        os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-        saved_path = await client.download_profile_photo(entity, file=destination_path, download_big=False)
+            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+            saved_path = await client.download_profile_photo(entity, file=destination_path, download_big=False)
+        except (KeyError, ValueError, RPCError) as download_err:
+            logger.warning("Could not download chat photo for %s (%s): %s", chat_id, account_id, download_err)
+
         return {"success": bool(saved_path), "saved_path": saved_path}
 
     elif action in ("create_dialog_filter", "update_dialog_filter"):

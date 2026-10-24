@@ -66,13 +66,14 @@ export function ChatsContent() {
     []
   );
 
-  // Warm the media-token cache for every account we might display media for.
+  // Warm the media-token cache for the active selected account.
   // Media URLs are built synchronously from that cache, so without this the
   // first paint would emit tokenless URLs (backend then falls back to cookie).
   useEffect(() => {
-    if (!Array.isArray(accounts)) return;
-    prefetchMediaTokens(accounts.map((acc) => acc.id));
-  }, [accounts]);
+    if (selectedAccount) {
+      prefetchMediaTokens([selectedAccount]);
+    }
+  }, [selectedAccount]);
 
   // Auto-select first account
   useEffect(() => {

@@ -85,7 +85,7 @@ def decrypt_or_none(ciphertext: str) -> str | None:
     try:
         return _get_cipher().decrypt(ciphertext.encode()).decode()
     except Exception as exc:
-        logger.error("Decryption failed (possibly invalid ENCRYPTION_KEY): %s", exc)
+        logger.warning("Decryption failed in decrypt_or_none (possibly invalid ENCRYPTION_KEY): %s", exc)
         return None
 
 

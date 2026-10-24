@@ -45,7 +45,9 @@ logger = logging.getLogger("telebos.async_worker")
 from app.config import get_settings
 
 worker_settings = get_settings()
-if worker_settings.SENTRY_DSN:
+import os
+
+if worker_settings.SENTRY_DSN and "pytest" not in sys.modules and not os.environ.get("TESTING"):
     try:
         import sentry_sdk
 

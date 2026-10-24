@@ -68,7 +68,7 @@ async def call_smm_api(action: str, extra_params: dict | None = None) -> dict[st
         )
         return data
     except (httpx.HTTPError, ValueError) as e:
-        logger.error("SMM API error for action=%s: %s", action, e)
+        logger.warning("SMM API upstream warning for action=%s: %s", action, e)
         return {"status": False, "data": {"msg": f"API request failed: {str(e)}"}}
 
 

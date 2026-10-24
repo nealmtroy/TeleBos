@@ -68,7 +68,29 @@ async def submit_onboarding_survey(
         db.add(survey)
 
     current_user.onboarding_completed = True
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as exc:
+        # Menangani race condition duplicate key (uq_onboarding_surveys_user_id)
+        from sqlalchemy.exc import IntegrityError
+        if isinstance(exc, IntegrityError) or "unique constraint" in str(exc).lower():
+            await db.rollback()
+            result = await db.execute(
+                select(OnboardingSurvey).where(OnboardingSurvey.user_id == current_user.id)
+            )
+            survey = result.scalar_one_or_none()
+            if survey:
+                survey.role = payload.role
+                survey.referral = payload.referral
+                survey.volume = payload.volume
+                survey.features = payload.features
+                survey.is_skipped = payload.is_skipped
+                survey.completed_at = func.now()
+            current_user.onboarding_completed = True
+            await db.commit()
+        else:
+            raise
+
     await db.refresh(survey)
     await db.refresh(current_user)
 

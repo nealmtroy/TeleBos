@@ -1,6 +1,6 @@
 """Device session endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -60,7 +60,7 @@ async def terminate_device(
         if err_type != "unknown":
             raise HTTPException(status_code=400, detail=err_msg)
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
-
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
@@ -88,4 +88,5 @@ async def terminate_all_other_sessions(
         if err_type != "unknown":
             raise HTTPException(status_code=400, detail=err_msg)
         raise HTTPException(status_code=400, detail=sanitize_exception(exc))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 

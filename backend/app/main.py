@@ -97,8 +97,11 @@ from app.services.session_manager import session_manager
 app_settings = get_settings()
 logger = logging.getLogger(__name__)
 
-# Initialize Sentry SDK before FastAPI app creation
-if app_settings.SENTRY_DSN:
+# Initialize Sentry SDK before FastAPI app creation (only in real app runtimes, never in pytest)
+import os
+import sys
+
+if app_settings.SENTRY_DSN and "pytest" not in sys.modules and not os.environ.get("TESTING"):
     try:
         import sentry_sdk
 
