@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-26
+- **[9753e0e0](https://github.com/nealmtroy/TeleBos/commit/9753e0e0)**: fix(frontend): satisfy Next.js PageProps constraint in help detail page
+
 ## 2026-10-24
 - **[5517e674](https://github.com/nealmtroy/TeleBos/commit/5517e674)**: fix: resolve sentry errors across backend and frontend
 - **[81ad8302](https://github.com/nealmtroy/TeleBos/commit/81ad8302)**: feat: add auto leave feature, smart floodwait recovery, multi-account broadcast, and harden error handling

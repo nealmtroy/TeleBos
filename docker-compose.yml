@@ -233,6 +233,7 @@ services:
   # No published port — it is only ever called by the backend over the compose
   # network, and it has no auth of its own.
   camoufox-solver:
+    profiles: ["solver"]
     build: ./backend/camoufox_solver
     restart: unless-stopped
     # The browser's content sandbox needs user namespaces, which the container
