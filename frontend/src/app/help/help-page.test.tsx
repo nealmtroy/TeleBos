@@ -69,7 +69,7 @@ describe("HelpPage", () => {
 describe("HelpDetailPage", () => {
   it("renders topic detail for a valid slug", () => {
     currentSlug = "getting-started";
-    render(<HelpDetailPage />);
+    render(<HelpDetailPage params={{ slug: currentSlug }} />);
 
     expect(screen.getByRole("heading", { level: 1, name: /Getting Started/i })).toBeDefined();
     expect(screen.getByRole("navigation", { name: /Breadcrumb/i })).toBeDefined();
@@ -77,14 +77,14 @@ describe("HelpDetailPage", () => {
 
   it("renders newly added topic detail (marketplace)", () => {
     currentSlug = "marketplace";
-    render(<HelpDetailPage />);
+    render(<HelpDetailPage params={{ slug: currentSlug }} />);
 
     expect(screen.getByRole("heading", { level: 1, name: /Account Marketplace/i })).toBeDefined();
   });
 
   it("renders 404 state when topic does not exist", () => {
     currentSlug = "non-existent-topic";
-    render(<HelpDetailPage />);
+    render(<HelpDetailPage params={{ slug: currentSlug }} />);
 
     expect(screen.getByRole("heading", { level: 1, name: /Help topic not found/i })).toBeDefined();
     expect(screen.getByRole("link", { name: /Back to Help/i })).toHaveAttribute("href", "/help");

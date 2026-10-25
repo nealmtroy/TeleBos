@@ -12,12 +12,12 @@ import { getAdjacentSections, getHelpSectionBySlug } from "@/data/help-sections"
 import { useT } from "@/lib/i18n";
 
 export default function HelpDetailPage({
-  params: pageParams,
+  params,
 }: {
-  params?: { slug?: string };
-} = {}) {
+  params: { slug: string };
+}) {
   const hookParams = useParams();
-  const slug = (pageParams?.slug || hookParams?.slug || "") as string;
+  const slug = (params?.slug || hookParams?.slug || "") as string;
   const pathname = usePathname();
   const isId = pathname === "/id" || pathname?.startsWith("/id/");
   const prefix = isId ? "/id" : "";
