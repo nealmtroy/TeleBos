@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-26
+- **[d7a3e31f](https://github.com/nealmtroy/TeleBos/commit/d7a3e31f)**: chore(docker): isolate camoufox-solver behind solver profile for fast deployment
 - **[9753e0e0](https://github.com/nealmtroy/TeleBos/commit/9753e0e0)**: fix(frontend): satisfy Next.js PageProps constraint in help detail page
 
 ## 2026-10-24

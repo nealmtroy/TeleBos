@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl \
+    ca-certificates curl aria2 \
     libgtk-3-0 libdbus-glib-1-2 libasound2 \
     libx11-xcb1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
     libgbm1 libpango-1.0-0 libpangocairo-1.0-0 \
@@ -28,8 +28,10 @@ ENV MOZ_DISABLE_CONTENT_SANDBOX=1 \
     MOZ_DISABLE_GMP_SANDBOX=1 \
     MOZ_DISABLE_RDD_SANDBOX=1
 
-# Bakes the browser (~1.5 GB) into the image so start-up is just a launch.
-RUN camoufox fetch
+# Accelerate browser install using multi-threaded aria2 or cached zip
+COPY fast_fetch.py ./
+COPY camoufox.zi[p] ./
+RUN python fast_fetch.py && rm -f fast_fetch.py camoufox.zip
 
 COPY main.py url_security.py ./
 
