@@ -28,10 +28,10 @@ ENV MOZ_DISABLE_CONTENT_SANDBOX=1 \
     MOZ_DISABLE_GMP_SANDBOX=1 \
     MOZ_DISABLE_RDD_SANDBOX=1
 
-# Accelerate browser install using multi-threaded aria2 or cached zip
+# Accelerate browser install using multi-threaded aria2
 COPY fast_fetch.py ./
-COPY camoufox.zi[p] ./
-RUN python fast_fetch.py && rm -f fast_fetch.py camoufox.zip
+RUN python fast_fetch.py && rm -f fast_fetch.py
+
 
 COPY main.py url_security.py ./
 
