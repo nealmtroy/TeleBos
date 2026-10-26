@@ -1,7 +1,7 @@
 import { type Account } from "@/hooks/use-accounts";
 import { useAccountStats, type AccountStats } from "@/hooks/use-account-stats";
 import { cn } from "@/lib/utils";
-import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign, X, ArrowRightLeft, Star } from "lucide-react";
+import { Eye, Trash2, Copy, Check, Users, MessageCircle, RefreshCw, Clock, DollarSign, X, ArrowRightLeft, Star, KeyRound } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useState, useCallback } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import api from "@/lib/api";
 import { AccountAvatar } from "@/components/accounts/account-avatar";
+import { AccountOtpModal } from "@/components/accounts/account-otp-modal";
 import {
   isMarketplaceSellUnknownOutcome,
   useSellAccounts,
@@ -64,6 +65,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
 
   // Stats now arrive with the list response. Keep the per-account query only
   // as the refresh path, and only enable it while a manual refresh is running,
@@ -358,6 +360,7 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
             {_("accountDetail.groupsChannels")}
           </Link>
         </div>
+        {/* Row 3: Delete | Sell Account */}
         <div className="grid grid-cols-2 gap-1.5">
           <button
             onClick={() => {
@@ -390,6 +393,9 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               {_("orders.sellAccount")}
             </button>
           )}
+        </div>
+        {/* Row 4: Transfer | Get OTP */}
+        <div className="grid grid-cols-2 gap-1.5">
           {onTransfer && (
             <button
               onClick={() => onTransfer(account)}
@@ -404,6 +410,19 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
               {_("accountCard.transfer")}
             </button>
           )}
+          <button
+            onClick={() => setOtpOpen(true)}
+            disabled={isRestricted}
+            className={cn(
+              "flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60 rounded-lg shadow-2xs transition-colors cursor-pointer",
+              !onTransfer && "col-span-2 w-full",
+              isRestricted && "filter blur-[1.5px] opacity-40 pointer-events-none"
+            )}
+            title="Dapatkan OTP Telegram"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            {_("accountCard.getOtp")}
+          </button>
         </div>
       </div>
 
@@ -471,6 +490,12 @@ export function AccountCard({ account, onDelete, onView, onTransfer }: AccountCa
         cancelText={_("navbar.cancel")}
         variant="danger"
         loading={canceling}
+      />
+
+      <AccountOtpModal
+        account={account}
+        open={otpOpen}
+        onOpenChange={setOtpOpen}
       />
     </div>
   );

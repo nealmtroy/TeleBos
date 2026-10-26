@@ -268,12 +268,34 @@ export interface Dict {
     viewDetails: string;
     delete: string;
     transfer: string;
+    getOtp: string;
     active: string;
     inactive: string;
     expired: string;
     verified: string;
     premium: string;
     deleteConfirm: string;
+  };
+
+  // Account OTP Modal
+  accountOtpModal: {
+    title: string;
+    description: string;
+    otpCode: string;
+    copyCode: string;
+    codeCopied: string;
+    recentBadge: string;
+    expiredBadge: string;
+    noOtpTitle: string;
+    noOtpDesc: string;
+    refresh: string;
+    refreshing: string;
+    recentMessages: string;
+    noMessages: string;
+    serviceNotice: string;
+    warningNotice: string;
+    errorTitle: string;
+    retry: string;
   };
 
   // Account Selector Component

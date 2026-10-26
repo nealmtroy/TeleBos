@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-26
+- **[0e643c89](https://github.com/nealmtroy/TeleBos/commit/0e643c89)**: fix(camoufox): use aria2c to fetch matching browser version dynamically
 - **[0e1d9aa5](https://github.com/nealmtroy/TeleBos/commit/0e1d9aa5)**: feat(camoufox): accelerate browser install with fast_fetch and re-enable solver service
 - **[d7a3e31f](https://github.com/nealmtroy/TeleBos/commit/d7a3e31f)**: chore(docker): isolate camoufox-solver behind solver profile for fast deployment
 - **[9753e0e0](https://github.com/nealmtroy/TeleBos/commit/9753e0e0)**: fix(frontend): satisfy Next.js PageProps constraint in help detail page

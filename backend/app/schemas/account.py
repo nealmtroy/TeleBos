@@ -311,3 +311,22 @@ class TransferAccountResponse(BaseModel):
     target_name: str
     message: str
     account_ids: list[UUID]
+
+
+class AccountOTPMessage(BaseModel):
+    id: int
+    date: datetime
+    text: str
+    otp_code: str | None = None
+
+
+class AccountOTPResponse(BaseModel):
+    account_id: UUID
+    phone: str
+    telegram_id: int | None = None
+    otp_code: str | None = None
+    otp_message: str | None = None
+    otp_date: datetime | None = None
+    is_recent: bool = False
+    messages: list[AccountOTPMessage] = []
+

@@ -40,6 +40,7 @@ from app.schemas.account import (
     TransferAccountRequest,
     TransferAccountResponse,
     CheckUsernameResponse,
+    AccountOTPResponse,
 )
 from app.schemas.account_stats import AccountStatsResponse
 from app.services import account_service, country_service
@@ -1088,6 +1089,34 @@ async def refresh_account_stats(
         device_count=getattr(account, "device_count", 1) or 1,
         stats_updated_at=account.stats_updated_at,
     )
+
+
+@router.get("/{account_id}/otp", response_model=AccountOTPResponse)
+async def get_account_otp(
+    request: Request,
+    account_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Retrieve recent messages and extracted OTP code from Telegram service notifications (777000)."""
+    ip = request.client.host
+    if not await rate_limiter.check(f"account_otp:ip:{ip}:{user.id}", max_requests=30, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many requests. Try later.")
+
+    account = await account_service.get_account(db, account_id, str(user.id))
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        otp_data = await account_service.get_account_otp(db, account)
+        return otp_data
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to retrieve OTP for account %s: %s", account_id, exc)
+        raise HTTPException(status_code=400, detail=sanitize_exception(exc))
 
 
 @router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)

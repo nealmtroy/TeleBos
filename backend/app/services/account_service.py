@@ -1623,3 +1623,159 @@ async def transfer_accounts(
         owner_user.email,
     )
     return len(to_transfer), target_user, to_transfer
+
+
+def extract_telegram_otp(text: str | None) -> str | None:
+    """Extract a 5 or 6-digit Telegram OTP code from a message text."""
+    if not text:
+        return None
+    import re
+    # Clean non-breaking spaces or zero-width unicode whitespace
+    cleaned = text.replace("\u00a0", " ").replace("\u200b", "").strip()
+
+    # 1. Match code with keywords prefix across languages (e.g. "Login code: 12345", "Kode masuk: 12345", "code:\n12345", "kod: 12345")
+    # Allows optional hyphen or space within code, e.g. 123-45 or 123 45
+    kw_pattern = r'(?:login\s*code|kode\s*(?:masuk|login)|kod|code|código|код|passcode)\s*[:=]?\s*(\b\d{3}[-\s]?\d{2,3}\b|\b\d{5,6}\b)'
+    match = re.search(kw_pattern, cleaned, re.IGNORECASE)
+    if match:
+        code = re.sub(r"[-\s]", "", match.group(1))
+        if code not in ("777000", "00000", "000000") and len(code) in (5, 6):
+            return code
+
+    # 2. Match code with keywords suffix (e.g. "12345 is your login code", "12345 adalah kode masuk Anda")
+    suffix_pattern = r'(\b\d{5,6}\b)\s*(?:is your|adalah kode|merupakan kode|adalah kode masuk)'
+    match = re.search(suffix_pattern, cleaned, re.IGNORECASE)
+    if match:
+        code = match.group(1)
+        if code not in ("777000", "00000", "000000"):
+            return code
+
+    # 3. Match general 5-digit word boundary (Telegram standard login codes are strictly 5 digits)
+    matches_5 = re.findall(r"\b\d{5}\b", cleaned)
+    for m in matches_5:
+        if m != "00000":
+            return m
+
+    # 4. Match 6-digit word boundary (excluding 777000 and 000000)
+    matches_6 = re.findall(r"\b\d{6}\b", cleaned)
+    for m in matches_6:
+        if m not in ("777000", "000000"):
+            return m
+
+    return None
+
+
+async def get_account_otp(
+    db: AsyncSession, account: TelegramAccount, limit: int = 15
+) -> dict[str, Any]:
+    """Fetch recent messages from Telegram service notifications (777000) and extract OTP codes."""
+    if not account.is_active:
+        raise ValueError("Sesi akun tidak aktif atau kedaluwarsa. Silakan periksa status akun Anda.")
+    if account.for_sale:
+        raise ValueError("Akun sedang terdaftar untuk dijual di marketplace.")
+
+    from app.utils.telethon_helpers import get_active_client
+    from telethon.errors import FloodWaitError
+    try:
+        client = await get_active_client(account)
+    except Exception as exc:
+        logger.warning("Failed to get active client for OTP on account %s: %s", account.id, exc)
+        raise RuntimeError(f"Gagal menghubungkan ke Telegram: {exc}")
+
+    client_pool.touch_client(str(account.id))
+
+    # Multi-tier robust entity resolution for Telegram notifications user (777000)
+    raw_messages = []
+    try:
+        # Tier 1: Try direct integer lookup (fastest if entity already in Telethon's session cache)
+        target_entity = None
+        try:
+            target_entity = await client.get_input_entity(777000)
+        except FloodWaitError:
+            raise
+        except Exception:
+            pass
+
+        # Tier 2: Check recent dialogs if not in cache (populates session entity cache from Telegram server)
+        if target_entity is None:
+            try:
+                iter_dlg = client.iter_dialogs(limit=25)
+                if hasattr(iter_dlg, "__aiter__"):
+                    async for dialog in iter_dlg:
+                        if getattr(dialog.entity, "id", None) == 777000:
+                            target_entity = getattr(dialog, "input_entity", None)
+                            break
+            except FloodWaitError:
+                raise
+            except Exception as e_dlg:
+                logger.debug("iter_dialogs lookup for 777000 failed for %s: %s", account.id, e_dlg)
+
+        # Tier 3: Database access_hash fallback or get_entity via chat_service
+        if target_entity is None:
+            try:
+                from app.services.chat_service import resolve_chat_entity
+                target_entity = await resolve_chat_entity(client, str(account.id), 777000)
+            except FloodWaitError:
+                raise
+            except Exception as e_res:
+                logger.debug("resolve_chat_entity for 777000 failed for %s: %s", account.id, e_res)
+
+        # Tier 4: Fetch messages with resolved entity or direct 777000 fallback
+        if target_entity is not None:
+            raw_messages = await client.get_messages(target_entity, limit=limit)
+        else:
+            raw_messages = await client.get_messages(777000, limit=limit)
+
+    except FloodWaitError as exc:
+        seconds = getattr(exc, "seconds", 0) or 0
+        logger.warning("Telegram FloodWaitError when fetching OTP for account %s: %s seconds", account.id, seconds)
+        wait_text = f"dalam {seconds} detik" if seconds > 0 else "beberapa saat"
+        raise RuntimeError(f"Telegram membatasi permintaan (FloodWait). Silakan coba lagi {wait_text}.")
+    except Exception as exc:
+        logger.error("Failed to fetch messages from 777000 for account %s: %s", account.id, exc)
+        raise RuntimeError(f"Gagal mengambil pesan dari Telegram (777000): {exc}")
+
+    now = datetime.now(timezone.utc)
+    parsed_messages: list[dict[str, Any]] = []
+    latest_otp_code: str | None = None
+    latest_otp_msg: str | None = None
+    latest_otp_date: datetime | None = None
+    is_recent: bool = False
+
+    for msg in raw_messages:
+        if not msg:
+            continue
+        msg_text = getattr(msg, "text", "") or getattr(msg, "message", "") or ""
+        msg_date = getattr(msg, "date", None)
+        if msg_date and msg_date.tzinfo is None:
+            msg_date = msg_date.replace(tzinfo=timezone.utc)
+
+        code = extract_telegram_otp(msg_text)
+
+        parsed_messages.append({
+            "id": getattr(msg, "id", 0),
+            "date": msg_date or now,
+            "text": msg_text,
+            "otp_code": code,
+        })
+
+        if code and latest_otp_code is None:
+            latest_otp_code = code
+            latest_otp_msg = msg_text
+            latest_otp_date = msg_date or now
+            if msg_date:
+                # Tolerates up to 60s of clock drift (if local server clock is behind Telegram server)
+                diff = (now - msg_date).total_seconds()
+                is_recent = -60 <= diff <= 900
+
+    return {
+        "account_id": account.id,
+        "phone": account.phone,
+        "telegram_id": account.telegram_id,
+        "otp_code": latest_otp_code,
+        "otp_message": latest_otp_msg,
+        "otp_date": latest_otp_date,
+        "is_recent": is_recent,
+        "messages": parsed_messages,
+    }
+
