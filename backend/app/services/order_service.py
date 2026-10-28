@@ -13,6 +13,7 @@ from app.models.smm_setting import SmmSetting
 from app.models.user import User
 from app.models.wallet_transaction import WalletTransaction, generate_wallet_tx_id
 from app.services.klikqris_service import create_qris_transaction, is_klikqris_configured
+from app.services.usdt_payment_service import create_usdt_invoice_data, is_usdt_payment_method
 # Imported rather than redeclared: the allowlist lives in app/smm_service_ids.py
 # so this service layer and app/api/orders.py can never disagree about which
 # services are sellable.
@@ -113,6 +114,7 @@ async def place_order(
     quantity: int,
     comments: str | None = None,
     usernames: str | None = None,
+    payment_method: str | None = None,
 ) -> Order:
     """Place a single order. Checks user balance first.
 
@@ -149,7 +151,63 @@ async def place_order(
     )
     locked_user = locked_user_result.scalar_one()
 
-    if locked_user.balance < total_price:
+    force_direct_payment = bool(
+        payment_method and payment_method.strip().lower() not in ("", "auto", "balance")
+    )
+    if locked_user.balance < total_price or force_direct_payment:
+        if is_usdt_payment_method(payment_method):
+            await db.rollback()
+            invoice_id = generate_wallet_tx_id()
+            now_utc = datetime.now(timezone.utc)
+            usdt_data = await create_usdt_invoice_data(db, total_price, payment_method or "USDT_BEP20")
+            order = Order(
+                user_id=user.id,
+                smm_order_id=None,
+                service_id=service_id,
+                service_name=service_name,
+                category=category,
+                data_target=data_target,
+                quantity=quantity,
+                price=price_per_unit,
+                total_price=total_price,
+                status="Awaiting Payment",
+                is_mass_order=False,
+                note=f"Menunggu pembayaran invoice {usdt_data['method']} {invoice_id}",
+            )
+            db.add(order)
+            await db.flush()
+            note_data = json.dumps({
+                "order_id": str(order.id),
+                "service_id": service_id,
+                "data_target": data_target,
+                "quantity": quantity,
+                "comments": comments,
+                "usernames": usernames,
+            })
+            tx = WalletTransaction(
+                id=invoice_id,
+                user_id=user.id,
+                type="smm",
+                amount=total_price,
+                total_amount=total_price,
+                method=usdt_data["method"],
+                note=note_data,
+                status="pending",
+                qris_url=usdt_data["crypto_address"],
+                qris_image=usdt_data["qris_url"],
+                crypto_currency=usdt_data["crypto_currency"],
+                crypto_network=usdt_data["crypto_network"],
+                crypto_amount=usdt_data["crypto_amount"],
+                crypto_address=usdt_data["crypto_address"],
+                exchange_rate=usdt_data["exchange_rate"],
+                expired_at=usdt_data["expired_at"],
+                created_at=now_utc,
+            )
+            db.add(tx)
+            await db.commit()
+            order.invoice_id = invoice_id
+            order.payment_required = True
+            return order
         if not is_klikqris_configured():
             raise ValueError("Saldo akun tidak mencukupi dan gateway pembayaran QRIS belum dikonfigurasi.")
 
@@ -335,6 +393,7 @@ async def place_mass_orders(
     db: AsyncSession,
     user: User,
     orders_data: list[dict],
+    payment_method: str | None = None,
 ) -> list[Order]:
     """Place multiple orders in sequence.
 
@@ -388,7 +447,71 @@ async def place_mass_orders(
     )
     locked_user = locked_user_result.scalar_one()
 
-    if locked_user.balance < total_cost:
+    force_direct_payment = bool(
+        payment_method and payment_method.strip().lower() not in ("", "auto", "balance")
+    )
+    if locked_user.balance < total_cost or force_direct_payment:
+        if is_usdt_payment_method(payment_method):
+            await db.rollback()
+            invoice_id = generate_wallet_tx_id()
+            now_utc = datetime.now(timezone.utc)
+            usdt_data = await create_usdt_invoice_data(db, total_cost, payment_method or "USDT_BEP20")
+            created_orders = []
+            for vd in validated_orders:
+                order = Order(
+                    user_id=user.id,
+                    smm_order_id=None,
+                    service_id=vd["service_id"],
+                    service_name=vd["service_name"],
+                    category=vd["category"],
+                    data_target=vd["data_target"],
+                    quantity=vd.get("quantity", 1),
+                    price=vd["price_per_unit"],
+                    total_price=vd["total_price"],
+                    status="Awaiting Payment",
+                    is_mass_order=True,
+                    mass_parent_id=None,
+                    note=f"Menunggu pembayaran invoice {usdt_data['method']} {invoice_id}",
+                )
+                db.add(order)
+                created_orders.append(order)
+            await db.flush()
+            tx_note_orders = [
+                {
+                    "order_id": str(ord.id),
+                    "service_id": ord.service_id,
+                    "data_target": ord.data_target,
+                    "quantity": ord.quantity,
+                    "comments": ord_data.get("comments"),
+                    "usernames": ord_data.get("usernames"),
+                }
+                for ord, ord_data in zip(created_orders, validated_orders)
+            ]
+            tx = WalletTransaction(
+                id=invoice_id,
+                user_id=user.id,
+                type="smm",
+                amount=total_cost,
+                total_amount=total_cost,
+                method=usdt_data["method"],
+                note=json.dumps({"is_mass": True, "orders": tx_note_orders}),
+                status="pending",
+                qris_url=usdt_data["crypto_address"],
+                qris_image=usdt_data["qris_url"],
+                crypto_currency=usdt_data["crypto_currency"],
+                crypto_network=usdt_data["crypto_network"],
+                crypto_amount=usdt_data["crypto_amount"],
+                crypto_address=usdt_data["crypto_address"],
+                exchange_rate=usdt_data["exchange_rate"],
+                expired_at=usdt_data["expired_at"],
+                created_at=now_utc,
+            )
+            db.add(tx)
+            await db.commit()
+            for ord in created_orders:
+                ord.invoice_id = invoice_id
+                ord.payment_required = True
+            return created_orders
         if not is_klikqris_configured():
             raise ValueError("Saldo akun tidak mencukupi dan gateway pembayaran QRIS belum dikonfigurasi.")
 

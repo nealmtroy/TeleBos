@@ -17,6 +17,13 @@ class WalletTransactionResponse(BaseModel):
     status: str  # pending, approved, rejected
     qris_url: str | None = None
     qris_image: str | None = None
+    provider_trx_id: str | None = None
+    crypto_currency: str | None = None
+    crypto_network: str | None = None
+    crypto_amount: str | None = None
+    crypto_address: str | None = None
+    tx_hash: str | None = None
+    exchange_rate: int | None = None
     expired_at: datetime | None = None
     admin_note: str | None = None
     created_at: datetime
@@ -32,6 +39,13 @@ class TopupStatusCheckResponse(BaseModel):
     total_amount: int
     is_paid: bool
     type: str | None = None
+    method: str | None = None
+    crypto_currency: str | None = None
+    crypto_network: str | None = None
+    crypto_amount: str | None = None
+    crypto_address: str | None = None
+    tx_hash: str | None = None
+    exchange_rate: int | None = None
     processed_at: datetime | None = None
 
 
@@ -183,4 +197,37 @@ class BankAccountResponse(BaseModel):
         if self.isDefault is None:
             self.isDefault = self.is_default
         return self
+
+
+class CryptoWalletPublicInfoResponse(BaseModel):
+    evm_address: str
+    tron_address: str
+    usdt_rate_idr: int
+    networks: list[str]
+    paymenku_configured: bool = False
+
+
+class CryptoRateUpdateRequest(BaseModel):
+    usdt_rate_idr: int = Field(..., ge=1000, le=1_000_000, description="Fixed IDR rate per 1 USDT")
+
+
+class CryptoWalletRevealOtpResponse(BaseModel):
+    message: str
+    email_masked: str
+    expires_in_seconds: int
+    cooldown_seconds: int
+
+
+class CryptoWalletRevealRequest(BaseModel):
+    otp_code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code sent to owner email")
+
+
+class CryptoWalletSecretsResponse(BaseModel):
+    mnemonic: str
+    evm_address: str
+    evm_private_key: str
+    tron_address: str
+    tron_private_key: str
+    derivation_paths: dict[str, str]
+
 

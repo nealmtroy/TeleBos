@@ -196,6 +196,7 @@ async def place_single_order(
             payload.quantity,
             payload.comments,
             payload.usernames,
+            payment_method=payload.payment_method,
         )
         await db.commit()
         if cache_key and lock_acquired:
@@ -307,7 +308,9 @@ async def place_mass_order(
 
     orders_data = [o.model_dump() for o in payload.orders]
     try:
-        orders = await order_service.place_mass_orders(db, user, orders_data)
+        orders = await order_service.place_mass_orders(
+            db, user, orders_data, payment_method=payload.payment_method
+        )
         await db.commit()
         if cache_key and lock_acquired:
             try:

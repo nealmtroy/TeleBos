@@ -10,6 +10,12 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
+from app.services.paymenku_service import (
+    check_paymenku_status,
+    close_paymenku_http_client,
+    create_paymenku_transaction,
+    is_paymenku_configured,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -33,15 +39,18 @@ def get_klikqris_http_client() -> httpx.AsyncClient:
 
 
 async def close_klikqris_http_client() -> None:
-    """Close the shared KlikQRIS httpx client upon application shutdown."""
+    """Close the shared KlikQRIS/Paymenku httpx client upon application shutdown."""
     global _klikqris_client
     if _klikqris_client is not None and not _klikqris_client.is_closed:
         await _klikqris_client.aclose()
         _klikqris_client = None
+    await close_paymenku_http_client()
 
 
 def is_klikqris_configured() -> bool:
-    """Check if KlikQRIS credentials are configured."""
+    """Check if Paymenku (primary) or legacy KlikQRIS credentials are configured."""
+    if is_paymenku_configured():
+        return True
     settings = get_settings()
     return bool(settings.KLIKQRIS_API_KEY and settings.KLIKQRIS_ID_MERCHANT)
 
@@ -60,8 +69,15 @@ async def create_qris_transaction(
       id_merchant: <KLIKQRIS_ID_MERCHANT>
     """
     settings = get_settings()
+    if is_paymenku_configured():
+        return await create_paymenku_transaction(
+            reference_id=order_id,
+            amount=amount,
+            keterangan=keterangan,
+            return_url=callback_url,
+        )
     if not is_klikqris_configured():
-        raise ValueError("KlikQRIS API Key or ID Merchant is not configured")
+        raise ValueError("Paymenku / KlikQRIS API Key is not configured")
 
     client = get_klikqris_http_client()
     url = f"{settings.KLIKQRIS_BASE_URL.rstrip('/')}/qris/create"
@@ -111,6 +127,8 @@ async def check_qris_status(order_id: str) -> dict[str, Any] | None:
       x-api-key: <KLIKQRIS_API_KEY>
       id_merchant: <KLIKQRIS_ID_MERCHANT>
     """
+    if is_paymenku_configured():
+        return await check_paymenku_status(order_id)
     if not is_klikqris_configured():
         return None
 

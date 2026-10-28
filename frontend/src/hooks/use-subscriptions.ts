@@ -42,7 +42,7 @@ export function useCheckoutSubscription() {
     mutationFn: async (params: {
       plan_id: string;
       billing_cycle: string;
-      payment_method?: "auto" | "balance" | "qris";
+      payment_method?: "auto" | "balance" | "qris" | "usdt_bep20" | "usdt_trc20" | "usdt_polygon" | "USDT_BEP20" | "USDT_TRC20" | "USDT_POLYGON";
     }) => {
       const { data } = await api.post("/subscriptions/checkout", params);
       return data;

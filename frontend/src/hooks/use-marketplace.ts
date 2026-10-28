@@ -193,8 +193,13 @@ export function useSellAccounts() {
 export function useBuyAccount() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (accountId: string) => {
-      const { data } = await api.post(`/marketplace/buy/${accountId}`);
+    mutationFn: async (arg: string | { accountId: string; payment_method?: string }) => {
+      const accountId = typeof arg === "string" ? arg : arg.accountId;
+      const payment_method = typeof arg === "string" ? undefined : arg.payment_method;
+      const { data } = await api.post(
+        `/marketplace/buy/${accountId}`,
+        payment_method ? { payment_method } : undefined
+      );
       return data as MarketplaceBuyResponse;
     },
     onSuccess: () => {
@@ -214,7 +219,9 @@ export function useBuyAccount() {
 export function useCancelSellAccount() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (accountId: string) => {
+    mutationFn: async (arg: string | { accountId: string; payment_method?: string }) => {
+      const accountId = typeof arg === "string" ? arg : arg.accountId;
+      const payment_method = typeof arg === "string" ? undefined : arg.payment_method;
       const { data } = await api.post(`/marketplace/cancel/${accountId}`);
       return data as Account;
     },

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-29
+- **[137118a6](https://github.com/nealmtroy/TeleBos/commit/137118a6)**: fix(sentry): remediate 19 unresolved issues across backend and frontend
+
 ## 2026-10-26
 - **[614839db](https://github.com/nealmtroy/TeleBos/commit/614839db)**: feat(accounts): add Telegram OTP 777000 check modal and 4-row layout
 - **[0e643c89](https://github.com/nealmtroy/TeleBos/commit/0e643c89)**: fix(camoufox): use aria2c to fetch matching browser version dynamically

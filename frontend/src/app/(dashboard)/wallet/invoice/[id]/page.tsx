@@ -12,7 +12,8 @@ import {
   Info,
   Loader2,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -46,7 +47,13 @@ const QRIS_SUPPORTED_CHANNELS = [
   "BCA", "Mandiri", "BRI", "BNI", "GoPay", "OVO", "DANA", "ShopeePay"
 ];
 
-const displayTxId = (id: string) => `#TRX-${id.replace("wrn_", "").toUpperCase()}`;
+function formatUsdtNetworkLabel(network?: string | null, method?: string | null): string {
+  const raw = (network || method || "").toUpperCase();
+  if (raw.includes("BEP20") || raw.includes("BSC")) return "BNB Smart Chain (BEP-20)";
+  if (raw.includes("TRC20") || raw.includes("TRON")) return "TRON Network (TRC-20)";
+  if (raw.includes("POLYGON") || raw.includes("MATIC")) return "Polygon POS (ERC-20)";
+  return raw || "USDT On-Chain";
+}
 
 function getInvoiceDetails(type?: string, _: (key: string) => string = (k) => k) {
   switch (type) {
@@ -95,30 +102,32 @@ export default function InvoicePage() {
   const router = useRouter();
   const _ = useT();
   const locale = useI18nStore((s) => s.locale);
-  
+
   const { data: walletData, isLoading, refetch: refetchTxs } = useWalletTransactions({ limit: 100 });
   const checkTopupStatus = useCheckTopupStatus();
-  
+
   const tx = useMemo(() => {
-    return walletData?.transactions.find(t => t.id === invoiceId);
+    return walletData?.transactions.find((t) => t.id === invoiceId);
   }, [walletData, invoiceId]);
 
   const invoiceDetails = useMemo(() => getInvoiceDetails(tx?.type, _), [tx?.type, _]);
 
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [copiedAmount, setCopiedAmount] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedInvoice, setCopiedInvoice] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     if (tx && tx.status === "pending") {
-      // Calculate remaining time based on created_at or expired_at
-      const expiry = tx.expired_at ? new Date(tx.expired_at).getTime() : new Date(tx.created_at).getTime() + 60 * 60 * 1000;
+      const expiry = tx.expired_at
+        ? new Date(tx.expired_at).getTime()
+        : new Date(tx.created_at).getTime() + 60 * 60 * 1000;
       const remaining = Math.max(0, Math.floor((expiry - Date.now()) / 1000));
       setTimeLeft(remaining);
-      
+
       const timer = setInterval(() => {
-        setTimeLeft(prev => {
+        setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
             return 0;
@@ -146,7 +155,7 @@ export default function InvoicePage() {
       }
     }, 5000);
     return () => clearInterval(pollTimer);
-  }, [tx, checkTopupStatus, refetchTxs]);
+  }, [tx, checkTopupStatus, refetchTxs, _]);
 
   if (isLoading) {
     return (
@@ -169,14 +178,36 @@ export default function InvoicePage() {
     );
   }
 
+  const isCryptoInvoice = Boolean(
+    tx.crypto_currency === "USDT" ||
+      (tx.method && tx.method.toUpperCase().startsWith("USDT"))
+  );
+  const cryptoAddress = tx.crypto_address || tx.qris_url || "";
+  const cryptoAmount = tx.crypto_amount || "";
+  const networkLabel = formatUsdtNetworkLabel(tx.crypto_network, tx.method);
+
   async function handleCopyAmount() {
     if (!tx) return;
     try {
-      const amt = tx.total_amount ?? tx.amount;
-      await navigator.clipboard.writeText(String(amt));
+      const valToCopy = isCryptoInvoice && cryptoAmount
+        ? cryptoAmount
+        : String(tx.total_amount ?? tx.amount);
+      await navigator.clipboard.writeText(valToCopy);
       setCopiedAmount(true);
       toast.success(_("wallet.copied"));
       setTimeout(() => setCopiedAmount(false), 2000);
+    } catch {
+      toast.error(_("wallet.copyFailed"));
+    }
+  }
+
+  async function handleCopyAddress() {
+    if (!cryptoAddress) return;
+    try {
+      await navigator.clipboard.writeText(cryptoAddress);
+      setCopiedAddress(true);
+      toast.success("Alamat wallet berhasil disalin");
+      setTimeout(() => setCopiedAddress(false), 2000);
     } catch {
       toast.error(_("wallet.copyFailed"));
     }
@@ -197,7 +228,7 @@ export default function InvoicePage() {
   function handleDownloadQR() {
     if (!tx) return;
     try {
-      if (tx.qris_image || tx.qris_url) {
+      if (!isCryptoInvoice && (tx.qris_image || tx.qris_url)) {
         const downloadLink = document.createElement("a");
         downloadLink.download = `QRIS-${tx.id}.png`;
         downloadLink.href = tx.qris_image || tx.qris_url || "";
@@ -238,15 +269,15 @@ export default function InvoicePage() {
         ctx.lineWidth = 2;
         ctx.strokeStyle = "#e2e8f0";
         ctx.stroke();
-        ctx.fillStyle = "#EE1D24";
+        ctx.fillStyle = isCryptoInvoice ? "#10b981" : "#EE1D24";
         ctx.fillRect(0, 0, cardWidth, 20);
         ctx.fillStyle = "#0f172a";
-        ctx.font = "bold 24px -apple-system, sans-serif";
+        ctx.font = "bold 22px -apple-system, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("QRIS", cardWidth / 2, 58);
+        ctx.fillText(isCryptoInvoice ? `USDT (${tx.crypto_network || "ON-CHAIN"})` : "QRIS", cardWidth / 2, 58);
         ctx.fillStyle = "#64748b";
         ctx.font = "600 10px -apple-system, sans-serif";
-        ctx.fillText("STANDAR PEMBAYARAN NASIONAL", cardWidth / 2, 76);
+        ctx.fillText(isCryptoInvoice ? networkLabel.toUpperCase() : "STANDAR PEMBAYARAN NASIONAL", cardWidth / 2, 76);
         ctx.strokeStyle = "#e2e8f0";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -258,7 +289,7 @@ export default function InvoicePage() {
         ctx.fillText("TELEBOS", cardWidth / 2, 114);
         ctx.fillStyle = "#64748b";
         ctx.font = "11px monospace";
-        ctx.fillText(`NMID: ID1020042918290 • ${tx.id}`, cardWidth / 2, 132);
+        ctx.fillText(tx.id, cardWidth / 2, 132);
 
         const qrX = (cardWidth - qrSize) / 2;
         const qrY = 145;
@@ -266,14 +297,22 @@ export default function InvoicePage() {
 
         ctx.fillStyle = "#0f172a";
         ctx.font = "bold 20px monospace";
-        ctx.fillText(formatIDR(tx.total_amount ?? tx.amount), cardWidth / 2, 480);
+        ctx.fillText(
+          isCryptoInvoice && cryptoAmount ? `${cryptoAmount} USDT` : formatIDR(tx.total_amount ?? tx.amount),
+          cardWidth / 2,
+          480
+        );
         ctx.fillStyle = "#64748b";
         ctx.font = "11px -apple-system, sans-serif";
-        ctx.fillText("Scan & Bayar Otomatis via m-Banking / E-Wallet", cardWidth / 2, 504);
+        ctx.fillText(
+          isCryptoInvoice ? cryptoAddress : "Scan & Bayar Otomatis via m-Banking / E-Wallet",
+          cardWidth / 2,
+          504
+        );
 
         const pngUrl = canvas.toDataURL("image/png");
         const downloadLink = document.createElement("a");
-        downloadLink.download = `QRIS-${tx.id}.png`;
+        downloadLink.download = `${isCryptoInvoice ? "USDT" : "QRIS"}-${tx.id}.png`;
         downloadLink.href = pngUrl;
         document.body.appendChild(downloadLink);
         downloadLink.click();
@@ -309,7 +348,9 @@ export default function InvoicePage() {
   }
 
   const isPending = tx.status === "pending";
-  const qrString = generateQrisString(tx.id, tx.total_amount ?? tx.amount);
+  const qrString = isCryptoInvoice
+    ? cryptoAddress
+    : tx.qris_url || generateQrisString(tx.id, tx.total_amount ?? tx.amount);
 
   return (
     <div className="max-w-xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-6">
@@ -325,17 +366,20 @@ export default function InvoicePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-base sm:text-lg font-bold text-foreground truncate">{invoiceDetails.title} ({tx.id})</h1>
+          <h1 className="text-base sm:text-lg font-bold text-foreground truncate">
+            {invoiceDetails.title} ({tx.id})
+          </h1>
           <p className="text-muted-foreground text-sm">{invoiceDetails.subtitle}</p>
         </div>
       </div>
 
       <div className="bg-card text-card-foreground border rounded-2xl shadow-sm p-4 sm:p-5 space-y-4">
-        
         {/* Status bar */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-muted-foreground">{_("wallet.paymentStatusLabel")}</span>
+            <span className="text-sm font-semibold text-muted-foreground">
+              {_("wallet.paymentStatusLabel")}
+            </span>
             {isPending ? (
               <Badge variant="warning" className="gap-1.5 px-3 py-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -360,8 +404,126 @@ export default function InvoicePage() {
           )}
         </div>
 
-        {/* QR Code Presentation Box */}
-        {isPending && (
+        {/* ── PENDING: USDT ON-CHAIN INVOICE ── */}
+        {isPending && isCryptoInvoice && (
+          <>
+            <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-card border-2 border-emerald-500/30 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <div className="bg-emerald-600 text-white px-3 py-0.5 rounded font-black text-xs tracking-wider">
+                  USDT • {tx.crypto_network || "ON-CHAIN"}
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {networkLabel}
+                </span>
+              </div>
+
+              <div
+                id="qris-qr-container"
+                data-keep-white="true"
+                className="p-3 bg-white rounded-xl border shadow-sm flex items-center justify-center"
+              >
+                <QRCode
+                  id="qris-qr-code"
+                  value={cryptoAddress || tx.id}
+                  size={180}
+                  level="M"
+                  className="h-auto max-w-full"
+                />
+              </div>
+
+              {/* Exact 4-Decimal USDT Amount Box */}
+              <div className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/30 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                    Nominal Transfer Eksak (Wajib 4 Desimal)
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-900 dark:text-amber-200">
+                    Deteksi Otomatis
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xl sm:text-2xl font-black text-amber-950 dark:text-amber-100 tabular-nums">
+                    {cryptoAmount} USDT
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyAmount}
+                    className="h-8 px-2.5 text-xs font-semibold cursor-pointer"
+                  >
+                    {copiedAmount ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600 mr-1" />
+                        <span>Disalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 mr-1" />
+                        <span>Salin Nominal</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-amber-900/90 dark:text-amber-200/80 leading-relaxed">
+                  Pastikan jumlah yang diterima di alamat tujuan <strong>persis {cryptoAmount} USDT</strong> (di luar fee jaringan exchange/wallet Anda) agar sistem memverifikasi otomatis tanpa perlu kirim TXID.
+                </p>
+              </div>
+
+              {/* Wallet Address Box */}
+              <div className="w-full rounded-xl border border-border bg-muted/40 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Alamat Wallet Tujuan ({tx.crypto_network})
+                  </span>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {formatIDR(tx.amount)} @ {formatIDR(tx.exchange_rate || 16000)}/USDT
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <code className="font-mono text-xs sm:text-sm font-bold text-foreground break-all">
+                    {cryptoAddress}
+                  </code>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyAddress}
+                    className="h-8 px-2.5 text-xs font-semibold shrink-0 cursor-pointer"
+                  >
+                    {copiedAddress ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600 mr-1" />
+                        <span>Disalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 mr-1" />
+                        <span>Salin Alamat</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/20 p-3.5 sm:p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-200">
+                <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span>Panduan Pembayaran USDT Otomatis (Zero-Touch)</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1.5 text-xs sm:text-sm text-blue-800 dark:text-blue-300/90 leading-relaxed ml-1">
+                <li>Buka Trust Wallet, MetaMask, TronLink, atau Exchange Anda.</li>
+                <li>Pilih jaringan <strong>{networkLabel}</strong> (jangan salah jaringan).</li>
+                <li>Salin alamat wallet tujuan dan masukkan nominal eksak <strong>{cryptoAmount} USDT</strong>.</li>
+                <li>Setelah transaksi terkonfirmasi di blockchain, halaman ini akan otomatis menyetujui pesanan Anda dalam hitungan detik.</li>
+              </ol>
+            </div>
+          </>
+        )}
+
+        {/* ── PENDING: QRIS INVOICE (PAYMENKU) ── */}
+        {isPending && !isCryptoInvoice && (
           <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-card border-2 shadow-sm space-y-3">
             <div className="flex items-center gap-2">
               <div className="bg-[#EE1D24] text-white px-3 py-0.5 rounded font-black text-sm tracking-wider">
@@ -384,7 +546,7 @@ export default function InvoicePage() {
                   alt={`QRIS ${tx.id}`}
                   className="w-44 h-44 sm:w-52 sm:h-52 object-contain rounded-md"
                 />
-              ) : tx.qris_url ? (
+              ) : tx.qris_url && tx.qris_url.startsWith("http") ? (
                 <img
                   id="qris-image-el"
                   src={tx.qris_url}
@@ -427,7 +589,6 @@ export default function InvoicePage() {
               </p>
             </div>
 
-
             <div className="w-full max-w-xs pt-1">
               <Button
                 type="button"
@@ -441,8 +602,8 @@ export default function InvoicePage() {
           </div>
         )}
 
-        {/* Supported Channels & Info */}
-        {isPending && (
+        {/* Supported Channels & Info (QRIS) */}
+        {isPending && !isCryptoInvoice && (
           <>
             <div className="rounded-xl border bg-muted/50 p-3 space-y-2">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -472,8 +633,12 @@ export default function InvoicePage() {
                 <li>{_("wallet.paymentStep4")}</li>
               </ol>
             </div>
+          </>
+        )}
 
-            {/* Actions */}
+        {/* Common Pending Actions */}
+        {isPending && (
+          <>
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-border">
               <Button
                 type="button"
@@ -533,10 +698,24 @@ export default function InvoicePage() {
                 <span className="text-muted-foreground">{_("wallet.invoiceTotalPaid")}</span>
                 <span className="font-bold text-foreground">{formatIDR(tx.total_amount ?? tx.amount)}</span>
               </div>
+              {isCryptoInvoice && cryptoAmount && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nominal Crypto:</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {cryptoAmount} USDT ({tx.crypto_network})
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{_("wallet.methodProvider")}:</span>
                 <span className="font-semibold text-foreground uppercase">{tx.method || "QRIS"}</span>
               </div>
+              {tx.tx_hash && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground shrink-0">TX Hash:</span>
+                  <span className="font-mono text-foreground truncate">{tx.tx_hash}</span>
+                </div>
+              )}
               {tx.processed_at && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{_("wallet.completionTime")}</span>

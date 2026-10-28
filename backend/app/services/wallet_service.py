@@ -413,10 +413,10 @@ async def fulfill_wallet_transaction(
             entry_type="CREDIT",
             category="topup",
             reference_id=tx.id,
-            description=f"Deposit QRIS otomatis disetujui (total: Rp {int(float(total_paid)):,})",
+            description=f"Deposit {tx.method or 'QRIS'} otomatis disetujui (total: Rp {int(float(total_paid)):,})",
         )
         tx.admin_note = (
-            f"Auto-approved via KlikQRIS (total: Rp {int(float(total_paid)):,})"
+            f"Auto-approved via {tx.method or 'Paymenku QRIS'} (total: Rp {int(float(total_paid)):,})"
         )
         create_notification(
             db,

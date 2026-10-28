@@ -13,7 +13,10 @@ class RedeemRequest(BaseModel):
 class CheckoutRequest(BaseModel):
     plan_id: str = Field(..., pattern="^(basic|pro|premium)$")
     billing_cycle: str = Field(..., pattern="^(monthly|yearly)$")
-    payment_method: str = Field("auto", pattern="^(auto|balance|qris)$")
+    payment_method: str = Field(
+        "auto",
+        pattern="^(auto|balance|qris|usdt_bep20|usdt_trc20|usdt_polygon|USDT_BEP20|USDT_TRC20|USDT_POLYGON)$",
+    )
 
 
 class CheckoutResponse(BaseModel):
@@ -21,7 +24,12 @@ class CheckoutResponse(BaseModel):
     qris_url: str | None = None
     qris_image: str | None = None
     amount: int
-    payment_method: str = "qris"  # "balance" or "qris"
+    payment_method: str = "qris"  # "balance", "qris", "usdt_bep20", "usdt_trc20", "usdt_polygon"
+    crypto_currency: str | None = None
+    crypto_network: str | None = None
+    crypto_amount: str | None = None
+    crypto_address: str | None = None
+    exchange_rate: int | None = None
     success: bool = True
     message: str | None = None
 

@@ -37,8 +37,15 @@ class WalletTransaction(Base):
         String(32), nullable=False, default="pending", index=True
     )  # "pending", "approved", "rejected"
     signature: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_trx_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     qris_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     qris_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crypto_currency: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    crypto_network: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    crypto_amount: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    crypto_address: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tx_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
+    exchange_rate: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

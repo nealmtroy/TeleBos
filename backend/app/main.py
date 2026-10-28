@@ -298,7 +298,7 @@ _CSP = (
     "worker-src 'self' blob:; "
     "child-src 'self' blob:; "
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "img-src 'self' data: blob: https://api.qrserver.com https://fastapi.tiangolo.com https://*.google-analytics.com https://*.googletagmanager.com; "
+    "img-src 'self' data: blob: https://api.qrserver.com https://paymenku.com https://*.paymenku.com https://fastapi.tiangolo.com https://*.google-analytics.com https://*.googletagmanager.com; "
     "font-src 'self' data:; "
     "connect-src 'self' http://localhost:3000 ws: wss: https://cloudflareinsights.com https://cdn.jsdelivr.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; "
     "frame-ancestors 'none'; "
@@ -393,10 +393,14 @@ async def _shutdown_resources(
 
     try:
         from app.services.smm_service import close_smm_http_client
+        from app.services.klikqris_service import close_klikqris_http_client
+        from app.services.usdt_payment_service import close_usdt_http_client
 
         await close_smm_http_client()
+        await close_klikqris_http_client()
+        await close_usdt_http_client()
     except Exception as e:
-        logger.warning("Error closing SMM HTTP client: %s", e)
+        logger.warning("Error closing HTTP clients: %s", e)
 
     # Stop Telegram clients while Redis and DB connections are still active.
     if not app_settings.ENABLE_TELEGRAM_COMMAND_BUS:
@@ -459,16 +463,21 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Decoupled mode active: skipping local Telegram session_manager in web server (delegated to worker runner)")
 
-    # Seed: ensure nealmtroy@gmail.com is owner
+    # Seed: ensure nealmtroy@gmail.com is owner & Master Crypto Wallet is initialized
     async with async_session_factory() as db:
         from sqlalchemy import select
         from app.models.user import User
+        from app.services.usdt_payment_service import ensure_master_crypto_wallet
 
         result = await db.execute(select(User).where(User.email == "nealmtroy@gmail.com"))
         owner_user = result.scalar_one_or_none()
         if owner_user and owner_user.role != "owner":
             owner_user.role = "owner"
             logger.info("Promoted nealmtroy@gmail.com to owner")
+        try:
+            await ensure_master_crypto_wallet(db)
+        except Exception as wallet_exc:
+            logger.warning("Failed to initialize master crypto wallet on startup: %s", wallet_exc)
         await db.commit()
 
     # Start UptimeRobot background refresh (10-minute interval)
@@ -490,6 +499,21 @@ async def lifespan(app: FastAPI):
     redis_ws_bridge_task = asyncio.create_task(redis_ws_bridge_loop())
     logger.info("Redis WebSocket bridge background task started")
 
+    async def _usdt_onchain_scanner_loop() -> None:
+        from app.services.usdt_payment_service import scan_pending_usdt_transactions
+
+        while True:
+            try:
+                await asyncio.sleep(20)
+                async with async_session_factory() as scan_db:
+                    await scan_pending_usdt_transactions(scan_db)
+            except asyncio.CancelledError:
+                break
+            except Exception as scan_exc:
+                logger.warning("USDT on-chain background scanner error: %s", scan_exc)
+
+    usdt_scanner_task = asyncio.create_task(_usdt_onchain_scanner_loop())
+
     yield
     # Shutdown
     logger.info("Shutting down TeleBos API...")
@@ -497,6 +521,7 @@ async def lifespan(app: FastAPI):
     await _shutdown_resources(
         cleanup_task=cleanup_task,
         redis_ws_bridge_task=redis_ws_bridge_task,
+        usdt_scanner_task=usdt_scanner_task,
     )
 
 

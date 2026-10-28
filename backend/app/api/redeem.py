@@ -10,6 +10,7 @@ import json
 from app.config import get_settings
 from app.models.wallet_transaction import WalletTransaction, generate_wallet_tx_id
 from app.services.klikqris_service import create_qris_transaction, is_klikqris_configured
+from app.services.usdt_payment_service import create_usdt_invoice_data, is_usdt_payment_method
 from app.services.notification_service import create_notification
 from app.utils.timezone import ensure_utc
 
@@ -193,7 +194,57 @@ async def checkout_subscription(
             message="Langganan berhasil diaktifkan menggunakan saldo dompet Anda.",
         )
 
-    # If balance is insufficient or user requested QRIS: create QRIS invoice
+    # If balance is insufficient or user requested QRIS/USDT: create invoice
+    if is_usdt_payment_method(payload.payment_method):
+        invoice_id = generate_wallet_tx_id()
+        note_data = json.dumps({
+            "plan_id": payload.plan_id,
+            "billing_cycle": payload.billing_cycle,
+            "duration_days": duration_days,
+        })
+        try:
+            usdt_data = await create_usdt_invoice_data(db, amount, payload.payment_method)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Gagal membuat tagihan USDT: {str(exc)}",
+            )
+
+        tx = WalletTransaction(
+            id=invoice_id,
+            user_id=current_user.id,
+            type="subscription",
+            amount=amount,
+            total_amount=amount,
+            method=usdt_data["method"],
+            note=note_data,
+            status="pending",
+            qris_url=usdt_data["crypto_address"],
+            qris_image=usdt_data["qris_url"],
+            crypto_currency=usdt_data["crypto_currency"],
+            crypto_network=usdt_data["crypto_network"],
+            crypto_amount=usdt_data["crypto_amount"],
+            crypto_address=usdt_data["crypto_address"],
+            exchange_rate=usdt_data["exchange_rate"],
+            expired_at=usdt_data["expired_at"],
+            created_at=now_utc,
+        )
+        db.add(tx)
+        await db.commit()
+        return CheckoutResponse(
+            invoice_id=invoice_id,
+            qris_url=usdt_data["crypto_address"],
+            qris_image=usdt_data["qris_url"],
+            amount=amount,
+            payment_method=usdt_data["method"].lower(),
+            crypto_currency=usdt_data["crypto_currency"],
+            crypto_network=usdt_data["crypto_network"],
+            crypto_amount=usdt_data["crypto_amount"],
+            crypto_address=usdt_data["crypto_address"],
+            exchange_rate=usdt_data["exchange_rate"],
+            success=True,
+            message=f"Tagihan {usdt_data['method']} berhasil dibuat.",
+        )
     invoice_id = generate_wallet_tx_id()
     settings = get_settings()
 

@@ -48,6 +48,7 @@ import {
   useRequestWithdraw,
   useRequestWithdrawOtp,
   useCheckTopupStatus,
+  usePaymentConfig,
 } from "@/hooks/use-wallet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -168,6 +169,9 @@ export default function WalletPage() {
   const requestWithdraw = useRequestWithdraw();
   const requestWithdrawOtp = useRequestWithdrawOtp();
   const checkTopupStatus = useCheckTopupStatus();
+  const { data: paymentConfig } = usePaymentConfig();
+  const usdtRateIdr = paymentConfig?.usdt_rate_idr || 16000;
+  const [topupMethod, setTopupMethod] = useState<"QRIS" | "USDT_BEP20" | "USDT_TRC20" | "USDT_POLYGON">("QRIS");
 
   // Withdraw Email OTP Step-Up State
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
@@ -529,8 +533,9 @@ export default function WalletPage() {
       try {
         const res = await requestTopup.mutateAsync({
           amount: parsedAmount,
-          method: "QRIS",
-          note: note.trim() || "QRIS TeleBos",
+          method: topupMethod,
+          note: note.trim() || (topupMethod === "QRIS" ? "Paymenku QRIS TeleBos" : `${topupMethod} TeleBos`),
+
         });
 
         setAmount("");
@@ -1026,6 +1031,97 @@ export default function WalletPage() {
                 </div>
 
                 {/* Quick amount presets */}
+                {tab === "topup" && (
+                  <div className="space-y-2.5">
+                    <Label className="block text-xs font-semibold text-foreground">
+                      Metode Pembayaran Deposit
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {[
+                        {
+                          id: "QRIS" as const,
+                          title: "QRIS Otomatis",
+                          subtitle: "Paymenku • E-Wallet & M-Banking",
+                          badge: "IDR",
+                        },
+                        {
+                          id: "USDT_BEP20" as const,
+                          title: "USDT (BEP-20)",
+                          subtitle: "BNB Smart Chain • On-Chain Otomatis",
+                          badge: "BSC",
+                        },
+                        {
+                          id: "USDT_TRC20" as const,
+                          title: "USDT (TRC-20)",
+                          subtitle: "TRON Network • On-Chain Otomatis",
+                          badge: "TRON",
+                        },
+                        {
+                          id: "USDT_POLYGON" as const,
+                          title: "USDT (Polygon)",
+                          subtitle: "Polygon POS • On-Chain Otomatis",
+                          badge: "MATIC",
+                        },
+                      ].map((opt) => {
+                        const isSelected = topupMethod === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setTopupMethod(opt.id)}
+                            className={cn(
+                              "flex items-start justify-between gap-2 p-3 rounded-xl border text-left transition cursor-pointer",
+                              isSelected
+                                ? "border-primary-500 bg-primary-50/70 dark:bg-primary-950/40 ring-1 ring-primary-500/30"
+                                : "border-slate-300 dark:border-slate-700 bg-card hover:border-slate-400 dark:hover:border-slate-600"
+                            )}
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-foreground">
+                                  {opt.title}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {opt.subtitle}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-mono font-bold shrink-0",
+                                isSelected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {opt.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {topupMethod !== "QRIS" && (
+                      <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-950/30 text-xs space-y-1">
+                        <div className="flex items-center justify-between font-semibold text-emerald-900 dark:text-emerald-200">
+                          <span>Kurs Tetap USDT:</span>
+                          <span className="font-mono">1 USDT = {formatIDR(usdtRateIdr)}</span>
+                        </div>
+                        {parsedAmount && parsedAmount >= 10_000 && (
+                          <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 pt-0.5 border-t border-emerald-500/20">
+                            <span>Estimasi Tagihan Crypto:</span>
+                            <span className="font-mono font-bold">
+                              ~{(Math.ceil((parsedAmount / usdtRateIdr) * 100) / 100).toFixed(2)} USDT
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 pt-0.5">
+                          Sistem menambahkan kode unik 4 desimal (contoh: .0001 USDT) agar pembayaran terdeteksi otomatis secara on-chain tanpa perlu kirim TXID.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <p className="block text-xs font-semibold text-foreground">
                     {_("wallet.quickAmount")}

@@ -49,6 +49,14 @@ class MarketplaceBuyResponse(BaseModel):
     invoice_id: str | None = None
     payment_required: bool = False
     amount: int | None = None
+    payment_method: str | None = None
+
+
+class MarketplaceBuyRequest(BaseModel):
+    payment_method: str | None = Field(
+        None,
+        description="Optional fallback/direct payment method: qris, usdt_bep20, usdt_trc20, usdt_polygon",
+    )
 
 
 class MarketplacePricingResponse(BaseModel):

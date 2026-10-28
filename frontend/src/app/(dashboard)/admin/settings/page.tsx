@@ -15,6 +15,21 @@ import {
 } from "@/hooks/use-admin-smm";
 import { useBankAccountStore } from "@/store/bank-account-store";
 import {
+  useAdminCryptoWallet,
+  useUpdateCryptoWalletRate,
+  useRequestCryptoWalletRevealOtp,
+  useRevealCryptoWalletSecrets,
+  type AdminCryptoWalletSecrets,
+} from "@/hooks/use-wallet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Copy, Eye, Wallet } from "lucide-react";
+import {
   Settings,
   RefreshCw,
   AlertCircle,
@@ -90,6 +105,73 @@ export default function AdminSystemConfigPage() {
   // General System State
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(true);
+
+  // Master Crypto Wallet & USDT Rate Hooks (Owner)
+  const { data: cryptoWalletInfo, isLoading: isCryptoLoading } = useAdminCryptoWallet(currentUser?.role === "owner");
+  const updateUsdtRate = useUpdateCryptoWalletRate();
+  const requestCryptoOtp = useRequestCryptoWalletRevealOtp();
+  const revealCryptoSecrets = useRevealCryptoWalletSecrets();
+
+  const [usdtRateInput, setUsdtRateInput] = useState("16000");
+  const [cryptoModalOpen, setCryptoModalOpen] = useState(false);
+  const [cryptoOtpCode, setCryptoOtpCode] = useState("");
+  const [cryptoMaskedEmail, setCryptoMaskedEmail] = useState("");
+  const [revealedSecrets, setRevealedSecrets] = useState<AdminCryptoWalletSecrets | null>(null);
+
+  useEffect(() => {
+    if (cryptoWalletInfo?.usdt_rate_idr) {
+      setUsdtRateInput(String(cryptoWalletInfo.usdt_rate_idr));
+    }
+  }, [cryptoWalletInfo?.usdt_rate_idr]);
+
+  const handleSaveUsdtRate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseInt(usdtRateInput.replace(/[^0-9]/g, ""), 10);
+    if (!parsed || parsed < 1000) {
+      toast.error("Kurs USDT minimal Rp 1.000");
+      return;
+    }
+    try {
+      await updateUsdtRate.mutateAsync(parsed);
+      toast.success(`Kurs tetap USDT berhasil diperbarui menjadi Rp ${parsed.toLocaleString("id-ID")} / USDT`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Gagal menyimpan kurs USDT");
+    }
+  };
+
+  const handleOpenCryptoReveal = async () => {
+    setRevealedSecrets(null);
+    setCryptoOtpCode("");
+    try {
+      const res = await requestCryptoOtp.mutateAsync();
+      setCryptoMaskedEmail(res.email_masked || currentUser?.email || "");
+      setCryptoModalOpen(true);
+      toast.info(res.message || "Kode OTP dikirim ke email Owner Anda");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Gagal mengirim OTP ke email Owner");
+    }
+  };
+
+  const handleVerifyCryptoOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cryptoOtpCode.trim().length !== 6) return;
+    try {
+      const secrets = await revealCryptoSecrets.mutateAsync(cryptoOtpCode.trim());
+      setRevealedSecrets(secrets);
+      toast.success("Verifikasi berhasil. Seed Phrase & Private Key ditampilkan.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Kode OTP salah atau sudah kedaluwarsa");
+    }
+  };
+
+  const copySecretText = async (val: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(val);
+      toast.success(`${label} berhasil disalin ke clipboard`);
+    } catch {
+      toast.error("Gagal menyalin ke clipboard");
+    }
+  };
 
   useEffect(() => {
     hydrateBankStore();
@@ -463,6 +545,157 @@ export default function AdminSystemConfigPage() {
 
       {/* ── TAB 2: DEPOSIT & REKENING PLATFORM ── */}
       {activeTab === "payment" && (
+        <div className="space-y-6">
+          {/* Master Crypto Wallet (USDT Self-Custody) & Fixed Exchange Rate Card */}
+          <Card className="border-gray-200 dark:border-slate-800 shadow-xs">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border border-emerald-200 dark:border-emerald-900/60">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">
+                      Master Crypto Wallet (USDT Self-Custody) &amp; Kurs Tetap
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                      Zero-Touch On-Chain
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    1 Master Seed Phrase (BIP-39) menerima USDT otomatis di jaringan BEP-20 (BSC), TRC-20 (TRON), dan Polygon (POS) tanpa payment gateway pihak ketiga.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenCryptoReveal}
+                disabled={requestCryptoOtp.isPending}
+                className="h-9 text-xs font-semibold gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 cursor-pointer shrink-0"
+              >
+                {requestCryptoOtp.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <KeyRound className="h-3.5 w-3.5" />
+                )}
+                <span>Lihat Seed Phrase &amp; Private Key</span>
+              </Button>
+            </div>
+
+            <CardContent className="p-5 sm:p-6 space-y-5">
+              {isCryptoLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Memuat informasi Master Crypto Wallet...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* EVM Address Box (BEP-20 & Polygon) */}
+                  <div className="p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-800/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+                        Alamat EVM (USDT BEP-20 &amp; Polygon)
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold">
+                        BSC + MATIC
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="font-mono text-xs font-bold text-gray-900 dark:text-slate-100 break-all">
+                        {cryptoWalletInfo?.evm_address || "—"}
+                      </code>
+                      {cryptoWalletInfo?.evm_address && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copySecretText(cryptoWalletInfo.evm_address, "Alamat EVM")}
+                          className="h-7 px-2 text-xs shrink-0 cursor-pointer"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TRON Address Box (TRC-20) */}
+                  <div className="p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-800/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+                        Alamat TRON (USDT TRC-20)
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/15 text-rose-700 dark:text-rose-300 font-bold">
+                        TRC-20
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="font-mono text-xs font-bold text-gray-900 dark:text-slate-100 break-all">
+                        {cryptoWalletInfo?.tron_address || "—"}
+                      </code>
+                      {cryptoWalletInfo?.tron_address && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copySecretText(cryptoWalletInfo.tron_address, "Alamat TRON")}
+                          className="h-7 px-2 text-xs shrink-0 cursor-pointer"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fixed USDT Rate Form */}
+              <form onSubmit={handleSaveUsdtRate} className="pt-4 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div className="space-y-1.5 flex-1 max-w-sm">
+                  <label htmlFor="usdt-rate-idr" className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-slate-300 block">
+                    Kurs Tetap USDT (IDR per 1 USDT)
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-xs font-bold text-gray-400 font-mono">
+                      Rp
+                    </span>
+                    <input
+                      id="usdt-rate-idr"
+                      name="usdtRateIdr"
+                      type="number"
+                      min={1000}
+                      max={1000000}
+                      value={usdtRateInput}
+                      onChange={(e) => setUsdtRateInput(e.target.value)}
+                      className="w-full h-10 pl-10 pr-16 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      required
+                    />
+                    <span className="absolute right-3 text-xs font-mono text-gray-400">
+                      / 1 USDT
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                    Digunakan untuk mengonversi harga IDR ke nominal USDT pada Top-Up, Langganan, Order SMM, dan Beli Akun.
+                  </p>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={updateUsdtRate.isPending}
+                  className="text-xs h-10 cursor-pointer shrink-0"
+                >
+                  {updateUsdtRate.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  )}
+                  <span>Simpan Kurs USDT</span>
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
         <Card className="border-gray-200 dark:border-slate-800 shadow-xs">
           <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -571,6 +804,165 @@ export default function AdminSystemConfigPage() {
             </div>
           </form>
         </Card>
+
+        {/* Step-Up Email OTP Dialog for Master Crypto Wallet Seed Phrase & Private Key */}
+        <Dialog
+          open={cryptoModalOpen}
+          onOpenChange={(open) => {
+            setCryptoModalOpen(open);
+            if (!open) {
+              setRevealedSecrets(null);
+              setCryptoOtpCode("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg rounded-2xl bg-card border-border text-foreground p-6 space-y-4">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-amber-500" />
+                <span>Akses Seed Phrase &amp; Private Key (Trust Wallet)</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                {revealedSecrets
+                  ? "Simpan 12 kata Seed Phrase ini di tempat aman atau import langsung ke aplikasi Trust Wallet (Multi-Coin Wallet)."
+                  : `Masukkan 6 digit kode OTP yang telah dikirim ke email Owner (${cryptoMaskedEmail}) untuk membuka kunci enkripsi Fernet.`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {!revealedSecrets ? (
+              <form onSubmit={handleVerifyCryptoOtp} className="space-y-4 pt-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="crypto-otp-input" className="text-xs font-semibold text-foreground block">
+                    Kode Verifikasi OTP (6 Digit)
+                  </label>
+                  <input
+                    id="crypto-otp-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={cryptoOtpCode}
+                    onChange={(e) => setCryptoOtpCode(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="000000"
+                    className="w-full h-11 px-4 rounded-xl border border-border bg-background text-center font-mono text-lg font-bold tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCryptoModalOpen(false)}
+                    className="h-9 text-xs"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={revealCryptoSecrets.isPending || cryptoOtpCode.length !== 6}
+                    className="h-9 text-xs font-bold cursor-pointer"
+                  >
+                    {revealCryptoSecrets.isPending ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        <span>Memverifikasi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                        <span>Buka Seed Phrase &amp; Private Key</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4 pt-1">
+                {/* 12-Word BIP-39 Seed Phrase */}
+                <div className="p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                      12-Word Secret Phrase (Trust Wallet / BIP-39)
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copySecretText(revealedSecrets.mnemonic, "12-Word Seed Phrase")}
+                      className="h-7 px-2.5 text-xs font-semibold cursor-pointer"
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                      <span>Salin Phrase</span>
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {revealedSecrets.mnemonic.split(" ").map((word, idx) => (
+                      <div
+                        key={idx}
+                        className="px-2.5 py-1.5 rounded-lg bg-background/90 border border-border font-mono text-xs flex items-center gap-1.5"
+                      >
+                        <span className="text-muted-foreground select-none">{idx + 1}.</span>
+                        <span className="font-bold text-foreground">{word}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* EVM Private Key */}
+                <div className="p-3 rounded-xl border border-border bg-muted/40 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      EVM Private Key (BEP-20 &amp; Polygon • {revealedSecrets.derivation_paths?.evm})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copySecretText(revealedSecrets.evm_private_key, "EVM Private Key")}
+                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="h-3 w-3" /> Salin
+                    </button>
+                  </div>
+                  <code className="block font-mono text-[11px] text-foreground break-all">
+                    {revealedSecrets.evm_private_key}
+                  </code>
+                </div>
+
+                {/* TRON Private Key */}
+                <div className="p-3 rounded-xl border border-border bg-muted/40 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      TRON Private Key (TRC-20 • {revealedSecrets.derivation_paths?.tron})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copySecretText(revealedSecrets.tron_private_key, "TRON Private Key")}
+                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="h-3 w-3" /> Salin
+                    </button>
+                  </div>
+                  <code className="block font-mono text-[11px] text-foreground break-all">
+                    {revealedSecrets.tron_private_key}
+                  </code>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCryptoModalOpen(false);
+                      setRevealedSecrets(null);
+                    }}
+                    className="h-9 text-xs"
+                  >
+                    Tutup &amp; Sembunyikan
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+        </div>
       )}
 
       {/* ── TAB 3: MARKETPLACE & SIARAN ── */}

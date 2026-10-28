@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,6 +15,7 @@ from app.schemas.marketplace import (
     MarketplaceSellResponse,
     MarketplaceStockCategory,
     MarketplaceAccountSummary,
+    MarketplaceBuyRequest,
     MarketplaceBuyResponse,
     MarketplacePricingResponse,
     AccountAuditLogResponse,
@@ -111,6 +112,8 @@ async def get_stock_accounts(
 @router.post("/buy/{account_id}", response_model=MarketplaceBuyResponse)
 async def buy_account(
     account_id: str,
+    payment_method: str | None = Query(None),
+    payload: MarketplaceBuyRequest | None = Body(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -137,8 +140,9 @@ async def buy_account(
                 detail="Unable to verify the account session. Please try again shortly.",
             )
 
+        chosen_method = (payload.payment_method if payload and payload.payment_method else payment_method)
         account = await marketplace_service.buy_account(
-            db, current_user, account_id, allow_invoice=True
+            db, current_user, account_id, allow_invoice=True, payment_method=chosen_method
         )
         await db.commit()
 
@@ -152,6 +156,7 @@ async def buy_account(
                 invoice_id=getattr(account, "invoice_id", None),
                 payment_required=True,
                 amount=getattr(account, "buy_price", None),
+                payment_method=getattr(account, "payment_method", chosen_method or "QRIS"),
             )
 
         # Reconnect outside of database transaction

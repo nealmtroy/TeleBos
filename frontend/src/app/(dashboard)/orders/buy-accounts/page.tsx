@@ -118,11 +118,15 @@ export default function BuyAccountsPage() {
   } | null>(null);
 
   const buyMutation = useBuyAccount();
+  const [buyPayMethod, setBuyPayMethod] = useState<"auto" | "qris" | "usdt_bep20" | "usdt_trc20" | "usdt_polygon">("auto");
 
   const handleBuyConfirm = async () => {
     if (!pendingBuyAccount) return;
     try {
-      const res = await buyMutation.mutateAsync(pendingBuyAccount.id);
+      const res = await buyMutation.mutateAsync({
+        accountId: pendingBuyAccount.id,
+        payment_method: buyPayMethod === "auto" ? undefined : buyPayMethod,
+      });
 
       if (res.payment_required && res.invoice_id) {
         toast({
@@ -795,6 +799,34 @@ export default function BuyAccountsPage() {
                     </p>
                   </div>
                 )}
+                <div className="pt-2 border-t border-border/50 space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Metode Pembayaran
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {[
+                      { id: "auto" as const, label: user && user.balance >= pendingBuyAccount.buy_price ? "Saldo Dompet" : "Otomatis (QRIS)" },
+                      { id: "qris" as const, label: "QRIS Paymenku" },
+                      { id: "usdt_bep20" as const, label: "USDT (BEP-20)" },
+                      { id: "usdt_trc20" as const, label: "USDT (TRC-20)" },
+                      { id: "usdt_polygon" as const, label: "USDT (Polygon)" },
+                    ].map((pm) => (
+                      <button
+                        key={pm.id}
+                        type="button"
+                        onClick={() => setBuyPayMethod(pm.id)}
+                        className={cn(
+                          "px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer text-center",
+                          buyPayMethod === pm.id
+                            ? "border-primary bg-primary/10 text-primary font-bold"
+                            : "border-border bg-card text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {pm.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 

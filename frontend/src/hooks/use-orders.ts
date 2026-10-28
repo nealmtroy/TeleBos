@@ -46,6 +46,7 @@ interface OrderCreatePayload {
   quantity: number;
   comments?: string;
   usernames?: string;
+  payment_method?: string;
 }
 
 interface MassOrderItem {
@@ -54,6 +55,7 @@ interface MassOrderItem {
   quantity: number;
   comments?: string;
   usernames?: string;
+  payment_method?: string;
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ from app.models.smm_setting import SmmSetting
 from app.models.broadcast_job import BroadcastJob
 from app.models.invite_job import InviteJob
 from app.services.klikqris_service import create_qris_transaction, is_klikqris_configured
+from app.services.usdt_payment_service import create_usdt_invoice_data, is_usdt_payment_method
 from app.services.telegram_client import client_pool
 from app.services.notification_service import create_notification
 from app.services.ledger_service import record_ledger_entry
@@ -447,6 +448,7 @@ async def buy_account(
     user: User,
     account_id: str,
     allow_invoice: bool = False,
+    payment_method: str | None = None,
 ) -> TelegramAccount:
     """Atomic buy transaction.
 
@@ -515,7 +517,51 @@ async def buy_account(
     if buyer is None:
         raise ValueError("Buyer account not found.")
 
-    if buyer.balance < buy_price:
+    force_direct_payment = bool(
+        payment_method and payment_method.strip().lower() not in ("", "auto", "balance")
+    )
+    if buyer.balance < buy_price or force_direct_payment:
+        if not allow_invoice:
+            raise ValueError("Insufficient balance to buy this account.")
+
+        if is_usdt_payment_method(payment_method):
+            account_id_str = str(account.id)
+            seller_id_str = str(seller_id)
+            await db.rollback()
+            invoice_id = generate_wallet_tx_id()
+            now_utc = datetime.now(timezone.utc)
+            usdt_data = await create_usdt_invoice_data(db, buy_price, payment_method or "USDT_BEP20")
+            note_data = json.dumps({
+                "account_id": account_id_str,
+                "seller_id": seller_id_str,
+                "sell_price": sell_price,
+                "buy_price": buy_price,
+            })
+            tx = WalletTransaction(
+                id=invoice_id,
+                user_id=buyer_id,
+                type="marketplace",
+                amount=buy_price,
+                total_amount=buy_price,
+                method=usdt_data["method"],
+                note=note_data,
+                status="pending",
+                qris_url=usdt_data["crypto_address"],
+                qris_image=usdt_data["qris_url"],
+                crypto_currency=usdt_data["crypto_currency"],
+                crypto_network=usdt_data["crypto_network"],
+                crypto_amount=usdt_data["crypto_amount"],
+                crypto_address=usdt_data["crypto_address"],
+                exchange_rate=usdt_data["exchange_rate"],
+                expired_at=usdt_data["expired_at"],
+                created_at=now_utc,
+            )
+            db.add(tx)
+            account.invoice_id = invoice_id
+            account.payment_required = True
+            account.buy_price = buy_price
+            account.payment_method = usdt_data["method"]
+            return account
         if not allow_invoice:
             raise ValueError("Insufficient balance to buy this account.")
 

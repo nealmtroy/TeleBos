@@ -246,15 +246,18 @@ export default function SubscriptionPage() {
     }
   }
 
-  async function handleCheckoutQRIS(planId: PlanId) {
+  async function handleCheckoutQRIS(
+    planId: PlanId,
+    method: "qris" | "usdt_bep20" | "usdt_trc20" | "usdt_polygon" = "qris"
+  ) {
     try {
       const response = await checkoutMutation.mutateAsync({
         plan_id: planId,
         billing_cycle: billingCycle,
-        payment_method: "qris",
+        payment_method: method,
       });
       if (response.invoice_id) {
-        toast.success("Tagihan QRIS berhasil dibuat! Mengalihkan ke halaman pembayaran...");
+        toast.success("Tagihan pembayaran berhasil dibuat! Mengalihkan ke halaman invoice...");
         setPaymentModalPlan(null);
         router.push(`/wallet/invoice/${response.invoice_id}`);
       }
@@ -262,7 +265,7 @@ export default function SubscriptionPage() {
       const msg =
         err?.response?.data?.detail ||
         err?.message ||
-        "Gagal membuat tagihan pembayaran QRIS";
+        "Gagal membuat tagihan pembayaran";
       toast.error(msg);
     }
   }
@@ -272,14 +275,7 @@ export default function SubscriptionPage() {
     if (!planObj) return;
 
     const price = billingCycle === "yearly" ? planObj.yearlyAmount : planObj.amount;
-    const userBalance = user?.balance ?? 0;
-
-    if (userBalance >= price) {
-      setPaymentModalPlan({ id: planId, title, price });
-    } else {
-      toast.info("Saldo dompet tidak mencukupi, membuat tagihan pembayaran QRIS otomatis...");
-      handleCheckoutQRIS(planId);
-    }
+    setPaymentModalPlan({ id: planId, title, price });
   }
 
   return (
@@ -935,31 +931,56 @@ export default function SubscriptionPage() {
                 <Button
                   type="button"
                   onClick={() => handleCheckoutWithBalance(paymentModalPlan.id)}
-                  disabled={checkoutMutation.isPending}
-                  className="w-full h-12 rounded-xl flex items-center justify-between px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm cursor-pointer"
+                  disabled={checkoutMutation.isPending || (user?.balance ?? 0) < paymentModalPlan.price}
+                  className="w-full h-12 rounded-xl flex items-center justify-between px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   <div className="flex items-center gap-2.5">
                     <Wallet className="h-4 w-4" />
                     <span>Bayar dengan Saldo Dompet</span>
                   </div>
                   <span className="text-[11px] font-semibold opacity-90 bg-emerald-700/60 px-2 py-0.5 rounded">
-                    Langsung Aktif
+                    {(user?.balance ?? 0) >= paymentModalPlan.price ? "Langsung Aktif" : "Saldo Kurang"}
                   </span>
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleCheckoutQRIS(paymentModalPlan.id)}
+                  onClick={() => handleCheckoutQRIS(paymentModalPlan.id, "qris")}
                   disabled={checkoutMutation.isPending}
-                  className="w-full h-12 rounded-xl flex items-center justify-between px-4 font-semibold text-xs border border-border hover:bg-muted cursor-pointer"
+                  className="w-full h-11 rounded-xl flex items-center justify-between px-4 font-semibold text-xs border border-border hover:bg-muted cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <QrCode className="h-4 w-4 text-primary" />
-                    <span>Bayar via QRIS Otomatis</span>
+                    <span>Bayar via QRIS Otomatis (Paymenku)</span>
                   </div>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
+
+                <div className="pt-2 border-t border-border/60 space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Atau Bayar dengan Crypto (USDT On-Chain Otomatis)
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "usdt_bep20" as const, label: "USDT BEP-20", sub: "BSC" },
+                      { id: "usdt_trc20" as const, label: "USDT TRC-20", sub: "TRON" },
+                      { id: "usdt_polygon" as const, label: "USDT Polygon", sub: "MATIC" },
+                    ].map((net) => (
+                      <Button
+                        key={net.id}
+                        type="button"
+                        variant="outline"
+                        disabled={checkoutMutation.isPending}
+                        onClick={() => handleCheckoutQRIS(paymentModalPlan.id, net.id)}
+                        className="h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 px-2 text-xs font-bold border-border hover:border-emerald-500/60 hover:bg-emerald-500/10 cursor-pointer"
+                      >
+                        <span>{net.label}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">{net.sub}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}

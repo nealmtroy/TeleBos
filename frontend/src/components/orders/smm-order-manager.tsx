@@ -786,6 +786,7 @@ function OrderModal({
   const placeOrder = usePlaceOrder();
 
   const [dataTarget, setDataTarget] = useState("");
+  const [selectedPayMethod, setSelectedPayMethod] = useState<"auto" | "qris" | "usdt_bep20" | "usdt_trc20" | "usdt_polygon">("auto");
   const targetTrimmed = dataTarget.trim();
   const targetInvalid = targetTrimmed.length > 0 && !isValidTelegramTarget(targetTrimmed);
   // Edited as a free-form string so a partially typed number is not rewritten
@@ -863,6 +864,7 @@ function OrderModal({
     try {
       const res: any = await placeOrder.mutateAsync({
         service_id: Number(service.id),
+        payment_method: selectedPayMethod === "auto" ? undefined : selectedPayMethod,
         data_target: dataTarget.trim(),
         quantity,
       });
@@ -1154,6 +1156,36 @@ function OrderModal({
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Metode Pembayaran
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {[
+                  { id: "auto" as const, label: hasSufficientBalance ? "Saldo Dompet" : "Otomatis (QRIS)" },
+                  { id: "qris" as const, label: "QRIS Paymenku" },
+                  { id: "usdt_bep20" as const, label: "USDT (BEP-20)" },
+                  { id: "usdt_trc20" as const, label: "USDT (TRC-20)" },
+                  { id: "usdt_polygon" as const, label: "USDT (Polygon)" },
+                ].map((pm) => (
+                  <button
+                    key={pm.id}
+                    type="button"
+                    onClick={() => setSelectedPayMethod(pm.id)}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer text-center",
+                      selectedPayMethod === pm.id
+                        ? "border-primary bg-primary/10 text-primary font-bold"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {pm.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Modal Actions */}

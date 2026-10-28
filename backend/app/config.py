@@ -124,6 +124,22 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
     SENTRY_PROFILES_SAMPLE_RATE: float = 0.1
 
+    # Paymenku Payment Gateway (Primary QRIS Gateway — https://docs.paymenku.com/docs/api)
+    PAYMENKU_API_KEY: str | None = None
+    PAYMENKU_WEBHOOK_SECRET: str | None = None
+    PAYMENKU_BASE_URL: str = "https://paymenku.com/api/v1"
+    PAYMENKU_CHANNEL_CODE: str = "qris"
+    PAYMENKU_CALLBACK_URL: str | None = None
+    PAYMENKU_ALLOWED_IPS: str = ""
+    PAYMENKU_ALLOW_SANDBOX: bool = False
+
+    # Direct On-Chain USDT Payments (BEP-20, TRC-20, Polygon)
+    BSC_RPC_URL: str = "https://bsc-dataseed.binance.org"
+    POLYGON_RPC_URL: str = "https://polygon-rpc.com"
+    TRONGRID_BASE_URL: str = "https://api.trongrid.io"
+    TRONGRID_API_KEY: str = ""
+    USDT_DEFAULT_RATE_IDR: int = 16000
+
     # KlikQRIS Payment Gateway
     KLIKQRIS_API_KEY: str | None = None
     KLIKQRIS_ID_MERCHANT: str | None = None

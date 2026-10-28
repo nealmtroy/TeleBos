@@ -1284,6 +1284,36 @@ def run_migrations(connection):
         except Exception as e:
             logger.warning("Could not create auto_leave_logs table: %s", e)
 
+    # ── Wallet Transactions: Paymenku & Direct USDT On-Chain Columns ─────────
+    if "wallet_transactions" in tables:
+        try:
+            wt_cols = [c["name"] for c in inspector.get_columns("wallet_transactions")]
+            wt_new_cols = {
+                "provider_trx_id": "VARCHAR(128) DEFAULT NULL",
+                "crypto_currency": "VARCHAR(16) DEFAULT NULL",
+                "crypto_network": "VARCHAR(32) DEFAULT NULL",
+                "crypto_amount": "VARCHAR(32) DEFAULT NULL",
+                "crypto_address": "VARCHAR(128) DEFAULT NULL",
+                "tx_hash": "VARCHAR(128) DEFAULT NULL",
+                "exchange_rate": "BIGINT DEFAULT NULL",
+            }
+            for col_name, col_def in wt_new_cols.items():
+                if col_name not in wt_cols:
+                    connection.execute(
+                        text(f"ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
+                    )
+            connection.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_wallet_transactions_provider_trx_id ON wallet_transactions(provider_trx_id)")
+            )
+            connection.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_wallet_transactions_crypto_amount ON wallet_transactions(crypto_amount)")
+            )
+            connection.execute(
+                text("CREATE UNIQUE INDEX IF NOT EXISTS ix_wallet_transactions_tx_hash ON wallet_transactions(tx_hash) WHERE tx_hash IS NOT NULL")
+            )
+        except Exception as e:
+            logger.warning("Could not migrate wallet_transactions Paymenku/USDT columns: %s", e)
+
 
 
 

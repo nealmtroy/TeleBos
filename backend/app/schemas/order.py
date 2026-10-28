@@ -26,6 +26,7 @@ class OrderCreate(BaseModel):
     quantity: int = Field(default=1, ge=1, le=1000000)
     comments: str | None = Field(None, max_length=10000, description="Multiline comments for comment services")
     usernames: str | None = Field(None, max_length=10000, description="Multiline usernames for mention services")
+    payment_method: str | None = Field(None, description="Payment method if invoice required: qris, usdt_bep20, usdt_trc20, usdt_polygon")
 
 
 class MassOrderItem(BaseModel):
@@ -38,6 +39,7 @@ class MassOrderItem(BaseModel):
 
 class MassOrderCreate(BaseModel):
     orders: list[MassOrderItem] = Field(..., min_length=1, max_length=100)
+    payment_method: str | None = Field(None, description="Payment method if invoice required: qris, usdt_bep20, usdt_trc20, usdt_polygon")
 
 
 class OrderResponse(BaseModel):
