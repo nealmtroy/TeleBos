@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-29
+- **[aa571220](https://github.com/nealmtroy/TeleBos/commit/aa571220)**: feat(payment): migrate QRIS to Paymenku and add self-custody USDT on-chain payment
 - **[137118a6](https://github.com/nealmtroy/TeleBos/commit/137118a6)**: fix(sentry): remediate 19 unresolved issues across backend and frontend
 
 ## 2026-10-26

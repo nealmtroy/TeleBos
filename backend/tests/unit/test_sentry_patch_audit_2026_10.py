@@ -80,6 +80,28 @@ def test_telethon_transport_noise_filter_demotes_mtprotosender_readexactly():
     assert record.levelname == "WARNING"
 
 
+def test_telethon_transport_noise_filter_demotes_invalid_buffer_error():
+    """PYTHON-FASTAPI-50 / 4Z: mtprotosender 'Server sent invalid buffer' + InvalidBufferError demoted to WARNING."""
+    from telethon.errors import InvalidBufferError
+
+    flt = TelethonTransportNoiseFilter()
+    try:
+        raise InvalidBufferError(b"\x00\x00\x00\x00")
+    except InvalidBufferError as exc:
+        record = logging.LogRecord(
+            name="telethon.network.mtprotosender",
+            level=logging.ERROR,
+            pathname="mtprotosender.py",
+            lineno=525,
+            msg="Server sent invalid buffer",
+            args=(),
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+    assert flt.filter(record) is True
+    assert record.levelno == logging.WARNING
+    assert record.levelname == "WARNING"
+
+
 @pytest.mark.asyncio
 async def test_resolve_chat_entity_strips_minus_100_mark_for_channel():
     """PYTHON-FASTAPI-3N: Marked channel ID -1002218724679 must resolve to positive InputPeerChannel(2218724679)."""
@@ -142,7 +164,10 @@ async def test_klikqris_handles_non_json_502_body_without_json_decode_error(monk
     fake_resp.json.side_effect = ValueError("Expecting value: line 1 column 1 (char 0)")
     mock_client.post.return_value = fake_resp
 
-    with patch("app.services.klikqris_service.get_klikqris_http_client", return_value=mock_client):
+    with (
+        patch("app.services.klikqris_service.is_paymenku_configured", return_value=False),
+        patch("app.services.klikqris_service.get_klikqris_http_client", return_value=mock_client),
+    ):
         with pytest.raises(RuntimeError, match="HTTP 502"):
             await create_qris_transaction("TB-TEST-502", 50000)
 

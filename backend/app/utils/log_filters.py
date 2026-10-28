@@ -17,6 +17,7 @@ _BENIGN_LOOP_MESSAGES = (
     "Unexpected exception in the receive loop",
     "Unhandled error while receiving data",
     "Unhandled error while sending data",
+    "Server sent invalid buffer",
 )
 
 # Telegram answers a stale socket with "wrong session ID" when two connections
@@ -35,6 +36,9 @@ _BENIGN_TRANSPORT_ERRORS = (
     "readexactly() called while another coroutine is already waiting",
     "read() called while another coroutine is already waiting",
     "Event loop is closed",
+    # Telethon transport reset / socket blip from Telegram DC (PYTHON-FASTAPI-50, PYTHON-FASTAPI-4Z)
+    "InvalidBufferError",
+    "Invalid response buffer",
 )
 
 
