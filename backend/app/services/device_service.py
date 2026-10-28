@@ -115,6 +115,25 @@ async def terminate_device(account: TelegramAccount, device_hash: str) -> None:
 
 async def terminate_all_other_sessions(account: TelegramAccount) -> None:
     """Terminate all sessions except the current one."""
+    from app.config import get_settings
+    from app.services.telegram_command_bus import execute_telegram_command, TelegramCommandError
+    from app.utils.telegram_errors import classify_telegram_error
+
+    settings = get_settings()
+    if settings.ENABLE_TELEGRAM_COMMAND_BUS and not getattr(client_pool, "is_worker", False):
+        try:
+            await execute_telegram_command(
+                account_id=str(account.id),
+                action="terminate_all_other_sessions",
+            )
+            return
+        except TelegramCommandError as cmd_err:
+            err_type, err_msg = classify_telegram_error(cmd_err)
+            if err_type == "fresh_reset_forbidden" or "FreshResetAuthorisationForbidden" in (cmd_err.code or ""):
+                logger.info("Session termination deferred by Telegram: %s", err_msg)
+                raise RuntimeError(err_msg) from cmd_err
+            raise RuntimeError(str(cmd_err)) from cmd_err
+
     session_str = decrypt(account.session_string)
     client = await client_pool.get(str(account.id), session_str)
     if client is None:
@@ -128,8 +147,6 @@ async def terminate_all_other_sessions(account: TelegramAccount) -> None:
         # That is an expected, temporary condition the user can act on, not a
         # fault, so it must not be reported at error level
         # (PYTHON-FASTAPI-15).
-        from app.utils.telegram_errors import classify_telegram_error
-
         err_type, err_msg = classify_telegram_error(exc)
         if err_type == "fresh_reset_forbidden":
             logger.info("Session termination deferred by Telegram: %s", err_msg)

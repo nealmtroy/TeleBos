@@ -116,7 +116,9 @@ async def adaptive_sequential_sync_loop() -> None:
                         # Step A: Sync Profile Info
                         try:
                             await sync_account_profile(db_session, db_acc)
+                            await db_session.commit()
                         except Exception as profile_exc:
+                            await db_session.rollback()
                             logger.error("Adaptive Sync: Error syncing profile for %s: %s", db_acc.phone, profile_exc)
 
                         # Step B: Consolidated Sync (Chats, Groups, Channels, & last_sync_at / groups_channels_synced_at)
@@ -124,13 +126,17 @@ async def adaptive_sequential_sync_loop() -> None:
                         try:
                             # We use skip_details=True for periodic background sync to avoid heavy API hits
                             dialogs = await sync_all_chats_to_db(db_acc, db_session, skip_details=True)
+                            await db_session.commit()
                         except Exception as chat_exc:
+                            await db_session.rollback()
                             logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
 
                         # Step C: Sync Registration Dates (re-uses already fetched dialogs, zero extra network calls)
                         try:
                             await reg_date_service.sync_datapoints_from_account(db_session, db_acc.id, limit=500, dialogs=dialogs)
+                            await db_session.commit()
                         except Exception as reg_exc:
+                            await db_session.rollback()
                             logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
 
                         # Step D: Save all changes

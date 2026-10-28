@@ -103,23 +103,26 @@ async def _background_chat_sync(account_id: str) -> None:
                     # 1. Sync profile info (e.g. name, username, bio, photo)
                     try:
                         await sync_account_profile(db, account)
+                        await db.commit()
                     except Exception as profile_exc:
+                        await db.rollback()
                         logger.error("Error in background profile sync for account %s: %s", account_id, profile_exc)
 
                     # 2. Consolidated Sync of Chats, Groups, Channels
                     try:
                         await sync_all_chats_to_db(account, db, skip_details=False)
+                        await db.commit()
                     except Exception as chats_exc:
+                        await db.rollback()
                         logger.error("Error in consolidated background sync for account %s: %s", account_id, chats_exc)
 
                     # 3. Sync folders (e.g. folder categories)
                     try:
                         await sync_folders_from_telegram(account, db)
+                        await db.commit()
                     except Exception as folders_exc:
+                        await db.rollback()
                         logger.warning("Error in background folders sync for account %s: %s", account_id, folders_exc)
-
-                    # Explicitly commit all synced data
-                    await db.commit()
 
                     # Broadcast WS notifications via Redis + local WS manager
                     try:

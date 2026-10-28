@@ -24,34 +24,64 @@ const CACHE_TTL_MS = TOKEN_TTL_MS - 30 * 1000;
 type TokenCacheEntry = { token: string; expiresAt: number };
 
 const cache = new Map<string, TokenCacheEntry>();
-const inflight = new Map<string, Promise<void>>();
+const pendingIds = new Set<string>();
+let flushScheduled = false;
+
+function scheduleBatchFlush(): void {
+  if (flushScheduled) return;
+  flushScheduled = true;
+
+  queueMicrotask(async () => {
+    flushScheduled = false;
+    const idsToFetch = Array.from(pendingIds);
+    pendingIds.clear();
+    if (idsToFetch.length === 0) return;
+
+    try {
+      const { data } = await api.post<{
+        tokens: Record<string, string>;
+        expires_in: number;
+      }>("/accounts/media-tokens", { account_ids: idsToFetch });
+
+      const ttlMs = (data.expires_in ?? 300) * 1000;
+      const expiresAt = Date.now() + Math.min(ttlMs, CACHE_TTL_MS);
+      const tokens = data.tokens ?? {};
+      for (const [accId, token] of Object.entries(tokens)) {
+        if (token) {
+          cache.set(accId, { token, expiresAt });
+        }
+      }
+    } catch {
+      // Fallback to single endpoint if batch endpoint is unavailable
+      await Promise.allSettled(
+        idsToFetch.map(async (accountId) => {
+          try {
+            const { data } = await api.get<{ token: string; expires_in: number }>(
+              `/accounts/${accountId}/media-token`
+            );
+            const ttlMs = (data.expires_in ?? 300) * 1000;
+            cache.set(accountId, {
+              token: data.token,
+              expiresAt: Date.now() + Math.min(ttlMs, CACHE_TTL_MS),
+            });
+          } catch {
+            // Ignore; falls back to cookie auth and retries on next prefetch.
+          }
+        })
+      );
+    }
+  });
+}
 
 function ensureToken(accountId: string): void {
   if (!accountId) return;
   const now = Date.now();
   const hit = cache.get(accountId);
   if (hit && hit.expiresAt > now) return;
-  if (inflight.has(accountId)) return;
+  if (pendingIds.has(accountId)) return;
 
-  const request = (async () => {
-    try {
-      const { data } = await api.get<{ token: string; expires_in: number }>(
-        `/accounts/${accountId}/media-token`
-      );
-      const ttlMs = (data.expires_in ?? 300) * 1000;
-      cache.set(accountId, {
-        token: data.token,
-        expiresAt: Date.now() + Math.min(ttlMs, CACHE_TTL_MS),
-      });
-    } catch {
-      // A failed token fetch must not break rendering; the request falls back
-      // to cookie auth and the next prefetch retries.
-    } finally {
-      inflight.delete(accountId);
-    }
-  })();
-
-  inflight.set(accountId, request);
+  pendingIds.add(accountId);
+  scheduleBatchFlush();
 }
 
 /** Warm the token cache for a set of accounts before building their URLs. */

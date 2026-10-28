@@ -99,17 +99,24 @@ async def publish_job_completed(
     job_type: str, job_id: str | uuid.UUID, account_ids: list[str]
 ) -> bool:
     """Publish a completion signal to notify webservers that accounts are freed from worker job."""
-    try:
-        payload = json.dumps({
-            "action": "completed",
-            "job_type": job_type,
-            "job_id": str(job_id),
-            "account_ids": [str(a) for a in account_ids],
-        })
-        await redis_client.publish(JOBS_COMPLETED_CHANNEL, payload)
-        logger.info("Published job completed signal for %s job %s", job_type, job_id)
-        return True
-    except Exception as exc:
-        logger.error("Failed to publish job completed signal for %s job %s: %s", job_type, job_id, exc)
-        return False
+    import asyncio
+
+    payload = json.dumps({
+        "action": "completed",
+        "job_type": job_type,
+        "job_id": str(job_id),
+        "account_ids": [str(a) for a in account_ids],
+    })
+    for attempt in range(1, 4):
+        try:
+            await redis_client.publish(JOBS_COMPLETED_CHANNEL, payload)
+            logger.info("Published job completed signal for %s job %s", job_type, job_id)
+            return True
+        except Exception as exc:
+            if attempt < 3:
+                await asyncio.sleep(0.2 * attempt)
+                continue
+            logger.warning("Failed to publish job completed signal for %s job %s: %s", job_type, job_id, exc)
+            return False
+    return False
 

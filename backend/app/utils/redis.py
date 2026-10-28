@@ -17,9 +17,25 @@ settings = get_settings()
 redis_client = aioredis.from_url(
     settings.REDIS_URL,
     decode_responses=True,
-    socket_timeout=5.0,
+    socket_timeout=10.0,
     socket_connect_timeout=5.0,
     retry_on_timeout=True,
+    max_connections=64,
+    health_check_interval=30,
+)
+
+# Dedicated client pool for blocking commands (BLPOP in telegram_command_bus &
+# command_consumer). Must have socket_timeout > max BLPOP timeout (up to 60s
+# for media downloads) so redis-py does not abort in-flight BLPOP waits at 5s
+# with "Timeout reading from redis:6379" (PYTHON-FASTAPI-3G), and isolated
+# connections so blocking waiters never starve pub/sub or cache commands (3V).
+redis_blocking_client = aioredis.from_url(
+    settings.REDIS_URL,
+    decode_responses=True,
+    socket_timeout=65.0,
+    socket_connect_timeout=5.0,
+    retry_on_timeout=False,
+    max_connections=32,
     health_check_interval=30,
 )
 

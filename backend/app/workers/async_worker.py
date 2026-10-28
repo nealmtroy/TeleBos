@@ -13,7 +13,7 @@ import signal
 import sys
 
 from app.database import async_session_factory, engine
-from app.utils.redis import redis_client
+from app.utils.redis import redis_blocking_client, redis_client
 from app.utils.redis_dispatcher import JOBS_QUEUE_KEY, JOBS_CONTROL_CHANNEL, JOBS_COMPLETED_CHANNEL
 from app.services import broadcast_service, invite_service, auto_join_service, auto_leave_service
 from app.utils.async_helpers import wake_job
@@ -33,6 +33,9 @@ logging.getLogger("telethon.client.updates").setLevel(logging.WARNING)
 from app.utils.log_filters import TelethonTransportNoiseFilter, AsyncioTransportNoiseFilter
 
 logging.getLogger("telethon.network.connection.connection").addFilter(
+    TelethonTransportNoiseFilter()
+)
+logging.getLogger("telethon.network.mtprotosender").addFilter(
     TelethonTransportNoiseFilter()
 )
 logging.getLogger("asyncio").addFilter(
@@ -90,7 +93,7 @@ async def queue_consumer_loop() -> None:
     )
     while not shutdown_event.is_set():
         try:
-            item = await redis_client.blpop(queues_to_watch, timeout=2)
+            item = await redis_blocking_client.blpop(queues_to_watch, timeout=2)
             if not item:
                 continue
 

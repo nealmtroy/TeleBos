@@ -42,26 +42,38 @@ export default function TextListsPage() {
 
   async function handleCreate() {
     if (!newName.trim()) return;
-    await createMutation.mutateAsync({ name: newName.trim(), texts: [] });
-    setNewName("");
-    setShowNew(false);
+    try {
+      await createMutation.mutateAsync({ name: newName.trim(), texts: [] });
+      setNewName("");
+      setShowNew(false);
+    } catch {
+      // Handled by useCreateTextList onError toast
+    }
   }
 
   async function handleAddText(listId: string, texts: string[]) {
     const textToAdd = newItemTexts[listId] || "";
     if (!textToAdd.trim()) return;
     const currentTexts = Array.isArray(texts) ? texts : [];
-    await updateMutation.mutateAsync({
-      id: listId,
-      texts: [...currentTexts, textToAdd.trim()],
-    });
-    setNewItemTexts((prev) => ({ ...prev, [listId]: "" }));
+    try {
+      await updateMutation.mutateAsync({
+        id: listId,
+        texts: [...currentTexts, textToAdd.trim()],
+      });
+      setNewItemTexts((prev) => ({ ...prev, [listId]: "" }));
+    } catch {
+      // Handled by useUpdateTextList onError toast
+    }
   }
 
   async function handleRemoveText(listId: string, index: number, texts: string[]) {
     const currentTexts = Array.isArray(texts) ? texts : [];
     const updated = currentTexts.filter((_, i) => i !== index);
-    await updateMutation.mutateAsync({ id: listId, texts: updated });
+    try {
+      await updateMutation.mutateAsync({ id: listId, texts: updated });
+    } catch {
+      // Handled by useUpdateTextList onError toast
+    }
   }
 
   function handleOpenAddModal(listId: string, texts: string[], listName: string) {
@@ -98,23 +110,27 @@ export default function TextListsPage() {
     const trimmed = savedValue.trim();
     if (!trimmed) return;
 
-    if (editorModal.mode === "add") {
-      const updated = [...editorModal.allTexts, trimmed];
-      await updateMutation.mutateAsync({
-        id: editorModal.listId,
-        texts: updated,
-      });
-      setNewItemTexts((prev) => ({ ...prev, [editorModal.listId]: "" }));
-    } else if (editorModal.mode === "edit" && typeof editorModal.editIndex === "number") {
-      const updated = [...editorModal.allTexts];
-      updated[editorModal.editIndex] = trimmed;
-      await updateMutation.mutateAsync({
-        id: editorModal.listId,
-        texts: updated,
-      });
-    }
+    try {
+      if (editorModal.mode === "add") {
+        const updated = [...editorModal.allTexts, trimmed];
+        await updateMutation.mutateAsync({
+          id: editorModal.listId,
+          texts: updated,
+        });
+        setNewItemTexts((prev) => ({ ...prev, [editorModal.listId]: "" }));
+      } else if (editorModal.mode === "edit" && typeof editorModal.editIndex === "number") {
+        const updated = [...editorModal.allTexts];
+        updated[editorModal.editIndex] = trimmed;
+        await updateMutation.mutateAsync({
+          id: editorModal.listId,
+          texts: updated,
+        });
+      }
 
-    setEditorModal(null);
+      setEditorModal(null);
+    } catch {
+      // Handled by useUpdateTextList onError toast
+    }
   }
 
   return (

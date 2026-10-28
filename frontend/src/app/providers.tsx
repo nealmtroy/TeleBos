@@ -20,21 +20,33 @@ function LanguageSync() {
   const locale = useI18nStore((s) => s.locale);
   const preference = useI18nStore((s) => s.preference);
   const setPreference = useI18nStore((s) => s.setPreference);
+  const setLocale = useI18nStore((s) => s.setLocale);
 
   // Hydrate: after first client paint, read preference from localStorage.
-  // Defaults to "system" (detect from browser/OS).
+  // Respect explicit /id URL prefix and server-negotiated __TELEBOS_LOCALE__
+  // so client mount does not flip locale mid-hydration (PYTHON-FASTAPI-1K / 1Y).
   useEffect(() => {
     try {
+      const pathname = window.location.pathname || "";
+      if (pathname === "/id" || pathname.startsWith("/id/")) {
+        setLocale("id");
+        return;
+      }
       const stored = localStorage.getItem("telebo_locale");
       if (stored === "en" || stored === "id" || stored === "system") {
         setPreference(stored);
       } else {
-        setPreference("system");
+        const fromServer = (window as any).__TELEBOS_LOCALE__;
+        if (fromServer === "id" || fromServer === "en") {
+          setLocale(fromServer);
+        } else {
+          setPreference("system");
+        }
       }
     } catch {
-      setPreference("system");
+      // Ignore storage access errors in restricted WebViews
     }
-  }, [setPreference]);
+  }, [setPreference, setLocale]);
 
   // Listen to OS / browser language changes when preference is "system"
   useEffect(() => {
@@ -114,7 +126,7 @@ function LayoutAnimationSanitizer() {
       } catch {}
     };
 
-    sanitize();
+    const timerId = window.setTimeout(sanitize, 0);
 
     const observer = new MutationObserver((mutations) => {
       let shouldSanitize = false;
@@ -133,7 +145,10 @@ function LayoutAnimationSanitizer() {
     });
 
     observer.observe(document.head, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(timerId);
+      observer.disconnect();
+    };
   }, []);
 
   return null;

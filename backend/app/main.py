@@ -341,6 +341,9 @@ from app.utils.log_filters import TelethonTransportNoiseFilter, AsyncioTransport
 logging.getLogger("telethon.network.connection.connection").addFilter(
     TelethonTransportNoiseFilter()
 )
+logging.getLogger("telethon.network.mtprotosender").addFilter(
+    TelethonTransportNoiseFilter()
+)
 logging.getLogger("asyncio").addFilter(
     AsyncioTransportNoiseFilter()
 )

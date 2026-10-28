@@ -20,6 +20,7 @@ Sentry.init({
     /NotFoundError.*insertBefore/i,
     /The object can not be found here/i,
     /Non-Error promise rejection captured/i,
+    /invariant expected app router to be mounted/i,
   ],
   denyUrls: [
     /executors\//i,

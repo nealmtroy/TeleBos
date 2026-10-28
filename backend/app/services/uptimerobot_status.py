@@ -117,12 +117,13 @@ class UptimeRobotService:
             try:
                 fresh = await self._fetch()
                 async with self._lock:
-                    self._cache = fresh
+                    if fresh.overall != "unknown" or not self._cache.monitors:
+                        self._cache = fresh
                 logger.debug("UptimeRobot status refreshed: %s", fresh.overall)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                logger.error("UptimeRobot background refresh error: %s", exc)
+                logger.warning("UptimeRobot background refresh error: %s", exc)
 
             await asyncio.sleep(self._interval)
 
@@ -163,11 +164,11 @@ class UptimeRobotService:
                 resp = await client.post(api_url, data=payload)
                 resp.raise_for_status()
                 data = resp.json()
-        except httpx.RequestError as exc:
-            logger.error("UptimeRobot request failed: %s", exc)
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            logger.warning("UptimeRobot request failed: %s", exc)
             return UptimeStatus(overall="unknown", monitors=[])
         except Exception as exc:
-            logger.error("UptimeRobot unexpected error: %s", exc)
+            logger.warning("UptimeRobot unexpected error: %s", exc)
             return UptimeStatus(overall="unknown", monitors=[])
 
         if data.get("stat") != "ok":

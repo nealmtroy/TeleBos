@@ -35,7 +35,7 @@ from app.services.telegram_command_bus import (
     TELEGRAM_COMMANDS_QUEUE,
     TELEGRAM_RESPONSE_PREFIX,
 )
-from app.utils.redis import redis_client
+from app.utils.redis import redis_blocking_client, redis_client
 from app.utils.telethon_helpers import borrow_client, release_client
 from sqlalchemy import select
 
@@ -308,6 +308,12 @@ async def _handle_command_action(
         await client(ResetAuthorizationRequest(hash=auth_hash))
         return {"success": True}
 
+    elif action == "terminate_all_other_sessions":
+        from telethon.tl.functions.auth import ResetAuthorizationsRequest
+
+        await client(ResetAuthorizationsRequest())
+        return {"success": True}
+
     elif action == "download_media_to_file":
         from app.utils.path_security import get_base_uploads_dir, is_path_contained
         chat_id = params["chat_id"]
@@ -542,7 +548,7 @@ async def telegram_command_consumer_loop(
     )
     while not shutdown_event.is_set():
         try:
-            item = await redis_client.blpop(queues_to_watch, timeout=2)
+            item = await redis_blocking_client.blpop(queues_to_watch, timeout=2)
             if not item:
                 continue
 

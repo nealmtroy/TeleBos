@@ -15,6 +15,8 @@ import logging
 _BENIGN_LOOP_MESSAGES = (
     "Unexpected exception in the send loop",
     "Unexpected exception in the receive loop",
+    "Unhandled error while receiving data",
+    "Unhandled error while sending data",
 )
 
 # Telegram answers a stale socket with "wrong session ID" when two connections

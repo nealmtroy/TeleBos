@@ -45,13 +45,23 @@ def _avatar_metadata(entity: Any) -> dict[str, int | None]:
 
 
 async def _upsert_telegram_chats(db: AsyncSession, values: list[dict], preserve_details: bool = True) -> None:
-    """Helper to perform bulk upsert of TelegramChat records in chunks."""
+    """Helper to perform bulk upsert of TelegramChat records in chunks.
+
+    Deduplicates and sorts rows by (account_id, chat_id) before chunking so
+    concurrent transactions always acquire PostgreSQL row locks in a
+    deterministic ascending order (prevents DeadlockDetectedError, PYTHON-FASTAPI-3J).
+    """
     if not values:
         return
-        
+
+    deduped: dict[tuple[str, int], dict] = {}
+    for row in values:
+        deduped[(str(row["account_id"]), int(row["chat_id"]))] = row
+    sorted_values = [deduped[k] for k in sorted(deduped.keys())]
+
     chunk_size = 100
-    for i in range(0, len(values), chunk_size):
-        chunk = values[i : i + chunk_size]
+    for i in range(0, len(sorted_values), chunk_size):
+        chunk = sorted_values[i : i + chunk_size]
         stmt = insert(TelegramChat).values(chunk)
         
         update_dict = {
@@ -110,6 +120,13 @@ async def update_account_stats_from_db(account: TelegramAccount, db: AsyncSessio
 
 async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> list[Any]:
     """Sync all chats (private, bots, groups, supergroups, channels) in a consolidated dialog call."""
+    dialog_lock = await _get_account_dialog_lock(str(account.id))
+    async with dialog_lock:
+        return await _sync_all_chats_to_db_locked(account, db, skip_details=skip_details)
+
+
+async def _sync_all_chats_to_db_locked(account: TelegramAccount, db: AsyncSession, skip_details: bool = False) -> list[Any]:
+    """Inner implementation of sync_all_chats_to_db serialized per account."""
     import datetime as dt
     try:
         client = await get_active_client(account)
@@ -126,7 +143,17 @@ async def sync_all_chats_to_db(account: TelegramAccount, db: AsyncSession, skip_
     try:
         dialogs_folder_0 = await client.get_dialogs(limit=500, folder=0)
     except Exception as exc:
-        logger.error("Error during get_dialogs folder 0 for account %s: %s", account.id, exc)
+        err_msg = str(exc)
+        if "Request was unsuccessful" in err_msg or isinstance(
+            exc, (ConnectionError, TimeoutError, asyncio.TimeoutError, OSError)
+        ):
+            logger.warning(
+                "Transient Telegram error during get_dialogs folder 0 for account %s: %s",
+                account.id,
+                exc,
+            )
+        else:
+            logger.error("Error during get_dialogs folder 0 for account %s: %s", account.id, exc)
         return []
 
     dialogs_folder_1 = []
@@ -414,26 +441,7 @@ async def get_dialogs(
                                 })
 
                             if new_values:
-                                from sqlalchemy.dialects.postgresql import insert
-                                stmt_insert = insert(TelegramChat).values(new_values)
-                                stmt_insert = stmt_insert.on_conflict_do_update(
-                                    constraint="uq_telegram_chat_account_chat",
-                                    set_={
-                                        "title": stmt_insert.excluded.title,
-                                        "username": stmt_insert.excluded.username,
-                                        "type": stmt_insert.excluded.type,
-                                        "color_id": stmt_insert.excluded.color_id,
-                                        "photo_version": stmt_insert.excluded.photo_version,
-                                        "unread_count": stmt_insert.excluded.unread_count,
-                                        "last_message": stmt_insert.excluded.last_message,
-                                        "last_message_date": stmt_insert.excluded.last_message_date,
-                                        "access_hash": stmt_insert.excluded.access_hash,
-                                        "is_active": True,
-                                        "is_creator": stmt_insert.excluded.is_creator,
-                                        "updated_at": func.now(),
-                                    }
-                                )
-                                await db.execute(stmt_insert)
+                                await _upsert_telegram_chats(db, new_values, preserve_details=True)
                                 await db.commit()
 
                                 # Re-calculate total count and fetch page chats
@@ -668,6 +676,7 @@ async def sync_folders_from_telegram(account: TelegramAccount, db: AsyncSession)
 async def resolve_chat_entity(client, account_id, chat_id: int):
     """Resolve a chat ID into an entity (InputPeer or actual entity) using cache, DB lookup, or network fallback."""
     import telethon.tl.types as types
+    import telethon.utils as tl_utils
     import uuid
     try:
         # 1. Try to get input entity from cache (fastest)
@@ -677,7 +686,15 @@ async def resolve_chat_entity(client, account_id, chat_id: int):
         from app.database import async_session_factory
         from app.models.telegram_chat import TelegramChat
         from sqlalchemy import select
-        
+
+        # Normalize potentially marked peer IDs (e.g., -1002218724679 -> 2218724679)
+        # so both DB lookup and Telethon InputPeer construction receive valid IDs (PYTHON-FASTAPI-3N).
+        try:
+            real_id, _ = tl_utils.resolve_id(int(chat_id))
+        except Exception:
+            real_id = abs(int(chat_id))
+        candidate_ids = list({int(chat_id), real_id, -real_id, -1000000000000 - real_id})
+
         access_hash = None
         chat_type = "user"
         try:
@@ -686,7 +703,7 @@ async def resolve_chat_entity(client, account_id, chat_id: int):
                 res = await session.execute(
                     select(TelegramChat.access_hash, TelegramChat.type)
                     .where(TelegramChat.account_id == acc_uuid)
-                    .where(TelegramChat.chat_id == chat_id)
+                    .where(TelegramChat.chat_id.in_(candidate_ids))
                 )
                 row = res.first()
                 if row:
@@ -697,14 +714,14 @@ async def resolve_chat_entity(client, account_id, chat_id: int):
         if chat_type == "group":
             # Basic groups are Telethon `Chat` entities, which carry no
             # access_hash at all, so this must be decided by type alone.
-            return types.InputPeerChat(chat_id=chat_id)
+            return types.InputPeerChat(chat_id=real_id)
 
         if access_hash is not None:
             # "bot" chats are `User` entities and resolve like any other user.
             if chat_type in ("user", "bot"):
-                return types.InputPeerUser(user_id=chat_id, access_hash=access_hash)
+                return types.InputPeerUser(user_id=real_id, access_hash=access_hash)
             elif chat_type in ("channel", "supergroup"):
-                return types.InputPeerChannel(channel_id=chat_id, access_hash=access_hash)
+                return types.InputPeerChannel(channel_id=real_id, access_hash=access_hash)
 
         # 3. Fallback to slow network query. Wrap the raw id in an explicit
         # Peer: a bare int makes Telethon guess between user/chat/channel,
@@ -712,9 +729,9 @@ async def resolve_chat_entity(client, account_id, chat_id: int):
         from telethon.tl.types import PeerChannel, PeerUser
 
         if chat_type in ("user", "bot"):
-            peer = PeerUser(user_id=chat_id)
+            peer = PeerUser(user_id=real_id)
         elif chat_type in ("channel", "supergroup"):
-            peer = PeerChannel(channel_id=chat_id)
+            peer = PeerChannel(channel_id=real_id)
         else:
             peer = None
 

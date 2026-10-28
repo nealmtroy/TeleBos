@@ -13,7 +13,7 @@ from typing import Any
 
 from app.config import get_settings
 from app.core.sharding import DEFAULT_CMD_QUEUE, get_account_shard, get_shard_command_queue
-from app.utils.redis import redis_client
+from app.utils.redis import redis_blocking_client, redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +91,11 @@ async def execute_telegram_command(
             code="DISPATCH_FAILED",
         ) from push_exc
 
-    # Await response from worker runner
+    # Await response from worker runner using dedicated blocking client whose
+    # socket_timeout (65s) exceeds wait_timeout (PYTHON-FASTAPI-3G).
     wait_timeout = max(1, int(timeout) + 1)
     try:
-        result_tuple = await redis_client.blpop(res_key, timeout=wait_timeout)
+        result_tuple = await redis_blocking_client.blpop(res_key, timeout=wait_timeout)
     except Exception as pop_exc:
         logger.error("Error awaiting response on %s for action '%s': %s", res_key, action, pop_exc)
         raise TelegramCommandError(

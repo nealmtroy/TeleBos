@@ -99,7 +99,8 @@ async def test_bot_resolves_to_input_peer_user():
 async def test_channel_and_supergroup_resolve_to_input_peer_channel(chat_type):
     entity, client = await _resolve(chat_type, ACCESS_HASH, -1001234567890)
     assert isinstance(entity, InputPeerChannel)
-    assert entity.channel_id == -1001234567890
+    # PYTHON-FASTAPI-3N: InputPeerChannel.channel_id must be the unmarked positive ID
+    assert entity.channel_id == 1234567890
     assert entity.access_hash == ACCESS_HASH
     client.get_entity.assert_not_called()
 
@@ -131,14 +132,14 @@ async def test_supergroup_fallback_uses_peer_channel():
     client.get_input_entity = AsyncMock(side_effect=ValueError("cache miss"))
     client.get_input_entity.side_effect = [
         ValueError("cache miss"),
-        InputPeerChannel(channel_id=-100999, access_hash=ACCESS_HASH),
+        InputPeerChannel(channel_id=100999, access_hash=ACCESS_HASH),
     ]
 
     await _resolve("supergroup", None, -100999, client=client)
 
     peer_arg = client.get_input_entity.await_args_list[1].args[0]
     assert isinstance(peer_arg, PeerChannel)
-    assert peer_arg.channel_id == -100999
+    assert peer_arg.channel_id == 100999
 
 
 @pytest.mark.asyncio

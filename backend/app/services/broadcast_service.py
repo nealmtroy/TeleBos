@@ -3091,11 +3091,33 @@ async def execute_broadcast(job_id: str):
                     )
                 )
             except Exception as flush_exc:
-                logger.exception(
-                    "Failed to flush pending cycle logs for job %s during graceful exit: %s",
-                    job_id_str,
-                    flush_exc,
+                err_lower = str(flush_exc).lower()
+                is_transient_or_shutdown = isinstance(flush_exc, OSError) or any(
+                    token in err_lower
+                    for token in (
+                        "shutting down",
+                        "name resolution",
+                        "connect call failed",
+                        "connection reset",
+                        "connection is closed",
+                        "connection refused",
+                        "server closed the connection",
+                        "cannotconnectnowerror",
+                    )
                 )
+                if is_transient_or_shutdown:
+                    logger.warning(
+                        "Skipped flushing %d pending cycle logs for job %s (DB unavailable during shutdown/restart): %s",
+                        len(pending_cycle_details),
+                        job_id_str,
+                        flush_exc,
+                    )
+                else:
+                    logger.exception(
+                        "Failed to flush pending cycle logs for job %s during graceful exit: %s",
+                        job_id_str,
+                        flush_exc,
+                    )
 
         # Persist target bookkeeping so a resumed job continues without
         # re-attempting permanently-failed / pending targets.

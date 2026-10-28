@@ -133,7 +133,7 @@ async def request_topup(
                 callback_url=callback_url,
             )
         except Exception as e:
-            logger.error("Failed to create KlikQRIS transaction for order %s: %s", invoice_id, e)
+            logger.warning("Failed to create KlikQRIS transaction for order %s: %s", invoice_id, e)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Gagal membuat tagihan QRIS KlikQRIS: {str(e)}",

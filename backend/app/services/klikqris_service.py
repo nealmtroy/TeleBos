@@ -83,12 +83,21 @@ async def create_qris_transaction(
 
     logger.info("Calling KlikQRIS create transaction for order_id=%s, amount=%d", order_id, amount)
 
-    response = await client.post(url, json=payload, headers=headers)
-    resp_data = response.json() if response.content else {}
+    try:
+        response = await client.post(url, json=payload, headers=headers)
+    except httpx.HTTPError as exc:
+        logger.warning("KlikQRIS HTTP request failed for order %s: %s", order_id, exc)
+        raise RuntimeError(f"KlikQRIS error: Gagal menghubungi server pembayaran ({type(exc).__name__})") from exc
 
-    if response.status_code not in (200, 201) or not resp_data.get("status"):
-        err_msg = resp_data.get("message") or f"HTTP {response.status_code}: {response.text}"
-        logger.error("KlikQRIS create transaction failed: %s", err_msg)
+    try:
+        resp_data = response.json() if response.content else {}
+    except ValueError:
+        resp_data = {}
+
+    if response.status_code not in (200, 201) or not isinstance(resp_data, dict) or not resp_data.get("status"):
+        msg = resp_data.get("message") if isinstance(resp_data, dict) else None
+        err_msg = msg or f"HTTP {response.status_code} (gateway tidak mengembalikan respons JSON valid)"
+        logger.warning("KlikQRIS create transaction failed: %s", err_msg)
         raise RuntimeError(f"KlikQRIS error: {err_msg}")
 
     return resp_data.get("data", {})
@@ -120,12 +129,15 @@ async def check_qris_status(order_id: str) -> dict[str, Any] | None:
             logger.warning("KlikQRIS status check 404 for order_id=%s", order_id)
             return None
 
-        resp_data = response.json() if response.content else {}
-        if response.is_success and resp_data.get("status"):
+        try:
+            resp_data = response.json() if response.content else {}
+        except ValueError:
+            resp_data = {}
+        if response.is_success and isinstance(resp_data, dict) and resp_data.get("status"):
             return resp_data.get("data")
         return None
     except Exception as e:
-        logger.error("Error checking KlikQRIS status for order_id=%s: %s", order_id, e)
+        logger.warning("Error checking KlikQRIS status for order_id=%s: %s", order_id, e)
         return None
 
 

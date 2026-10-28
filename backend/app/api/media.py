@@ -60,6 +60,37 @@ router = APIRouter(tags=["media"])
 
 logger = logging.getLogger(__name__)
 
+from pydantic import BaseModel
+
+
+class BatchMediaTokenRequest(BaseModel):
+    account_ids: list[str]
+
+
+@router.post("/accounts/media-tokens")
+async def issue_batch_media_tokens(
+    body: BatchMediaTokenRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Mint short-lived media tokens for multiple accounts in a single request.
+
+    Prevents N+1 API calls on /chats when multiple accounts are prefetched (PYTHON-FASTAPI-3P).
+    """
+    from app.utils.signed_url import TOKEN_TTL, generate_photo_token
+
+    tokens: dict[str, str] = {}
+    seen: set[str] = set()
+    for acc_id in body.account_ids[:50]:
+        if not acc_id or acc_id in seen:
+            continue
+        seen.add(acc_id)
+        account = await account_service.get_account(db, acc_id, str(user.id))
+        if account is not None:
+            tokens[str(account.id)] = generate_photo_token(str(account.id), str(user.id))
+    return {"tokens": tokens, "expires_in": TOKEN_TTL}
+
+
 @router.get("/accounts/{account_id}/media-token")
 async def issue_media_token(
     account_id: str,
