@@ -16,6 +16,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import QRCode from "react-qr-code";
+import { PaymentChannelBadge } from "@/components/payments/payment-channel-badge";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -409,8 +410,9 @@ export default function InvoicePage() {
           <>
             <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-card border-2 border-emerald-500/30 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <div className="bg-emerald-600 text-white px-3 py-0.5 rounded font-black text-xs tracking-wider">
-                  USDT • {tx.crypto_network || "ON-CHAIN"}
+                <div className="inline-flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1 rounded-md font-bold text-xs tracking-wider shadow-2xs">
+                  <img src="/payments/usdt.svg" alt="USDT" className="h-4 w-4 object-contain rounded-full" />
+                  <span>USDT • {tx.crypto_network || "ON-CHAIN"}</span>
                 </div>
                 <span className="text-xs font-semibold text-muted-foreground">
                   {networkLabel}
@@ -525,9 +527,9 @@ export default function InvoicePage() {
         {/* ── PENDING: QRIS INVOICE (PAYMENKU) ── */}
         {isPending && !isCryptoInvoice && (
           <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-card border-2 shadow-sm space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="bg-[#EE1D24] text-white px-3 py-0.5 rounded font-black text-sm tracking-wider">
-                QRIS
+            <div className="flex items-center gap-2.5">
+              <div className="inline-flex items-center justify-center bg-white border border-slate-200/90 rounded-md px-2.5 py-1 shadow-2xs">
+                <img src="/payments/qris.svg" alt="QRIS" className="h-4.5 w-auto object-contain" />
               </div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {_("wallet.nationalPaymentStandard")}
@@ -611,12 +613,7 @@ export default function InvoicePage() {
               </span>
               <div className="flex flex-wrap gap-2">
                 {QRIS_SUPPORTED_CHANNELS.map((channel) => (
-                  <span
-                    key={channel}
-                    className="px-2.5 py-1 rounded-md text-xs font-semibold bg-background border text-foreground shadow-sm"
-                  >
-                    {channel}
-                  </span>
+                  <PaymentChannelBadge key={channel} channel={channel} showText />
                 ))}
               </div>
             </div>

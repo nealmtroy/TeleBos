@@ -43,3 +43,28 @@ export function formatRelative(date: string | Date | null | undefined, locale?: 
   if (days < 7) return isID ? `${days}h yang lalu` : `${days}d ago`;
   return formatDate(date, l);
 }
+
+export function formatTransactionNote(note: string | null | undefined, locale?: string): string {
+  if (!note) return "—";
+  const trimmed = note.trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const isId = (locale || getLocale()).startsWith("id");
+      if (parsed.phone) {
+        return isId ? `Beli Akun Telegram (${parsed.phone})` : `Buy Telegram Account (${parsed.phone})`;
+      }
+      if (parsed.account_id) {
+        const shortId = String(parsed.account_id).slice(0, 8);
+        return isId ? `Beli Akun Telegram (#${shortId})` : `Buy Telegram Account (#${shortId})`;
+      }
+      if (parsed.order_id) {
+        const shortId = String(parsed.order_id).slice(0, 8);
+        return isId ? `Pesanan SMM (#${shortId})` : `SMM Order (#${shortId})`;
+      }
+    } catch {
+      // not JSON
+    }
+  }
+  return note;
+}

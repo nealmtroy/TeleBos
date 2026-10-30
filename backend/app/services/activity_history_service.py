@@ -7,6 +7,7 @@ across SMM orders, marketplace account trades, and wallet transactions.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import json
 import math
 from typing import Any
 from uuid import UUID
@@ -158,21 +159,55 @@ async def calculate_activity_metrics(
     acct_completed = sum(1 for e in collapsed_accounts if e["status"] == "Selesai")
     acct_in_progress = sum(1 for e in collapsed_accounts if e["status"] == "Proses")
 
-    # 3. Wallet metrics
+    # Include pending/rejected marketplace purchases from wallet_transactions
+    mkt_tx_res = await db.execute(
+        select(
+            func.count(WalletTransaction.id).label("total"),
+            func.coalesce(func.sum(WalletTransaction.amount), 0).label("spend"),
+            func.count(case((WalletTransaction.status == "pending", 1))).label("in_progress"),
+        ).where(
+            WalletTransaction.user_id == uid,
+            WalletTransaction.type == "marketplace",
+            WalletTransaction.status.in_(["pending", "rejected"]),
+        )
+    )
+    mkt_row = mkt_tx_res.one()
+    acct_total += int(mkt_row.total or 0)
+    acct_spend += int(mkt_row.spend or 0)
+    acct_in_progress += int(mkt_row.in_progress or 0)
+
+    # 3. Wallet metrics (scoped to topup, withdraw, redeem, admin_adjustment)
     wallet_res = await db.execute(
         select(
             func.count(case((WalletTransaction.type == "topup", 1))).label("deposits"),
             func.count(case((WalletTransaction.type == "withdraw", 1))).label("withdrawals"),
             func.count(case((WalletTransaction.type.in_(["redeem", "admin_adjustment"]), 1))).label("balance_adj"),
-            func.coalesce(func.sum(func.abs(WalletTransaction.amount)), 0).label("spend"),
+            func.coalesce(
+                func.sum(
+                    case((
+                        WalletTransaction.type.in_(["topup", "withdraw", "redeem", "admin_adjustment"]),
+                        func.abs(WalletTransaction.amount),
+                    ), else_=0)
+                ),
+                0,
+            ).label("spend"),
             func.count(
                 case((
-                    (WalletTransaction.status == "approved")
-                    | (WalletTransaction.type.in_(["redeem", "admin_adjustment"])),
+                    (WalletTransaction.type.in_(["topup", "withdraw", "redeem", "admin_adjustment"]))
+                    & (
+                        (WalletTransaction.status == "approved")
+                        | (WalletTransaction.type.in_(["redeem", "admin_adjustment"]))
+                    ),
                     1,
                 ))
             ).label("completed"),
-            func.count(case((WalletTransaction.status == "pending", 1))).label("in_progress"),
+            func.count(
+                case((
+                    (WalletTransaction.type.in_(["topup", "withdraw", "redeem", "admin_adjustment"]))
+                    & (WalletTransaction.status == "pending"),
+                    1,
+                ))
+            ).label("in_progress"),
         ).where(WalletTransaction.user_id == uid)
     )
     wallet_row = wallet_res.one()
@@ -359,6 +394,103 @@ async def get_user_activity_history(
                 "target_url": phone_disp,
                 "payment_method": None,
                 "admin_note": None,
+            })
+
+        # Also include pending and rejected marketplace account purchase invoices
+        mkt_stmt = select(WalletTransaction).where(
+            WalletTransaction.user_id == user.id,
+            WalletTransaction.type == "marketplace",
+            WalletTransaction.status.in_(["pending", "rejected"]),
+        )
+        if start_date:
+            mkt_stmt = mkt_stmt.where(WalletTransaction.created_at >= start_date)
+        if end_date:
+            mkt_stmt = mkt_stmt.where(WalletTransaction.created_at <= end_date)
+
+        mkt_res = await db.execute(mkt_stmt)
+        mkt_txs = list(mkt_res.scalars().all())
+
+        acc_ids_to_fetch = set()
+        for tx in mkt_txs:
+            try:
+                m_data = json.loads(tx.note) if tx.note else {}
+                if not m_data.get("phone") and m_data.get("account_id"):
+                    acc_ids_to_fetch.add(UUID(m_data["account_id"]))
+            except Exception:
+                pass
+
+        phone_by_acc_id: dict[UUID, str] = {}
+        if acc_ids_to_fetch:
+            from app.models.telegram_account import TelegramAccount
+            phone_res = await db.execute(
+                select(TelegramAccount.id, TelegramAccount.phone).where(TelegramAccount.id.in_(acc_ids_to_fetch))
+            )
+            for acc_id, phone in phone_res.all():
+                if phone:
+                    phone_by_acc_id[acc_id] = phone
+
+        for tx in mkt_txs:
+            st = "Menunggu" if tx.status == "pending" else "Dibatalkan"
+            if status != "all" and st != status and tx.status != status:
+                continue
+
+            phone_disp = "-"
+            try:
+                m_data = json.loads(tx.note) if tx.note else {}
+                acc_id_str = m_data.get("account_id")
+                if acc_id_str:
+                    acc_uuid = UUID(acc_id_str)
+                    phone_disp = m_data.get("phone") or phone_by_acc_id.get(acc_uuid) or f"#{str(acc_uuid)[:8]}"
+            except Exception:
+                pass
+
+            if search and search.strip():
+                term = search.strip().lower()
+                hay = f"{tx.id} {phone_disp} {tx.method or ''}".lower()
+                if term not in hay:
+                    continue
+
+            svc_name = (
+                "Pembelian Akun (QRIS)"
+                if tx.method == "QRIS"
+                else f"Pembelian Akun ({tx.method or 'Tagihan'})"
+            ) if locale == "id" else (
+                "Account Purchase (QRIS)"
+                if tx.method == "QRIS"
+                else f"Account Purchase ({tx.method or 'Invoice'})"
+            )
+
+            date_str, time_str = format_wib_datetime(tx.created_at, locale)
+            phone_val = f"+{phone_disp.lstrip('+')}" if (phone_disp.startswith("+") or (phone_disp != "-" and phone_disp.replace("+", "").isdigit())) else phone_disp
+            items.append({
+                "id": str(tx.id),
+                "order_id_display": f"#{str(tx.id)}",
+                "type": "telegram_account",
+                "type_name": "Akun Telegram" if locale == "id" else "Telegram Account",
+                "service_name": svc_name,
+                "service_sublabel": (
+                    f"Invoice {tx.method or 'QRIS'}"
+                    if tx.status == "pending"
+                    else ("Pembayaran Dibatalkan" if locale == "id" else "Payment Cancelled")
+                ),
+                "detail": phone_val,
+                "quantity_display": "1 Akun" if locale == "id" else "1 Account",
+                "quantity_raw": 1,
+                "price_display": f"Rp {(tx.amount or 0):,}",
+                "price_raw": tx.amount or 0,
+                "status": st,
+                "status_raw": tx.status or "",
+                "created_at": tx.created_at,
+                "date_str": date_str,
+                "time_str": time_str,
+                "telegram_id": None,
+                "phone": phone_val if phone_val != "-" else None,
+                "smm_order_id": None,
+                "remains": None,
+                "start_count": None,
+                "target_url": f"/wallet/invoice/{tx.id}",
+                "payment_method": tx.method,
+                "admin_note": tx.admin_note,
             })
 
     # 3. Query Wallet Transactions

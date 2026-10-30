@@ -314,3 +314,50 @@ async def test_active_listing_stays_in_progress(db_session):
         await db_session.execute(delete(AccountAuditLog).where(AccountAuditLog.user_id == user.id))
         await db_session.execute(delete(User).where(User.id == user.id))
         await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_pending_marketplace_invoice_in_activity_history(db_session):
+    """Pending marketplace purchase invoices appear under accounts tab with Menunggu status."""
+    import json
+    user = User(
+        id=uuid.uuid4(),
+        email=f"test_mkt_pending_{uuid.uuid4().hex[:8]}@example.com",
+        role="basic",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    tx = WalletTransaction(
+        id=f"TRX-{uuid.uuid4().hex[:8].upper()}",
+        user_id=user.id,
+        type="marketplace",
+        amount=7000,
+        total_amount=7000,
+        method="QRIS",
+        status="pending",
+        note=json.dumps({
+            "account_id": str(uuid.uuid4()),
+            "phone": "+573228503310",
+            "sell_price": 5000,
+            "buy_price": 7000,
+        }),
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(tx)
+    await db_session.commit()
+
+    try:
+        resp = await get_user_activity_history(db_session, user, tab="accounts", page=1, page_size=10)
+        assert resp.pagination.total_items == 1
+        item = resp.items[0]
+        assert item.type == "telegram_account"
+        assert item.status == "Menunggu"
+        assert "+573228503310" in item.detail
+        assert item.target_url == f"/wallet/invoice/{tx.id}"
+        assert resp.metrics.in_progress_count == 1
+    finally:
+        await db_session.execute(delete(WalletTransaction).where(WalletTransaction.id == tx.id))
+        await db_session.execute(delete(User).where(User.id == user.id))
+        await db_session.commit()

@@ -59,6 +59,8 @@ async def test_headers_added_on_success():
     assert headers["x-xss-protection"] == "0"
     assert "strict-transport-security" in headers
     assert "frame-ancestors 'none'" in headers["content-security-policy"]
+    assert "https://paymenku.com" in headers["content-security-policy"]
+    assert "https://*.paymenku.com" in headers["content-security-policy"]
 
 
 @pytest.mark.asyncio

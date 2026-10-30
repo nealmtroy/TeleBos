@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24" fill="none">
+  <rect x="1" y="2" width="17" height="9" rx="1.5" fill="#0060AF"/>
+  <text x="3.5" y="8.5" font-family="system-ui, sans-serif" font-weight="900" font-size="5" fill="#fff">BCA</text>
+  <rect x="21" y="2" width="17" height="9" rx="1.5" fill="#003A70"/>
+  <text x="22.5" y="8.5" font-family="system-ui, sans-serif" font-weight="900" font-size="4.2" fill="#FFCA06">MANDIRI</text>
+  <rect x="41" y="2" width="17" height="9" rx="1.5" fill="#00529C"/>
+  <text x="44.5" y="8.5" font-family="system-ui, sans-serif" font-weight="900" font-size="5" fill="#fff">BRI</text>
+  <rect x="61" y="2" width="17" height="9" rx="1.5" fill="#F15A23"/>
+  <text x="63.5" y="8.5" font-family="system-ui, sans-serif" font-weight="900" font-size="5" fill="#fff">BNI</text>
+  <text x="12" y="19.5" font-family="system-ui, sans-serif" font-weight="700" font-size="6" fill="#666" letter-spacing="0.5">TRANSFER BANK</text>
+</svg>

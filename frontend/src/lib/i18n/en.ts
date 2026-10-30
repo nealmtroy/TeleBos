@@ -2078,7 +2078,7 @@ const en: Dict = {
   adminSmm: {
     overview: "Overview",
     services: "Services",
-    allOrders: "All Orders",
+    allOrders: "SMM Orders",
     settings: "Settings",
   },
 

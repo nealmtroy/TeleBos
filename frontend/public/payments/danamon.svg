@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24" fill="none">
+  <rect x="2" y="5" width="14" height="14" rx="2" fill="#F15A24"/>
+  <rect x="7" y="5" width="9" height="9" rx="1" fill="#FFC928"/>
+  <text x="20" y="16.5" font-family="system-ui, sans-serif" font-weight="800" font-size="10.5" fill="#003764" letter-spacing="-0.3">Danamon</text>
+</svg>

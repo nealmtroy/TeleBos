@@ -63,7 +63,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, formatTransactionNote } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STATUS_STYLES: Record<TransactionStatus, string> = {
@@ -505,7 +505,7 @@ export default function AdminTransactionsPage() {
                       {/* Note */}
                       <TableCell className="py-3 px-4">
                         <p className="text-xs text-gray-600 dark:text-slate-300 truncate max-w-xs">
-                          {tx.note}
+                          {formatTransactionNote(tx.note, "id")}
                         </p>
                       </TableCell>
 
@@ -633,7 +633,7 @@ export default function AdminTransactionsPage() {
                 </div>
                 <div className="flex items-start justify-between pt-2 gap-2">
                   <span className="text-gray-500 shrink-0">Catatan / Rekening</span>
-                  <span className="font-semibold text-gray-900 dark:text-slate-100 text-right">{selectedTx.note}</span>
+                  <span className="font-semibold text-gray-900 dark:text-slate-100 text-right">{formatTransactionNote(selectedTx.note, "id")}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-gray-500">Waktu Masuk</span>

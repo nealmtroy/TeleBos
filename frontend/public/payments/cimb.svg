@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24" fill="none">
+  <path d="M2 3h8l6 9-6 9H2l6-9-6-9z" fill="#781014"/>
+  <path d="M10 3h4l6 9-6 9h-4l6-9-6-9z" fill="#ED1B24"/>
+  <text x="24" y="16" font-family="system-ui, sans-serif" font-weight="800" font-size="10.5" fill="#781014" letter-spacing="-0.3">CIMB</text>
+  <text x="53" y="16" font-family="system-ui, sans-serif" font-weight="600" font-size="7.5" fill="#555" letter-spacing="-0.2">NIAGA</text>
+</svg>

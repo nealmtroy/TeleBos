@@ -2078,7 +2078,7 @@ const id: Dict = {
   adminSmm: {
     overview: "Ringkasan",
     services: "Layanan",
-    allOrders: "Semua Pesanan",
+    allOrders: "Pesanan SMM",
     settings: "Pengaturan",
   },
 

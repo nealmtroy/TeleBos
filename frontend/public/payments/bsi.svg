@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24" fill="none">
+  <circle cx="12" cy="12" r="9" fill="#00A39D"/>
+  <path d="M12 4a8 8 0 0 1 8 8 8 8 0 0 1-8 8V4z" fill="#007770"/>
+  <path d="M14 8l1.2 2.8 3 .4-2.2 2 .6 3-2.6-1.5-2.6 1.5.6-3-2.2-2 3-.4L14 8z" fill="#FFC928"/>
+  <text x="25" y="16.5" font-family="system-ui, sans-serif" font-weight="900" font-size="12" fill="#00A39D" letter-spacing="0.5">BSI</text>
+  <text x="49" y="15.5" font-family="system-ui, sans-serif" font-weight="700" font-size="6.5" fill="#FFC928">BANK</text>
+</svg>

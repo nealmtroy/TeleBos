@@ -31,8 +31,10 @@ import {
   ShieldCheck,
   XCircle,
   RefreshCw,
+  ShoppingCart,
 } from "lucide-react";
 import QRCode from "react-qr-code";
+import { PaymentChannelBadge } from "@/components/payments/payment-channel-badge";
 import { toast } from "sonner";
 
 import { useT, useI18nStore } from "@/lib/i18n";
@@ -70,7 +72,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, formatTransactionNote } from "@/lib/utils";
 
 interface ActivePayment {
   id: string;
@@ -893,12 +895,7 @@ export default function WalletPage() {
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {QRIS_SUPPORTED_CHANNELS.map((channel) => (
-                      <span
-                        key={channel}
-                        className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs"
-                      >
-                        {channel}
-                      </span>
+                      <PaymentChannelBadge key={channel} channel={channel} showText />
                     ))}
                   </div>
                 </div>
@@ -956,33 +953,32 @@ export default function WalletPage() {
               <div className="space-y-5">
                 {/* QRIS Announcement Banner (Only on Top Up) */}
                 {tab === "topup" && (
-                  <div className="rounded-xl border border-primary-200 dark:border-primary-900/60 bg-primary-50/70 dark:bg-primary-950/30 p-4 space-y-2.5">
+                  <div className="rounded-xl border border-primary-200 dark:border-primary-900/60 bg-primary-50/70 dark:bg-primary-950/30 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-[#EE1D24] text-white px-2 py-0.5 rounded font-black text-[11px] tracking-wider">
-                          QRIS
+                      <div className="flex items-center gap-2.5">
+                        <div className="inline-flex items-center justify-center bg-white border border-slate-200/90 rounded-md px-2 py-1 shadow-2xs">
+                          <img
+                            src="/payments/qris.svg"
+                            alt="QRIS"
+                            className="h-4 w-auto object-contain"
+                          />
                         </div>
                         <span className="font-semibold text-xs text-primary-900 dark:text-primary-100">
                           {_("wallet.qrisNotice")}
                         </span>
                       </div>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-100 dark:bg-primary-900/60 text-primary-800 dark:text-primary-200">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-100 dark:bg-primary-900/60 text-primary-800 dark:text-primary-200 shrink-0">
                         <Sparkles className="h-3 w-3" />
                         {_("wallet.qrisBadge")}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-primary-200/60 dark:border-primary-900/40">
-                      <span className="text-[11px] text-primary-700 dark:text-primary-300 font-medium">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-primary-200/60 dark:border-primary-900/40">
+                      <span className="text-[11px] text-primary-700 dark:text-primary-300 font-medium mr-1">
                         {_("wallet.supportsLabel")}
                       </span>
                       {QRIS_SUPPORTED_CHANNELS.map((ch) => (
-                        <span
-                          key={ch}
-                          className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-primary-200/60 dark:border-primary-900/40"
-                        >
-                          {ch}
-                        </span>
+                        <PaymentChannelBadge key={ch} channel={ch} showText size="sm" />
                       ))}
                     </div>
                   </div>
@@ -1036,31 +1032,39 @@ export default function WalletPage() {
                     <Label className="block text-xs font-semibold text-foreground">
                       Metode Pembayaran Deposit
                     </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
                         {
                           id: "QRIS" as const,
                           title: "QRIS Otomatis",
                           subtitle: "Paymenku • E-Wallet & M-Banking",
                           badge: "IDR",
+                          icon: "/payments/qris.svg",
+                          iconBg: "bg-white",
                         },
                         {
                           id: "USDT_BEP20" as const,
                           title: "USDT (BEP-20)",
                           subtitle: "BNB Smart Chain • On-Chain Otomatis",
                           badge: "BSC",
+                          icon: "/payments/usdt.svg",
+                          iconBg: "bg-emerald-500/10",
                         },
                         {
                           id: "USDT_TRC20" as const,
                           title: "USDT (TRC-20)",
                           subtitle: "TRON Network • On-Chain Otomatis",
                           badge: "TRON",
+                          icon: "/payments/usdt.svg",
+                          iconBg: "bg-emerald-500/10",
                         },
                         {
                           id: "USDT_POLYGON" as const,
                           title: "USDT (Polygon)",
                           subtitle: "Polygon POS • On-Chain Otomatis",
                           badge: "MATIC",
+                          icon: "/payments/usdt.svg",
+                          iconBg: "bg-emerald-500/10",
                         },
                       ].map((opt) => {
                         const isSelected = topupMethod === opt.id;
@@ -1070,21 +1074,36 @@ export default function WalletPage() {
                             type="button"
                             onClick={() => setTopupMethod(opt.id)}
                             className={cn(
-                              "flex items-start justify-between gap-2 p-3 rounded-xl border text-left transition cursor-pointer",
+                              "flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition cursor-pointer",
                               isSelected
                                 ? "border-primary-500 bg-primary-50/70 dark:bg-primary-950/40 ring-1 ring-primary-500/30"
                                 : "border-slate-300 dark:border-slate-700 bg-card hover:border-slate-400 dark:hover:border-slate-600"
                             )}
                           >
-                            <div className="space-y-0.5 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-foreground">
-                                  {opt.title}
-                                </span>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={cn(
+                                  "h-9 w-9 rounded-lg flex items-center justify-center p-1.5 border border-border/60 shrink-0",
+                                  opt.iconBg
+                                )}
+                              >
+                                <img
+                                  src={opt.icon}
+                                  alt={opt.title}
+                                  className="h-full w-full object-contain"
+                                  loading="lazy"
+                                />
                               </div>
-                              <p className="text-[11px] text-muted-foreground truncate">
-                                {opt.subtitle}
-                              </p>
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-foreground">
+                                    {opt.title}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {opt.subtitle}
+                                </p>
+                              </div>
                             </div>
                             <span
                               className={cn(
@@ -1473,11 +1492,15 @@ export default function WalletPage() {
                         "w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border",
                         request.type === "topup"
                           ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80"
+                          : request.type === "marketplace" || request.type === "smm" || request.type === "subscription"
+                          ? "bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/80"
                           : "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/80"
                       )}
                     >
                       {request.type === "topup" ? (
                         <ArrowDownToLine className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      ) : request.type === "marketplace" || request.type === "smm" || request.type === "subscription" ? (
+                        <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       ) : (
                         <ArrowUpFromLine className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       )}
@@ -1499,7 +1522,7 @@ export default function WalletPage() {
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                        {request.method} · {formatDate(request.createdAt, locale)}
+                        {request.note ? `${formatTransactionNote(request.note, locale)} · ` : ""}{request.method} · {formatDate(request.createdAt, locale)}
                       </p>
                     </div>
 
@@ -1542,11 +1565,15 @@ export default function WalletPage() {
                     "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
                     selectedTransaction.type === "topup"
                       ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                      : selectedTransaction.type === "marketplace" || selectedTransaction.type === "smm" || selectedTransaction.type === "subscription"
+                      ? "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300"
                       : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
                   )}
                 >
                   {selectedTransaction.type === "topup" ? (
                     <ArrowDownToLine className="h-4 w-4" />
+                  ) : selectedTransaction.type === "marketplace" || selectedTransaction.type === "smm" || selectedTransaction.type === "subscription" ? (
+                    <ShoppingCart className="h-4 w-4" />
                   ) : (
                     <ArrowUpFromLine className="h-4 w-4" />
                   )}
@@ -1567,7 +1594,13 @@ export default function WalletPage() {
               {/* Amount Highlight Banner */}
               <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5">
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                  {selectedTransaction.type === "topup" ? _("wallet.depositAmount") : _("wallet.withdrawAmount")}
+                  {selectedTransaction.type === "topup"
+                    ? _("wallet.depositAmount")
+                    : selectedTransaction.type === "marketplace"
+                    ? (locale === "id" ? "Total Tagihan Pembelian" : "Total Purchase Bill")
+                    : selectedTransaction.type === "smm" || selectedTransaction.type === "subscription"
+                    ? (locale === "id" ? "Total Tagihan Pesanan" : "Total Order Bill")
+                    : _("wallet.withdrawAmount")}
                 </span>
                 <p className="font-mono text-2xl font-bold text-gray-900 dark:text-slate-100">
                   {selectedTransaction.type === "topup" ? "+" : "-"} {formatIDR(selectedTransaction.amount)}
@@ -1617,7 +1650,15 @@ export default function WalletPage() {
                 <div className="flex items-center justify-between pt-3">
                   <span className="text-muted-foreground">{_("wallet.transactionType")}</span>
                   <span className="font-semibold text-gray-900 dark:text-slate-100">
-                    {selectedTransaction.type === "topup" ? _("wallet.depositType") : _("wallet.withdrawType")}
+                    {selectedTransaction.type === "topup"
+                      ? _("wallet.depositType")
+                      : selectedTransaction.type === "marketplace"
+                      ? (locale === "id" ? "Pembelian Akun Marketplace" : "Marketplace Account Purchase")
+                      : selectedTransaction.type === "smm"
+                      ? (locale === "id" ? "Pesanan Layanan SMM" : "SMM Service Order")
+                      : selectedTransaction.type === "subscription"
+                      ? (locale === "id" ? "Langganan Paket" : "Subscription Plan")
+                      : _("wallet.withdrawType")}
                   </span>
                 </div>
 
@@ -1630,8 +1671,8 @@ export default function WalletPage() {
 
                 <div className="flex items-start justify-between pt-3 gap-2">
                   <span className="text-muted-foreground shrink-0">{_("wallet.noteAccount")}</span>
-                  <span className="font-semibold text-gray-900 dark:text-slate-100 text-right truncate max-w-[220px]">
-                    {selectedTransaction.note}
+                  <span className="font-semibold text-gray-900 dark:text-slate-100 text-right truncate max-w-[220px]" title={formatTransactionNote(selectedTransaction.note, locale)}>
+                    {formatTransactionNote(selectedTransaction.note, locale)}
                   </span>
                 </div>
 
@@ -1649,6 +1690,20 @@ export default function WalletPage() {
                   </span>
                 </div>
               </div>
+
+              {selectedTransaction.status === "pending" && (selectedTransaction.type === "marketplace" || selectedTransaction.type === "smm" || selectedTransaction.type === "subscription" || selectedTransaction.type === "topup") && (
+                <div className="pt-1">
+                  <Button
+                    asChild
+                    className="w-full h-9 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                  >
+                    <Link href={`/wallet/invoice/${selectedTransaction.id}`}>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>{locale === "id" ? "Buka Halaman Pembayaran / QRIS" : "Open Payment Invoice"}</span>
+                    </Link>
+                  </Button>
+                </div>
+              )}
 
               {/* Status Explanation Box */}
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-300 leading-relaxed">

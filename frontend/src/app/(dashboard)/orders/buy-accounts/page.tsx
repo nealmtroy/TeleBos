@@ -805,24 +805,39 @@ export default function BuyAccountsPage() {
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                     {[
-                      { id: "auto" as const, label: user && user.balance >= pendingBuyAccount.buy_price ? "Saldo Dompet" : "Otomatis (QRIS)" },
-                      { id: "qris" as const, label: "QRIS Paymenku" },
-                      { id: "usdt_bep20" as const, label: "USDT (BEP-20)" },
-                      { id: "usdt_trc20" as const, label: "USDT (TRC-20)" },
-                      { id: "usdt_polygon" as const, label: "USDT (Polygon)" },
+                      {
+                        id: "auto" as const,
+                        label: user && user.balance >= pendingBuyAccount.buy_price ? "Saldo Dompet" : "Otomatis (QRIS)",
+                        icon: user && user.balance >= pendingBuyAccount.buy_price ? null : "/payments/qris.svg",
+                        isCrypto: false,
+                      },
+                      { id: "qris" as const, label: "QRIS Paymenku", icon: "/payments/qris.svg", isCrypto: false },
+                      { id: "usdt_bep20" as const, label: "USDT (BEP-20)", icon: "/payments/usdt.svg", isCrypto: true },
+                      { id: "usdt_trc20" as const, label: "USDT (TRC-20)", icon: "/payments/usdt.svg", isCrypto: true },
+                      { id: "usdt_polygon" as const, label: "USDT (Polygon)", icon: "/payments/usdt.svg", isCrypto: true },
                     ].map((pm) => (
                       <button
                         key={pm.id}
                         type="button"
                         onClick={() => setBuyPayMethod(pm.id)}
                         className={cn(
-                          "px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer text-center",
+                          "px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer flex items-center justify-center gap-1.5",
                           buyPayMethod === pm.id
-                            ? "border-primary bg-primary/10 text-primary font-bold"
+                            ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
                             : "border-border bg-card text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        {pm.label}
+                        {pm.icon && (
+                          <img
+                            src={pm.icon}
+                            alt=""
+                            className={cn(
+                              "object-contain shrink-0",
+                              pm.isCrypto ? "h-3.5 w-3.5" : "h-3 w-auto max-w-[28px] bg-white rounded-xs px-0.5"
+                            )}
+                          />
+                        )}
+                        <span>{pm.label}</span>
                       </button>
                     ))}
                   </div>

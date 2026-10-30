@@ -1,6 +1,7 @@
 "use client";
 
-import { Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { Copy, Check, ExternalLink } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -232,36 +233,50 @@ export function OrderDetailDialog({
 
         {/* Modal Footer Actions */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/60">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const summaryParts = [
-                `Order ID: ${item.orderIdDisplay}`,
-                `Layanan: ${item.serviceName}`,
-                `Target: ${item.detail}`,
-              ];
-              if (item.telegramId) {
-                summaryParts.push(`Telegram UID: ${item.telegramId}`);
-              }
-              summaryParts.push(
-                `Jumlah: ${item.quantityDisplay}`,
-                `Total: ${item.priceDisplay}`,
-                `Status: ${item.status}`,
-                `Waktu: ${item.dateStr} ${item.timeStr}`
-              );
-              const summary = summaryParts.join("\n");
-              onCopy(summary, "modal-summary");
-            }}
-            className="h-9 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
-          >
-            {copiedId === "modal-summary" ? (
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const summaryParts = [
+                  `Order ID: ${item.orderIdDisplay}`,
+                  `Layanan: ${item.serviceName}`,
+                  `Target: ${item.detail}`,
+                ];
+                if (item.telegramId) {
+                  summaryParts.push(`Telegram UID: ${item.telegramId}`);
+                }
+                summaryParts.push(
+                  `Jumlah: ${item.quantityDisplay}`,
+                  `Total: ${item.priceDisplay}`,
+                  `Status: ${item.status}`,
+                  `Waktu: ${item.dateStr} ${item.timeStr}`
+                );
+                const summary = summaryParts.join("\n");
+                onCopy(summary, "modal-summary");
+              }}
+              className="h-9 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
+            >
+              {copiedId === "modal-summary" ? (
+                <Check className="h-3.5 w-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              <span>{locale === "id" ? "Salin Ringkasan" : "Copy Summary"}</span>
+            </Button>
+            {item.status === "Menunggu" && item.targetUrl?.startsWith("/wallet/invoice/") && (
+              <Button
+                asChild
+                size="sm"
+                className="h-9 rounded-xl px-3 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+              >
+                <Link href={item.targetUrl}>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>{locale === "id" ? "Bayar Tagihan" : "Pay Invoice"}</span>
+                </Link>
+              </Button>
             )}
-            <span>{locale === "id" ? "Salin Ringkasan" : "Copy Summary"}</span>
-          </Button>
+          </div>
 
           <Button onClick={onClose} className="h-9 rounded-xl px-5 text-xs font-semibold">
             {locale === "id" ? "Tutup" : "Close"}

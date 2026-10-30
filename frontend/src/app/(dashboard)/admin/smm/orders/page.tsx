@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DataPagination } from "@/components/ui/pagination";
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50",
@@ -53,11 +54,23 @@ export default function SmmOrdersPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const offset = (page - 1) * PAGE_SIZE;
+
   const { data, isLoading, error, refetch } = useAdminSmmOrders({
     search: search || undefined,
     status: statusFilter || undefined,
-    limit: 100,
+    limit: PAGE_SIZE,
+    offset,
   });
+
+  const total = data?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
   const refreshOrder = useAdminRefreshOrder();
   const refreshAllMutation = useAdminRefreshAllOrders();
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -295,6 +308,23 @@ export default function SmmOrdersPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card rounded-xl border border-border text-xs text-muted-foreground shadow-2xs">
+              <p>
+                Showing <span className="font-semibold text-foreground">{offset + 1}</span>–
+                <span className="font-semibold text-foreground">{Math.min(offset + PAGE_SIZE, total)}</span> of{" "}
+                <span className="font-semibold text-foreground">{total}</span> orders
+              </p>
+              <DataPagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                className="w-auto mx-0"
+              />
+            </div>
+          )}
         </>
       )}
     </div>

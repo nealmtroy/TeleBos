@@ -368,7 +368,6 @@ export function Sidebar() {
       items: [
         { href: "/admin/smm/services", labelKey: "adminSmm.services", icon: Package, exact: false, minRole: 4 },
         { href: "/admin/smm/orders", labelKey: "adminSmm.allOrders", icon: ShoppingCart, exact: false, minRole: 4 },
-        { href: "/admin/smm/settings", labelKey: "adminSmm.settings", icon: Sliders, exact: false, minRole: 4 },
       ],
     },
     {

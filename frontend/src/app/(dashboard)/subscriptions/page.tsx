@@ -951,15 +951,17 @@ export default function SubscriptionPage() {
                   className="w-full h-11 rounded-xl flex items-center justify-between px-4 font-semibold text-xs border border-border hover:bg-muted cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
-                    <QrCode className="h-4 w-4 text-primary" />
+                    <div className="bg-white rounded px-1.5 py-0.5 border border-slate-200/80 flex items-center justify-center shadow-2xs">
+                      <img src="/payments/qris.svg" alt="QRIS" className="h-3.5 w-auto object-contain" />
+                    </div>
                     <span>Bayar via QRIS Otomatis (Paymenku)</span>
                   </div>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
 
                 <div className="pt-2 border-t border-border/60 space-y-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Atau Bayar dengan Crypto (USDT On-Chain Otomatis)
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Atau Bayar dengan Crypto (USDT On-Chain Otomatis)</span>
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
@@ -973,9 +975,12 @@ export default function SubscriptionPage() {
                         variant="outline"
                         disabled={checkoutMutation.isPending}
                         onClick={() => handleCheckoutQRIS(paymentModalPlan.id, net.id)}
-                        className="h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 px-2 text-xs font-bold border-border hover:border-emerald-500/60 hover:bg-emerald-500/10 cursor-pointer"
+                        className="h-12 rounded-xl flex flex-col items-center justify-center gap-1 px-2 text-xs font-bold border-border hover:border-emerald-500/60 hover:bg-emerald-500/10 cursor-pointer"
                       >
-                        <span>{net.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <img src="/payments/usdt.svg" alt="USDT" className="h-3.5 w-3.5 object-contain" />
+                          <span>{net.label}</span>
+                        </div>
                         <span className="text-[10px] font-mono text-muted-foreground">{net.sub}</span>
                       </Button>
                     ))}

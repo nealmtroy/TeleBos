@@ -536,6 +536,7 @@ async def buy_account(
                 "seller_id": seller_id_str,
                 "sell_price": sell_price,
                 "buy_price": buy_price,
+                "phone": account.phone or "",
             })
             tx = WalletTransaction(
                 id=invoice_id,
@@ -545,6 +546,7 @@ async def buy_account(
                 total_amount=buy_price,
                 method=usdt_data["method"],
                 note=note_data,
+                admin_note=f"Pembelian akun Telegram #{account.phone or account_id_str[:8]} via USDT",
                 status="pending",
                 qris_url=usdt_data["crypto_address"],
                 qris_image=usdt_data["qris_url"],
@@ -612,6 +614,7 @@ async def buy_account(
             "seller_id": seller_id_str,
             "sell_price": sell_price,
             "buy_price": buy_price,
+            "phone": account.phone or "",
         })
 
         tx = WalletTransaction(
@@ -622,6 +625,7 @@ async def buy_account(
             total_amount=buy_price,
             method="QRIS",
             note=note_data,
+            admin_note=f"Pembelian akun Telegram #{account.phone or account_id_str[:8]} via QRIS",
             status="pending",
             signature=signature,
             qris_url=qris_url,
