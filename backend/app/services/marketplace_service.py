@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from uuid import UUID
 
 from sqlalchemy import select, func, and_, delete
@@ -524,9 +525,18 @@ async def buy_account(
         if not allow_invoice:
             raise ValueError("Insufficient balance to buy this account.")
 
+        # Cache all needed attributes before releasing locks via db.rollback()
+        # Once db.rollback() is called, ORM attributes on `account` and `buyer` expire,
+        # and accessing them will trigger MissingGreenlet under SQLAlchemy asyncpg.
+        account_id = account.id
+        account_id_str = str(account_id)
+        account_telegram_id = getattr(account, "telegram_id", None)
+        account_phone = getattr(account, "phone", "") or ""
+        phone_display = account_phone or account_id_str[:8]
+        seller_id_str = str(seller_id)
+        buyer_email = getattr(buyer, "email", "")
+
         if is_usdt_payment_method(payment_method):
-            account_id_str = str(account.id)
-            seller_id_str = str(seller_id)
             await db.rollback()
             invoice_id = generate_wallet_tx_id()
             now_utc = datetime.now(timezone.utc)
@@ -536,7 +546,7 @@ async def buy_account(
                 "seller_id": seller_id_str,
                 "sell_price": sell_price,
                 "buy_price": buy_price,
-                "phone": account.phone or "",
+                "phone": account_phone,
             })
             tx = WalletTransaction(
                 id=invoice_id,
@@ -546,7 +556,7 @@ async def buy_account(
                 total_amount=buy_price,
                 method=usdt_data["method"],
                 note=note_data,
-                admin_note=f"Pembelian akun Telegram #{account.phone or account_id_str[:8]} via USDT",
+                admin_note=f"Pembelian akun Telegram #{phone_display} via USDT",
                 status="pending",
                 qris_url=usdt_data["crypto_address"],
                 qris_image=usdt_data["qris_url"],
@@ -559,21 +569,20 @@ async def buy_account(
                 created_at=now_utc,
             )
             db.add(tx)
-            account.invoice_id = invoice_id
-            account.payment_required = True
-            account.buy_price = buy_price
-            account.payment_method = usdt_data["method"]
-            return account
-        if not allow_invoice:
-            raise ValueError("Insufficient balance to buy this account.")
+
+            res_account = SimpleNamespace(
+                id=account_id,
+                telegram_id=account_telegram_id,
+                phone=account_phone,
+                invoice_id=invoice_id,
+                payment_required=True,
+                buy_price=buy_price,
+                payment_method=usdt_data["method"],
+            )
+            return res_account
 
         if not is_klikqris_configured():
             raise ValueError("Saldo akun tidak mencukupi dan gateway pembayaran QRIS belum dikonfigurasi.")
-
-        phone_display = account.phone or str(account.id)[:8]
-        buyer_email = buyer.email
-        account_id_str = str(account.id)
-        seller_id_str = str(seller_id)
 
         # Release all row locks (TelegramAccount, buyer, seller) before network I/O (CONS-04 / TASK-09)
         # Prevents database connection pool exhaustion during external HTTP calls
@@ -614,7 +623,7 @@ async def buy_account(
             "seller_id": seller_id_str,
             "sell_price": sell_price,
             "buy_price": buy_price,
-            "phone": account.phone or "",
+            "phone": account_phone,
         })
 
         tx = WalletTransaction(
@@ -625,7 +634,7 @@ async def buy_account(
             total_amount=buy_price,
             method="QRIS",
             note=note_data,
-            admin_note=f"Pembelian akun Telegram #{account.phone or account_id_str[:8]} via QRIS",
+            admin_note=f"Pembelian akun Telegram #{phone_display} via QRIS",
             status="pending",
             signature=signature,
             qris_url=qris_url,
@@ -634,11 +643,16 @@ async def buy_account(
         )
         db.add(tx)
 
-        # Mark metadata on the returned account object
-        account.invoice_id = invoice_id
-        account.payment_required = True
-        account.buy_price = buy_price
-        return account
+        res_account = SimpleNamespace(
+            id=account_id,
+            telegram_id=account_telegram_id,
+            phone=account_phone,
+            invoice_id=invoice_id,
+            payment_required=True,
+            buy_price=buy_price,
+            payment_method="QRIS",
+        )
+        return res_account
 
     # 1. Debit buyer's balance via double-entry ledger by the full buy_price
     await record_ledger_entry(

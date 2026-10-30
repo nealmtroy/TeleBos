@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-10-30
+- **[63e5d0aa](https://github.com/nealmtroy/TeleBos/commit/63e5d0aa)**: feat(payments): integrate payment channel logos and tether usdt icon, fix marketplace order history tracking and smm order pagination
+
 ## 2026-10-29
 - **[0225aa2e](https://github.com/nealmtroy/TeleBos/commit/0225aa2e)**: fix(telethon): filter Server sent invalid buffer InvalidBufferError noise in TelethonTransportNoiseFilter (PYTHON-FASTAPI-50, PYTHON-FASTAPI-4Z)
 - **[aa571220](https://github.com/nealmtroy/TeleBos/commit/aa571220)**: feat(payment): migrate QRIS to Paymenku and add self-custody USDT on-chain payment

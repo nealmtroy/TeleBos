@@ -150,7 +150,7 @@ async def buy_account(
             from datetime import datetime, timezone
             return MarketplaceBuyResponse(
                 id=account.id,
-                telegram_id=account.telegram_id,
+                telegram_id=getattr(account, "telegram_id", None),
                 phone=None,
                 created_at=datetime.now(timezone.utc),
                 invoice_id=getattr(account, "invoice_id", None),
