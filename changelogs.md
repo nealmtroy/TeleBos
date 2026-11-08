@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-10-30
+- **[ed03d248](https://github.com/nealmtroy/TeleBos/commit/ed03d248)**: fix(marketplace): prevent MissingGreenlet lazy-loading error after rollback in buy_account
 - **[63e5d0aa](https://github.com/nealmtroy/TeleBos/commit/63e5d0aa)**: feat(payments): integrate payment channel logos and tether usdt icon, fix marketplace order history tracking and smm order pagination
 
 ## 2026-10-29

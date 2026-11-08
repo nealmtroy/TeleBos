@@ -10,6 +10,7 @@ These tests pin the real attribute location and the cancel-and-await behaviour.
 """
 
 import asyncio
+from typing import Any
 
 import pytest
 
@@ -158,3 +159,111 @@ async def test_close_and_reap_tolerates_timeout():
     await close_and_reap_telethon_client(client, "acct-test", timeout=0.05)
 
     assert task.done()
+
+
+# ---------------------------------------------------------------------------
+# PYTHON-FASTAPI-1M follow-up: Telethon's auto-reconnect callback is spawned as
+# a *bare* task that nothing owns.
+#
+# ``MTProtoSender._reconnect()`` does:
+#     helpers.get_running_loop().create_task(self._auto_reconnect_callback())
+# (telethon/network/mtprotosender.py, in the success branch after reconnecting)
+# The returned task is never stored on the sender, the connection, or the
+# client, so ``_transport_tasks()`` cannot see it and nothing ever cancels it.
+#
+# In production this leaked one ``UpdateMethods._handle_auto_reconnect`` task per
+# reconnect attempt. A session-conversion retry storm produced 5,080
+# "Task was destroyed but it is pending!" errors in a single 10-minute burst
+# (2026-11-08 13:19 and 13:24 UTC).
+# ---------------------------------------------------------------------------
+
+
+async def _make_orphan_reconnect_task(client: Any) -> asyncio.Task:
+    """A live task running Telethon's *real* auto-reconnect callback for ``client``.
+
+    Reproduces the exact shape of the leaked task: the coroutine is the genuine
+    ``UpdateMethods._handle_auto_reconnect`` (so ``cr_code.co_qualname`` matches
+    production byte-for-byte), it is bound to ``client`` exactly as Telethon
+    binds it, and nothing holds a reference to the task itself.
+
+    ``_handle_auto_reconnect`` begins with ``await self.get_me()``, so a client
+    whose ``get_me`` never returns parks the task exactly where production parks
+    it: pending forever, awaiting a future.
+    """
+    from telethon.client.updates import UpdateMethods
+
+    started = asyncio.Event()
+
+    async def _blocking_get_me() -> None:
+        started.set()
+        await asyncio.sleep(3600)
+
+    # ``self`` inside the coroutine is the client itself, as in production.
+    client.get_me = _blocking_get_me
+    task = asyncio.create_task(
+        UpdateMethods._handle_auto_reconnect(client)  # type: ignore[arg-type]
+    )
+    await started.wait()
+    await asyncio.sleep(0)
+    return task
+
+
+@pytest.mark.asyncio
+async def test_reap_cancels_orphan_auto_reconnect_tasks():
+    """The auto-reconnect task is not reachable from the client — it must still die.
+
+    Without an explicit sweep this task survives the client teardown and asyncio
+    later logs "Task was destroyed but it is pending!" (PYTHON-FASTAPI-1M).
+    """
+    client = await _make_busy_client()
+    orphan = await _make_orphan_reconnect_task(client)
+
+    await close_and_reap_telethon_client(client, "acct-test")
+
+    assert orphan.done(), (
+        "orphaned auto-reconnect task survived teardown; it is spawned with a bare "
+        "create_task in MTProtoSender._reconnect and must be swept explicitly"
+    )
+    await _drain()
+
+
+@pytest.mark.asyncio
+async def test_reap_leaves_another_clients_reconnect_task_alone():
+    """Teardown of a throwaway client must not kill a live pooled client's reconnect.
+
+    The sweep walks every task on the loop, so it has to be scoped by the owning
+    client. Cancelling another client's in-flight reconnect would silently break
+    a healthy account's update stream.
+    """
+    doomed = await _make_busy_client()
+    survivor = await _make_busy_client()
+    survivor_orphan = await _make_orphan_reconnect_task(survivor)
+
+    await close_and_reap_telethon_client(doomed, "acct-doomed")
+
+    assert not survivor_orphan.done(), (
+        "reaping one client's tasks cancelled a different client's reconnect"
+    )
+
+    survivor_orphan.cancel()
+    await _drain()
+    await close_and_reap_telethon_client(survivor, "acct-survivor")
+
+
+@pytest.mark.asyncio
+async def test_reap_does_not_touch_unrelated_foreground_tasks():
+    """The sweep must only cancel Telethon's own callback, not caller work."""
+    client = await _make_busy_client()
+
+    async def _caller_work() -> None:
+        await asyncio.sleep(3600)
+
+    unrelated = asyncio.create_task(_caller_work())
+    await asyncio.sleep(0)
+
+    await close_and_reap_telethon_client(client, "acct-test")
+
+    assert not unrelated.done(), "must not cancel tasks outside the telethon namespace"
+
+    unrelated.cancel()
+    await _drain()
