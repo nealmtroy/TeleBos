@@ -819,6 +819,17 @@ async def get_accounts_in_folder(
 async def get_account(
     db: AsyncSession, account_id: str, user_id: str, allow_for_sale: bool = False
 ) -> TelegramAccount | None:
+    # ``id`` is a Postgres ``uuid`` column, but FastAPI hands us a raw string from
+    # the path. asyncpg refuses to bind a non-UUID (``ValueError: invalid UUID
+    # 'marketplace'``) and the error escapes as an unhandled 500 rather than a
+    # 404 -- which is what ``GET /api/v1/accounts/marketplace`` produced, since
+    # that path has no literal route and falls through to ``/{account_id}``.
+    # Reject malformed ids here so the caller's ``None`` -> 404 path is used.
+    try:
+        UUID(str(account_id))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
     query = (
         select(TelegramAccount)
         .options(selectinload(TelegramAccount.folders))
