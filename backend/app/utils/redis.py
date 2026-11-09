@@ -20,7 +20,10 @@ redis_client = aioredis.from_url(
     socket_timeout=10.0,
     socket_connect_timeout=5.0,
     retry_on_timeout=True,
-    max_connections=64,
+    # Sized via config so peaks in WebSocket publish fan-out cannot exhaust the
+    # pool and raise MaxConnectionsError("Too many connections"). At 64 the worker
+    # dropped real-time chat updates; Redis server-side allows 10k connections.
+    max_connections=settings.REDIS_MAX_CONNECTIONS,
     health_check_interval=30,
 )
 

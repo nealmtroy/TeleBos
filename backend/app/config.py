@@ -19,6 +19,13 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    # Connection ceiling for the shared (publishing/cache) Redis pool.
+    # The async worker fans WebSocket publishes out over this pool on top of
+    # lease renewals, job dispatch and the auto-reply watchdog. At 64 the pool
+    # was exhausted during peaks, so redis-py raised MaxConnectionsError
+    # ("Too many connections") and real-time chat updates were dropped.
+    # Redis itself allows 10k connections, so the client pool was the ceiling.
+    REDIS_MAX_CONNECTIONS: int = 200
 
     # App secret — used for signed photo URLs and other HMAC operations
     APP_SECRET_KEY: str = "change-this-secret-key-in-production"

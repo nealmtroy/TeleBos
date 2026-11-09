@@ -3,6 +3,7 @@
 All notable changes to this project are documented below, grouped by date.
 
 ## 2026-11-09
+- **[a9a63138](https://github.com/nealmtroy/TeleBos/commit/a9a63138)**: fix(accounts): return 404 for non-UUID account ids instead of 500
 - **[aeb58822](https://github.com/nealmtroy/TeleBos/commit/aeb58822)**: fix(telethon): reap orphaned auto-reconnect tasks on client teardown
 
 ## 2026-10-30
