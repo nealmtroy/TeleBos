@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-11-11
+- **[9060bdca](https://github.com/nealmtroy/TeleBos/commit/9060bdca)**: fix(sentry): keep auth-key InvalidBufferError reportable (404 not noise)
+
 ## 2026-11-10
 - **[953457ce](https://github.com/nealmtroy/TeleBos/commit/953457ce)**: fix(redis): size publish pool above the 64-connection cap that dropped WS events
 

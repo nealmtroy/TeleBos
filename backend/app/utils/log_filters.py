@@ -76,10 +76,7 @@ class TelethonTransportNoiseFilter(logging.Filter):
             # key ("the session may need to be recreated"). That is actionable,
             # so it must not be demoted into silence along with teardown races.
             exc_obj = record.exc_info[1] if record.exc_info else None
-            if (
-                getattr(exc_obj, "code", None) == 404
-                or "http code 404" in exc_text.lower()
-            ):
+            if not _is_benign_invalid_buffer(exc_obj, exc_text):
                 return True
             record.levelno = logging.WARNING
             record.levelname = "WARNING"
