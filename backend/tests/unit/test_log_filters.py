@@ -96,3 +96,85 @@ def test_filter_covers_every_exception_log_telethon_emits():
         f"Telethon logs {logged - set(_BENIGN_LOOP_MESSAGES)} at exception level "
         "but the filter does not cover it"
     )
+
+
+def test_sentry_before_send_keeps_auth_key_invalid_buffer():
+    """An InvalidBufferError with code 404 means the auth key is gone.
+
+    Telethon logs "Server does not know about the current auth key; the session
+    may need to be recreated" and then disconnects. Dropping that event removes
+    the only signal that an account's session is dead, so it must survive
+    before_send even though every other InvalidBufferError is teardown noise.
+    """
+    import struct
+
+    from telethon.errors import InvalidBufferError
+
+    from app.utils.log_filters import sentry_before_send
+
+    # 404 = auth key unknown -> operator must re-login the account.
+    # InvalidBufferError derives .code from the 4-byte payload, so the code has
+    # to be packed in; assigning .code afterwards leaves the message saying 0.
+    auth_gone = InvalidBufferError(struct.pack("<i", -404))
+    event = {"exception": {"values": [{"type": "InvalidBufferError", "value": str(auth_gone)}]}}
+    assert sentry_before_send(event, {"exc_info": (InvalidBufferError, auth_gone, None)}) is not None
+
+    serialised = {"exception": {"values": [{"type": "InvalidBufferError", "value": "auth key not found"}]}}
+    assert sentry_before_send(serialised, {}) is not None
+
+    # The serialised form carries no exception object, only the rendered text.
+    serialised_404 = {
+        "exception": {
+            "values": [{"type": "InvalidBufferError", "value": "Invalid response buffer (HTTP code 404)"}]
+        }
+    }
+    assert sentry_before_send(serialised_404, {}) is not None
+
+    # A plain transport race stays suppressed (PYTHON-FASTAPI-50 / 4Z).
+    blip = InvalidBufferError(struct.pack("<i", 0))
+    noise = {"exception": {"values": [{"type": "InvalidBufferError", "value": str(blip)}]}}
+    assert sentry_before_send(noise, {"exc_info": (InvalidBufferError, blip, None)}) is None
+
+
+def test_log_filter_does_not_silence_auth_key_404():
+    """The log-level filter must leave a 404 InvalidBufferError at ERROR.
+
+    The demotion list exists for teardown races Telethon recovers from. A 404
+    is not recoverable: Telegram has forgotten the auth key and the account
+    needs re-login, so demoting it to WARNING would hide a dead session from
+    both logs and Sentry.
+    """
+    import struct
+
+    from telethon.errors import InvalidBufferError
+
+    from app.utils.log_filters import TelethonTransportNoiseFilter
+
+    flt = TelethonTransportNoiseFilter()
+
+    auth_gone = InvalidBufferError(struct.pack("<i", -404))
+    rec_404 = logging.LogRecord(
+        name="telethon.network.mtprotosender",
+        level=logging.ERROR,
+        pathname="mtprotosender.py",
+        lineno=541,
+        msg="Unhandled error while receiving data",
+        args=(),
+        exc_info=(InvalidBufferError, auth_gone, None),
+    )
+    assert flt.filter(rec_404) is True
+    assert rec_404.levelno == logging.ERROR, "404 auth-key loss must stay reportable"
+
+    # Control: an ordinary transport race is still demoted.
+    blip = InvalidBufferError(struct.pack("<i", 0))
+    rec_blip = logging.LogRecord(
+        name="telethon.network.mtprotosender",
+        level=logging.ERROR,
+        pathname="mtprotosender.py",
+        lineno=541,
+        msg="Unhandled error while receiving data",
+        args=(),
+        exc_info=(InvalidBufferError, blip, None),
+    )
+    assert flt.filter(rec_blip) is True
+    assert rec_blip.levelno == logging.WARNING

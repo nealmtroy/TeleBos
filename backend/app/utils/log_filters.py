@@ -72,6 +72,15 @@ class TelethonTransportNoiseFilter(logging.Filter):
             exc_text = record.exc_text
 
         if any(noise in exc_text for noise in _BENIGN_TRANSPORT_ERRORS):
+            # A 404 InvalidBufferError means Telegram has forgotten the auth
+            # key ("the session may need to be recreated"). That is actionable,
+            # so it must not be demoted into silence along with teardown races.
+            exc_obj = record.exc_info[1] if record.exc_info else None
+            if (
+                getattr(exc_obj, "code", None) == 404
+                or "http code 404" in exc_text.lower()
+            ):
+                return True
             record.levelno = logging.WARNING
             record.levelname = "WARNING"
         return True
@@ -94,5 +103,85 @@ class AsyncioTransportNoiseFilter(logging.Filter):
             record.levelno = logging.WARNING
             record.levelname = "WARNING"
             return True
+        if (
+            "Task was destroyed but it is pending!" in message
+            and "UpdateMethods._handle_auto_reconnect" in message
+        ):
+            record.levelno = logging.WARNING
+            record.levelname = "WARNING"
+            return True
 
         return True
+
+
+def _is_benign_invalid_buffer(exc: object | None = None, text: str = "") -> bool:
+    """True only for the *recoverable* InvalidBufferError teardown race.
+
+    Telethon raises ``InvalidBufferError`` for two very different situations:
+
+    * a transport blip while a socket is torn down -- Telethon reconnects, so
+      this is noise (PYTHON-FASTAPI-50 / 4Z) and should not reach Sentry;
+    * ``code == 404`` -- "Server does not know about the current auth key; the
+      session may need to be recreated" (mtprotosender._recv_loop). That is the
+      one case an operator must act on, so it has to stay reportable. Dropping
+      it silently removes the only signal that an account's session is dead.
+    """
+    if exc is not None and getattr(exc, "code", None) == 404:
+        return False
+    # No structured exception (e.g. an already-serialised Sentry event): the
+    # auth-key signature is the best available discriminator. Telethon renders
+    # the code into the message ("Invalid response buffer (HTTP code 404)").
+    lowered = text.lower()
+    if "http code 404" in lowered or "auth key" in lowered or "authkeynotfound" in lowered:
+        return False
+    return True
+
+
+def sentry_before_send(event: dict, hint: dict) -> dict | None:
+    """Drop benign Telethon / asyncio transport teardown events before Sentry ingestion."""
+    log_record = hint.get("log_record")
+    if log_record is not None:
+        try:
+            msg = log_record.getMessage()
+        except Exception:
+            msg = str(getattr(log_record, "msg", ""))
+        if any(term in msg for term in _SESSION_ID_MESSAGES):
+            return None
+        if "unexpected connection_lost() call" in msg:
+            return None
+        if (
+            "Task was destroyed but it is pending!" in msg
+            and "UpdateMethods._handle_auto_reconnect" in msg
+        ):
+            return None
+        if "Server sent invalid buffer" in msg:
+            exc = None
+            if log_record.exc_info and len(log_record.exc_info) >= 2:
+                exc = log_record.exc_info[1]
+            if _is_benign_invalid_buffer(exc, msg):
+                return None
+
+    exc_info = hint.get("exc_info")
+    if exc_info and len(exc_info) >= 2 and exc_info[1] is not None:
+        exc = exc_info[1]
+        exc_type_name = type(exc).__name__
+        exc_str = f"{exc_type_name}: {exc}"
+        if exc_type_name == "InvalidBufferError" and _is_benign_invalid_buffer(exc, exc_str):
+            return None
+        if "Invalid response buffer" in exc_str and _is_benign_invalid_buffer(exc, exc_str):
+            return None
+
+    for exc_val in (event.get("exception") or {}).get("values") or []:
+        etype = exc_val.get("type") or ""
+        eval_str = exc_val.get("value") or ""
+        if etype == "InvalidBufferError" and _is_benign_invalid_buffer(None, eval_str):
+            return None
+        if "Invalid response buffer" in eval_str and _is_benign_invalid_buffer(None, eval_str):
+            return None
+        if (
+            "Task was destroyed but it is pending!" in eval_str
+            and "UpdateMethods._handle_auto_reconnect" in eval_str
+        ):
+            return None
+
+    return event
