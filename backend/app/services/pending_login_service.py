@@ -107,7 +107,9 @@ class PendingLoginManager:
             return
         entry.disconnected = True
         try:
-            await entry.client.disconnect()
+            from app.utils.telethon_cleanup import close_and_reap_telethon_client, force_close_telethon_client
+            await close_and_reap_telethon_client(entry.client, f"pending-{entry.login_id}")
+            force_close_telethon_client(entry.client)
         except Exception:
             logger.warning("Failed to disconnect expired or completed pending login")
 

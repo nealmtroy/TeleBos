@@ -143,8 +143,11 @@ async def get_chat_photo(
     from app.services.chat_service import resolve_chat_entity
     from app.utils.encryption import decrypt
 
+    import uuid
+
     try:
         clean_account_id = validate_safe_id(account_id)
+        account_uuid = uuid.UUID(clean_account_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid account ID")
 
@@ -161,7 +164,7 @@ async def get_chat_photo(
         raise HTTPException(status_code=429, detail="Too many requests")
 
     stmt = select(TelegramAccount).where(
-        TelegramAccount.id == clean_account_id,
+        TelegramAccount.id == account_uuid,
         TelegramAccount.for_sale.is_(False),
     )
     if user is not None:

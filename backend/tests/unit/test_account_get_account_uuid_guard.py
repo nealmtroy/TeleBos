@@ -65,3 +65,27 @@ async def test_get_account_returns_none_for_uuid_shaped_garbage():
 
     assert result is None
     assert not db.executed
+
+
+@pytest.mark.asyncio
+async def test_get_profile_photo_and_chat_photo_reject_non_uuid_before_db():
+    """get_profile_photo and get_chat_photo reject 'marketplace' with 400 before DB query."""
+    from fastapi import HTTPException
+    from starlette.requests import Request
+    from app.api.accounts import get_profile_photo
+    from app.api.media import get_chat_photo
+
+    db = _ExplodingDB()
+    scope = {"type": "http", "method": "GET", "path": "/", "headers": [], "client": ("127.0.0.1", 12345)}
+    req = Request(scope)
+
+    with pytest.raises(HTTPException) as exc1:
+        await get_profile_photo("marketplace", req, db=db)
+    assert exc1.value.status_code == 400
+    assert not db.executed
+
+    with pytest.raises(HTTPException) as exc2:
+        await get_chat_photo("marketplace", 12345, req, db=db, user=None)
+    assert exc2.value.status_code == 400
+    assert not db.executed
+

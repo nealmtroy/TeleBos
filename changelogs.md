@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-11-14
+- **[a7a6ec23](https://github.com/nealmtroy/TeleBos/commit/a7a6ec23)**: fix(logging): stop reporting expected Telegram/Redis states as errors
+
 ## 2026-11-11
 - **[39fc54d6](https://github.com/nealmtroy/TeleBos/commit/39fc54d6)**: refactor(sentry): single source of truth for auth-key 404 discrimination
 - **[9060bdca](https://github.com/nealmtroy/TeleBos/commit/9060bdca)**: fix(sentry): keep auth-key InvalidBufferError reportable (404 not noise)

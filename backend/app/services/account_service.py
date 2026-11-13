@@ -26,6 +26,10 @@ from app.utils.telethon_cleanup import (
     close_and_reap_telethon_client,
     force_close_telethon_client,
 )
+# Canonical definition lives next to the pool helpers that raise it; re-exported
+# here so existing `from app.services.account_service import AccountDisconnectedError`
+# callers keep catching the exact same class.
+from app.utils.telethon_helpers import AccountDisconnectedError  # noqa: F401
 from app.services.twofa_service import get_live_2fa_status
 
 class DuplicateAccountError(Exception):
@@ -62,17 +66,6 @@ async def check_account_limit(db: AsyncSession, user: User) -> None:
         )
 
 logger = logging.getLogger(__name__)
-
-
-class AccountDisconnectedError(RuntimeError):
-    """The account has no usable Telegram client and must be re-logged in.
-
-    Subclasses RuntimeError so the API handlers that already map RuntimeError to
-    HTTP 400 keep working unchanged. The dedicated type exists so callers can
-    tell "this account is dead, stop asking" apart from "something actually
-    broke" — the periodic spam sweep uses that distinction to record the attempt
-    and back off instead of logging an error every hour.
-    """
 
 
 def detect_2fa_hint_from_error(error_message: str) -> tuple[bool, str | None]:
@@ -174,7 +167,8 @@ async def check_account_hint(phone: str) -> dict[str, Any] | None:
             return None
     finally:
         try:
-            await client.disconnect()
+            await close_and_reap_telethon_client(client, f"hint-{phone}")
+            force_close_telethon_client(client)
         except Exception:
             pass
 
@@ -237,7 +231,8 @@ async def start_login(phone: str) -> LoginStartResult:
         )
     except Exception:
         try:
-            await client.disconnect()
+            await close_and_reap_telethon_client(client, f"start-login-{phone}")
+            force_close_telethon_client(client)
         except Exception:
             pass
         raise
@@ -551,18 +546,21 @@ async def login_with_session(
             raise ValueError(f"Gagal menghubungkan ke Telegram: {conn_exc}")
 
         try:
-            if not await test_client.is_user_authorized():
+            if not await asyncio.wait_for(test_client.is_user_authorized(), timeout=10.0):
                 raise ValueError("Session string is invalid or expired")
-            me = await test_client.get_me()
+            me = await asyncio.wait_for(test_client.get_me(), timeout=10.0)
             live_twofa_status = await get_live_2fa_status(test_client)
             device_count = 1
             try:
                 from telethon.tl.functions.account import GetAuthorizationsRequest
-                auths = await test_client(GetAuthorizationsRequest())
+                auths = await asyncio.wait_for(test_client(GetAuthorizationsRequest()), timeout=5.0)
                 if auths and hasattr(auths, "authorizations"):
                     device_count = len(auths.authorizations)
-            except Exception:
-                pass
+            except (Exception, asyncio.CancelledError) as auth_exc:
+                if isinstance(auth_exc, asyncio.CancelledError):
+                    raise
+        except asyncio.TimeoutError:
+            raise ValueError("Koneksi ke server Telegram timeout saat mengambil profil.")
         except (AuthKeyNotFound, SecurityError):
             raise ValueError("Telegram session has been revoked or expired")
     finally:
@@ -571,7 +569,10 @@ async def login_with_session(
         # timeout keeps its _recv_loop/_send_loop tasks alive. asyncio then
         # reports "Task was destroyed but it is pending!" and the socket leaks
         # (PYTHON-FASTAPI-B/C/D/E/W/X/Y). Force the loop tasks down here.
-        await close_and_reap_telethon_client(test_client, "validate", timeout=3.0)
+        try:
+            await asyncio.shield(close_and_reap_telethon_client(test_client, "validate", timeout=3.0))
+        except (Exception, asyncio.CancelledError):
+            pass
         force_close_telethon_client(test_client)
 
     # Use phone from Telegram if available, fallback to placeholder

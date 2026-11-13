@@ -73,13 +73,15 @@ async def clean_pending_logins_task():
             await pending_login_manager.sweep_expired()
 
             # 2. Clean QR logins
+            from app.utils.telethon_cleanup import close_and_reap_telethon_client, force_close_telethon_client
             for qrid, details in list(_pending_qr_logins.items()):
                 if now - details["created_at"] > 300:  # 5 minutes expiration
                     _pending_qr_logins.pop(qrid, None)
                     client = details.get("client")
                     if client:
                         try:
-                            await client.disconnect()
+                            await close_and_reap_telethon_client(client, f"qr-{qrid}")
+                            force_close_telethon_client(client)
                             logger.info("Disconnected and removed expired QR login %s", qrid)
                         except Exception as e:
                             logger.warning("Error disconnecting expired QR client %s: %s", qrid, e)
@@ -178,7 +180,9 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
 
             # RES-02: Disconnect initial temporary QR login client to avoid duplicate parallel TCP connections
             try:
-                await client.disconnect()
+                from app.utils.telethon_cleanup import close_and_reap_telethon_client, force_close_telethon_client
+                await close_and_reap_telethon_client(client, f"qr-{qr_id}")
+                force_close_telethon_client(client)
             except Exception as disc_err:
                 logger.debug("Failed to disconnect temporary QR login client %s: %s", qr_id, disc_err)
 
@@ -214,7 +218,9 @@ async def watch_qr_login(qr_id: str, client: Any, qr_login: Any, user_id: Any):
             _pending_qr_logins[qr_id]["status"] = "failed"
             _pending_qr_logins[qr_id]["error"] = sanitize_exception(exc)
         try:
-            await client.disconnect()
+            from app.utils.telethon_cleanup import close_and_reap_telethon_client, force_close_telethon_client
+            await close_and_reap_telethon_client(client, f"qr-{qr_id}")
+            force_close_telethon_client(client)
         except Exception as disc_exc:
             logger.warning("Failed to disconnect QR login client %s on error: %s", qr_id, disc_exc)
 
@@ -343,6 +349,13 @@ async def qr_login_2fa(
         # Attach and reconnect
         from app.services.session_manager import session_manager
         await session_manager.attach_and_reconnect(db, account)
+
+        try:
+            from app.utils.telethon_cleanup import close_and_reap_telethon_client, force_close_telethon_client
+            await close_and_reap_telethon_client(client, f"qr-2fa-{qr_id}")
+            force_close_telethon_client(client)
+        except Exception as disc_err:
+            logger.debug("Failed to disconnect temporary QR 2FA client %s: %s", qr_id, disc_err)
         
         # Update details status
         details["status"] = "success"
@@ -903,6 +916,7 @@ async def get_profile_photo(
     try:
         from app.utils.path_security import validate_safe_id, is_path_contained
         clean_account_id = validate_safe_id(account_id)
+        account_uuid = uuid.UUID(clean_account_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid account ID")
 
@@ -921,7 +935,7 @@ async def get_profile_photo(
     from sqlalchemy import select
     result = await db.execute(
         select(TelegramAccount).where(
-            TelegramAccount.id == clean_account_id,
+            TelegramAccount.id == account_uuid,
         )
     )
     account = result.scalar_one_or_none()
