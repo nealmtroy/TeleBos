@@ -277,7 +277,27 @@ class TelegramRegDateService:
                 self.invalidate_cache()
                 logger.info("Successfully harvested %d new signup datapoints from %s", added_count, account.phone)
         except Exception as exc:
-            logger.exception("Error scanning signup messages for account %s: %s", account.phone, exc)
+            err_lower = str(exc).lower()
+            if (
+                "wait of" in err_lower
+                or "flood" in type(exc).__name__.lower()
+                or "disconnected" in err_lower
+                or isinstance(exc, (ConnectionError, TimeoutError, OSError))
+            ):
+                wait_sec = getattr(exc, "seconds", None)
+                if wait_sec:
+                    try:
+                        from app.utils.flood_control import flood_controller
+                        flood_controller.report_flood_wait(str(account.id), int(wait_sec))
+                    except Exception:
+                        pass
+                logger.warning(
+                    "Transient Telegram error scanning signup messages for account %s: %s",
+                    account.phone,
+                    exc,
+                )
+                return added_count
+            logger.warning("Error scanning signup messages for account %s: %s", account.phone, exc)
             raise
 
         return added_count

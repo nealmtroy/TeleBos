@@ -24,7 +24,9 @@ async def test_telegram_command_bus_timeout():
     fake_redis.rpush = AsyncMock()
     fake_redis.blpop = AsyncMock(return_value=None)
 
-    with patch("app.services.telegram_command_bus.redis_client", fake_redis):
+    with patch("app.services.telegram_command_bus.redis_client", fake_redis), patch(
+        "app.services.telegram_command_bus.redis_blocking_client", fake_redis
+    ):
         with pytest.raises(TelegramCommandTimeoutError) as exc_info:
             await execute_telegram_command(
                 account_id=str(uuid.uuid4()),
@@ -52,7 +54,9 @@ async def test_telegram_command_bus_success():
 
     fake_redis.blpop = AsyncMock(side_effect=mock_blpop)
 
-    with patch("app.services.telegram_command_bus.redis_client", fake_redis):
+    with patch("app.services.telegram_command_bus.redis_client", fake_redis), patch(
+        "app.services.telegram_command_bus.redis_blocking_client", fake_redis
+    ):
         result = await execute_telegram_command(
             account_id=str(uuid.uuid4()),
             action="send_message",
@@ -77,7 +81,9 @@ async def test_telegram_command_bus_error():
 
     fake_redis.blpop = AsyncMock(side_effect=mock_blpop)
 
-    with patch("app.services.telegram_command_bus.redis_client", fake_redis):
+    with patch("app.services.telegram_command_bus.redis_client", fake_redis), patch(
+        "app.services.telegram_command_bus.redis_blocking_client", fake_redis
+    ):
         with pytest.raises(TelegramCommandError) as exc_info:
             await execute_telegram_command(
                 account_id=str(uuid.uuid4()),

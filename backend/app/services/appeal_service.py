@@ -446,12 +446,13 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
 
     import httpx
 
-    configured_model = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b") or "openai/gpt-oss-120b"
+    configured_model = getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile") or "llama-3.3-70b-versatile"
     model_candidates = [
         configured_model,
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
         "openai/gpt-oss-120b",
         "openai/gpt-oss-20b",
-        "qwen/qwen3.8-27b",
     ]
     seen_models = set()
     models_to_try = []
@@ -494,17 +495,17 @@ async def generate_ai_appeal_reason(preset_id: str) -> str:
                             continue
                         logger.info("Successfully generated AI appeal reason via Groq (%s) using %s (%d chars)", model, name, len(text))
                         return text
-                    elif resp.status_code == 404:
-                        logger.warning("Groq model '%s' not found for %s (404), trying next model candidate...", model, name)
-                        continue
-                    else:
-                        logger.warning("Groq API (%s with %s) returned error status %d: %s", name, model, resp.status_code, resp.text)
+                    elif resp.status_code in (401, 403):
+                        logger.warning("Groq API key %s rejected (%d), trying next API key...", name, resp.status_code)
                         break
+                    else:
+                        logger.warning("Groq API (%s with %s) returned status %d, trying next model candidate: %s", name, model, resp.status_code, resp.text)
+                        continue
             except Exception as exc:
                 logger.warning("Failed to call Groq API with %s (model %s): %s", name, model, exc)
                 break
 
-    logger.error("All configured Groq API keys failed to generate a reason. Falling back to default preset.")
+    logger.warning("All configured Groq API keys failed to generate a reason. Falling back to default preset.")
     if is_indo:
         return "Halo moderator, akun saya terkena restricted secara tidak sengaja. Saya tidak pernah mengirim spam atau iklan kepada siapapun. Mohon periksa kembali akun saya dan bebaskan dari pembatasan ini. Terima kasih."
     return "Hello moderator, my account was restricted by mistake. I have never sent any spam or advertising to anyone. Please review my account and lift the restriction. Thank you."

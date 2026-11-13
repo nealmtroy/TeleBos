@@ -135,7 +135,18 @@ async def _background_chat_sync(account_id: str) -> None:
                     except Exception as ws_exc:
                         logger.warning("WS sync status push failed for %s: %s", account_id, ws_exc)
         except Exception as exc:
-            logger.error("Error in background chat/profile sync for account %s: %s", account_id, exc)
+            err_lower = str(exc).lower()
+            if (
+                _shutdown
+                or isinstance(exc, (ConnectionError, TimeoutError, asyncio.TimeoutError, OSError))
+                or any(
+                    term in err_lower
+                    for term in ("connect call failed", "connection was closed", "connection refused", "invalidated")
+                )
+            ):
+                logger.warning("Transient error in background chat/profile sync for account %s: %s", account_id, exc)
+            else:
+                logger.error("Error in background chat/profile sync for account %s: %s", account_id, exc)
 
 
 class SessionManager:

@@ -19,6 +19,7 @@ redis_client = aioredis.from_url(
     decode_responses=True,
     socket_timeout=10.0,
     socket_connect_timeout=5.0,
+    socket_keepalive=True,
     retry_on_timeout=True,
     # Sized via config so peaks in WebSocket publish fan-out cannot exhaust the
     # pool and raise MaxConnectionsError("Too many connections"). At 64 the worker
@@ -37,6 +38,7 @@ redis_blocking_client = aioredis.from_url(
     decode_responses=True,
     socket_timeout=65.0,
     socket_connect_timeout=5.0,
+    socket_keepalive=True,
     retry_on_timeout=False,
     max_connections=32,
     health_check_interval=30,
@@ -77,7 +79,7 @@ async def check_auto_reply_rate_limit(account_id: str, sender_id: int | str | No
 
         return True
     except Exception as exc:
-        logger.error("Failed to check auto-reply rate limit in Redis: %s", exc)
+        logger.warning("Failed to check auto-reply rate limit in Redis: %s", exc)
         # Fallback to True under Redis failures so we don't break auto-reply functionality
         return True
 
@@ -100,7 +102,7 @@ async def record_auto_reply_sent(account_id: str, sender_id: int | str | None = 
             pipe.expire(rate_key, 3600)
             await pipe.execute()
     except Exception as exc:
-        logger.error("Failed to record auto-reply event in Redis: %s", exc)
+        logger.warning("Failed to record auto-reply event in Redis: %s", exc)
 
 
 # ── Auto-reply In-Memory / Redis Caching ─────────────────────────────────────
@@ -121,7 +123,7 @@ async def get_auto_reply_config(account_id: str) -> dict | None:
             "text": data.get("text") or None,
         }
     except Exception as exc:
-        logger.error("Failed to read auto-reply config from Redis for %s: %s", account_id, exc)
+        logger.warning("Failed to read auto-reply config from Redis for %s: %s", account_id, exc)
         return None
 
 
@@ -136,7 +138,7 @@ async def set_auto_reply_config(account_id: str, enabled: bool, text: str | None
         await redis_client.hset(key, mapping=mapping)
         await redis_client.expire(key, 86400)
     except Exception as exc:
-        logger.error("Failed to set auto-reply config in Redis for %s: %s", account_id, exc)
+        logger.warning("Failed to set auto-reply config in Redis for %s: %s", account_id, exc)
 
 
 async def invalidate_auto_reply_config(account_id: str) -> None:
@@ -144,7 +146,7 @@ async def invalidate_auto_reply_config(account_id: str) -> None:
     try:
         await redis_client.delete(f"account:autoreply:{account_id}")
     except Exception as exc:
-        logger.error("Failed to invalidate auto-reply config in Redis for %s: %s", account_id, exc)
+        logger.warning("Failed to invalidate auto-reply config in Redis for %s: %s", account_id, exc)
 
 
 async def is_auto_reply_sent_to_user(account_id: str, sender_id: int | str) -> bool:
@@ -152,7 +154,7 @@ async def is_auto_reply_sent_to_user(account_id: str, sender_id: int | str) -> b
     try:
         return bool(await redis_client.exists(f"autoreply:replied:{account_id}:{sender_id}"))
     except Exception as exc:
-        logger.error("Failed to check replied cache in Redis: %s", exc)
+        logger.warning("Failed to check replied cache in Redis: %s", exc)
         return False
 
 
@@ -163,5 +165,5 @@ async def mark_auto_reply_sent_to_user(
     try:
         await redis_client.setex(f"autoreply:replied:{account_id}:{sender_id}", ttl_seconds, "1")
     except Exception as exc:
-        logger.error("Failed to mark replied in Redis: %s", exc)
+        logger.warning("Failed to mark replied in Redis: %s", exc)
 

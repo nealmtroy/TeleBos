@@ -24,11 +24,23 @@ from app.services.telegram_client import client_pool
 logger = logging.getLogger(__name__)
 
 
+class AccountDisconnectedError(RuntimeError):
+    """The account has no usable Telegram client and must be re-logged in.
+
+    Subclasses RuntimeError so API handlers that already map RuntimeError to
+    HTTP 400 keep working unchanged. The dedicated type lets callers tell
+    "this account is dead, stop asking" apart from "something actually broke" —
+    e.g. the command consumer answers the caller with a readable
+    ACCOUNT_DISCONNECTED error at WARNING level instead of logging a traceback
+    at ERROR for every command aimed at an account whose session expired.
+    """
+
+
 async def get_active_client(account, receive_updates: bool | None = None) -> TelegramClient:
     """Decrypt session credentials and fetch client from the connection pool.
     
     Supports both ORM object and dictionary.
-    Raises RuntimeError if the client is disconnected.
+    Raises AccountDisconnectedError if the client is disconnected.
     """
     if isinstance(account, dict):
         acc_id = account.get("id") or account.get("account_id")
@@ -40,7 +52,7 @@ async def get_active_client(account, receive_updates: bool | None = None) -> Tel
     session_str = decrypt(enc_session)
     client = await client_pool.get(str(acc_id), session_str, receive_updates=receive_updates)
     if client is None:
-        raise RuntimeError(f"Account {acc_id} is disconnected. Please reconnect first.")
+        raise AccountDisconnectedError(f"Account {acc_id} is disconnected. Please reconnect first.")
     return client
 
 
@@ -48,7 +60,7 @@ async def borrow_client(account, receive_updates: bool | None = None) -> Telegra
     """Decrypt session credentials and borrow a client from the connection pool with refcount tracking.
     
     Supports both ORM object and dictionary.
-    Raises RuntimeError if the client could not be connected.
+    Raises AccountDisconnectedError if the client could not be connected.
     """
     if isinstance(account, dict):
         acc_id = account.get("id") or account.get("account_id")
@@ -59,11 +71,11 @@ async def borrow_client(account, receive_updates: bool | None = None) -> Telegra
 
     session_str = decrypt(enc_session) if enc_session else None
     if not session_str:
-        raise RuntimeError(f"Account {acc_id} has no valid session string.")
+        raise AccountDisconnectedError(f"Account {acc_id} has no valid session string.")
 
     client = await client_pool.borrow(str(acc_id), session_str, receive_updates=receive_updates)
     if client is None:
-        raise RuntimeError(f"Account {acc_id} is disconnected. Please reconnect first.")
+        raise AccountDisconnectedError(f"Account {acc_id} is disconnected. Please reconnect first.")
     return client
 
 

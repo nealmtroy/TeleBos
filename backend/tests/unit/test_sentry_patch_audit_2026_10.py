@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from app.config import get_settings
 from app.services.chat_service import _upsert_telegram_chats, resolve_chat_entity
 from app.services.klikqris_service import create_qris_transaction
 from app.services.uptimerobot_status import MonitorInfo, UptimeRobotService, UptimeStatus
@@ -56,7 +57,12 @@ def test_redis_blocking_client_timeout_exceeds_command_bus_wait():
     regular_kwargs = redis_client.connection_pool.connection_kwargs
     assert blocking_kwargs.get("socket_timeout", 0) >= 60.0
     assert regular_kwargs.get("socket_timeout", 0) >= 10.0
-    assert redis_client.connection_pool.max_connections == 64
+    # PYTHON-FASTAPI-3G pinned the literal 64, but that ceiling was itself the
+    # bug: the worker's publish fan-out hit it and redis-py raised
+    # MaxConnectionsError ("Too many connections"). Assert the contract instead
+    # of the old magic number.
+    assert redis_client.connection_pool.max_connections == get_settings().REDIS_MAX_CONNECTIONS
+    assert redis_client.connection_pool.max_connections > 64
     assert redis_blocking_client.connection_pool.max_connections == 32
 
 
@@ -202,4 +208,116 @@ async def test_uptimerobot_preserves_cache_on_upstream_500(monkeypatch):
     with patch("httpx.AsyncClient.post", AsyncMock(side_effect=http_err)):
         res = await svc._fetch()
         assert res.overall == "unknown"
+
+
+def test_asyncio_noise_filter_and_sentry_before_send_drop_benign_telethon_noise():
+    """PYTHON-FASTAPI-5A / 50 / 4Z: pending _handle_auto_reconnect and InvalidBufferError dropped."""
+    from telethon.errors import InvalidBufferError
+    from app.utils.log_filters import AsyncioTransportNoiseFilter, sentry_before_send
+
+    flt = AsyncioTransportNoiseFilter()
+    rec = logging.LogRecord(
+        name="asyncio",
+        level=logging.ERROR,
+        pathname="base_events.py",
+        lineno=1785,
+        msg="Task was destroyed but it is pending!\ntask: <Task pending coro=<UpdateMethods._handle_auto_reconnect()>>",
+        args=(),
+        exc_info=None,
+    )
+    assert flt.filter(rec) is True
+    assert rec.levelno == logging.WARNING
+
+    assert sentry_before_send({"message": "noise"}, {"log_record": rec}) is None
+
+    try:
+        raise InvalidBufferError(b"\x00\x00\x00\x00")
+    except InvalidBufferError as exc:
+        import sys
+        assert sentry_before_send({"exception": {}}, {"exc_info": sys.exc_info()}) is None
+
+    normal_event = {"exception": {"values": [{"type": "ValueError", "value": "real bug"}]}}
+    assert sentry_before_send(normal_event, {}) == normal_event
+
+
+@pytest.mark.asyncio
+async def test_chat_service_get_dialogs_flood_wait_demoted_to_warning(caplog):
+    """PYTHON-FASTAPI-31: FloodWaitError during get_dialogs folder 0 logs warning, not error."""
+    from app.services.chat_service import _sync_all_chats_to_db_locked
+
+    class FakeFloodWaitError(Exception):
+        seconds = 12
+
+    fake_client = MagicMock()
+    fake_client.get_dialogs = AsyncMock(
+        side_effect=FakeFloodWaitError("A wait of 12 seconds is required (caused by GetDialogsRequest)")
+    )
+    account = SimpleNamespace(id=uuid.uuid4(), phone="+62811111111")
+    db = AsyncMock()
+
+    with (
+        patch("app.services.chat_service.get_active_client", AsyncMock(return_value=fake_client)),
+        caplog.at_level(logging.WARNING),
+    ):
+        res = await _sync_all_chats_to_db_locked(account, db)
+
+    assert res == []
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any("FloodWait" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_reg_date_service_flood_wait_demoted_to_warning(caplog):
+    """PYTHON-FASTAPI-33: FloodWaitError during sync_datapoints_from_account logs warning and returns count."""
+    from app.services.telegram_reg_date_service import TelegramRegDateService
+
+    class FakeFloodWaitError(Exception):
+        seconds = 17
+
+    async def failing_iter_dialogs(limit=100):
+        raise FakeFloodWaitError("A wait of 17 seconds is required (caused by GetDialogsRequest)")
+        yield  # pragma: no cover
+
+    fake_client = MagicMock()
+    fake_client.iter_dialogs = failing_iter_dialogs
+    account = SimpleNamespace(id=uuid.uuid4(), phone="+62811111111")
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=account)
+
+    svc = TelegramRegDateService()
+    with (
+        patch("app.services.telegram_reg_date_service.get_active_client", AsyncMock(return_value=fake_client)),
+        caplog.at_level(logging.WARNING),
+    ):
+        count = await svc.sync_datapoints_from_account(db, account.id, limit=100)
+
+    assert count == 0
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_appeal_service_groq_fallback_tries_next_model_and_logs_warning(monkeypatch, caplog):
+    """PYTHON-FASTAPI-2W: Groq 400/429 on one model tries next candidate and logs warning on fallback."""
+    from app.config import get_settings
+    from app.services import appeal_service
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "GROQ_API_KEY_1", "gsk_test_1")
+    for idx in range(2, 8):
+        monkeypatch.setattr(settings, f"GROQ_API_KEY_{idx}", "")
+
+    resp_fail = MagicMock()
+    resp_fail.status_code = 400
+    resp_fail.text = "model decommissioned"
+
+    with (
+        patch("httpx.AsyncClient.post", AsyncMock(return_value=resp_fail)) as mock_post,
+        caplog.at_level(logging.WARNING),
+    ):
+        reason = await appeal_service.generate_ai_appeal_reason("ai_indonesian")
+
+    assert mock_post.await_count >= 2
+    assert "moderator" in reason.lower()
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+
 

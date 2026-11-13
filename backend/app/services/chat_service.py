@@ -144,8 +144,24 @@ async def _sync_all_chats_to_db_locked(account: TelegramAccount, db: AsyncSessio
         dialogs_folder_0 = await client.get_dialogs(limit=500, folder=0)
     except Exception as exc:
         err_msg = str(exc)
-        if "Request was unsuccessful" in err_msg or isinstance(
-            exc, (ConnectionError, TimeoutError, asyncio.TimeoutError, OSError)
+        err_lower = err_msg.lower()
+        if "wait of" in err_lower or "flood" in type(exc).__name__.lower():
+            wait_sec = getattr(exc, "seconds", 30) or 30
+            try:
+                from app.utils.flood_control import flood_controller
+                flood_controller.report_flood_wait(str(account.id), wait_sec)
+            except Exception:
+                pass
+            logger.warning(
+                "FloodWait (%ds) during get_dialogs folder 0 for account %s: %s",
+                wait_sec,
+                account.id,
+                exc,
+            )
+        elif (
+            "Request was unsuccessful" in err_msg
+            or "disconnected" in err_lower
+            or isinstance(exc, (ConnectionError, TimeoutError, asyncio.TimeoutError, OSError))
         ):
             logger.warning(
                 "Transient Telegram error during get_dialogs folder 0 for account %s: %s",

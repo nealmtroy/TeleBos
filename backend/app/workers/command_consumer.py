@@ -36,7 +36,11 @@ from app.services.telegram_command_bus import (
     TELEGRAM_RESPONSE_PREFIX,
 )
 from app.utils.redis import redis_blocking_client, redis_client
-from app.utils.telethon_helpers import borrow_client, release_client
+from app.utils.telethon_helpers import (
+    AccountDisconnectedError,
+    borrow_client,
+    release_client,
+)
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
@@ -492,10 +496,20 @@ async def process_single_command(raw_payload: str) -> None:
             "wait_seconds": fwe.seconds,
         }
     except (SessionRevokedError, AuthKeyUnregisteredError, UserDeactivatedBanError) as sess_err:
-        logger.error("Dead session on action '%s' for %s: %s", action, account_id, sess_err)
+        logger.warning("Dead session on action '%s' for %s: %s", action, account_id, sess_err)
         res_payload["error"] = {
             "code": "DEAD_SESSION",
             "message": "This Telegram account session was revoked or deactivated.",
+        }
+    except AccountDisconnectedError as disc_err:
+        # Expected state, not a defect: the account's session expired or it was
+        # never connected. Logging this as ERROR + traceback turned every command
+        # aimed at a dead account into a Sentry event (PYTHON-FASTAPI-*), so it
+        # is answered as a readable error at WARNING level instead.
+        logger.warning("Account unavailable on action '%s' for %s: %s", action, account_id, disc_err)
+        res_payload["error"] = {
+            "code": "ACCOUNT_DISCONNECTED",
+            "message": str(disc_err),
         }
     except RPCError as rpc_err:
         logger.warning("Telegram RPCError on action '%s' for %s: %s", action, account_id, rpc_err)

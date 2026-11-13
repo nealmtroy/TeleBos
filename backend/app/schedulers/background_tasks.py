@@ -119,7 +119,7 @@ async def adaptive_sequential_sync_loop() -> None:
                             await db_session.commit()
                         except Exception as profile_exc:
                             await db_session.rollback()
-                            logger.error("Adaptive Sync: Error syncing profile for %s: %s", db_acc.phone, profile_exc)
+                            logger.error("Adaptive Sync: Error syncing profile for %s: %s", account_phone, profile_exc)
 
                         # Step B: Consolidated Sync (Chats, Groups, Channels, & last_sync_at / groups_channels_synced_at)
                         dialogs = []
@@ -129,7 +129,7 @@ async def adaptive_sequential_sync_loop() -> None:
                             await db_session.commit()
                         except Exception as chat_exc:
                             await db_session.rollback()
-                            logger.error("Adaptive Sync: Error syncing chats for %s: %s", db_acc.phone, chat_exc)
+                            logger.error("Adaptive Sync: Error syncing chats for %s: %s", account_phone, chat_exc)
 
                         # Step C: Sync Registration Dates (re-uses already fetched dialogs, zero extra network calls)
                         try:
@@ -137,13 +137,13 @@ async def adaptive_sequential_sync_loop() -> None:
                             await db_session.commit()
                         except Exception as reg_exc:
                             await db_session.rollback()
-                            logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", db_acc.phone, reg_exc)
+                            logger.debug("Adaptive Sync: Skip reg date sync for %s (e.g. client inactive): %s", account_phone, reg_exc)
 
                         # Step D: Save all changes
                         db_acc.last_sync_at = datetime.now(timezone.utc)
                         await db_session.commit()
                         sync_succeeded = True
-                        logger.info("Adaptive Sync: Completed sync for account %s (%s).", account_id, db_acc.phone)
+                        logger.info("Adaptive Sync: Completed sync for account %s (%s).", account_id, account_phone)
 
                         # Step E: Broadcast WS notifications to invalidate frontend query caches
                         # Dispatch via Redis so webserver relays it to frontend WebSockets across processes

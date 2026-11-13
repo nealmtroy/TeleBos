@@ -464,14 +464,29 @@ class TelegramEventRelay:
                 clean_text, entities = reply_text, None
 
             try:
+                is_conn = getattr(event.client, "is_connected", None)
+                if callable(is_conn) and not is_conn():
+                    try:
+                        await redis_client.delete(lock_key)
+                    except Exception:
+                        pass
+                    logger.warning(
+                        "Auto-reply skipped for account %s: client disconnected before send",
+                        account_id,
+                    )
+                    return
+
                 await event.client.send_message(
                     target_peer,
                     clean_text,
                     reply_to=msg.id,
                     formatting_entities=entities or None,
                 )
-            except RPCError:
-                await redis_client.delete(lock_key)
+            except Exception:
+                try:
+                    await redis_client.delete(lock_key)
+                except Exception:
+                    pass
                 raise
 
             # 8. Log the reply in DB and Redis so we never reply to this user again.
@@ -494,8 +509,17 @@ class TelegramEventRelay:
 
         except Exception as exc:
             err_msg = str(exc)
-            if any(term in err_msg.lower() for term in ("limited", "spam-reported", "peerflood", "forbidden", "banned", "deactivated")):
+            err_lower = err_msg.lower()
+            if any(
+                term in err_lower
+                for term in ("limited", "spam-reported", "peerflood", "forbidden", "banned", "deactivated")
+            ):
                 logger.warning("Auto-reply skipped for account %s (account restricted by Telegram): %s", account_id, exc)
+            elif (
+                any(term in err_lower for term in ("disconnected", "connection", "timeout", "wait of"))
+                or isinstance(exc, (ConnectionError, TimeoutError, asyncio.TimeoutError, OSError))
+            ):
+                logger.warning("Auto-reply skipped for account %s (transient connection/rate error): %s", account_id, exc)
             else:
                 logger.error("Auto-reply error for account %s: %s", account_id, exc)
 
