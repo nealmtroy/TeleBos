@@ -98,10 +98,14 @@ function LayoutAnimationSanitizer() {
     const sanitize = () => {
       // 1. Sanitize text in inline <style> elements (e.g. Sonner __insertCSS)
       document.querySelectorAll("style").forEach((styleEl) => {
-        if (styleEl.textContent && styleEl.textContent.includes("height")) {
-          styleEl.textContent = styleEl.textContent
+        const raw = styleEl.textContent;
+        if (raw && raw.includes("height")) {
+          const cleaned = raw
             .replace(/height\s+[\d.]+s,?\s*/g, "")
             .replace(/,\s*height\s+[\d.]+s/g, "");
+          if (cleaned !== raw) {
+            styleEl.textContent = cleaned;
+          }
         }
       });
 

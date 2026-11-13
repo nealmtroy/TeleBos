@@ -104,6 +104,7 @@ import sys
 if app_settings.SENTRY_DSN and "pytest" not in sys.modules and not os.environ.get("TESTING"):
     try:
         import sentry_sdk
+        from app.utils.log_filters import sentry_before_send
 
         sentry_sdk.init(
             dsn=app_settings.SENTRY_DSN,
@@ -114,6 +115,7 @@ if app_settings.SENTRY_DSN and "pytest" not in sys.modules and not os.environ.ge
             traces_sample_rate=1.0 if app_settings.DEBUG else app_settings.SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=1.0 if app_settings.DEBUG else app_settings.SENTRY_PROFILES_SAMPLE_RATE,
             send_default_pii=True,
+            before_send=sentry_before_send,
             _experiments={"suppress_asgi_chained_exceptions": False},
         )
         logger.info("Sentry monitoring initialized for TeleBos API")

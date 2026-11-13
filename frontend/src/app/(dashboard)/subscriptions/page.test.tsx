@@ -193,7 +193,7 @@ describe("Subscription Dashboard Page", () => {
     await waitFor(() => {
       expect(screen.getByText("Pilih Metode Pembayaran")).toBeDefined();
       expect(screen.getByText("Bayar dengan Saldo Dompet")).toBeDefined();
-      expect(screen.getByText("Bayar via QRIS Otomatis")).toBeDefined();
+      expect(screen.getByText(/Bayar via QRIS Otomatis/i)).toBeDefined();
     });
   });
 

@@ -90,7 +90,7 @@ function getInitialLocale(): Locale {
   return getRequestLocale() ?? "en";
 }
 
-export const useI18nStore = create<I18nState>((set) => ({
+const useBaseI18nStore = create<I18nState>((set) => ({
   locale: getInitialLocale(),
   preference: "system",
   setLocale: (locale) => {
@@ -117,6 +117,32 @@ export const useI18nStore = create<I18nState>((set) => ({
   },
 }));
 
+function withServerLocale(state: I18nState): I18nState {
+  if (typeof window === "undefined") {
+    const reqLocale = getRequestLocale();
+    if (reqLocale && reqLocale !== state.locale) {
+      return { ...state, locale: reqLocale };
+    }
+  }
+  return state;
+}
+
+export const useI18nStore = Object.assign(
+  <T = I18nState>(selector?: (state: I18nState) => T): T => {
+    return useBaseI18nStore((state) => {
+      const resolved = withServerLocale(state);
+      return selector ? selector(resolved) : (resolved as unknown as T);
+    });
+  },
+  {
+    ...useBaseI18nStore,
+    getState: (): I18nState => withServerLocale(useBaseI18nStore.getState()),
+    setState: useBaseI18nStore.setState,
+    subscribe: useBaseI18nStore.subscribe,
+    getInitialState: useBaseI18nStore.getInitialState,
+  },
+);
+
 /**
  * Translate a dot-separated key into the current locale's dictionary.
  *
@@ -125,7 +151,8 @@ export const useI18nStore = create<I18nState>((set) => ({
  *   t("chats.deleteConfirm", { name: "My Group" })  → Delete "My Group"? ...
  */
 export function t(path: string, params?: Record<string, string | number>): string {
-  const locale = useI18nStore.getState().locale;
+  const storeLocale = useI18nStore.getState().locale;
+  const locale = typeof window === "undefined" ? (getRequestLocale() ?? storeLocale) : storeLocale;
   const dict = dictionaries[locale] || en;
 
   const keys = path.split(".");
@@ -155,7 +182,8 @@ export function t(path: string, params?: Record<string, string | number>): strin
 
 /** Convenience: return the current dictionary object for direct access. */
 export function useDict(): Dict {
-  const locale = useI18nStore((s) => s.locale);
+  const storeLocale = useI18nStore((s) => s.locale);
+  const locale = typeof window === "undefined" ? (getRequestLocale() ?? storeLocale) : storeLocale;
   return dictionaries[locale] || en;
 }
 
@@ -165,7 +193,8 @@ export function useDict(): Dict {
  * Then: _("nav.dashboard") or _.("chats.deleteConfirm", { name: "..." })
  */
 export function useT() {
-  const locale = useI18nStore((s) => s.locale);
+  const storeLocale = useI18nStore((s) => s.locale);
+  const locale = typeof window === "undefined" ? (getRequestLocale() ?? storeLocale) : storeLocale;
   return useCallback(
     (path: string, params?: Record<string, string | number>) => {
       const dict = dictionaries[locale] || en;

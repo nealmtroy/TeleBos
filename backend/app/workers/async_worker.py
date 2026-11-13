@@ -53,6 +53,7 @@ import os
 if worker_settings.SENTRY_DSN and "pytest" not in sys.modules and not os.environ.get("TESTING"):
     try:
         import sentry_sdk
+        from app.utils.log_filters import sentry_before_send
 
         sentry_sdk.init(
             dsn=worker_settings.SENTRY_DSN,
@@ -63,6 +64,7 @@ if worker_settings.SENTRY_DSN and "pytest" not in sys.modules and not os.environ
             traces_sample_rate=1.0
             if worker_settings.DEBUG
             else worker_settings.SENTRY_TRACES_SAMPLE_RATE,
+            before_send=sentry_before_send,
         )
         logger.info("Sentry monitoring initialized for TeleBos Async Worker")
     except ImportError:

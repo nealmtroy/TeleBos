@@ -21,13 +21,48 @@ Sentry.init({
     /The object can not be found here/i,
     /Non-Error promise rejection captured/i,
     /invariant expected app router to be mounted/i,
+    /AggregateError: No error message/i,
+    /Cannot read properties of undefined \(reading 'toObject'\)/i,
   ],
   denyUrls: [
     /executors\//i,
     /^chrome-extension:\/\//i,
     /^moz-extension:\/\//i,
     /^safari-extension:\/\//i,
+    /^ext:/i,
   ],
+  beforeSend(event) {
+    const exceptions = event.exception?.values ?? [];
+    for (const exc of exceptions) {
+      const type = exc.type ?? "";
+      const val = exc.value ?? "";
+      const combined = `${type}: ${val}`;
+      if (
+        /removeChild|insertBefore|invariant expected app router to be mounted|reading 'toObject'/i.test(
+          combined,
+        )
+      ) {
+        return null;
+      }
+      const frames = exc.stacktrace?.frames ?? [];
+      if (
+        frames.some((f) => /^ext:/i.test(f.filename ?? "") || /^ext:/i.test(f.abs_path ?? ""))
+      ) {
+        return null;
+      }
+      if (
+        /Maximum call stack size exceeded/i.test(combined) &&
+        frames.length > 0 &&
+        frames.every((f) => {
+          const fn = f.filename ?? f.abs_path ?? "";
+          return !fn.includes("/_next/") && !fn.includes("/src/");
+        })
+      ) {
+        return null;
+      }
+    }
+    return event;
+  },
 
   // 100% in development, 10% in production
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,

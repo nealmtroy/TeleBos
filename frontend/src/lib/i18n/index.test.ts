@@ -41,4 +41,42 @@ describe("i18n", () => {
     expect(useI18nStore.getState().preference).toBe("system");
     expect(["en", "id"]).toContain(useI18nStore.getState().locale);
   });
+
+  it("overrides store locale with request header during SSR when window is undefined", async () => {
+    const { renderToString } = await import("react-dom/server");
+    const React = await import("react");
+    useI18nStore.setState({ locale: "en" });
+
+    function SampleSwitcher() {
+      const { locale } = useI18nStore();
+      return React.createElement("span", null, locale === "id" ? "ID" : "EN");
+    }
+
+    const origWindow = globalThis.window;
+    const cacheKey = require.resolve("next/headers");
+    const origCached = require.cache[cacheKey];
+    try {
+      // Simulate SSR environment where typeof window === "undefined"
+      // @ts-expect-error simulating Node SSR
+      delete globalThis.window;
+      require.cache[cacheKey] = {
+        id: cacheKey,
+        filename: cacheKey,
+        loaded: true,
+        exports: {
+          headers: () => new Map([["x-telebos-locale", "id"]]),
+        },
+      } as any;
+      expect(useI18nStore.getState().locale).toBe("id");
+      expect(t("common.language")).toBe("Bahasa");
+      expect(renderToString(React.createElement(SampleSwitcher))).toBe("<span>ID</span>");
+    } finally {
+      if (origCached) {
+        require.cache[cacheKey] = origCached;
+      } else {
+        delete require.cache[cacheKey];
+      }
+      globalThis.window = origWindow;
+    }
+  });
 });
