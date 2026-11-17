@@ -16,6 +16,7 @@ from app.bot.utils import auth_required, format_dashboard_message
 from app.services.uptimerobot_status import uptimerobot_service
 from app.services import telegram_bot_service
 from app.config import get_settings
+from app.utils.redis import redis_client
 
 logger = logging.getLogger(__name__)
 
