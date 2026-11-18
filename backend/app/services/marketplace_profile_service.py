@@ -90,7 +90,9 @@ async def _with_timeout(
 async def _get_sale_client(account: TelegramAccount, *, deadline: float):
     try:
         return await asyncio.wait_for(
-            client_pool.get(str(account.id), decrypt(account.session_string)),
+            client_pool.get(
+                str(account.id), decrypt(account.session_string), receive_updates=False
+            ),
             timeout=_remaining_timeout(deadline, CLIENT_ACQUISITION_TIMEOUT_SECONDS),
         )
     except asyncio.TimeoutError as exc:

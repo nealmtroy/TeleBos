@@ -40,7 +40,7 @@ redis_blocking_client = aioredis.from_url(
     socket_connect_timeout=5.0,
     socket_keepalive=True,
     retry_on_timeout=False,
-    max_connections=32,
+    max_connections=settings.REDIS_MAX_CONNECTIONS,
     health_check_interval=30,
 )
 

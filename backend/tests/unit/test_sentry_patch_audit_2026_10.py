@@ -57,13 +57,15 @@ def test_redis_blocking_client_timeout_exceeds_command_bus_wait():
     regular_kwargs = redis_client.connection_pool.connection_kwargs
     assert blocking_kwargs.get("socket_timeout", 0) >= 60.0
     assert regular_kwargs.get("socket_timeout", 0) >= 10.0
-    # PYTHON-FASTAPI-3G pinned the literal 64, but that ceiling was itself the
-    # bug: the worker's publish fan-out hit it and redis-py raised
-    # MaxConnectionsError ("Too many connections"). Assert the contract instead
-    # of the old magic number.
+    # Both the old 64-connection publish pool and 32-connection blocking pool
+    # exhausted under bursts; keep their ceilings tied to the shared setting.
     assert redis_client.connection_pool.max_connections == get_settings().REDIS_MAX_CONNECTIONS
     assert redis_client.connection_pool.max_connections > 64
-    assert redis_blocking_client.connection_pool.max_connections == 32
+    assert (
+        redis_blocking_client.connection_pool.max_connections
+        == get_settings().REDIS_MAX_CONNECTIONS
+    )
+    assert redis_blocking_client.connection_pool.max_connections > 32
 
 
 def test_telethon_transport_noise_filter_demotes_mtprotosender_readexactly():

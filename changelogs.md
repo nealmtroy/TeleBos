@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented below, grouped by date.
 
+## 2026-11-18
+- **[e0052b7f](https://github.com/nealmtroy/TeleBos/commit/e0052b7f)**: fix(bot): import Redis client for system status
+
 ## 2026-11-14
 - **[4bac60b7](https://github.com/nealmtroy/TeleBos/commit/4bac60b7)**: fix(sentry,i18n): wire before_send filters and split frontend/backend DSNs
 - **[5251416d](https://github.com/nealmtroy/TeleBos/commit/5251416d)**: fix(accounts): validate UUIDs before the DB query and reap temporary clients

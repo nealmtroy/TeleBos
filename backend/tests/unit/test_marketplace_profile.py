@@ -142,6 +142,9 @@ async def test_prepare_account_for_sale_updates_profile_username_and_all_photos(
     monkeypatch.setattr("app.services.account_service._photo_path", lambda _: str(photo_path))
 
     identity = await prepare_account_for_sale(db, account, rng=random.Random(12))
+    marketplace_profile_service.client_pool.get.assert_awaited_once_with(
+        "account-id", "session", receive_updates=False
+    )
 
     request_names = [type(request).__name__ for request in client.requests]
     profile_request = next(
